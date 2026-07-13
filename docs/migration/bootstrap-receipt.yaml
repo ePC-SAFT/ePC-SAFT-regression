@@ -1,0 +1,24 @@
+schema: epcsaft.curated-repository-bootstrap-receipt
+schema_version: 1
+date: 2026-07-13
+stage: 11
+repository_role: regression
+local_path: /home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/ePC-SAFT-regression
+intended_github_home: ePC-SAFT/ePC-SAFT-regression
+github_home_state: intended_mapping_only
+distribution_name: epcsaft-regression
+import_name: epcsaft_regression
+deferred_issue: https://github.com/ePC-SAFT/ePC-SAFT/issues/469
+program_amendment_commit: cad6eb9fc2d83c6f9167cb6ef45f5b9fe74da19b
+initial_branch: main
+initial_commit_policy: clean_history_single_bootstrap_commit
+depends_on:
+  - epcsaft
+forbidden_dependencies:
+  - epcsaft-equilibrium
+  - Ipopt
+production_owners_transferred: []
+scientific_capabilities_claimed: []
+remote_created: false
+push_performed: false
+source_of_truth: false
