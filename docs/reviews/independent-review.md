@@ -1,6 +1,6 @@
 # Independent Review: First Methane Regression Slice
 
-Reviewer: `/root/independent_review`
+Reviewer: `codex-independent-reviewer:019f715b-6a5b-7341-9d28-b329b3f206d0`
 Review date: 2026-07-17
 Authority: implementation-quality review only; no scientific admission or runtime promotion
 

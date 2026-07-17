@@ -5,12 +5,12 @@
     "validation_admission": "pending"
   },
   "independent_reviewer": {
-    "identity": "/root/independent_review",
+    "identity": "codex-independent-reviewer:019f715b-6a5b-7341-9d28-b329b3f206d0",
     "path": "docs/reviews/independent-review.md",
-    "sha256": "db800d4ce65d51e09083129412775c63401fb81c7b54e63916e2913504203e0d"
+    "sha256": "b307a642b8cf5b4a50548f2a47b56411dafc415aafac1bb1939c817b66b334b5"
   },
   "producer": "codex:/root",
-  "receipt_payload_sha256": "5465b4a527e5a512350c49ed3a5e36ff0f60c2cdabe2ab30397895e56963eea1",
+  "receipt_payload_sha256": "fb4b6b78bdef3bd141ac6d4857bd6da4fc3c0b1833218ba4f5f7fcafbbda565b",
   "schema_version": "epcsaft-regression-candidate-fit-receipt-v1",
   "status": "candidate",
   "subject": {
