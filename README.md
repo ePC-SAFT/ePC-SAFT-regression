@@ -31,11 +31,11 @@ Builds require Ceres 2.2 and `EPCSAFT_INCLUDE_DIR` set to the public include
 directory of an installed compatible provider wheel. The build does not search
 sibling source trees.
 
-This candidate has not received installed-artifact predictive admission and
-does not change runtime authority. Migration receipt
-`promotion-0020-regression-methane-saturation-v1` alone determines authority;
-until it is accepted, the lab remains the transitional owner. Held-out errors
-are descriptive because no admission cutoff was approved, and the
+Accepted migration receipt `promotion-0020-regression-methane-saturation-v1`
+makes this repository the production owner of the exact reproducible methane
+workflow. It does not admit the fitted parameters as predictive or scientific
+authority. Held-out errors are descriptive because no admission cutoff was
+approved, and the
 reporting-block directional Jacobian remains an explicit evidence limit with
 no added runtime seam. The candidate excludes binary interactions,
 association, electrolytes, reactions, generic target families, and parameter

@@ -13,9 +13,10 @@ This repository is limited to strict target datasets, fitted parameters,
 Ceres, fit receipts, and regression results. It consumes a compatible
 installed provider and does not own provider internals, equilibrium, or Ipopt.
 
-Migration receipt `promotion-0020-regression-methane-saturation-v1` is the sole
-authority record for the source-backed pure-methane fitting candidate; this
-documentation does not transfer that authority or admit its fitted parameters.
+Accepted migration receipt `promotion-0020-regression-methane-saturation-v1`
+is the sole authority record for the source-backed reproducible pure-methane
+workflow. This repository is its production owner, but that acceptance does
+not admit the fitted parameters as predictive or scientific authority.
 Held-out errors remain descriptive because no acceptance cutoff was approved.
 The reporting-block directional Jacobian remains an explicit evidence limit;
 do not add a runtime seam merely to close it. Do not broaden this candidate to
