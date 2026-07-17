@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,11 @@ constexpr std::size_t residuals_per_row = 4;
 constexpr std::size_t parameter_count = 3;
 constexpr std::size_t variable_count = parameter_count + 2 * row_count;
 constexpr std::size_t residual_count = residuals_per_row * row_count;
+
+struct PyObjectDeleter final {
+    void operator()(PyObject* object) const noexcept { Py_XDECREF(object); }
+};
+using OwnedPyObject = std::unique_ptr<PyObject, PyObjectDeleter>;
 
 struct Row final {
     std::string row_id;

@@ -23,20 +23,18 @@ std::string text(PyObject* object, const char* label) {
 }
 
 std::vector<std::string> texts(PyObject* object, std::size_t expected, const char* label) {
-    PyObject* sequence = PySequence_Fast(object, label);
+    OwnedPyObject sequence{PySequence_Fast(object, label)};
     if (sequence == nullptr) throw std::invalid_argument(label);
-    if (PySequence_Fast_GET_SIZE(sequence) != static_cast<Py_ssize_t>(expected)) {
-        Py_DECREF(sequence);
+    if (PySequence_Fast_GET_SIZE(sequence.get()) != static_cast<Py_ssize_t>(expected)) {
         throw std::invalid_argument(std::string(label) + " has the wrong length");
     }
     std::vector<std::string> values;
     values.reserve(expected);
     for (std::size_t index = 0; index < expected; ++index) {
         values.push_back(text(
-            PySequence_Fast_GET_ITEM(sequence, static_cast<Py_ssize_t>(index)), label
+            PySequence_Fast_GET_ITEM(sequence.get(), static_cast<Py_ssize_t>(index)), label
         ));
     }
-    Py_DECREF(sequence);
     return values;
 }
 
@@ -158,24 +156,21 @@ bool positive_finite(double value) {
 }
 
 std::vector<double> doubles(PyObject* object, std::size_t expected, const char* label) {
-    PyObject* sequence = PySequence_Fast(object, label);
+    OwnedPyObject sequence{PySequence_Fast(object, label)};
     if (sequence == nullptr) throw std::invalid_argument(label);
-    const Py_ssize_t size = PySequence_Fast_GET_SIZE(sequence);
+    const Py_ssize_t size = PySequence_Fast_GET_SIZE(sequence.get());
     if (size != static_cast<Py_ssize_t>(expected)) {
-        Py_DECREF(sequence);
         throw std::invalid_argument(std::string(label) + " has the wrong length");
     }
     std::vector<double> values;
     values.reserve(expected);
     for (Py_ssize_t index = 0; index < size; ++index) {
-        const double value = PyFloat_AsDouble(PySequence_Fast_GET_ITEM(sequence, index));
+        const double value = PyFloat_AsDouble(PySequence_Fast_GET_ITEM(sequence.get(), index));
         if (PyErr_Occurred() != nullptr) {
-            Py_DECREF(sequence);
             throw std::invalid_argument(std::string(label) + " must contain numbers");
         }
         values.push_back(value);
     }
-    Py_DECREF(sequence);
     return values;
 }
 
@@ -186,12 +181,11 @@ std::size_t reporting_row_count(const Payload& payload) {
 }
 
 Row parse_row(PyObject* object, const std::string& component_id, std::size_t source_index) {
-    PyObject* sequence = PySequence_Fast(object, "source row must be a sequence");
-    if (sequence == nullptr || PySequence_Fast_GET_SIZE(sequence) != 6) {
-        Py_XDECREF(sequence);
+    OwnedPyObject sequence{PySequence_Fast(object, "source row must be a sequence")};
+    if (sequence == nullptr || PySequence_Fast_GET_SIZE(sequence.get()) != 6) {
         throw std::invalid_argument("source row must contain exactly six fields");
     }
-    PyObject** items = PySequence_Fast_ITEMS(sequence);
+    PyObject** items = PySequence_Fast_ITEMS(sequence.get());
     Row row{
         text(items[0], "row_id"),
         text(items[1], "component_id"),
@@ -200,7 +194,6 @@ Row parse_row(PyObject* object, const std::string& component_id, std::size_t sou
         PyFloat_AsDouble(items[4]),
         text(items[5], "source_id"),
     };
-    Py_DECREF(sequence);
     bool matches = false;
     if (component_id == "methane" && source_index < methane_row_ids.size()) {
         matches = row.row_id == methane_row_ids[source_index]
@@ -224,29 +217,27 @@ Row parse_row(PyObject* object, const std::string& component_id, std::size_t sou
 }
 
 Payload parse_payload(PyObject* object) {
-    PyObject* sequence = PySequence_Fast(object, "pure-saturation fit payload must be a sequence");
+    OwnedPyObject sequence{
+        PySequence_Fast(object, "pure-saturation fit payload must be a sequence")
+    };
     if (sequence == nullptr) {
         throw std::invalid_argument("pure-saturation fit payload must be a sequence");
     }
-    if (PySequence_Fast_GET_SIZE(sequence) != 24) {
-        Py_DECREF(sequence);
+    if (PySequence_Fast_GET_SIZE(sequence.get()) != 24) {
         throw std::invalid_argument("pure-saturation fit payload must contain exactly 24 fields");
     }
-    PyObject** items = PySequence_Fast_ITEMS(sequence);
+    PyObject** items = PySequence_Fast_ITEMS(sequence.get());
     Payload payload{};
     payload.identity = texts(items[0], 41, "compiled problem identity");
     if (payload.identity[1] != "methane" && payload.identity[1] != "ethane") {
-        Py_DECREF(sequence);
         throw std::invalid_argument("component identity must be methane or ethane");
     }
     if (payload.identity != expected_identity(payload.identity[1])) {
-        Py_DECREF(sequence);
         throw std::invalid_argument("compiled problem identity does not match an admitted component");
     }
-    PyObject* rows = PySequence_Fast(items[1], "training rows must be a sequence");
-    if (rows == nullptr || PySequence_Fast_GET_SIZE(rows) != static_cast<Py_ssize_t>(row_count)) {
-        Py_XDECREF(rows);
-        Py_DECREF(sequence);
+    OwnedPyObject rows{PySequence_Fast(items[1], "training rows must be a sequence")};
+    if (rows == nullptr
+        || PySequence_Fast_GET_SIZE(rows.get()) != static_cast<Py_ssize_t>(row_count)) {
         throw std::invalid_argument("training rows must contain exactly four rows");
     }
     const std::array<std::size_t, row_count> source_indices = payload.identity[1] == "methane"
@@ -254,12 +245,11 @@ Payload parse_payload(PyObject* object) {
         : std::array<std::size_t, row_count>{2, 4, 6, 8};
     for (std::size_t index = 0; index < row_count; ++index) {
         payload.rows[index] = parse_row(
-            PySequence_Fast_GET_ITEM(rows, static_cast<Py_ssize_t>(index)),
+            PySequence_Fast_GET_ITEM(rows.get(), static_cast<Py_ssize_t>(index)),
             payload.identity[1],
             source_indices[index]
         );
     }
-    Py_DECREF(rows);
     payload.start = fixed_doubles<3>(items[2], "parameter start");
     payload.lower = fixed_doubles<3>(items[3], "parameter lower bounds");
     payload.upper = fixed_doubles<3>(items[4], "parameter upper bounds");
@@ -282,7 +272,6 @@ Payload parse_payload(PyObject* object) {
     payload.reporting_pressure_closure = PyFloat_AsDouble(items[21]);
     payload.reporting_mu_closure = PyFloat_AsDouble(items[22]);
     const long num_threads = PyLong_AsLong(items[23]);
-    Py_DECREF(sequence);
     if (PyErr_Occurred() != nullptr) {
         throw std::invalid_argument("pure-saturation fit payload contains a nonnumeric scalar");
     }

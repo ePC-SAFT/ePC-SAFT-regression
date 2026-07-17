@@ -21,6 +21,7 @@ namespace {
 
 constexpr double gas_constant = 8.31446261815324;
 using internal::doubles;
+using internal::OwnedPyObject;
 using internal::parse_payload;
 using internal::parse_row;
 using internal::Payload;
@@ -755,14 +756,13 @@ PyObject* solve_python(PyObject* capsule, PyObject* payload_object, PyObject* re
     if (table == nullptr) return nullptr;
     try {
         const Payload payload = parse_payload(payload_object);
-        PyObject* reporting_sequence = PySequence_Fast(
-            reporting_rows_object, "reporting rows must be a sequence"
-        );
+        OwnedPyObject reporting_sequence{
+            PySequence_Fast(reporting_rows_object, "reporting rows must be a sequence")
+        };
         const std::size_t expected_reporting_rows = reporting_row_count(payload);
         if (reporting_sequence == nullptr
-            || PySequence_Fast_GET_SIZE(reporting_sequence)
+            || PySequence_Fast_GET_SIZE(reporting_sequence.get())
                 != static_cast<Py_ssize_t>(expected_reporting_rows)) {
-            Py_XDECREF(reporting_sequence);
             throw std::invalid_argument(
                 "reporting rows must contain the complete ordered component table"
             );
@@ -771,12 +771,13 @@ PyObject* solve_python(PyObject* capsule, PyObject* payload_object, PyObject* re
         reporting_inputs.reserve(expected_reporting_rows);
         for (std::size_t index = 0; index < expected_reporting_rows; ++index) {
             reporting_inputs.push_back(parse_row(
-                PySequence_Fast_GET_ITEM(reporting_sequence, static_cast<Py_ssize_t>(index)),
+                PySequence_Fast_GET_ITEM(
+                    reporting_sequence.get(), static_cast<Py_ssize_t>(index)
+                ),
                 payload.identity[1],
                 index
             ));
         }
-        Py_DECREF(reporting_sequence);
 
         const SolveOutcome primary = solve_training(*table, payload, 0.0, 0.0);
         SolveOutcome confirmation{};
@@ -799,8 +800,13 @@ PyObject* solve_python(PyObject* capsule, PyObject* payload_object, PyObject* re
                     std::abs(primary.variables[index] - confirmation.variables[index])
                 );
             }
+            // Symmetric relative agreement keeps the 1e-8 gate meaningful below unit cost.
             cost_delta = std::abs(primary.summary.final_cost - confirmation.summary.final_cost)
-                / std::max(1.0, std::abs(primary.summary.final_cost));
+                / std::max({
+                    std::abs(primary.summary.final_cost),
+                    std::abs(confirmation.summary.final_cost),
+                    std::numeric_limits<double>::min(),
+                });
             std::array<double, 3> final_parameters{};
             for (std::size_t index = 0; index < parameter_count; ++index) {
                 final_parameters[index] = payload.start[index]

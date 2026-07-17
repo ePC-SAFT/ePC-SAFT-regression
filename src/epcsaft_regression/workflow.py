@@ -465,6 +465,8 @@ def fit_pure_saturation(
     bounds_respected = all(
         item.lower_bound <= item.final <= item.upper_bound for item in parameters
     )
+    fitted_parameter_count = len(parameters)
+    parameter_columns_full_rank = jacobian.parameter_rank == fitted_parameter_count
     solver_converged = (
         termination == "CONVERGENCE"
         and usable
@@ -472,6 +474,7 @@ def fit_pure_saturation(
         and math.isfinite(final_cost)
         and final_cost <= initial_cost
         and jacobian.complete_columns
+        and parameter_columns_full_rank
         and bounds_respected
         and not native_failure_reason
     )
@@ -505,6 +508,11 @@ def fit_pure_saturation(
         for row in acceptance_reporting_rows
         for reason in row.failure_reasons
     )
+    if not parameter_columns_full_rank:
+        failure_reasons.append(
+            "training parameter Jacobian is rank deficient: "
+            f"{jacobian.parameter_rank} of {fitted_parameter_count} fitted parameter columns"
+        )
     if not solver_converged:
         failure_reasons.append("training solver convergence gate failed")
     if not numerically_converged:

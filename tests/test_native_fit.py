@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import ctypes
+import gc
 import math
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -218,6 +220,100 @@ def test_public_workflow_returns_strict_component_diagnostics(
     assert len(captured_transport[0]) == 24
     assert tuple(captured_transport[0][22]) == result.compiled_problem_identity
     assert captured_transport[0][23] == ""
+
+
+def test_rank_deficient_parameter_jacobian_cannot_be_accepted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    native_solve = native.solve
+
+    def return_rank_deficient_result(*args: object) -> tuple[object, ...]:
+        transport = list(native_solve(*args))
+        transport[13] = 2
+        return tuple(transport)
+
+    monkeypatch.setattr(native, "solve", return_rank_deficient_result)
+    result = fit_pure_saturation(
+        model=_model("methane"),
+        dataset=load_pure_saturation_dataset("methane"),
+        specification=METHANE_SATURATION_FIT_V1,
+    )
+
+    assert result.jacobian.parameter_rank == 2
+    assert not result.solver_converged
+    assert not result.numerically_converged
+    assert not result.physically_valid
+    assert (
+        "training parameter Jacobian is rank deficient: 2 of 3 fitted parameter columns"
+        in result.failure_reasons
+    )
+
+
+def test_low_cost_confirmation_agreement_uses_symmetric_relative_difference() -> None:
+    result = fit_pure_saturation(
+        model=_model("ethane"),
+        dataset=load_pure_saturation_dataset("ethane"),
+        specification=ETHANE_SATURATION_FIT_V1,
+    )
+
+    assert result.final_cost < 1.0
+    assert 7.0e-11 < result.confirmation_cost_relative_delta < 9.0e-11
+    assert (
+        result.confirmation_cost_relative_delta
+        <= ETHANE_SATURATION_FIT_V1.confirmation_cost_relative_delta
+    )
+
+
+@pytest.mark.parametrize(
+    "malformed_path",
+    ("identity_text", "training_row", "payload_field", "reporting_row"),
+)
+def test_malformed_native_sequences_do_not_leak_references(
+    malformed_path: str,
+) -> None:
+    capsule = _capsule("methane")
+    payload = _payload("methane")
+    dataset = load_pure_saturation_dataset("methane")
+    reporting = tuple(workflow._row_payload(row) for row in dataset.rows)
+    variables = (0.0,) * 11
+
+    if malformed_path == "identity_text":
+        identity = list(payload[0])
+        identity[0] = object()
+        tracked = tuple(identity)
+        malformed_payload = (tracked, *payload[1:])
+        call = lambda: native.evaluate(capsule, malformed_payload, variables)
+        expected_exception = ValueError
+    elif malformed_path == "training_row":
+        row = list(payload[1][0])
+        row[0] = object()
+        tracked = tuple(row)
+        malformed_rows = (tracked, *payload[1][1:])
+        malformed_payload = (payload[0], malformed_rows, *payload[2:])
+        call = lambda: native.evaluate(capsule, malformed_payload, variables)
+        expected_exception = ValueError
+    elif malformed_path == "payload_field":
+        fields = list(payload)
+        fields[2] = (object(), *payload[2][1:])
+        tracked = tuple(fields)
+        call = lambda: native.evaluate(capsule, tracked, variables)
+        expected_exception = ValueError
+    else:
+        row = list(reporting[0])
+        row[0] = object()
+        malformed_reporting = (tuple(row), *reporting[1:])
+        tracked = tuple(malformed_reporting)
+        call = lambda: native.solve(capsule, payload, tracked)
+        expected_exception = RuntimeError
+
+    gc.collect()
+    reference_count = sys.getrefcount(tracked)
+    for _ in range(32):
+        with pytest.raises(expected_exception):
+            call()
+    gc.collect()
+
+    assert sys.getrefcount(tracked) == reference_count
 
 
 def test_generalized_workflow_preserves_accepted_methane_numerical_result() -> None:
