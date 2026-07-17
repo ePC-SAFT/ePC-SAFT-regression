@@ -1,8 +1,8 @@
 # ePC-SAFT Regression
 
-This repository contains one candidate regression slice: a Ceres fit of pure
-methane segment count, segment diameter, and dispersion energy to four retained
-NIST saturation rows. It calls the installed `epcsaft.native_sdk.v1` provider
+This repository owns one strict pure-saturation Ceres workflow. It reproduces
+the accepted methane fit and adds a local ethane candidate from retained NIST
+saturation rows. It calls the installed `epcsaft.native_sdk.v1` provider
 capsule for every Helmholtz value and derivative.
 
 The public workflow is:
@@ -10,20 +10,20 @@ The public workflow is:
 ```python
 from epcsaft import EPCSAFT, ParameterBundle
 from epcsaft_regression import (
-    METHANE_FIT_SPECIFICATION_V1,
-    fit_methane_saturation,
-    load_methane_dataset,
+    ETHANE_SATURATION_FIT_V1,
+    fit_pure_saturation,
+    load_pure_saturation_dataset,
 )
 
 model = EPCSAFT(
     ParameterBundle.from_catalog("gross-2001-methane-ethane", version=1).select(
-        ("methane",)
+        ("ethane",)
     )
 )
-result = fit_methane_saturation(
+result = fit_pure_saturation(
     model=model,
-    dataset=load_methane_dataset(),
-    specification=METHANE_FIT_SPECIFICATION_V1,
+    dataset=load_pure_saturation_dataset("ethane"),
+    specification=ETHANE_SATURATION_FIT_V1,
 )
 ```
 

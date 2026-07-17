@@ -14,8 +14,8 @@ if(NOT EXISTS "${EPCSAFT_INCLUDE_DIR}/epcsaft/native_sdk_v1.h")
 endif()
 
 Python_add_library(_native MODULE WITH_SOABI
-  src/epcsaft_regression/native/methane_contract.cpp
-  src/epcsaft_regression/native/methane_fit.cpp
+  src/epcsaft_regression/native/pure_saturation_contract.cpp
+  src/epcsaft_regression/native/pure_saturation_fit.cpp
   src/epcsaft_regression/native/module.cpp
 )
 target_compile_features(_native PRIVATE cxx_std_17)

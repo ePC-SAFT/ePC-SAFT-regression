@@ -7,9 +7,8 @@ from epcsaft import native_sdk
 
 from . import _native
 from .records import (
-    EXPECTED_PACKAGED_DATA_SHA256,
-    MethaneFitSpecification,
-    MethaneSaturationDataset,
+    PureSaturationDataset,
+    PureSaturationFitSpecification,
     SaturationObservation,
 )
 
@@ -24,7 +23,7 @@ REPORTING_PRESSURE_TRANSFORM = "P_report = observed_pressure * exp(u_pressure)"
 def _row_payload(row: SaturationObservation) -> tuple[object, ...]:
     return (
         row.row_id,
-        row.species,
+        row.component_id,
         row.temperature_k,
         row.pressure_pa,
         row.liquid_density_kg_m3,
@@ -82,6 +81,7 @@ class ReportingRowDiagnostic:
     row_id: str
     temperature_k: float
     training: bool
+    partition: str
     observed_pressure_pa: float
     predicted_pressure_pa: float
     pressure_relative_error: float
@@ -104,7 +104,8 @@ class ReportingRowDiagnostic:
 
 
 @dataclass(frozen=True, slots=True)
-class MethaneFitResult:
+class PureSaturationFitResult:
+    component_id: str
     dataset_id: str
     specification_id: str
     provider_fingerprint: str
@@ -129,13 +130,13 @@ class MethaneFitResult:
 
 
 def _native_payload(
-    dataset: MethaneSaturationDataset,
-    specification: MethaneFitSpecification,
+    dataset: PureSaturationDataset,
+    specification: PureSaturationFitSpecification,
     provider_fingerprint: str,
 ) -> tuple[object, ...]:
     identity = (
         dataset.dataset_id,
-        dataset.species,
+        dataset.component_id,
         dataset.temperature_unit,
         dataset.pressure_unit,
         dataset.liquid_density_unit,
@@ -153,7 +154,7 @@ def _native_payload(
         dataset.source.units[2][0],
         dataset.source.units[2][1],
         dataset.source.data_sha256,
-        EXPECTED_PACKAGED_DATA_SHA256,
+        dataset.source.packaged_data_sha256,
         specification.specification_id,
         *specification.parameter_names,
         *specification.parameter_units,
@@ -177,7 +178,7 @@ def _native_payload(
         specification.upper_bounds,
         specification.parameter_scales,
         specification.fixed_amount_mol,
-        specification.methane_molar_mass_kg_per_mol,
+        specification.molar_mass_kg_per_mol,
         specification.residual_weights,
         specification.liquid_volume_bounds_m3,
         specification.vapor_volume_bounds_m3,
@@ -209,7 +210,9 @@ def _active_bound(value: float, lower: float, upper: float) -> str | None:
 def _reporting_row_diagnostic(
     source: SaturationObservation,
     training_ids: frozenset[str],
-    specification: MethaneFitSpecification,
+    held_out_ids: frozenset[str],
+    stress_ids: frozenset[str],
+    specification: PureSaturationFitSpecification,
     native_row: tuple[object, ...],
 ) -> ReportingRowDiagnostic:
     if str(native_row[0]) != source.row_id or str(native_row[1]) != source.source_id:
@@ -275,10 +278,19 @@ def _reporting_row_diagnostic(
         if math.isfinite(vapor_volume) and vapor_volume > 0.0
         else math.nan
     )
+    memberships = (
+        source.row_id in training_ids,
+        source.row_id in held_out_ids,
+        source.row_id in stress_ids,
+    )
+    if sum(memberships) != 1:
+        raise RuntimeError("reporting row did not belong to exactly one immutable partition")
+    partition = ("training", "held_out", "stress")[memberships.index(True)]
     return ReportingRowDiagnostic(
         row_id=source.row_id,
         temperature_k=source.temperature_k,
         training=source.row_id in training_ids,
+        partition=partition,
         observed_pressure_pa=source.pressure_pa,
         predicted_pressure_pa=predicted_pressure,
         pressure_relative_error=(predicted_pressure - source.pressure_pa) / source.pressure_pa,
@@ -291,10 +303,10 @@ def _reporting_row_diagnostic(
         liquid_molar_density_mol_m3=liquid_molar_density,
         vapor_molar_density_mol_m3=vapor_molar_density,
         liquid_mass_density_kg_m3=(
-            specification.methane_molar_mass_kg_per_mol * liquid_molar_density
+            specification.molar_mass_kg_per_mol * liquid_molar_density
         ),
         vapor_mass_density_kg_m3=(
-            specification.methane_molar_mass_kg_per_mol * vapor_molar_density
+            specification.molar_mass_kg_per_mol * vapor_molar_density
         ),
         liquid_stability_slope=liquid_slope,
         vapor_stability_slope=vapor_slope,
@@ -306,20 +318,29 @@ def _reporting_row_diagnostic(
     )
 
 
-def fit_methane_saturation(
+def fit_pure_saturation(
     *,
     model: object,
-    dataset: MethaneSaturationDataset,
-    specification: MethaneFitSpecification,
-) -> MethaneFitResult:
-    if type(dataset) is not MethaneSaturationDataset:
-        raise TypeError("dataset must be an exact MethaneSaturationDataset")
-    if type(specification) is not MethaneFitSpecification:
-        raise TypeError("specification must be an exact MethaneFitSpecification")
+    dataset: PureSaturationDataset,
+    specification: PureSaturationFitSpecification,
+) -> PureSaturationFitResult:
+    if type(dataset) is not PureSaturationDataset:
+        raise TypeError("dataset must be an exact PureSaturationDataset")
+    if type(specification) is not PureSaturationFitSpecification:
+        raise TypeError("specification must be an exact PureSaturationFitSpecification")
+    if (
+        dataset.component_id != specification.component_id
+        or dataset.dataset_id != specification.dataset_id
+        or dataset.source.source_id != specification.source_id
+        or dataset.training_temperatures_k != specification.training_temperatures_k
+    ):
+        raise ValueError("dataset and specification identities do not match")
     capsule = native_sdk(model)
     provider_fingerprint = getattr(model, "parameter_fingerprint", None)
     if not isinstance(provider_fingerprint, str) or not provider_fingerprint:
         raise ValueError("model must expose a nonblank provider parameter_fingerprint")
+    if provider_fingerprint != specification.expected_provider_fingerprint:
+        raise ValueError("model fingerprint does not match the immutable component specification")
     payload = _native_payload(dataset, specification, provider_fingerprint)
     reporting_payload = tuple(_row_payload(row) for row in dataset.rows)
     (
@@ -389,9 +410,9 @@ def fit_methane_saturation(
             vapor_volume_m3=float(native_row[4]),
             liquid_molar_density_mol_m3=specification.fixed_amount_mol / float(native_row[3]),
             vapor_molar_density_mol_m3=specification.fixed_amount_mol / float(native_row[4]),
-            liquid_mass_density_kg_m3=specification.methane_molar_mass_kg_per_mol
+            liquid_mass_density_kg_m3=specification.molar_mass_kg_per_mol
             / float(native_row[3]),
-            vapor_mass_density_kg_m3=specification.methane_molar_mass_kg_per_mol
+            vapor_mass_density_kg_m3=specification.molar_mass_kg_per_mol
             / float(native_row[4]),
             liquid_pressure_pa=float(native_row[5]),
             vapor_pressure_pa=float(native_row[6]),
@@ -411,8 +432,17 @@ def fit_methane_saturation(
     ):
         raise RuntimeError("native training row identity did not match the immutable dataset")
     training_ids = frozenset(dataset.training_row_ids)
+    held_out_ids = frozenset(row.row_id for row in dataset.held_out_rows)
+    stress_ids = frozenset(row.row_id for row in dataset.stress_rows)
     reporting_rows = [
-        _reporting_row_diagnostic(source, training_ids, specification, native_row)
+        _reporting_row_diagnostic(
+            source,
+            training_ids,
+            held_out_ids,
+            stress_ids,
+            specification,
+            native_row,
+        )
         for source, native_row in zip(dataset.rows, reporting_rows_native)
     ]
     if reporting_rows_native and len(reporting_rows_native) != len(dataset.rows):
@@ -457,19 +487,22 @@ def fit_methane_saturation(
         and cost_delta <= specification.confirmation_cost_relative_delta
     )
     reporting_tuple = tuple(reporting_rows)
+    acceptance_reporting_rows = tuple(
+        row for row in reporting_tuple if row.partition != "stress"
+    )
     physical_valid = (
         solver_converged
         and all(row.liquid_volume_m3 < row.vapor_volume_m3 for row in training_rows)
         and all(row.liquid_stability_slope > 0.0 for row in training_rows)
         and all(row.vapor_stability_slope > 0.0 for row in training_rows)
-        and all(row.physically_valid for row in reporting_tuple)
+        and all(row.physically_valid for row in acceptance_reporting_rows)
     )
     failure_reasons: list[str] = []
     if native_failure_reason:
         failure_reasons.append(native_failure_reason)
     failure_reasons.extend(
         f"{row.row_id}: {reason}"
-        for row in reporting_tuple
+        for row in acceptance_reporting_rows
         for reason in row.failure_reasons
     )
     if not solver_converged:
@@ -484,7 +517,8 @@ def fit_methane_saturation(
     ):
         failure_reasons.append("provider source fingerprint did not match the supplied model")
         physical_valid = False
-    return MethaneFitResult(
+    return PureSaturationFitResult(
+        component_id=dataset.component_id,
         dataset_id=dataset.dataset_id,
         specification_id=specification.specification_id,
         provider_fingerprint=observed_fingerprint,

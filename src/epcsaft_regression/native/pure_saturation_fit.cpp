@@ -1,5 +1,5 @@
-#include "methane_fit.hpp"
-#include "methane_fit_internal.hpp"
+#include "pure_saturation_fit.hpp"
+#include "pure_saturation_fit_internal.hpp"
 
 #include <ceres/ceres.h>
 #include <Eigen/Dense>
@@ -25,6 +25,7 @@ using internal::parse_payload;
 using internal::parse_row;
 using internal::Payload;
 using internal::positive_finite;
+using internal::reporting_row_count;
 using internal::Row;
 using internal::parameter_count;
 using internal::residual_count;
@@ -757,16 +758,22 @@ PyObject* solve_python(PyObject* capsule, PyObject* payload_object, PyObject* re
         PyObject* reporting_sequence = PySequence_Fast(
             reporting_rows_object, "reporting rows must be a sequence"
         );
-        if (reporting_sequence == nullptr || PySequence_Fast_GET_SIZE(reporting_sequence) != 9) {
+        const std::size_t expected_reporting_rows = reporting_row_count(payload);
+        if (reporting_sequence == nullptr
+            || PySequence_Fast_GET_SIZE(reporting_sequence)
+                != static_cast<Py_ssize_t>(expected_reporting_rows)) {
             Py_XDECREF(reporting_sequence);
-            throw std::invalid_argument("reporting rows must contain the ordered 100-180 K table");
+            throw std::invalid_argument(
+                "reporting rows must contain the complete ordered component table"
+            );
         }
         std::vector<Row> reporting_inputs;
-        reporting_inputs.reserve(9);
-        for (Py_ssize_t index = 0; index < 9; ++index) {
+        reporting_inputs.reserve(expected_reporting_rows);
+        for (std::size_t index = 0; index < expected_reporting_rows; ++index) {
             reporting_inputs.push_back(parse_row(
-                PySequence_Fast_GET_ITEM(reporting_sequence, index),
-                static_cast<std::size_t>(index)
+                PySequence_Fast_GET_ITEM(reporting_sequence, static_cast<Py_ssize_t>(index)),
+                payload.identity[1],
+                index
             ));
         }
         Py_DECREF(reporting_sequence);

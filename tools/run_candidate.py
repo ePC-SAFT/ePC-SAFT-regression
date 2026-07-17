@@ -112,6 +112,32 @@ def _rms(values: list[float]) -> float:
     return (sum(value * value for value in values) / len(values)) ** 0.5
 
 
+def _error_metrics(rows: list[object], interpretation: str) -> dict[str, object]:
+    valid_rows = [row for row in rows if row.physically_valid]
+    pressure_errors = [row.pressure_relative_error for row in valid_rows]
+    density_errors = [row.liquid_density_relative_error for row in valid_rows]
+    return {
+        "requested_temperatures_k": [row.temperature_k for row in rows],
+        "valid_temperatures_k": [row.temperature_k for row in valid_rows],
+        "failed_rows": [
+            {
+                "temperature_k": row.temperature_k,
+                "failure_reasons": list(row.failure_reasons),
+            }
+            for row in rows
+            if not row.physically_valid
+        ],
+        "pressure_relative_error_rms": _rms(pressure_errors) if valid_rows else None,
+        "pressure_relative_error_max_abs": max(map(abs, pressure_errors)) if valid_rows else None,
+        "liquid_density_relative_error_rms": _rms(density_errors) if valid_rows else None,
+        "liquid_density_relative_error_max_abs": max(map(abs, density_errors))
+        if valid_rows
+        else None,
+        "acceptance_threshold": None,
+        "interpretation": interpretation,
+    }
+
+
 def _canonical_json_sha256(value: object) -> str:
     encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
@@ -124,14 +150,15 @@ def _canonical_receipt_bytes(payload: dict[str, object]) -> bytes:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate the first methane regression candidate receipt.")
+    parser = argparse.ArgumentParser(description="Generate one pure-saturation regression receipt.")
+    parser.add_argument("--component", choices=("methane", "ethane"), required=True)
     parser.add_argument("--provider-wheel", type=Path, required=True)
     parser.add_argument("--provider-test-receipt", type=Path, required=True)
     parser.add_argument("--regression-wheel", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--reviewer", required=True)
-    parser.add_argument("--review-path", required=True)
-    parser.add_argument("--review-sha256", required=True)
+    parser.add_argument("--reviewer")
+    parser.add_argument("--review-path")
+    parser.add_argument("--review-sha256")
     arguments = parser.parse_args()
     _require_hash(arguments.provider_wheel, PROVIDER_WHEEL_SHA256, "provider wheel")
     _require_hash(
@@ -141,12 +168,25 @@ def main() -> int:
     )
     regression_wheel_sha256 = _sha256(arguments.regression_wheel)
     repository_root = Path(__file__).resolve().parents[1]
-    review_path = Path(arguments.review_path).resolve()
-    try:
-        portable_review_path = review_path.relative_to(repository_root).as_posix()
-    except ValueError as error:
-        raise SystemExit("independent review must be inside the regression repository") from error
-    _require_hash(review_path, arguments.review_sha256, "independent review")
+    review_arguments = (arguments.reviewer, arguments.review_path, arguments.review_sha256)
+    if any(review_arguments) and not all(review_arguments):
+        raise SystemExit("reviewer, review-path, and review-sha256 must be supplied together")
+    review_record: dict[str, object]
+    if all(review_arguments):
+        review_path = Path(arguments.review_path).resolve()
+        try:
+            portable_review_path = review_path.relative_to(repository_root).as_posix()
+        except ValueError as error:
+            raise SystemExit("independent review must be inside the regression repository") from error
+        _require_hash(review_path, arguments.review_sha256, "independent review")
+        review_record = {
+            "status": "provided",
+            "identity": arguments.reviewer,
+            "path": portable_review_path,
+            "sha256": arguments.review_sha256,
+        }
+    else:
+        review_record = {"status": "pending"}
     provider_binding = _require_installed_distribution_matches_wheel(
         arguments.provider_wheel,
         "epcsaft",
@@ -160,9 +200,10 @@ def main() -> int:
     import epcsaft_regression
     from epcsaft import EPCSAFT, ParameterBundle
     from epcsaft_regression import (
-        METHANE_FIT_SPECIFICATION_V1,
-        fit_methane_saturation,
-        load_methane_dataset,
+        ETHANE_SATURATION_FIT_V1,
+        METHANE_SATURATION_FIT_V1,
+        fit_pure_saturation,
+        load_pure_saturation_dataset,
     )
 
     _require_import_origin(
@@ -176,33 +217,48 @@ def main() -> int:
         "epcsaft_regression/__init__.py",
     )
 
-    dataset = load_methane_dataset()
+    component_id = arguments.component
+    dataset = load_pure_saturation_dataset(component_id)
+    specification = (
+        METHANE_SATURATION_FIT_V1
+        if component_id == "methane"
+        else ETHANE_SATURATION_FIT_V1
+    )
     parameters = ParameterBundle.from_catalog(
         "gross-2001-methane-ethane", version=1
-    ).select(("methane",))
+    ).select((component_id,))
     model = EPCSAFT(parameters)
-    result = fit_methane_saturation(
+    result = fit_pure_saturation(
         model=model,
         dataset=dataset,
-        specification=METHANE_FIT_SPECIFICATION_V1,
+        specification=specification,
     )
     if not (result.solver_converged and result.numerically_converged and result.physically_valid):
         raise SystemExit(f"candidate failed strict gates: {result.failure_reasons}")
 
-    held_out = [row for row in result.reporting_rows if not row.training]
-    pressure_errors = [row.pressure_relative_error for row in held_out]
-    density_errors = [row.liquid_density_relative_error for row in held_out]
-    problem = asdict(METHANE_FIT_SPECIFICATION_V1)
+    held_out_temperatures = frozenset(dataset.held_out_temperatures_k)
+    stress_temperatures = frozenset(dataset.stress_temperatures_k)
+    training = [row for row in result.reporting_rows if row.training]
+    held_out = [row for row in result.reporting_rows if row.temperature_k in held_out_temperatures]
+    stress = [row for row in result.reporting_rows if row.temperature_k in stress_temperatures]
+    problem = asdict(specification)
     source = asdict(dataset.source)
     rows = [asdict(row) for row in dataset.rows]
     result_record = asdict(result)
     subject = {
-        "capability": "pure-methane-saturation-parameter-candidate-v1",
+        "capability": f"pure-{component_id}-saturation-parameter-candidate-v1",
+        "component_id": component_id,
         "owner": "ePC-SAFT/ePC-SAFT-regression",
-        "authority_status": "candidate-manager-review; validation admission pending",
+        "authority_status": (
+            "promotion-0020 accepted for the exact reproducible workflow; replay changes no authority"
+            if component_id == "methane"
+            else "local candidate; independent review and validation admission pending"
+        ),
         "source": source,
         "rows": rows,
         "training_row_ids": list(dataset.training_row_ids),
+        "held_out_row_ids": [row.row_id for row in dataset.held_out_rows],
+        "stress_row_ids": [row.row_id for row in dataset.stress_rows],
         "provider": {
             "commit": PROVIDER_COMMIT,
             "wheel": arguments.provider_wheel.name,
@@ -248,15 +304,18 @@ def main() -> int:
             },
             "gas_constant_j_per_mol_k": 8.31446261815324,
             "start_provenance": (
-                "retained M5 displaced methane start: (1.0*1.08, "
-                "3.7039*0.96, 150.03*1.05)"
+                "retained M5 displaced methane start: (1.0*1.08, 3.7039*0.96, 150.03*1.05)"
+                if component_id == "methane"
+                else "Gross 2001 ethane source parameters: (1.6069, 3.5206, 191.42)"
             ),
-            "methane_molar_mass_provenance": (
+            "molar_mass_provenance": (
                 "fixed formulation constant 0.016043 kg/mol retained by the admitted M5 plan"
+                if component_id == "methane"
+                else "source-backed ethane molar mass 0.030070 kg/mol"
             ),
         },
         "residuals": {
-            "order": list(METHANE_FIT_SPECIFICATION_V1.residual_names),
+            "order": list(specification.residual_names),
             "raw": [
                 "P_liquid - P_observed [Pa]",
                 "P_vapor - P_observed [Pa]",
@@ -264,20 +323,23 @@ def main() -> int:
                 "molar_mass/V_liquid - observed_liquid_mass_density [kg/m3]",
             ],
             "scales": ["P_observed", "P_observed", 1.0, "rho_liquid_observed"],
-            "weights": list(METHANE_FIT_SPECIFICATION_V1.residual_weights),
+            "weights": list(specification.residual_weights),
             "weight_meaning": "equal per-row normalization; not an uncertainty claim",
             "jacobian": "provider Hessian plus exact affine/log/linear chain rules",
         },
         "result": result_record,
-        "held_out_reporting": {
-            "temperatures_k": [row.temperature_k for row in held_out],
-            "pressure_relative_error_rms": _rms(pressure_errors),
-            "pressure_relative_error_max_abs": max(map(abs, pressure_errors)),
-            "liquid_density_relative_error_rms": _rms(density_errors),
-            "liquid_density_relative_error_max_abs": max(map(abs, density_errors)),
-            "acceptance_threshold": None,
-            "interpretation": "descriptive candidate evidence; validation owns admission",
-        },
+        "training_reporting": _error_metrics(
+            training,
+            "fit-row descriptive errors; objective residual structure remains the solver evidence",
+        ),
+        "held_out_reporting": _error_metrics(
+            held_out,
+            "descriptive candidate evidence; validation owns admission",
+        ),
+        "stress_reporting": _error_metrics(
+            stress,
+            "reported domain stress only; cannot determine solver or scientific acceptance",
+        ),
         "execution": {
             "artifacts": {
                 "provider_wheel": arguments.provider_wheel.name,
@@ -309,15 +371,11 @@ def main() -> int:
     subject_sha256 = _canonical_json_sha256(subject)
     receipt = {
         "schema_version": "epcsaft-regression-candidate-fit-receipt-v1",
-        "status": "candidate",
+        "status": "accepted-workflow-replay" if component_id == "methane" else "candidate",
         "subject_sha256": subject_sha256,
         "subject": subject,
         "producer": "codex:/root",
-        "independent_reviewer": {
-            "identity": arguments.reviewer,
-            "path": portable_review_path,
-            "sha256": arguments.review_sha256,
-        },
+        "independent_reviewer": review_record,
         "approval": {
             "implementation_scope": "approved in delegated user prompt",
             "runtime_authority_change": "not requested; not granted",

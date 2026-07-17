@@ -1,15 +1,17 @@
 from .records import (
-    METHANE_FIT_SPECIFICATION_V1,
-    load_methane_dataset,
+    ETHANE_SATURATION_FIT_V1,
+    METHANE_SATURATION_FIT_V1,
+    load_pure_saturation_dataset,
 )
 from .workflow import (
-    MethaneFitResult,
-    fit_methane_saturation,
+    PureSaturationFitResult,
+    fit_pure_saturation,
 )
 
 __all__ = (
-    "METHANE_FIT_SPECIFICATION_V1",
-    "load_methane_dataset",
-    "MethaneFitResult",
-    "fit_methane_saturation",
+    "METHANE_SATURATION_FIT_V1",
+    "ETHANE_SATURATION_FIT_V1",
+    "load_pure_saturation_dataset",
+    "PureSaturationFitResult",
+    "fit_pure_saturation",
 )

@@ -12,15 +12,18 @@ from epcsaft import EPCSAFT, ParameterBundle, native_sdk
 import epcsaft_regression._native as native
 
 
-def _provider_model() -> EPCSAFT:
+def _provider_model(component_id: str) -> EPCSAFT:
     parameters = ParameterBundle.from_catalog(
         "gross-2001-methane-ethane", version=1
-    ).select(("methane",))
+    ).select((component_id,))
     return EPCSAFT(parameters)
 
 
-def test_parameterized_capsule_tail_is_validated_from_installed_provider() -> None:
-    model = _provider_model()
+@pytest.mark.parametrize("component_id", ("methane", "ethane"))
+def test_parameterized_capsule_tail_is_validated_from_installed_provider(
+    component_id: str,
+) -> None:
+    model = _provider_model(component_id)
     capsule = native_sdk(model)
 
     abi_version, table_size, parameterized_result_size, fingerprint = native.transport_info(

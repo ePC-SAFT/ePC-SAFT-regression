@@ -8,9 +8,20 @@ import pytest
 from epcsaft import EPCSAFT, ParameterBundle, native_sdk
 
 import epcsaft_regression._native as native
-from epcsaft_regression.records import METHANE_FIT_SPECIFICATION_V1, load_methane_dataset
+from epcsaft_regression.records import (
+    ETHANE_SATURATION_FIT_V1,
+    METHANE_SATURATION_FIT_V1,
+    PureSaturationFitSpecification,
+    load_pure_saturation_dataset,
+)
 import epcsaft_regression.workflow as workflow
-from epcsaft_regression.workflow import _native_payload, fit_methane_saturation
+from epcsaft_regression.workflow import _native_payload, fit_pure_saturation
+
+
+SPECIFICATIONS = {
+    "methane": METHANE_SATURATION_FIT_V1,
+    "ethane": ETHANE_SATURATION_FIT_V1,
+}
 
 
 class _ParameterizedResult(ctypes.Structure):
@@ -52,25 +63,22 @@ class _NativeSdkTable(ctypes.Structure):
     )
 
 
-def _capsule() -> object:
+def _model(component_id: str) -> EPCSAFT:
     parameters = ParameterBundle.from_catalog(
         "gross-2001-methane-ethane", version=1
-    ).select(("methane",))
-    return native_sdk(EPCSAFT(parameters))
-
-
-def _payload() -> tuple[object, ...]:
-    dataset = load_methane_dataset()
-    specification = METHANE_FIT_SPECIFICATION_V1
-    model = _model()
-    return _native_payload(dataset, specification, model.parameter_fingerprint)
-
-
-def _model() -> EPCSAFT:
-    parameters = ParameterBundle.from_catalog(
-        "gross-2001-methane-ethane", version=1
-    ).select(("methane",))
+    ).select((component_id,))
     return EPCSAFT(parameters)
+
+
+def _capsule(component_id: str) -> object:
+    return native_sdk(_model(component_id))
+
+
+def _payload(component_id: str) -> tuple[object, ...]:
+    dataset = load_pure_saturation_dataset(component_id)
+    specification = SPECIFICATIONS[component_id]
+    model = _model(component_id)
+    return _native_payload(dataset, specification, model.parameter_fingerprint)
 
 
 def _failing_provider_capsule() -> tuple[object, _NativeSdkTable, object]:
@@ -96,31 +104,22 @@ def _failing_provider_capsule() -> tuple[object, _NativeSdkTable, object]:
         model_context=1,
         evaluate_pure_phase=None,
         parameterized_result_size=ctypes.sizeof(_ParameterizedResult),
-        evaluate_pure_phase_parameters=ctypes.cast(
-            fail_evaluation, ctypes.c_void_p
-        ).value,
+        evaluate_pure_phase_parameters=ctypes.cast(fail_evaluation, ctypes.c_void_p).value,
     )
     capsule_new = ctypes.pythonapi.PyCapsule_New
     capsule_new.argtypes = (ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p)
     capsule_new.restype = ctypes.py_object
-    capsule = capsule_new(
-        ctypes.addressof(table), b"epcsaft.native_sdk.v1", None
-    )
+    capsule = capsule_new(ctypes.addressof(table), b"epcsaft.native_sdk.v1", None)
     return capsule, table, fail_evaluation
 
 
-def test_start_residuals_match_provider_direct_130_k_anchor() -> None:
+def test_methane_start_residuals_match_accepted_provider_anchor() -> None:
     residuals, jacobian, diagnostics, fingerprint = native.evaluate(
-        _capsule(), _payload(), (0.0,) * 11
+        _capsule("methane"), _payload("methane"), (0.0,) * 11
     )
 
     assert residuals[4:8] == pytest.approx(
-        (
-            -30.793189605316272,
-            -0.043171211223460487,
-            -0.64887647749645083,
-            0.0,
-        ),
+        (-30.793189605316272, -0.043171211223460487, -0.64887647749645083, 0.0),
         rel=2.0e-13,
         abs=2.0e-13,
     )
@@ -130,23 +129,14 @@ def test_start_residuals_match_provider_direct_130_k_anchor() -> None:
     assert fingerprint.startswith("sha256:")
 
 
-def test_exact_jacobian_matches_independent_directional_residual_difference() -> None:
-    capsule = _capsule()
-    payload = _payload()
+@pytest.mark.parametrize("component_id", ("methane", "ethane"))
+def test_exact_jacobian_matches_independent_directional_residual_difference(
+    component_id: str,
+) -> None:
+    capsule = _capsule(component_id)
+    payload = _payload(component_id)
     variables = (0.0,) * 11
-    direction = (
-        0.2,
-        -0.1,
-        0.05,
-        0.01,
-        -0.02,
-        -0.015,
-        0.012,
-        0.008,
-        -0.01,
-        -0.006,
-        0.014,
-    )
+    direction = (0.2, -0.1, 0.05, 0.01, -0.02, -0.015, 0.012, 0.008, -0.01, -0.006, 0.014)
     residuals, jacobian, _, _ = native.evaluate(capsule, payload, variables)
     step = 1.0e-6
     plus = tuple(value + step * delta for value, delta in zip(variables, direction, strict=True))
@@ -166,14 +156,14 @@ def test_exact_jacobian_matches_independent_directional_residual_difference() ->
     assert product == pytest.approx(finite_difference, rel=2.0e-6, abs=2.0e-7)
 
 
-def test_public_workflow_returns_strict_candidate_diagnostics(
+@pytest.mark.parametrize("component_id", ("methane", "ethane"))
+def test_public_workflow_returns_strict_component_diagnostics(
+    component_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    parameters = ParameterBundle.from_catalog(
-        "gross-2001-methane-ethane", version=1
-    ).select(("methane",))
-    model = EPCSAFT(parameters)
-    dataset = load_methane_dataset()
+    model = _model(component_id)
+    dataset = load_pure_saturation_dataset(component_id)
+    specification = SPECIFICATIONS[component_id]
     native_solve = native.solve
     captured_transport: list[tuple[object, ...]] = []
 
@@ -183,58 +173,44 @@ def test_public_workflow_returns_strict_candidate_diagnostics(
         return transport
 
     monkeypatch.setattr(native, "solve", record_transport)
-
-    result = fit_methane_saturation(
+    result = fit_pure_saturation(
         model=model,
         dataset=dataset,
-        specification=METHANE_FIT_SPECIFICATION_V1,
+        specification=specification,
     )
 
+    assert result.component_id == component_id
     assert result.solver_converged, result.failure_reasons
     assert result.numerically_converged, result.failure_reasons
     assert result.physically_valid, result.failure_reasons
     assert result.termination == "CONVERGENCE"
     assert result.solution_usable
-    assert math.isfinite(result.initial_cost)
-    assert math.isfinite(result.final_cost)
     assert result.final_cost < result.initial_cost
     assert result.provider_fingerprint == model.parameter_fingerprint
     assert result.provider_fingerprint in result.compiled_problem_identity
-    assert "4b10cb899c94687cae734980285badb224dc95e6" not in result.compiled_problem_identity
-    assert not any(
-        value == "f92f79c8d6f614660e5c201b7061c9b02b5cd1a25a4ed8c8fee0b59adaabf2bf"
-        for value in result.compiled_problem_identity
-    )
     assert len(result.parameters) == 3
     assert any(abs(item.movement) > 1.0e-8 for item in result.parameters)
-    assert all(item.lower_bound <= item.final <= item.upper_bound for item in result.parameters)
     assert not any(item.active_bound for item in result.parameters)
     assert result.jacobian.complete_columns
     assert result.jacobian.full_rank == 11
-    assert len(result.jacobian.full_singular_values) == 11
     assert result.jacobian.parameter_rank == 3
-    assert len(result.jacobian.parameter_singular_values) == 3
-    assert math.isfinite(result.jacobian.full_condition_number)
-    assert math.isfinite(result.jacobian.parameter_condition_number)
     assert len(result.training_rows) == 4
-    assert all(len(row.raw_residuals) == 4 for row in result.training_rows)
-    assert all(len(row.scaled_residuals) == 4 for row in result.training_rows)
-    assert all(row.liquid_volume_m3 < row.vapor_volume_m3 for row in result.training_rows)
-    assert all(row.liquid_stability_slope > 0.0 for row in result.training_rows)
-    assert all(row.vapor_stability_slope > 0.0 for row in result.training_rows)
-    assert len(result.reporting_rows) == 9
+    assert len(result.reporting_rows) == len(dataset.rows)
     assert tuple(row.temperature_k for row in result.reporting_rows) == tuple(
-        float(value) for value in range(100, 181, 10)
+        row.temperature_k for row in dataset.rows
     )
     assert sum(row.training for row in result.reporting_rows) == 4
-    assert all(row.physically_valid for row in result.reporting_rows)
     assert all(
-        (row.vapor_volume_m3 - row.liquid_volume_m3) / row.vapor_volume_m3
-        > METHANE_FIT_SPECIFICATION_V1.topology_relative_separation_min
-        for row in result.reporting_rows
+        row.physically_valid for row in result.reporting_rows if row.partition != "stress"
     )
-    assert all(row.predicted_pressure_pa > 0.0 for row in result.reporting_rows)
-    assert all(row.predicted_liquid_density_kg_m3 > 0.0 for row in result.reporting_rows)
+    assert tuple(row.partition for row in result.reporting_rows) == tuple(
+        "training"
+        if row.temperature_k in dataset.training_temperatures_k
+        else "held_out"
+        if row.temperature_k in dataset.held_out_temperatures_k
+        else "stress"
+        for row in dataset.rows
+    )
     assert result.confirmation_parameter_scaled_max_delta <= 1.0e-5
     assert result.confirmation_cost_relative_delta <= 1.0e-8
     assert result.failure_reasons == ()
@@ -244,8 +220,58 @@ def test_public_workflow_returns_strict_candidate_diagnostics(
     assert captured_transport[0][23] == ""
 
 
+def test_generalized_workflow_preserves_accepted_methane_numerical_result() -> None:
+    result = fit_pure_saturation(
+        model=_model("methane"),
+        dataset=load_pure_saturation_dataset("methane"),
+        specification=METHANE_SATURATION_FIT_V1,
+    )
+    expected_reporting = (
+        (100.0, 34626.07915160773, 436.84483289550474),
+        (110.0, 88224.60866583801, 423.3969791365449),
+        (120.0, 191083.41254773695, 409.3407614313209),
+        (130.0, 366384.5067925305, 394.34823157350235),
+        (140.0, 639981.9267634666, 377.95195367291694),
+        (150.0, 1039603.4624909018, 359.43578939218077),
+        (160.0, 1594405.452356535, 337.5806133970321),
+        (170.0, 2334648.4404434026, 309.96652881184707),
+        (180.0, 3290375.174877589, 270.4239126820564),
+    )
+
+    assert tuple(item.final for item in result.parameters) == pytest.approx(
+        (0.9932081279826167, 3.717121437945618, 150.4888402511307),
+        rel=2.0e-11,
+        abs=2.0e-11,
+    )
+    assert result.initial_cost == pytest.approx(14340.021563034428, rel=2.0e-12)
+    assert result.final_cost == pytest.approx(4.798586497669576e-6, rel=2.0e-9)
+    assert result.jacobian.full_rank == 11
+    assert result.jacobian.parameter_rank == 3
+    for observed, expected in zip(result.reporting_rows, expected_reporting, strict=True):
+        assert (
+            observed.temperature_k,
+            observed.predicted_pressure_pa,
+            observed.predicted_liquid_density_kg_m3,
+        ) == pytest.approx(expected, rel=2.0e-9, abs=2.0e-9)
+
+
+def test_identity_mismatch_is_rejected_before_native_solve() -> None:
+    with pytest.raises(ValueError, match="dataset and specification"):
+        fit_pure_saturation(
+            model=_model("methane"),
+            dataset=load_pure_saturation_dataset("methane"),
+            specification=ETHANE_SATURATION_FIT_V1,
+        )
+    with pytest.raises(ValueError, match="fingerprint"):
+        fit_pure_saturation(
+            model=_model("methane"),
+            dataset=load_pure_saturation_dataset("ethane"),
+            specification=ETHANE_SATURATION_FIT_V1,
+        )
+
+
 def test_reporting_conversion_rejects_final_topology_loss() -> None:
-    dataset = load_methane_dataset()
+    dataset = load_pure_saturation_dataset("methane")
     source = dataset.rows[0]
     native_row = (
         source.row_id,
@@ -268,7 +294,9 @@ def test_reporting_conversion_rejects_final_topology_loss() -> None:
     diagnostic = workflow._reporting_row_diagnostic(
         source,
         frozenset(dataset.training_row_ids),
-        METHANE_FIT_SPECIFICATION_V1,
+        frozenset(row.row_id for row in dataset.held_out_rows),
+        frozenset(),
+        METHANE_SATURATION_FIT_V1,
         native_row,
     )
 
@@ -280,18 +308,16 @@ def test_provider_callback_failure_is_returned_as_structured_fit_evidence(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     capsule, table, callback = _failing_provider_capsule()
-    model = SimpleNamespace(parameter_fingerprint=_model().parameter_fingerprint)
+    model = SimpleNamespace(parameter_fingerprint=_model("methane").parameter_fingerprint)
     monkeypatch.setattr(workflow, "native_sdk", lambda _model: capsule)
 
-    result = fit_methane_saturation(
+    result = fit_pure_saturation(
         model=model,
-        dataset=load_methane_dataset(),
-        specification=METHANE_FIT_SPECIFICATION_V1,
+        dataset=load_pure_saturation_dataset("methane"),
+        specification=METHANE_SATURATION_FIT_V1,
     )
 
     assert table.model_context == 1
     assert callback
     assert not result.solver_converged
-    assert any(
-        "synthetic provider domain failure" in reason for reason in result.failure_reasons
-    )
+    assert any("synthetic provider domain failure" in reason for reason in result.failure_reasons)

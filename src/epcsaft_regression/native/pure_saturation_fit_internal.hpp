@@ -1,5 +1,5 @@
-#ifndef EPCSAFT_REGRESSION_METHANE_FIT_INTERNAL_HPP
-#define EPCSAFT_REGRESSION_METHANE_FIT_INTERNAL_HPP
+#ifndef EPCSAFT_REGRESSION_PURE_SATURATION_FIT_INTERNAL_HPP
+#define EPCSAFT_REGRESSION_PURE_SATURATION_FIT_INTERNAL_HPP
 
 #include <Python.h>
 
@@ -18,7 +18,7 @@ constexpr std::size_t residual_count = residuals_per_row * row_count;
 
 struct Row final {
     std::string row_id;
-    std::string species;
+    std::string component_id;
     double temperature;
     double pressure;
     double liquid_density;
@@ -55,7 +55,8 @@ struct Payload final {
 bool positive_finite(double value);
 std::vector<double> doubles(PyObject* object, std::size_t expected, const char* label);
 Payload parse_payload(PyObject* object);
-Row parse_row(PyObject* object, std::size_t source_index);
+Row parse_row(PyObject* object, const std::string& component_id, std::size_t source_index);
+std::size_t reporting_row_count(const Payload& payload);
 
 }  // namespace epcsaft_regression::internal
 

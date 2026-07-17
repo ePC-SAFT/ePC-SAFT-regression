@@ -1,4 +1,4 @@
-#include "methane_fit.hpp"
+#include "pure_saturation_fit.hpp"
 
 #include <epcsaft/native_sdk_v1.h>
 
@@ -152,15 +152,15 @@ PyMethodDef methods[] = {
         METH_NOARGS,
         "Return the required parameterized result size."
     },
-    {"evaluate", py_evaluate, METH_VARARGS, "Evaluate exact methane residuals and Jacobian."},
-    {"solve", py_solve, METH_VARARGS, "Fit methane parameters and evaluate reporting rows."},
+    {"evaluate", py_evaluate, METH_VARARGS, "Evaluate exact pure-saturation residuals and Jacobian."},
+    {"solve", py_solve, METH_VARARGS, "Fit pure-saturation parameters and evaluate reporting rows."},
     {nullptr, nullptr, 0, nullptr},
 };
 
 PyModuleDef module = {
     PyModuleDef_HEAD_INIT,
     "_native",
-    "Native Ceres methane regression transport.",
+    "Native Ceres pure-saturation regression transport.",
     -1,
     methods,
     nullptr,
