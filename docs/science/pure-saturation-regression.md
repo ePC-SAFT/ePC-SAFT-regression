@@ -102,7 +102,10 @@ Solver convergence requires Ceres `CONVERGENCE`, a usable finite solution,
 complete Jacobian columns, full parameter-column rank, parameter movement
 inside the declared bounds, and no provider error. A confirmation solve
 perturbs the volume starts and requires scaled parameter agreement below
-`1e-5` and relative cost agreement below `1e-8`.
+`1e-5` and relative cost agreement below `1e-8`. Cost agreement is the
+symmetric relative difference `abs(primary - confirmation) /
+max(abs(primary), abs(confirmation), numeric_limits<double>::min())`, so the
+gate remains relative when both fitted costs are below one.
 
 Physical acceptance requires positive stability slopes, ordered distinct
 phases, relative phase-volume separation above `1e-3`, and reporting closure

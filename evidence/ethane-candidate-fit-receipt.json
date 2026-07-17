@@ -8,7 +8,7 @@
     "status": "pending"
   },
   "producer": "codex:/root",
-  "receipt_payload_sha256": "3eb6996ebb046ba2f69f5a66ab4f4225034936522729166caa5e741698223a75",
+  "receipt_payload_sha256": "de2ae3a0e18743971add80500face96b5f00c14d14f0592795c1124c2149e645",
   "schema_version": "epcsaft-regression-candidate-fit-receipt-v1",
   "status": "candidate",
   "subject": {
@@ -186,7 +186,7 @@
     },
     "regression_artifact": {
       "wheel": "epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl",
-      "wheel_sha256": "ea94a8dc4e938260621835bd30060ae9a12ff7e673f71789570a24f2ba930b1f"
+      "wheel_sha256": "e4bf7ec673a9e6f5b70ce1ef39d9f28a73c709cf38974019c09790cc4f9bfa49"
     },
     "residuals": {
       "jacobian": "provider Hessian plus exact affine/log/linear chain rules",
@@ -261,7 +261,7 @@
         "SILENT"
       ],
       "component_id": "ethane",
-      "confirmation_cost_relative_delta": 1.1672071661516896e-16,
+      "confirmation_cost_relative_delta": 7.982199324593492e-11,
       "confirmation_parameter_scaled_max_delta": 5.758141628994795e-07,
       "confirmation_solution_usable": true,
       "confirmation_termination": "CONVERGENCE",
@@ -927,5 +927,5 @@
       }
     }
   },
-  "subject_sha256": "bb4afaf77c6ef3e462ff276b574da58c0272ab21c59daef7e8c4045254607254"
+  "subject_sha256": "a324cc2ba665b06c84660e6d815c7d39d1f898640a3b3fcc5833c10dc84b1f4f"
 }

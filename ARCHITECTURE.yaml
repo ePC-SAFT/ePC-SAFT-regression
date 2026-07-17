@@ -73,15 +73,24 @@ component_contracts:
     stress_acceptance_effect: none
 
 candidate_artifact:
-  implementation_commit: c724cc0bf0d7f60a2355b92eb863fe5855e8a397
-  source_date_epoch: 1784325386
-  local_wheel: ../artifacts/regression-pure-saturation-v1/c724cc0/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl
-  wheel_sha256: ea94a8dc4e938260621835bd30060ae9a12ff7e673f71789570a24f2ba930b1f
+  implementation_commit: 50a488b91686388432fd50a0d6bfc5b15825e4f1
+  source_date_epoch: 1784327029
+  local_wheel: ../artifacts/regression-pure-saturation-v1/50a488b/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl
+  wheel_sha256: e4bf7ec673a9e6f5b70ce1ef39d9f28a73c709cf38974019c09790cc4f9bfa49
   archive_byte_reproducible: true
-  installed_wheel_tests: 35-passed
+  installed_wheel_tests: 41-passed
   ethane_receipt: evidence/ethane-candidate-fit-receipt.json
-  ethane_receipt_subject_sha256: bb4afaf77c6ef3e462ff276b574da58c0272ab21c59daef7e8c4045254607254
-  ethane_receipt_file_sha256: 9ffe5103232aacf80303773b6e3e5ad5fb2faf1d4a784f733569d08313c9c6ab
+  ethane_receipt_subject_sha256: a324cc2ba665b06c84660e6d815c7d39d1f898640a3b3fcc5833c10dc84b1f4f
+  ethane_receipt_file_sha256: e4729aa0d089973c1041e68b8b0abd028a440a04a0b4a47da2b7ccdbcb6cf529
+  build_environment:
+    platform: Linux-6.17.0-40-generic-x86_64-with-glibc2.39
+    python: 3.13.14
+    cmake: 3.28.3
+    cxx_compiler: GNU-13.3.0
+    ceres: 2.2.0
+    required_local_cmake_environment:
+      CMAKE_INCLUDE_PATH: /usr/include/libunwind
+    environment_scope: candidate artifact build only; not a package default or runtime requirement
   independent_review: pending
   validation_admission: pending
 
@@ -92,8 +101,8 @@ manifest:
   installed_data_files: 2
   package_test_files: 3
   ide_project_files: 7
-  physical_production_lines: 2664
-  physical_package_test_lines: 629
+  physical_production_lines: 2673
+  physical_package_test_lines: 725
   tracked_generated_evidence_files_after_candidate_receipt: 2
   generated_file_policy: >-
     The accepted methane and local ethane fit receipts bind deterministic
@@ -101,11 +110,11 @@ manifest:
     receipts, and wheels remain outside the repository.
   oversized_files:
     - path: src/epcsaft_regression/native/pure_saturation_fit.cpp
-      physical_lines: 914
+      physical_lines: 920
     - path: src/epcsaft_regression/records.py
       physical_lines: 618
     - path: src/epcsaft_regression/workflow.py
-      physical_lines: 543
+      physical_lines: 551
   oversized_file_policy: >-
     Slice 2 adds one component to the existing owners without a second engine,
     registry, or result type. A later capability must not grow these files
@@ -114,6 +123,8 @@ manifest:
 
 evidence_limits:
   methane_numerical_parity: frozen accepted parameters, costs, ranks, and nine reporting predictions
+  fitted_parameter_rank_gate: solver acceptance requires all 3 fitted parameter columns
+  confirmation_cost_agreement: symmetric relative difference with a 1e-8 maximum
   ethane_training_jacobian: centered directional residual check passed
   ethane_stress_100_k: reporting closure failed at the 1 Pa pressure floor
   reporting_jacobian_directional_check: absent; no runtime seam added
