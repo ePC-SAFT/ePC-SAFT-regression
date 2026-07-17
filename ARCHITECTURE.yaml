@@ -1,30 +1,40 @@
-version: 1
-status: methane-workflow-authoritative
+version: 2
+status: authoritative-methane-with-local-ethane-candidate
 
 authority:
-  capability: pure-methane-saturation-parameter-candidate-v1
-  runtime_source_of_truth: true
+  accepted_capability: reproducible-pure-methane-saturation-workflow-v1
   production_runtime_owner: ePC-SAFT/ePC-SAFT-regression
   promotion_receipt: promotion-0020-regression-methane-saturation-v1
   promotion_status: accepted
+  local_candidate: pure-ethane-saturation-parameter-candidate-v1
+  candidate_authority_effect: none
   predictive_validation: not-admitted
+  fitted_parameter_admission: none
   persistence_authority: none
 
 scope: >-
-  Fit methane segment count, segment diameter, and dispersion energy to the
-  admitted 110, 130, 150, and 170 K NIST saturation rows with row-local lifted
-  phase volumes, exact Ceres Jacobians, and the pinned installed provider.
+  Fit one strict pure methane or ethane saturation dataset per call through a
+  shared lifted-volume Ceres formulation and the installed provider parameter-
+  Hessian entry. Methane preserves the accepted 110, 130, 150, and 170 K fit.
+  Ethane fits 140, 180, 220, and 260 K, holds out 120, 160, 200, and 240 K,
+  and reports 100 and 280 K as domain stress.
 
 owners:
-  immutable_source_and_problem: src/epcsaft_regression/records.py
+  immutable_sources_and_specifications: src/epcsaft_regression/records.py
   public_workflow_and_result: src/epcsaft_regression/workflow.py
-  compiled_contract: src/epcsaft_regression/native/methane_contract.cpp
-  residual_jacobian_and_ceres: src/epcsaft_regression/native/methane_fit.cpp
+  compiled_contract: src/epcsaft_regression/native/pure_saturation_contract.cpp
+  residual_jacobian_and_ceres: src/epcsaft_regression/native/pure_saturation_fit.cpp
   provider_capsule_gate: src/epcsaft_regression/native/module.cpp
-  candidate_receipt_runner: tools/run_candidate.py
+  component_receipt_runner: tools/run_candidate.py
 
 public_surface:
   exports:
+    - METHANE_SATURATION_FIT_V1
+    - ETHANE_SATURATION_FIT_V1
+    - load_pure_saturation_dataset
+    - PureSaturationFitResult
+    - fit_pure_saturation
+  retired_without_aliases:
     - METHANE_FIT_SPECIFICATION_V1
     - load_methane_dataset
     - MethaneFitResult
@@ -45,35 +55,58 @@ public_surface:
     coordinate_order: [amount_mol, volume_m3, segment_count, segment_diameter_angstrom, dispersion_energy_over_k_kelvin]
     derivative_order: 2
 
+component_contracts:
+  methane:
+    status: authoritative-workflow
+    dataset: nist-webbook-methane-saturation-100-180-k-v1
+    expected_provider_fingerprint: sha256:5f836aa84935df70be2e5cffae51b178a7b797c2cee036e9ff47d8097ca94bbf
+    training_temperatures_k: [110.0, 130.0, 150.0, 170.0]
+    held_out_temperatures_k: [100.0, 120.0, 140.0, 160.0, 180.0]
+    stress_temperatures_k: []
+  ethane:
+    status: local-candidate
+    dataset: nist-webbook-ethane-saturation-100-280-k-v1
+    expected_provider_fingerprint: sha256:288fbcaa1304881c16f64c3a784eeed19b75c58cca4558f92a21268e5e91258a
+    training_temperatures_k: [140.0, 180.0, 220.0, 260.0]
+    held_out_temperatures_k: [120.0, 160.0, 200.0, 240.0]
+    stress_temperatures_k: [100.0, 280.0]
+    stress_acceptance_effect: none
+
 manifest:
-  tracked_files: 35
+  tracked_files_after_candidate_receipt: 38
   production_python_files: 3
   native_source_files: 5
-  installed_data_files: 1
+  installed_data_files: 2
   package_test_files: 3
   ide_project_files: 7
-  physical_production_lines: 2296
-  physical_package_test_lines: 539
-  physical_documentation_lines: 662
-  measurement: >-
-    wc -l over intended tracked package Python/C++/private headers, package
-    tests, and Markdown/YAML documentation after generated evidence is excluded.
-  tracked_generated_files: 1
+  physical_production_lines: 2664
+  physical_package_test_lines: 629
+  tracked_generated_evidence_files_after_candidate_receipt: 2
   generated_file_policy: >-
-    The candidate fit receipt is tracked, deterministic evidence over explicit
-    artifacts; build trees, wheels, caches, and temporary verification output
-    remain untracked.
+    The accepted methane and local ethane fit receipts bind deterministic
+    evidence to explicit artifacts. Build trees, caches, temporary replay
+    receipts, and wheels remain outside the repository.
   oversized_files:
-    - path: src/epcsaft_regression/native/methane_fit.cpp
-      physical_lines: 907
+    - path: src/epcsaft_regression/native/pure_saturation_fit.cpp
+      physical_lines: 914
+    - path: src/epcsaft_regression/records.py
+      physical_lines: 618
     - path: src/epcsaft_regression/workflow.py
-      physical_lines: 509
+      physical_lines: 543
   oversized_file_policy: >-
-    The accepted correction adds structured native failure transport, final
-    reporting topology evidence, and named private transport unpacking. Do not
-    grow these owners again without a named capability delta; keep the native
-    contract parser separate and add no public abstraction merely to reduce a
-    line count.
+    Slice 2 adds one component to the existing owners without a second engine,
+    registry, or result type. A later capability must not grow these files
+    without a named ownership constraint and evidence that extraction reduces
+    conceptual surface.
+
+evidence_limits:
+  methane_numerical_parity: frozen accepted parameters, costs, ranks, and nine reporting predictions
+  ethane_training_jacobian: centered directional residual check passed
+  ethane_stress_100_k: reporting closure failed at the 1 Pa pressure floor
+  reporting_jacobian_directional_check: absent; no runtime seam added
+  held_out_accuracy_cutoff: none-approved
+  global_identifiability: not-claimed
+  uncertainty: not-claimed
 
 excluded:
   - binary interaction regression
@@ -84,9 +117,8 @@ excluded:
   - alternate or numerical production derivative backends
   - provider source, private headers, or copied EOS equations
   - provider catalog persistence
-  - global identifiability claims
   - predictive validation admission
-  - runtime authority promotion
+  - runtime authority promotion for ethane
 
 ratchet:
   rule: Every increase must serve one approved regression capability and keep EOS ownership in the provider.

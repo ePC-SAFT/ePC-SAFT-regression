@@ -39,5 +39,5 @@ approved, and the
 reporting-block directional Jacobian remains an explicit evidence limit with
 no added runtime seam. The candidate excludes binary interactions,
 association, electrolytes, reactions, generic target families, and parameter
-persistence. See [the scientific contract](docs/science/methane-saturation-regression.md)
+persistence. See [the scientific contract](docs/science/pure-saturation-regression.md)
 and [candidate capability record](evidence/candidate-capability.yaml).

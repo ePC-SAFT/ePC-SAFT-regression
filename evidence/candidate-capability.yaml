@@ -1,19 +1,29 @@
-schema_version: epcsaft-regression-candidate-capability-v1
-status: candidate
-authority: manager-review-only
+schema_version: epcsaft-regression-candidate-capability-v2
+status: candidate-awaiting-artifact-binding
+authority: local-independent-review-pending
 owner: ePC-SAFT/ePC-SAFT-regression
 scope: >-
-  Fit methane segment count, segment diameter, and dispersion energy to the
-  retained 110, 130, 150, and 170 K saturation rows using the installed
-  provider transport; predictive validation and runtime promotion remain
-  excluded.
-canonical_receipt:
-  path: evidence/candidate-fit-receipt.json
-  subject_sha256: 3ba15a2859cf2bb4e75bd489985072b8546a1942799c911ad99af4f19bc5d78c
-retained_artifact:
-  implementation_commit: d9ca761a4c5f040b8b9d2e5479c33b142a14b556
-  path: artifacts/regression-methane-saturation-v1/d9ca761/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl
-  source_date_epoch: 1784318192
-  wheel_sha256: f832af6d5df0af4c05bfedd3cc7a4b616f9e443a8e1e193b9d51584f9f7f55ba
-  functional_replay: 20 installed-wheel tests, canonical candidate replay, and negative-space audit passed
-  archive_byte_reproducibility: two clean builds from the immutable commit with the declared epoch matched byte-for-byte
+  Preserve the accepted pure-methane saturation workflow and add one local
+  source-backed ethane fit through the same Ceres engine and installed provider
+  parameter-Hessian entry. Predictive, uncertainty, scientific, persistence,
+  and runtime-authority admission remain excluded.
+accepted_methane:
+  promotion_receipt: promotion-0020-regression-methane-saturation-v1
+  canonical_receipt:
+    path: evidence/candidate-fit-receipt.json
+    subject_sha256: 3ba15a2859cf2bb4e75bd489985072b8546a1942799c911ad99af4f19bc5d78c
+  numerical_parity_required: true
+ethane_candidate:
+  component_id: ethane
+  dataset_id: nist-webbook-ethane-saturation-100-280-k-v1
+  training_temperatures_k: [140.0, 180.0, 220.0, 260.0]
+  held_out_temperatures_k: [120.0, 160.0, 200.0, 240.0]
+  stress_temperatures_k: [100.0, 280.0]
+  receipt_path: evidence/ethane-candidate-fit-receipt.json
+  artifact_binding: pending reproducible build from this candidate description
+boundaries:
+  held_out_accuracy_cutoff: none approved
+  stress_acceptance_effect: none
+  reporting_jacobian_directional_evidence: absent
+  global_identifiability: not claimed
+  provider_catalog_persistence: false
