@@ -1,5 +1,5 @@
 schema_version: epcsaft-regression-candidate-capability-v2
-status: candidate-awaiting-artifact-binding
+status: candidate
 authority: local-independent-review-pending
 owner: ePC-SAFT/ePC-SAFT-regression
 scope: >-
@@ -20,7 +20,15 @@ ethane_candidate:
   held_out_temperatures_k: [120.0, 160.0, 200.0, 240.0]
   stress_temperatures_k: [100.0, 280.0]
   receipt_path: evidence/ethane-candidate-fit-receipt.json
-  artifact_binding: pending reproducible build from this candidate description
+  artifact_binding:
+    implementation_commit: c724cc0bf0d7f60a2355b92eb863fe5855e8a397
+    source_date_epoch: 1784325386
+    wheel_path: ../artifacts/regression-pure-saturation-v1/c724cc0/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl
+    wheel_sha256: ea94a8dc4e938260621835bd30060ae9a12ff7e673f71789570a24f2ba930b1f
+    archive_byte_reproducible: true
+    installed_wheel_tests: 35-passed
+    receipt_subject_sha256: bb4afaf77c6ef3e462ff276b574da58c0272ab21c59daef7e8c4045254607254
+    receipt_file_sha256: 9ffe5103232aacf80303773b6e3e5ad5fb2faf1d4a784f733569d08313c9c6ab
 boundaries:
   held_out_accuracy_cutoff: none approved
   stress_acceptance_effect: none
