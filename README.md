@@ -32,7 +32,12 @@ directory of an installed compatible provider wheel. The build does not search
 sibling source trees.
 
 This candidate has not received installed-artifact predictive admission and
-does not change runtime authority. It excludes binary interactions,
+does not change runtime authority. Migration receipt
+`promotion-0020-regression-methane-saturation-v1` alone determines authority;
+until it is accepted, the lab remains the transitional owner. Held-out errors
+are descriptive because no admission cutoff was approved, and the
+reporting-block directional Jacobian remains an explicit evidence limit with
+no added runtime seam. The candidate excludes binary interactions,
 association, electrolytes, reactions, generic target families, and parameter
 persistence. See [the scientific contract](docs/science/methane-saturation-regression.md)
 and [candidate capability record](evidence/candidate-capability.yaml).
