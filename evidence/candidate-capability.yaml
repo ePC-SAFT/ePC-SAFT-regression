@@ -9,4 +9,11 @@ scope: >-
   excluded.
 canonical_receipt:
   path: evidence/candidate-fit-receipt.json
-  subject_sha256: 17775730b72101657e86e360508a6495fb8a719af73962940c1f45122db7ee8c
+  subject_sha256: 3ba15a2859cf2bb4e75bd489985072b8546a1942799c911ad99af4f19bc5d78c
+retained_artifact:
+  implementation_commit: d9ca761a4c5f040b8b9d2e5479c33b142a14b556
+  path: artifacts/regression-methane-saturation-v1/d9ca761/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl
+  source_date_epoch: 1784318192
+  wheel_sha256: f832af6d5df0af4c05bfedd3cc7a4b616f9e443a8e1e193b9d51584f9f7f55ba
+  functional_replay: 20 installed-wheel tests, canonical candidate replay, and negative-space audit passed
+  archive_byte_reproducibility: two clean builds from the immutable commit with the declared epoch matched byte-for-byte

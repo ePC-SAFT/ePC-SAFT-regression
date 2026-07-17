@@ -10,7 +10,7 @@
     "sha256": "db800d4ce65d51e09083129412775c63401fb81c7b54e63916e2913504203e0d"
   },
   "producer": "codex:/root",
-  "receipt_payload_sha256": "016087a4bf6fbb0e0caccc71ca51d5ffcf54802b0934e5ff7b17f0a0864ec911",
+  "receipt_payload_sha256": "5465b4a527e5a512350c49ed3a5e36ff0f60c2cdabe2ab30397895e56963eea1",
   "schema_version": "epcsaft-regression-candidate-fit-receipt-v1",
   "status": "candidate",
   "subject": {
@@ -171,7 +171,7 @@
     },
     "regression_artifact": {
       "wheel": "epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl",
-      "wheel_sha256": "37544d81ad7e9b344e23bfbd6b6d0de51cd37ef7ab1df3ee2e434544d7b1d874"
+      "wheel_sha256": "f832af6d5df0af4c05bfedd3cc7a4b616f9e443a8e1e193b9d51584f9f7f55ba"
     },
     "residuals": {
       "jacobian": "provider Hessian plus exact affine/log/linear chain rules",
@@ -812,5 +812,5 @@
       }
     }
   },
-  "subject_sha256": "17775730b72101657e86e360508a6495fb8a719af73962940c1f45122db7ee8c"
+  "subject_sha256": "3ba15a2859cf2bb4e75bd489985072b8546a1942799c911ad99af4f19bc5d78c"
 }
