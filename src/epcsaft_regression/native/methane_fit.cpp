@@ -33,10 +33,10 @@ using internal::row_count;
 using internal::variable_count;
 
 struct Phase final {
-    double volume;
-    double pressure;
-    double chemical_potential;
-    double stability_slope;
+    double volume{std::numeric_limits<double>::quiet_NaN()};
+    double pressure{std::numeric_limits<double>::quiet_NaN()};
+    double chemical_potential{std::numeric_limits<double>::quiet_NaN()};
+    double stability_slope{std::numeric_limits<double>::quiet_NaN()};
     std::array<double, 25> hessian;
     std::string fingerprint;
 };
@@ -58,8 +58,8 @@ struct Evaluation final {
 
 struct MatrixDiagnostics final {
     std::vector<double> singular_values;
-    int rank;
-    double condition_number;
+    int rank{0};
+    double condition_number{std::numeric_limits<double>::infinity()};
 };
 
 struct SolveOutcome final {
@@ -68,18 +68,21 @@ struct SolveOutcome final {
     Evaluation evaluation;
     MatrixDiagnostics full_jacobian;
     MatrixDiagnostics parameter_jacobian;
-    bool complete_columns;
+    bool complete_columns{false};
+    bool evaluation_available{false};
+    std::string failure_reason;
 };
 
 struct ReportingOutcome final {
     Row row;
-    double predicted_pressure;
-    double predicted_liquid_density;
+    double predicted_pressure{std::numeric_limits<double>::quiet_NaN()};
+    double predicted_liquid_density{std::numeric_limits<double>::quiet_NaN()};
     Phase liquid;
     Phase vapor;
     std::array<double, 3> raw_residuals;
     std::string termination;
-    bool usable;
+    bool usable{false};
+    std::string failure_reason;
 };
 
 Phase evaluate_phase(
@@ -228,7 +231,7 @@ Evaluation evaluate_problem(
         })) {
         throw std::runtime_error("assembled residual or Jacobian is nonfinite");
     }
-    if (evaluation.fingerprint != payload.identity[36]) {
+    if (evaluation.fingerprint != payload.identity[34]) {
         throw std::runtime_error("provider source fingerprint differs from the compiled problem");
     }
     return evaluation;
@@ -236,8 +239,11 @@ Evaluation evaluate_problem(
 
 class TrainingCost final : public ceres::CostFunction {
 public:
-    TrainingCost(const epcsaft_native_sdk_v1& table, const Payload& payload)
-        : table_(table), payload_(payload) {
+    TrainingCost(
+        const epcsaft_native_sdk_v1& table,
+        const Payload& payload,
+        std::string* failure_reason
+    ) : table_(table), payload_(payload), failure_reason_(failure_reason) {
         set_num_residuals(static_cast<int>(residual_count));
         mutable_parameter_block_sizes()->push_back(static_cast<int>(parameter_count));
         for (std::size_t index = 0; index < row_count; ++index) {
@@ -275,7 +281,11 @@ public:
                 }
             }
             return true;
+        } catch (const std::exception& error) {
+            *failure_reason_ = error.what();
+            return false;
         } catch (...) {
+            *failure_reason_ = "unknown native training callback failure";
             return false;
         }
     }
@@ -283,6 +293,7 @@ public:
 private:
     const epcsaft_native_sdk_v1& table_;
     const Payload& payload_;
+    std::string* failure_reason_;
 };
 
 std::string termination_name(ceres::TerminationType termination) {
@@ -335,7 +346,7 @@ SolveOutcome solve_training(
         volumes[row] = {liquid_start_offset, vapor_start_offset};
     }
     ceres::Problem problem;
-    auto* cost = new TrainingCost(table, payload);
+    auto* cost = new TrainingCost(table, payload, &outcome.failure_reason);
     std::vector<double*> blocks{parameters.data()};
     for (auto& volume : volumes) blocks.push_back(volume.data());
     problem.AddResidualBlock(cost, nullptr, blocks);
@@ -379,7 +390,13 @@ SolveOutcome solve_training(
         outcome.variables[3 + 2 * row] = volumes[row][0];
         outcome.variables[4 + 2 * row] = volumes[row][1];
     }
-    outcome.evaluation = evaluate_problem(table, payload, outcome.variables);
+    try {
+        outcome.evaluation = evaluate_problem(table, payload, outcome.variables);
+        outcome.evaluation_available = true;
+    } catch (const std::exception& error) {
+        outcome.failure_reason = std::string("training final evaluation failed: ") + error.what();
+        return outcome;
+    }
     Eigen::MatrixXd full(static_cast<Eigen::Index>(residual_count), static_cast<Eigen::Index>(variable_count));
     Eigen::MatrixXd parameter_matrix(
         static_cast<Eigen::Index>(residual_count), static_cast<Eigen::Index>(parameter_count)
@@ -401,6 +418,14 @@ SolveOutcome solve_training(
     );
     outcome.full_jacobian = matrix_diagnostics(full);
     outcome.parameter_jacobian = matrix_diagnostics(parameter_matrix);
+    if (outcome.summary.termination_type == ceres::CONVERGENCE
+        && outcome.summary.IsSolutionUsable()) {
+        outcome.failure_reason.clear();
+    } else if (outcome.failure_reason.empty()) {
+        outcome.failure_reason = "training Ceres solve ended without a usable converged solution";
+    } else {
+        outcome.failure_reason = std::string("training callback failed: ") + outcome.failure_reason;
+    }
     return outcome;
 }
 
@@ -410,8 +435,10 @@ public:
         const epcsaft_native_sdk_v1& table,
         const Payload& payload,
         Row row,
-        std::array<double, 3> parameters
-    ) : table_(table), payload_(payload), row_(row), parameters_(parameters) {}
+        std::array<double, 3> parameters,
+        std::string* failure_reason
+    ) : table_(table), payload_(payload), row_(row), parameters_(parameters),
+        failure_reason_(failure_reason) {}
 
     bool Evaluate(double const* const* blocks, double* residuals, double** jacobians) const override {
         try {
@@ -426,6 +453,7 @@ public:
                 || vapor_volume > payload_.vapor_volume_bounds[1]
                 || liquid_volume >= vapor_volume
                 || (vapor_volume - liquid_volume) / vapor_volume <= payload_.topology_separation) {
+                *failure_reason_ = "reporting phase volume bounds, ordering, or topology failed";
                 return false;
             }
             const Phase liquid = evaluate_phase(
@@ -451,7 +479,11 @@ public:
                 jacobians[0][8] = 0.0;
             }
             return true;
+        } catch (const std::exception& error) {
+            *failure_reason_ = error.what();
+            return false;
         } catch (...) {
+            *failure_reason_ = "unknown native reporting callback failure";
             return false;
         }
     }
@@ -461,6 +493,7 @@ private:
     const Payload& payload_;
     Row row_;
     std::array<double, 3> parameters_;
+    std::string* failure_reason_;
 };
 
 ReportingOutcome solve_reporting(
@@ -469,9 +502,16 @@ ReportingOutcome solve_reporting(
     const Row& row,
     const std::array<double, 3>& parameters
 ) {
+    ReportingOutcome outcome{};
+    outcome.row = row;
+    outcome.raw_residuals.fill(std::numeric_limits<double>::quiet_NaN());
     std::array<double, 3> variables{};
     ceres::Problem problem;
-    problem.AddResidualBlock(new ReportingCost(table, payload, row, parameters), nullptr, variables.data());
+    problem.AddResidualBlock(
+        new ReportingCost(table, payload, row, parameters, &outcome.failure_reason),
+        nullptr,
+        variables.data()
+    );
     const double liquid_reference = payload.molar_mass / row.liquid_density;
     const double vapor_reference = gas_constant * row.temperature / row.pressure;
     problem.SetParameterLowerBound(variables.data(), 0, std::log(payload.liquid_volume_bounds[0] / liquid_reference));
@@ -494,25 +534,61 @@ ReportingOutcome solve_reporting(
     options.num_threads = payload.num_threads;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
+    outcome.termination = termination_name(summary.termination_type);
+    outcome.usable = summary.IsSolutionUsable();
     const double liquid_volume = liquid_reference * std::exp(variables[0]);
     const double vapor_volume = vapor_reference * std::exp(variables[1]);
     const double pressure = row.pressure * std::exp(variables[2]);
-    Phase liquid = evaluate_phase(table, row.temperature, payload.amount, liquid_volume, parameters);
-    Phase vapor = evaluate_phase(table, row.temperature, payload.amount, vapor_volume, parameters);
-    return ReportingOutcome{
-        row,
-        pressure,
-        payload.molar_mass / liquid_volume,
-        liquid,
-        vapor,
-        {
-            liquid.pressure - pressure,
-            vapor.pressure - pressure,
-            liquid.chemical_potential - vapor.chemical_potential,
-        },
-        termination_name(summary.termination_type),
-        summary.IsSolutionUsable(),
-    };
+    try {
+        if (!positive_finite(liquid_volume) || !positive_finite(vapor_volume)
+            || !positive_finite(pressure)
+            || liquid_volume < payload.liquid_volume_bounds[0]
+            || liquid_volume > payload.liquid_volume_bounds[1]
+            || vapor_volume < payload.vapor_volume_bounds[0]
+            || vapor_volume > payload.vapor_volume_bounds[1]
+            || liquid_volume >= vapor_volume
+            || (vapor_volume - liquid_volume) / vapor_volume <= payload.topology_separation) {
+            throw std::runtime_error(
+                "final reporting phase volume bounds, ordering, or topology separation failed"
+            );
+        }
+        outcome.liquid = evaluate_phase(
+            table, row.temperature, payload.amount, liquid_volume, parameters
+        );
+        outcome.vapor = evaluate_phase(
+            table, row.temperature, payload.amount, vapor_volume, parameters
+        );
+        outcome.predicted_pressure = pressure;
+        outcome.predicted_liquid_density = payload.molar_mass / liquid_volume;
+        outcome.raw_residuals = {
+            outcome.liquid.pressure - pressure,
+            outcome.vapor.pressure - pressure,
+            outcome.liquid.chemical_potential - outcome.vapor.chemical_potential,
+        };
+        if (!positive_finite(outcome.predicted_liquid_density)
+            || !std::all_of(
+                outcome.raw_residuals.begin(), outcome.raw_residuals.end(),
+                [](double value) { return std::isfinite(value); }
+            )) {
+            throw std::runtime_error("final reporting density or residual was nonfinite");
+        }
+        if (summary.termination_type == ceres::CONVERGENCE && outcome.usable) {
+            outcome.failure_reason.clear();
+        } else if (outcome.failure_reason.empty()) {
+            outcome.failure_reason =
+                "reporting Ceres solve ended without a usable converged solution";
+        } else {
+            outcome.failure_reason = std::string("reporting callback failed: ")
+                + outcome.failure_reason;
+        }
+    } catch (const std::exception& error) {
+        outcome.liquid.volume = liquid_volume;
+        outcome.vapor.volume = vapor_volume;
+        outcome.predicted_pressure = pressure;
+        outcome.failure_reason = std::string("reporting row ") + row.row_id
+            + " final evaluation failed: " + error.what();
+    }
+    return outcome;
 }
 
 PyObject* tuple_from_values(const double* values, std::size_t size) {
@@ -598,7 +674,7 @@ PyObject* reporting_to_python(const std::vector<ReportingOutcome>& outcomes) {
             return nullptr;
         }
         PyObject* item = Py_BuildValue(
-            "(ssdddddddddNsO)",
+            "(ssdddddddddNsOs)",
             outcome.row.row_id.c_str(),
             outcome.row.source_id.c_str(),
             outcome.row.temperature,
@@ -612,7 +688,8 @@ PyObject* reporting_to_python(const std::vector<ReportingOutcome>& outcomes) {
             outcome.vapor.stability_slope,
             raw,
             outcome.termination.c_str(),
-            outcome.usable ? Py_True : Py_False
+            outcome.usable ? Py_True : Py_False,
+            outcome.failure_reason.c_str()
         );
         if (item == nullptr) {
             Py_DECREF(rows);
@@ -677,26 +754,6 @@ PyObject* solve_python(PyObject* capsule, PyObject* payload_object, PyObject* re
     if (table == nullptr) return nullptr;
     try {
         const Payload payload = parse_payload(payload_object);
-        const SolveOutcome primary = solve_training(*table, payload, 0.0, 0.0);
-        const SolveOutcome confirmation = solve_training(
-            *table,
-            payload,
-            std::log(payload.confirmation_liquid_start_multiplier),
-            std::log(payload.confirmation_vapor_start_multiplier)
-        );
-        double parameter_delta = 0.0;
-        for (std::size_t index = 0; index < parameter_count; ++index) {
-            parameter_delta = std::max(
-                parameter_delta, std::abs(primary.variables[index] - confirmation.variables[index])
-            );
-        }
-        const double cost_delta = std::abs(primary.summary.final_cost - confirmation.summary.final_cost)
-            / std::max(1.0, std::abs(primary.summary.final_cost));
-        std::array<double, 3> final_parameters{};
-        for (std::size_t index = 0; index < parameter_count; ++index) {
-            final_parameters[index] = payload.start[index]
-                + payload.parameter_scale[index] * primary.variables[index];
-        }
         PyObject* reporting_sequence = PySequence_Fast(
             reporting_rows_object, "reporting rows must be a sequence"
         );
@@ -704,32 +761,78 @@ PyObject* solve_python(PyObject* capsule, PyObject* payload_object, PyObject* re
             Py_XDECREF(reporting_sequence);
             throw std::invalid_argument("reporting rows must contain the ordered 100-180 K table");
         }
-        std::vector<ReportingOutcome> reporting;
-        reporting.reserve(9);
+        std::vector<Row> reporting_inputs;
+        reporting_inputs.reserve(9);
         for (Py_ssize_t index = 0; index < 9; ++index) {
-            const Row row = parse_row(
+            reporting_inputs.push_back(parse_row(
                 PySequence_Fast_GET_ITEM(reporting_sequence, index),
                 static_cast<std::size_t>(index)
-            );
-            reporting.push_back(solve_reporting(
-                *table, payload, row, final_parameters
             ));
         }
         Py_DECREF(reporting_sequence);
+
+        const SolveOutcome primary = solve_training(*table, payload, 0.0, 0.0);
+        SolveOutcome confirmation{};
+        bool confirmation_ran = false;
+        double parameter_delta = std::numeric_limits<double>::infinity();
+        double cost_delta = std::numeric_limits<double>::infinity();
+        std::vector<ReportingOutcome> reporting;
+        if (primary.failure_reason.empty() && primary.evaluation_available) {
+            confirmation = solve_training(
+                *table,
+                payload,
+                std::log(payload.confirmation_liquid_start_multiplier),
+                std::log(payload.confirmation_vapor_start_multiplier)
+            );
+            confirmation_ran = true;
+            parameter_delta = 0.0;
+            for (std::size_t index = 0; index < parameter_count; ++index) {
+                parameter_delta = std::max(
+                    parameter_delta,
+                    std::abs(primary.variables[index] - confirmation.variables[index])
+                );
+            }
+            cost_delta = std::abs(primary.summary.final_cost - confirmation.summary.final_cost)
+                / std::max(1.0, std::abs(primary.summary.final_cost));
+            std::array<double, 3> final_parameters{};
+            for (std::size_t index = 0; index < parameter_count; ++index) {
+                final_parameters[index] = payload.start[index]
+                    + payload.parameter_scale[index] * primary.variables[index];
+            }
+            reporting.reserve(reporting_inputs.size());
+            for (const Row& row : reporting_inputs) {
+                reporting.push_back(solve_reporting(*table, payload, row, final_parameters));
+            }
+        }
+        std::string native_failure_reason = primary.failure_reason;
+        if (native_failure_reason.empty() && confirmation_ran
+            && !confirmation.failure_reason.empty()) {
+            native_failure_reason = std::string("confirmation solve: ")
+                + confirmation.failure_reason;
+        }
         PyObject* variables = tuple_from_values(primary.variables.data(), primary.variables.size());
-        PyObject* residuals = tuple_from_values(primary.evaluation.residuals.data(), residual_count);
-        PyObject* jacobian = tuple_from_values(
-            primary.evaluation.jacobian.data(), residual_count * variable_count
-        );
-        PyObject* diagnostics = diagnostics_to_python(primary.evaluation.diagnostics);
+        PyObject* residuals = primary.evaluation_available
+            ? tuple_from_values(primary.evaluation.residuals.data(), residual_count)
+            : PyTuple_New(0);
+        PyObject* jacobian = primary.evaluation_available
+            ? tuple_from_values(
+                primary.evaluation.jacobian.data(), residual_count * variable_count
+            )
+            : PyTuple_New(0);
+        PyObject* diagnostics = primary.evaluation_available
+            ? diagnostics_to_python(primary.evaluation.diagnostics)
+            : PyTuple_New(0);
         PyObject* full_singular = vector_to_tuple(primary.full_jacobian.singular_values);
         PyObject* parameter_singular = vector_to_tuple(primary.parameter_jacobian.singular_values);
         PyObject* reporting_python = reporting_to_python(reporting);
         PyObject* compiled_identity = strings_to_tuple(payload.identity);
+        PyObject* failure_python = PyUnicode_FromStringAndSize(
+            native_failure_reason.data(), static_cast<Py_ssize_t>(native_failure_reason.size())
+        );
         if (variables == nullptr || residuals == nullptr || jacobian == nullptr
             || diagnostics == nullptr || full_singular == nullptr
             || parameter_singular == nullptr || reporting_python == nullptr
-            || compiled_identity == nullptr) {
+            || compiled_identity == nullptr || failure_python == nullptr) {
             Py_XDECREF(variables);
             Py_XDECREF(residuals);
             Py_XDECREF(jacobian);
@@ -738,6 +841,7 @@ PyObject* solve_python(PyObject* capsule, PyObject* payload_object, PyObject* re
             Py_XDECREF(parameter_singular);
             Py_XDECREF(reporting_python);
             Py_XDECREF(compiled_identity);
+            Py_XDECREF(failure_python);
             return nullptr;
         }
         PyObject* result = PyTuple_New(24);
@@ -750,6 +854,7 @@ PyObject* solve_python(PyObject* capsule, PyObject* payload_object, PyObject* re
             Py_DECREF(parameter_singular);
             Py_DECREF(reporting_python);
             Py_DECREF(compiled_identity);
+            Py_DECREF(failure_python);
             return nullptr;
         }
         PyTuple_SET_ITEM(result, 0, PyUnicode_FromString(termination_name(primary.summary.termination_type).c_str()));
@@ -770,13 +875,27 @@ PyObject* solve_python(PyObject* capsule, PyObject* payload_object, PyObject* re
         PyTuple_SET_ITEM(result, 15, Py_NewRef(primary.complete_columns ? Py_True : Py_False));
         PyTuple_SET_ITEM(result, 16, PyFloat_FromDouble(parameter_delta));
         PyTuple_SET_ITEM(result, 17, PyFloat_FromDouble(cost_delta));
-        PyTuple_SET_ITEM(result, 18, PyUnicode_FromString(termination_name(confirmation.summary.termination_type).c_str()));
-        PyTuple_SET_ITEM(result, 19, Py_NewRef(confirmation.summary.IsSolutionUsable() ? Py_True : Py_False));
+        PyTuple_SET_ITEM(
+            result,
+            18,
+            PyUnicode_FromString(
+                confirmation_ran
+                    ? termination_name(confirmation.summary.termination_type).c_str()
+                    : "NOT_RUN"
+            )
+        );
+        PyTuple_SET_ITEM(
+            result,
+            19,
+            Py_NewRef(
+                confirmation_ran && confirmation.summary.IsSolutionUsable()
+                    ? Py_True : Py_False
+            )
+        );
         PyTuple_SET_ITEM(result, 20, reporting_python);
         PyTuple_SET_ITEM(result, 21, PyUnicode_FromString(primary.evaluation.fingerprint.c_str()));
-        PyTuple_SET_ITEM(result, 22, Py_True);
-        Py_INCREF(Py_True);
-        PyTuple_SET_ITEM(result, 23, compiled_identity);
+        PyTuple_SET_ITEM(result, 22, compiled_identity);
+        PyTuple_SET_ITEM(result, 23, failure_python);
         return result;
     } catch (const std::exception& error) {
         if (PyErr_Occurred() != nullptr) PyErr_Clear();

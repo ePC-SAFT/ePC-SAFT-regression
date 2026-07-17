@@ -81,8 +81,6 @@ std::vector<std::string> expected_identity() {
         "1", "angstrom", "K",
         "liquid_pressure", "vapor_pressure", "chemical_potential_equality", "liquid_density",
         "mol", "m3/mol", "epcsaft.native_sdk.v1",
-        "4b10cb899c94687cae734980285badb224dc95e6",
-        "f92f79c8d6f614660e5c201b7061c9b02b5cd1a25a4ed8c8fee0b59adaabf2bf",
         "sha256:5f836aa84935df70be2e5cffae51b178a7b797c2cee036e9ff47d8097ca94bbf",
         "p_j = start_j + parameter_scale_j * z_j",
         "V_liquid = (molar_mass / observed_liquid_density) * exp(u_liquid)",
@@ -158,7 +156,7 @@ Payload parse_payload(PyObject* object) {
     }
     PyObject** items = PySequence_Fast_ITEMS(sequence);
     Payload payload{};
-    payload.identity = texts(items[0], 43, "compiled problem identity");
+    payload.identity = texts(items[0], 41, "compiled problem identity");
     if (payload.identity != expected_identity()) {
         Py_DECREF(sequence);
         throw std::invalid_argument("compiled problem identity does not match the first slice");

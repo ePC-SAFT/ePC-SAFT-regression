@@ -112,6 +112,17 @@ def _rms(values: list[float]) -> float:
     return (sum(value * value for value in values) / len(values)) ** 0.5
 
 
+def _canonical_json_sha256(value: object) -> str:
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _canonical_receipt_bytes(payload: dict[str, object]) -> bytes:
+    receipt = dict(payload)
+    receipt["receipt_payload_sha256"] = _canonical_json_sha256(payload)
+    return (json.dumps(receipt, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate the first methane regression candidate receipt.")
     parser.add_argument("--provider-wheel", type=Path, required=True)
@@ -129,7 +140,13 @@ def main() -> int:
         "provider test receipt",
     )
     regression_wheel_sha256 = _sha256(arguments.regression_wheel)
-    _require_hash(Path(arguments.review_path), arguments.review_sha256, "independent review")
+    repository_root = Path(__file__).resolve().parents[1]
+    review_path = Path(arguments.review_path).resolve()
+    try:
+        portable_review_path = review_path.relative_to(repository_root).as_posix()
+    except ValueError as error:
+        raise SystemExit("independent review must be inside the regression repository") from error
+    _require_hash(review_path, arguments.review_sha256, "independent review")
     provider_binding = _require_installed_distribution_matches_wheel(
         arguments.provider_wheel,
         "epcsaft",
@@ -183,43 +200,6 @@ def main() -> int:
         "capability": "pure-methane-saturation-parameter-candidate-v1",
         "owner": "ePC-SAFT/ePC-SAFT-regression",
         "authority_status": "candidate-manager-review; validation admission pending",
-        "source": source,
-        "rows": rows,
-        "training_row_ids": list(dataset.training_row_ids),
-        "problem": problem,
-        "provider": {
-            "commit": PROVIDER_COMMIT,
-            "wheel_sha256": PROVIDER_WHEEL_SHA256,
-            "test_receipt_sha256": PROVIDER_TEST_RECEIPT_SHA256,
-            "source_parameter_fingerprint": result.provider_fingerprint,
-        },
-        "final_parameter_tuple": [item.final for item in result.parameters],
-        "solver_converged": result.solver_converged,
-        "numerically_converged": result.numerically_converged,
-        "physically_valid": result.physically_valid,
-        "jacobian_full_rank": result.jacobian.full_rank,
-        "jacobian_parameter_rank": result.jacobian.parameter_rank,
-        "regression_wheel_sha256": regression_wheel_sha256,
-    }
-    subject_sha256 = hashlib.sha256(
-        json.dumps(subject, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    ).hexdigest()
-    receipt = {
-        "schema_version": "epcsaft-regression-candidate-fit-receipt-v1",
-        "status": "candidate",
-        "subject_sha256": subject_sha256,
-        "subject": subject,
-        "producer": "codex:/root",
-        "independent_reviewer": {
-            "identity": arguments.reviewer,
-            "path": arguments.review_path,
-            "sha256": arguments.review_sha256,
-        },
-        "approval": {
-            "implementation_scope": "approved in delegated user prompt",
-            "runtime_authority_change": "not requested; not granted",
-            "validation_admission": "pending",
-        },
         "source": source,
         "rows": rows,
         "training_row_ids": list(dataset.training_row_ids),
@@ -319,13 +299,33 @@ def main() -> int:
             "predictive validation admission",
             "runtime authority promotion",
         ],
+        "evidence_boundary": {
+            "reporting_block_directional_jacobian": (
+                "promotion-receipt evidence item; the existing private native test surface "
+                "does not expose reporting Jacobians and no production seam was added"
+            ),
+        },
     }
-    receipt_payload_sha256 = hashlib.sha256(
-        json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    ).hexdigest()
-    receipt["receipt_payload_sha256"] = receipt_payload_sha256
+    subject_sha256 = _canonical_json_sha256(subject)
+    receipt = {
+        "schema_version": "epcsaft-regression-candidate-fit-receipt-v1",
+        "status": "candidate",
+        "subject_sha256": subject_sha256,
+        "subject": subject,
+        "producer": "codex:/root",
+        "independent_reviewer": {
+            "identity": arguments.reviewer,
+            "path": portable_review_path,
+            "sha256": arguments.review_sha256,
+        },
+        "approval": {
+            "implementation_scope": "approved in delegated user prompt",
+            "runtime_authority_change": "not requested; not granted",
+            "validation_admission": "pending",
+        },
+    }
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
-    arguments.output.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    arguments.output.write_bytes(_canonical_receipt_bytes(receipt))
     print(json.dumps({"output": str(arguments.output), "subject_sha256": subject_sha256}))
     return 0
 

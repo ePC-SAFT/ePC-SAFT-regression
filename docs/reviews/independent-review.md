@@ -36,8 +36,10 @@ All findings were accepted and addressed:
   hash over its full payload.
 - The native contract independently retains and exactly validates source
   metadata/hashes, row IDs and values, units, names, transforms, bounds, fixed
-  amount, provider commit/wheel/fingerprint, and solver controls. Native row IDs
-  and the full compiled identity round-trip to Python and are checked there.
+  amount, provider SDK/fingerprint evidence, and solver controls. Native row
+  IDs and the full compiled identity round-trip to Python and are checked
+  there. Exact commit/wheel binding is owned by the artifact runner and
+  receipt, not the public runtime.
 - Every reporting, confirmation, acceptance, and Ceres control is an immutable
   specification field included in the native payload and receipt.
 - Exact source fields and row-ID/temperature mappings are rejected on mutation.
@@ -50,12 +52,12 @@ All findings were accepted and addressed:
 - The native contract parser was separated from the residual/Ceres owner while
   retaining one extension target and no additional public surface.
 
-## Follow-up verification
+## Focused correction re-review
 
-The reviewer inspected the live fixes, independently reproduced 17 installed-
-wheel tests, the receipt, its canonical digest, artifact binding, architecture
-counts, and negative-space scans, and cleared every substantive finding. The
-user-authorized `.idea/` project configuration is retained unchanged; its
-existing local `workspace.xml` ignore remains in force.
+The reviewer verified the truthful provider-identity boundary, 24-field
+private transport, structured failure evidence, final topology gates, portable
+canonical receipt, and exact architecture ratchet. Source and installed-wheel
+suites each passed 20 tests; static, compile, replay, and negative-space checks
+also passed. The user-authorized tracked `.idea/` files remain unchanged.
 
 Final readiness: **READY** for local commit and candidate manager review only; no scientific admission or production authority is granted.

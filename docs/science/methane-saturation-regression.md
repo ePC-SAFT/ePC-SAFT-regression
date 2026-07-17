@@ -77,8 +77,10 @@ Solver convergence requires Ceres `CONVERGENCE`, a usable finite solution,
 complete Jacobian columns, and respected bounds. A second solve perturbs all
 row-volume starts and checks scaled parameter and cost agreement. Physical
 validity requires positive `dP/d(rho_m)`, ordered distinct volumes, finite
-diagnostics, and successful saturation reporting solves at all nine source
-temperatures.
+diagnostics, relative phase-volume separation above `1e-3`, and successful
+saturation reporting solves at all nine source temperatures. The reporting
+result reapplies these gates after Ceres terminates; a rejected final row keeps
+its row-specific failure reason.
 
 The confirmation volume-start multipliers are `1.01` for liquid and `0.98` for
 vapor; its scaled-parameter and relative-cost limits are `1e-5` and `1e-8`.
@@ -101,12 +103,22 @@ The package rejects changed source identity or units, duplicate or reordered
 rows, nonfinite values, unsupported species, capsule ABI mismatch, missing
 parameterized transport, provider evaluation failure, unstable phases,
 coalescence, topology loss, incomplete derivatives, nonconverged solves, and
-seed-dependent results.
+seed-dependent results. Provider, topology, and post-solve failures for valid
+inputs return compact native evidence in `MethaneFitResult.failure_reasons`;
+contract parsing errors may still raise before a solve outcome exists.
 
 The compiled native problem independently validates and retains all exact row
 and source identities, units, transforms, bounds, solver controls, provider
-artifact identity, and provider source fingerprint. Native diagnostics return
-their own row IDs, and the full compiled identity must round-trip unchanged.
+SDK ABI/table contract, and provider source fingerprint. Native diagnostics
+return their own row IDs, and the full compiled identity must round-trip
+unchanged. The runtime does not claim a provider commit or wheel digest. The
+isolated candidate runner hashes and byte-binds those exact artifacts before
+import, and the canonical receipt retains that artifact evidence.
+
+Training exact-Jacobian directional coverage uses the existing private native
+test surface. That surface does not expose the reporting block Jacobian; its
+directional check remains a promotion-receipt evidence item, avoiding a new
+production seam solely for testing.
 
 The package does not own binary interactions, association, electrolytes,
 reactions, generic targets, persistence, or provider parameter catalogs.

@@ -1,64 +1,12 @@
 schema_version: epcsaft-regression-candidate-capability-v1
 status: candidate
 authority: manager-review-only
-capability: pure-methane-saturation-parameter-candidate-v1
 owner: ePC-SAFT/ePC-SAFT-regression
-domain:
-  species: methane
-  source_rows: 100-180 K in 10 K increments
-  training_rows: [110 K, 130 K, 150 K, 170 K]
-  fitted_parameters: [segment_count, segment_diameter_angstrom, dispersion_energy_over_k_kelvin]
-provider:
-  commit: 4b10cb899c94687cae734980285badb224dc95e6
-  wheel_sha256: f92f79c8d6f614660e5c201b7061c9b02b5cd1a25a4ed8c8fee0b59adaabf2bf
-  capsule: epcsaft.native_sdk.v1
-  entry: evaluate_pure_phase_parameters
-  source_parameter_fingerprint: sha256:5f836aa84935df70be2e5cffae51b178a7b797c2cee036e9ff47d8097ca94bbf
-parameters:
-  names: [segment_count, segment_diameter_angstrom, dispersion_energy_over_k_kelvin]
-  units: ['1', angstrom, K]
-  start: [1.08, 3.555744, 157.5315]
-  final: [0.9932081279826167, 3.717121437945618, 150.4888402511307]
-  lower_bounds: [0.5, 2.0, 50.0]
-  upper_bounds: [3.5, 5.0, 400.0]
-  affine_scales: [0.1, 0.1, 10.0]
-derivatives:
-  provider_order: 2
-  regression_residual_order: 1
-  production_jacobian: provider Hessian plus exact chain rules
-topology:
-  fixed_amount_mol: 1
-  phases: 2 row-local ordered volumes
-  discovery_scope: local fixed-topology saturation boundary only
-  liquid_volume_bounds_m3: [2.0e-5, 1.0e-4]
-  vapor_volume_bounds_m3: [1.5e-4, 0.1]
-  reporting_pressure_bounds_pa: [1.0e3, 1.0e7]
-execution:
-  ceres_linear_solver: DENSE_QR
-  ceres_num_threads: 1
-  max_num_iterations: 500
-  function_tolerance: 1.0e-10
-  gradient_tolerance: 1.0e-10
-  parameter_tolerance: 1.0e-10
-  confirmation_volume_start_multipliers: {liquid: 1.01, vapor: 0.98}
-acceptance:
-  solver: accepted Ceres termination, usable finite solution, complete columns, bounds
-  numerical:
-    method: perturbed-volume-start confirmation
-    parameter_scaled_max_delta: 1.0e-5
-    cost_relative_delta: 1.0e-8
-  physical:
-    topology: positive stability slopes and ordered distinct phases
-    reporting_pressure_scaled_closure: 1.0e-8
-    reporting_chemical_potential_closure: 1.0e-8
-    reporting_rows: 9
-  predictive_validation: pending
-  runtime_authority: unchanged
-excludes:
-  - binary interaction regression
-  - association regression
-  - electrolyte regression
-  - reactive regression
-  - parameter persistence
-  - global identifiability
-  - production admission
+scope: >-
+  Fit methane segment count, segment diameter, and dispersion energy to the
+  retained 110, 130, 150, and 170 K saturation rows using the installed
+  provider transport; predictive validation and runtime promotion remain
+  excluded.
+canonical_receipt:
+  path: evidence/candidate-fit-receipt.json
+  subject_sha256: 17775730b72101657e86e360508a6495fb8a719af73962940c1f45122db7ee8c

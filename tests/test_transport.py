@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -63,3 +64,24 @@ def test_receipt_runner_rejects_wheel_that_differs_from_installed_runtime(
             fake_wheel,
             "epcsaft-regression",
         )
+
+
+def test_candidate_receipt_has_one_canonical_reproducible_subject() -> None:
+    runner_path = Path(__file__).parents[1] / "tools" / "run_candidate.py"
+    module_spec = importlib.util.spec_from_file_location("candidate_runner_canonical", runner_path)
+    assert module_spec is not None and module_spec.loader is not None
+    runner = importlib.util.module_from_spec(module_spec)
+    module_spec.loader.exec_module(runner)
+    receipt_path = Path(__file__).parents[1] / "evidence" / "candidate-fit-receipt.json"
+    receipt_bytes = receipt_path.read_bytes()
+    receipt = json.loads(receipt_bytes)
+    payload = dict(receipt)
+    payload.pop("receipt_payload_sha256")
+
+    assert runner._canonical_receipt_bytes(payload) == receipt_bytes
+    assert runner._canonical_json_sha256(receipt["subject"]) == receipt["subject_sha256"]
+    assert receipt["independent_reviewer"]["path"] == "docs/reviews/independent-review.md"
+    assert not {"source", "rows", "training_row_ids", "problem"}.intersection(
+        receipt.keys()
+    )
+    assert {"source", "rows", "training_row_ids", "problem"} <= receipt["subject"].keys()

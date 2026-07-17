@@ -10,16 +10,26 @@ from .records import (
     EXPECTED_PACKAGED_DATA_SHA256,
     MethaneFitSpecification,
     MethaneSaturationDataset,
+    SaturationObservation,
 )
 
 
-PROVIDER_COMMIT = "4b10cb899c94687cae734980285badb224dc95e6"
-PROVIDER_WHEEL_SHA256 = "f92f79c8d6f614660e5c201b7061c9b02b5cd1a25a4ed8c8fee0b59adaabf2bf"
 PROVIDER_CAPSULE = "epcsaft.native_sdk.v1"
 PARAMETER_TRANSFORM = "p_j = start_j + parameter_scale_j * z_j"
 LIQUID_VOLUME_TRANSFORM = "V_liquid = (molar_mass / observed_liquid_density) * exp(u_liquid)"
 VAPOR_VOLUME_TRANSFORM = "V_vapor = (R * T / observed_pressure) * exp(u_vapor)"
 REPORTING_PRESSURE_TRANSFORM = "P_report = observed_pressure * exp(u_pressure)"
+
+
+def _row_payload(row: SaturationObservation) -> tuple[object, ...]:
+    return (
+        row.row_id,
+        row.species,
+        row.temperature_k,
+        row.pressure_pa,
+        row.liquid_density_kg_m3,
+        row.source_id,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,8 +161,6 @@ def _native_payload(
         "mol",
         "m3/mol",
         PROVIDER_CAPSULE,
-        PROVIDER_COMMIT,
-        PROVIDER_WHEEL_SHA256,
         provider_fingerprint,
         PARAMETER_TRANSFORM,
         LIQUID_VOLUME_TRANSFORM,
@@ -163,17 +171,7 @@ def _native_payload(
     )
     return (
         identity,
-        tuple(
-            (
-                row.row_id,
-                row.species,
-                row.temperature_k,
-                row.pressure_pa,
-                row.liquid_density_kg_m3,
-                row.source_id,
-            )
-            for row in dataset.training_rows
-        ),
+        tuple(_row_payload(row) for row in dataset.training_rows),
         specification.start,
         specification.lower_bounds,
         specification.upper_bounds,
@@ -208,6 +206,106 @@ def _active_bound(value: float, lower: float, upper: float) -> str | None:
     return None
 
 
+def _reporting_row_diagnostic(
+    source: SaturationObservation,
+    training_ids: frozenset[str],
+    specification: MethaneFitSpecification,
+    native_row: tuple[object, ...],
+) -> ReportingRowDiagnostic:
+    if str(native_row[0]) != source.row_id or str(native_row[1]) != source.source_id:
+        raise RuntimeError("native reporting row identity did not match the immutable dataset")
+    predicted_pressure = float(native_row[5])
+    predicted_density = float(native_row[6])
+    liquid_volume = float(native_row[7])
+    vapor_volume = float(native_row[8])
+    liquid_slope = float(native_row[9])
+    vapor_slope = float(native_row[10])
+    raw = tuple(float(value) for value in native_row[11])
+    termination = str(native_row[12])
+    usable = bool(native_row[13])
+    native_failure_reason = str(native_row[14]).strip()
+    reasons = [native_failure_reason] if native_failure_reason else []
+    finite = all(
+        math.isfinite(value)
+        for value in (
+            predicted_pressure,
+            predicted_density,
+            liquid_volume,
+            vapor_volume,
+            liquid_slope,
+            vapor_slope,
+            *raw,
+        )
+    )
+    topology_ok = (
+        finite
+        and liquid_volume > 0.0
+        and vapor_volume > 0.0
+        and liquid_volume < vapor_volume
+        and (vapor_volume - liquid_volume) / vapor_volume
+        > specification.topology_relative_separation_min
+    )
+    if termination != "CONVERGENCE":
+        reasons.append(f"reporting Ceres termination was {termination}")
+    if not usable:
+        reasons.append("reporting Ceres solution was unusable")
+    if not finite:
+        reasons.append("reporting diagnostics were nonfinite")
+    if not topology_ok:
+        reasons.append("reporting phases failed the topology separation gate")
+    if finite and (liquid_slope <= 0.0 or vapor_slope <= 0.0):
+        reasons.append("reporting phase was mechanically unstable")
+    if finite and (
+        abs(raw[0]) / source.pressure_pa
+        > specification.reporting_pressure_scaled_residual_max
+        or abs(raw[1]) / source.pressure_pa
+        > specification.reporting_pressure_scaled_residual_max
+    ):
+        reasons.append("reporting scaled pressure closure exceeded its threshold")
+    if finite and abs(raw[2]) > specification.reporting_chemical_potential_residual_max:
+        reasons.append("reporting chemical-potential closure exceeded its threshold")
+
+    liquid_molar_density = (
+        specification.fixed_amount_mol / liquid_volume
+        if math.isfinite(liquid_volume) and liquid_volume > 0.0
+        else math.nan
+    )
+    vapor_molar_density = (
+        specification.fixed_amount_mol / vapor_volume
+        if math.isfinite(vapor_volume) and vapor_volume > 0.0
+        else math.nan
+    )
+    return ReportingRowDiagnostic(
+        row_id=source.row_id,
+        temperature_k=source.temperature_k,
+        training=source.row_id in training_ids,
+        observed_pressure_pa=source.pressure_pa,
+        predicted_pressure_pa=predicted_pressure,
+        pressure_relative_error=(predicted_pressure - source.pressure_pa) / source.pressure_pa,
+        observed_liquid_density_kg_m3=source.liquid_density_kg_m3,
+        predicted_liquid_density_kg_m3=predicted_density,
+        liquid_density_relative_error=(predicted_density - source.liquid_density_kg_m3)
+        / source.liquid_density_kg_m3,
+        liquid_volume_m3=liquid_volume,
+        vapor_volume_m3=vapor_volume,
+        liquid_molar_density_mol_m3=liquid_molar_density,
+        vapor_molar_density_mol_m3=vapor_molar_density,
+        liquid_mass_density_kg_m3=(
+            specification.methane_molar_mass_kg_per_mol * liquid_molar_density
+        ),
+        vapor_mass_density_kg_m3=(
+            specification.methane_molar_mass_kg_per_mol * vapor_molar_density
+        ),
+        liquid_stability_slope=liquid_slope,
+        vapor_stability_slope=vapor_slope,
+        raw_equilibrium_residuals=raw,
+        termination=termination,
+        solution_usable=usable,
+        physically_valid=not reasons,
+        failure_reasons=tuple(reasons),
+    )
+
+
 def fit_methane_saturation(
     *,
     model: object,
@@ -223,21 +321,36 @@ def fit_methane_saturation(
     if not isinstance(provider_fingerprint, str) or not provider_fingerprint:
         raise ValueError("model must expose a nonblank provider parameter_fingerprint")
     payload = _native_payload(dataset, specification, provider_fingerprint)
-    reporting_payload = tuple(
-        (
-            row.row_id,
-            row.species,
-            row.temperature_k,
-            row.pressure_pa,
-            row.liquid_density_kg_m3,
-            row.source_id,
-        )
-        for row in dataset.rows
-    )
-    transport = _native.solve(capsule, payload, reporting_payload)
-    if tuple(transport[23]) != payload[0]:
+    reporting_payload = tuple(_row_payload(row) for row in dataset.rows)
+    (
+        termination_native,
+        solution_usable_native,
+        initial_cost_native,
+        final_cost_native,
+        iterations_native,
+        variables_native,
+        _residuals_native,
+        _jacobian_native,
+        training_rows_native,
+        full_singular_values_native,
+        full_rank_native,
+        full_condition_native,
+        parameter_singular_values_native,
+        parameter_rank_native,
+        parameter_condition_native,
+        complete_columns_native,
+        parameter_delta_native,
+        cost_delta_native,
+        confirmation_termination_native,
+        confirmation_usable_native,
+        reporting_rows_native,
+        observed_fingerprint_native,
+        compiled_identity_native,
+        native_failure_reason_native,
+    ) = _native.solve(capsule, payload, reporting_payload)
+    if tuple(compiled_identity_native) != payload[0]:
         raise RuntimeError("compiled problem identity did not round-trip from the native solve")
-    variables = tuple(float(value) for value in transport[5])
+    variables = tuple(float(value) for value in variables_native)
     final_parameters = tuple(
         start + scale * transformed
         for start, scale, transformed in zip(
@@ -265,6 +378,7 @@ def fit_methane_saturation(
             strict=True,
         )
     )
+    native_failure_reason = str(native_failure_reason_native).strip()
     training_rows = tuple(
         TrainingRowDiagnostic(
             row_id=str(native_row[0]),
@@ -288,88 +402,36 @@ def fit_methane_saturation(
             raw_residuals=tuple(float(value) for value in native_row[11]),
             scaled_residuals=tuple(float(value) for value in native_row[12]),
         )
-        for source, native_row in zip(dataset.training_rows, transport[8], strict=True)
+        for source, native_row in zip(dataset.training_rows, training_rows_native)
         if str(native_row[0]) == source.row_id and str(native_row[1]) == source.source_id
     )
-    if len(training_rows) != len(dataset.training_rows):
+    if training_rows_native and (
+        len(training_rows_native) != len(dataset.training_rows)
+        or len(training_rows) != len(dataset.training_rows)
+    ):
         raise RuntimeError("native training row identity did not match the immutable dataset")
     training_ids = frozenset(dataset.training_row_ids)
-    reporting_rows: list[ReportingRowDiagnostic] = []
-    for source, native_row in zip(dataset.rows, transport[20], strict=True):
-        reasons: list[str] = []
-        if str(native_row[0]) != source.row_id or str(native_row[1]) != source.source_id:
-            raise RuntimeError("native reporting row identity did not match the immutable dataset")
-        termination = str(native_row[12])
-        usable = bool(native_row[13])
-        liquid_volume = float(native_row[7])
-        vapor_volume = float(native_row[8])
-        liquid_slope = float(native_row[9])
-        vapor_slope = float(native_row[10])
-        raw = tuple(float(value) for value in native_row[11])
-        if termination != "CONVERGENCE":
-            reasons.append(f"reporting Ceres termination was {termination}")
-        if not usable:
-            reasons.append("reporting Ceres solution was unusable")
-        if not liquid_volume < vapor_volume:
-            reasons.append("reporting phases lost volume ordering")
-        if liquid_slope <= 0.0 or vapor_slope <= 0.0:
-            reasons.append("reporting phase was mechanically unstable")
-        if (
-            abs(raw[0]) / source.pressure_pa
-            > specification.reporting_pressure_scaled_residual_max
-            or abs(raw[1]) / source.pressure_pa
-            > specification.reporting_pressure_scaled_residual_max
-        ):
-            reasons.append("reporting scaled pressure closure exceeded its threshold")
-        if abs(raw[2]) > specification.reporting_chemical_potential_residual_max:
-            reasons.append("reporting chemical-potential closure exceeded its threshold")
-        if not all(math.isfinite(value) for value in (*raw, *native_row[2:11])):
-            reasons.append("reporting diagnostics were nonfinite")
-        predicted_pressure = float(native_row[5])
-        predicted_density = float(native_row[6])
-        reporting_rows.append(
-            ReportingRowDiagnostic(
-                row_id=source.row_id,
-                temperature_k=source.temperature_k,
-                training=source.row_id in training_ids,
-                observed_pressure_pa=source.pressure_pa,
-                predicted_pressure_pa=predicted_pressure,
-                pressure_relative_error=(predicted_pressure - source.pressure_pa)
-                / source.pressure_pa,
-                observed_liquid_density_kg_m3=source.liquid_density_kg_m3,
-                predicted_liquid_density_kg_m3=predicted_density,
-                liquid_density_relative_error=(predicted_density - source.liquid_density_kg_m3)
-                / source.liquid_density_kg_m3,
-                liquid_volume_m3=liquid_volume,
-                vapor_volume_m3=vapor_volume,
-                liquid_molar_density_mol_m3=specification.fixed_amount_mol / liquid_volume,
-                vapor_molar_density_mol_m3=specification.fixed_amount_mol / vapor_volume,
-                liquid_mass_density_kg_m3=specification.methane_molar_mass_kg_per_mol
-                / liquid_volume,
-                vapor_mass_density_kg_m3=specification.methane_molar_mass_kg_per_mol
-                / vapor_volume,
-                liquid_stability_slope=liquid_slope,
-                vapor_stability_slope=vapor_slope,
-                raw_equilibrium_residuals=raw,
-                termination=termination,
-                solution_usable=usable,
-                physically_valid=not reasons,
-                failure_reasons=tuple(reasons),
-            )
-        )
+    reporting_rows = [
+        _reporting_row_diagnostic(source, training_ids, specification, native_row)
+        for source, native_row in zip(dataset.rows, reporting_rows_native)
+    ]
+    if reporting_rows_native and len(reporting_rows_native) != len(dataset.rows):
+        raise RuntimeError("native reporting row identity did not match the immutable dataset")
     jacobian = JacobianDiagnostics(
-        complete_columns=bool(transport[15]),
-        full_singular_values=tuple(float(value) for value in transport[9]),
-        full_rank=int(transport[10]),
-        full_condition_number=float(transport[11]),
-        parameter_singular_values=tuple(float(value) for value in transport[12]),
-        parameter_rank=int(transport[13]),
-        parameter_condition_number=float(transport[14]),
+        complete_columns=bool(complete_columns_native),
+        full_singular_values=tuple(float(value) for value in full_singular_values_native),
+        full_rank=int(full_rank_native),
+        full_condition_number=float(full_condition_native),
+        parameter_singular_values=tuple(
+            float(value) for value in parameter_singular_values_native
+        ),
+        parameter_rank=int(parameter_rank_native),
+        parameter_condition_number=float(parameter_condition_native),
     )
-    termination = str(transport[0])
-    usable = bool(transport[1])
-    initial_cost = float(transport[2])
-    final_cost = float(transport[3])
+    termination = str(termination_native)
+    usable = bool(solution_usable_native)
+    initial_cost = float(initial_cost_native)
+    final_cost = float(final_cost_native)
     bounds_respected = all(
         item.lower_bound <= item.final <= item.upper_bound for item in parameters
     )
@@ -381,11 +443,12 @@ def fit_methane_saturation(
         and final_cost <= initial_cost
         and jacobian.complete_columns
         and bounds_respected
+        and not native_failure_reason
     )
-    confirmation_termination = str(transport[18])
-    confirmation_usable = bool(transport[19])
-    parameter_delta = float(transport[16])
-    cost_delta = float(transport[17])
+    confirmation_termination = str(confirmation_termination_native)
+    confirmation_usable = bool(confirmation_usable_native)
+    parameter_delta = float(parameter_delta_native)
+    cost_delta = float(cost_delta_native)
     numerically_converged = (
         solver_converged
         and confirmation_termination == "CONVERGENCE"
@@ -402,20 +465,30 @@ def fit_methane_saturation(
         and all(row.physically_valid for row in reporting_tuple)
     )
     failure_reasons: list[str] = []
+    if native_failure_reason:
+        failure_reasons.append(native_failure_reason)
+    failure_reasons.extend(
+        f"{row.row_id}: {reason}"
+        for row in reporting_tuple
+        for reason in row.failure_reasons
+    )
     if not solver_converged:
         failure_reasons.append("training solver convergence gate failed")
     if not numerically_converged:
         failure_reasons.append("confirmation solve numerical convergence gate failed")
     if not physical_valid:
         failure_reasons.append("training or reporting physical validity gate failed")
-    if str(transport[21]) != getattr(model, "parameter_fingerprint", None):
+    observed_fingerprint = str(observed_fingerprint_native)
+    if observed_fingerprint and observed_fingerprint != getattr(
+        model, "parameter_fingerprint", None
+    ):
         failure_reasons.append("provider source fingerprint did not match the supplied model")
         physical_valid = False
     return MethaneFitResult(
         dataset_id=dataset.dataset_id,
         specification_id=specification.specification_id,
-        provider_fingerprint=str(transport[21]),
-        compiled_problem_identity=tuple(str(value) for value in transport[23]),
+        provider_fingerprint=observed_fingerprint,
+        compiled_problem_identity=tuple(str(value) for value in compiled_identity_native),
         solver_converged=solver_converged,
         numerically_converged=numerically_converged,
         physically_valid=physical_valid,
@@ -423,7 +496,7 @@ def fit_methane_saturation(
         solution_usable=usable,
         initial_cost=initial_cost,
         final_cost=final_cost,
-        iterations=int(transport[4]),
+        iterations=int(iterations_native),
         parameters=parameters,
         jacobian=jacobian,
         training_rows=training_rows,

@@ -166,9 +166,12 @@ native solve.
 Before Ceres construction, the native contract parser retains and exactly
 validates the dataset/source IDs, source URL/citation/locator and hashes, row
 IDs and values, units, parameter/residual names, transforms, bounds, fixed
-amount, provider commit/wheel/fingerprint, and solver controls. Native row IDs
-and the complete compiled identity are returned and checked by Python; results
-are never assigned source labels after the solve.
+amount, provider SDK ABI/table contract and source fingerprint, and solver
+controls. Native row IDs and the complete compiled identity are returned and
+checked by Python; results are never assigned source labels after the solve.
+The public runtime cannot prove an artifact commit or wheel hash and therefore
+does not claim either. The isolated candidate runner hashes and byte-compares
+the installed artifacts and records that evidence in the canonical receipt.
 
 ## Verification and evidence boundary
 
@@ -178,4 +181,7 @@ isolated-wheel verification build against a provider installed from the pinned
 wheel. Static scans reject sibling paths, private provider headers/imports,
 provider sources, copied EOS terms, duplicate provider symbols, and excluded
 target families. A candidate capability/architecture record and fit receipt
-are generated for review but cannot accept themselves.
+are generated for review but cannot accept themselves. The existing private
+native test surface exposes the training residual/Jacobian block but not the
+reporting block; reporting directional-Jacobian evidence remains a
+promotion-receipt item rather than motivating a new runtime seam.
