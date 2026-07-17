@@ -1,0 +1,26 @@
+[build-system]
+requires = ["scikit-build-core>=0.11"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "epcsaft-regression"
+version = "0.1.0.dev0"
+description = "Strict installed-provider parameter regression for ePC-SAFT"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { file = "LICENSE" }
+dependencies = ["epcsaft==0.1.0.dev0"]
+
+[tool.scikit-build]
+cmake.build-type = "Release"
+wheel.packages = ["src/epcsaft_regression"]
+wheel.install-dir = ""
+wheel.exclude = ["**/native/*.cpp", "**/native/*.hpp"]
+sdist.include = [
+  "CMakeLists.txt",
+  "src/epcsaft_regression/native/*.cpp",
+  "src/epcsaft_regression/native/*.hpp",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

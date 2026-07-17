@@ -1,4 +1,5 @@
 .venv/
+.serena/
 __pycache__/
 *.py[cod]
 *.so
@@ -9,5 +10,4 @@ __pycache__/
 build/
 dist/
 *.egg-info/
-.idea/
 .vscode/

@@ -1,0 +1,93 @@
+version: 1
+status: candidate-manager-review
+
+authority:
+  capability: pure-methane-saturation-parameter-candidate-v1
+  runtime_authority_change: none
+  predictive_validation: pending
+  persistence_authority: none
+
+scope: >-
+  Fit methane segment count, segment diameter, and dispersion energy to the
+  admitted 110, 130, 150, and 170 K NIST saturation rows with row-local lifted
+  phase volumes, exact Ceres Jacobians, and the pinned installed provider.
+
+owners:
+  immutable_source_and_problem: src/epcsaft_regression/records.py
+  public_workflow_and_result: src/epcsaft_regression/workflow.py
+  compiled_contract: src/epcsaft_regression/native/methane_contract.cpp
+  residual_jacobian_and_ceres: src/epcsaft_regression/native/methane_fit.cpp
+  provider_capsule_gate: src/epcsaft_regression/native/module.cpp
+  candidate_receipt_runner: tools/run_candidate.py
+
+public_surface:
+  exports:
+    - METHANE_FIT_SPECIFICATION_V1
+    - load_methane_dataset
+    - MethaneFitResult
+    - fit_methane_saturation
+  runtime_dependencies:
+    - epcsaft==0.1.0.dev0
+  direct_build_dependencies:
+    - scikit-build-core
+    - CMake
+    - CPython 3.13 C API
+    - Ceres 2.2
+  native_modules:
+    - epcsaft_regression._native
+  native_targets: 1
+  provider_transport:
+    capsule: epcsaft.native_sdk.v1
+    entry: evaluate_pure_phase_parameters
+    coordinate_order: [amount_mol, volume_m3, segment_count, segment_diameter_angstrom, dispersion_energy_over_k_kelvin]
+    derivative_order: 2
+
+manifest:
+  tracked_files: 35
+  production_python_files: 3
+  native_source_files: 5
+  installed_data_files: 1
+  package_test_files: 3
+  ide_project_files: 7
+  physical_production_lines: 2106
+  physical_package_test_lines: 365
+  physical_documentation_lines: 692
+  measurement: >-
+    wc -l over intended tracked package Python/C++/private headers, package
+    tests, and Markdown/YAML documentation after generated evidence is excluded.
+  tracked_generated_files: 1
+  generated_file_policy: >-
+    The candidate fit receipt is tracked, deterministic evidence over explicit
+    artifacts; build trees, wheels, caches, and temporary verification output
+    remain untracked.
+  oversized_files:
+    - path: src/epcsaft_regression/native/methane_fit.cpp
+      physical_lines: 788
+    - path: src/epcsaft_regression/workflow.py
+      physical_lines: 436
+  oversized_file_policy: >-
+    Do not grow these owners without a named capability delta. Keep the native
+    contract parser separate and add no public abstraction merely to reduce a
+    line count.
+
+excluded:
+  - binary interaction regression
+  - association regression
+  - electrolyte regression
+  - reactive regression
+  - generic regression families or target registries
+  - alternate or numerical production derivative backends
+  - provider source, private headers, or copied EOS equations
+  - provider catalog persistence
+  - global identifiability claims
+  - predictive validation admission
+  - runtime authority promotion
+
+ratchet:
+  rule: Every increase must serve one approved regression capability and keep EOS ownership in the provider.
+  reject:
+    - duplicate input or result representations
+    - duplicate equation or derivative owners
+    - sibling-source, lab, or migration runtime dependencies
+    - hidden physical defaults, transforms, bounds, or solver gates
+    - backend selectors, compatibility shims, or mutable target registries
