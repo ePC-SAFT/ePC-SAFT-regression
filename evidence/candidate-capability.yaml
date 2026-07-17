@@ -1,6 +1,6 @@
 schema_version: epcsaft-regression-candidate-capability-v2
-status: candidate
-authority: local-independent-review-pending
+status: draft-promotion-packet-ready
+authority: pending-exact-migration-approval
 owner: ePC-SAFT/ePC-SAFT-regression
 scope: >-
   Preserve the accepted pure-methane saturation workflow and add one local
@@ -38,6 +38,23 @@ ethane_candidate:
       required_local_cmake_environment:
         CMAKE_INCLUDE_PATH: /usr/include/libunwind
       environment_scope: candidate artifact build only; not a package default or runtime requirement
+  independent_review:
+    verdict: APPROVE_LOCAL_CANDIDATE
+    repository: ePC-SAFT/ePC-SAFT-migration
+    path: reviews/consumer-slice-2-final-adjudication.md
+    sha256: 40b9f5fd7a07ea1c9feea20bf051d6187ab0852fdca60dcbd361596925a23d24
+  validation_admission:
+    artifact_status: PASS
+    repository: ePC-SAFT/ePC-SAFT-validation
+    final_evidence_head: 5a678beff38717478fd333c65e77f005cc2f6b15
+    record_path: results/consumer-slice-2-validation-record.json
+    record_sha256: 239c84788f75f8c66240c83e4f5874f112e1197dafad6273e1c8ec4efe994d24
+    predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
+    ethane_100_k: ETHANE_100_K_EXCLUDED_FAILURE
+  draft_promotion:
+    packet_id: promotion-0023-regression-pure-saturation-ethane-v1
+    status: pending-exact-migration-approval
+    authority_effect: none
 boundaries:
   held_out_accuracy_cutoff: none approved
   stress_acceptance_effect: none
