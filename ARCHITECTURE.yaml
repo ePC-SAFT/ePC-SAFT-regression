@@ -29,18 +29,22 @@ owners:
   provider_capsule_gate: src/epcsaft_regression/native/module.cpp
   component_receipt_runner: tools/run_candidate.py
   next_slice_equations_and_numerical_contract: docs/science/neutral-hydrocarbon-next-slice.md
-  binary_kij_preflight_residual_jacobian_and_ceres: tools/binary_kij_preflight.cpp
-  binary_kij_preflight_artifact_binding_and_receipt: tools/run_binary_kij_preflight.py
 
 preparatory_contracts:
   neutral_hydrocarbon_next_slice_v1:
     status: binary-preflight-blocked-authority-neutral
     public_exports: []
     checkpoint_order: [propane-pure-saturation, methane-ethane-constant-kij]
-    propane_gate: READY_WAITING_PROPANE_PRIMARY_SOURCE_PACKET
+    propane_gate: PRIMARY_SOURCE_PACKET_ACCEPTED_VALIDATION_7e515907_RUNTIME_NOT_STARTED
     binary_gate: BLOCKED_FROZEN_PRESSURE_CLOSURE
     binary_preflight_evidence: evidence/binary-kij-preflight.json
-    binary_preflight_claim: installed-artifact in-sample feasibility only
+    binary_preflight_claim: >-
+      The three declared converged equal-weight starts did not meet the 1e-8
+      pressure-closure gate; no global infeasibility claim is supported.
+    rejected_alternative_provenance:
+      regression_commit: 47a2a8d9579a01347df7ccaa977337ad7d4047af
+      receipt_subject_sha256: d51c9f0713b6a7355be719b6843e4459f41d46d16d973668d694715d36b63676
+      migration_control_plane_commit: 4fd0e6eff5fd17399573132430d13c7e34626b98
     binary_problem:
       rows: 17
       variables: 35
@@ -75,8 +79,7 @@ public_surface:
     - Ceres 2.2
   native_modules:
     - epcsaft_regression._native
-  installed_native_targets: 1
-  optional_non_installed_preflight_targets: 1
+  native_targets: 1
   provider_transport:
     capsule: epcsaft.native_sdk.v1
     entry: evaluate_pure_phase_parameters
@@ -138,24 +141,24 @@ candidate_artifact:
     authority_effect: none
 
 manifest:
-  tracked_files_after_next_slice_preflight: 43
+  tracked_files_after_evidence_minimality_correction: 41
   production_python_files: 3
   native_source_files: 5
   installed_data_files: 2
   package_test_files: 3
-  preflight_source_files: 2
-  preflight_input_data_files: 1
-  preflight_evidence_files: 1
+  retained_binary_input_evidence_files: 1
+  retained_binary_result_evidence_files: 1
   ide_project_files: 7
   physical_production_lines: 2673
   physical_package_test_lines: 725
   tracked_generated_evidence_files_after_binary_preflight: 3
   generated_file_policy: >-
     The accepted methane and local ethane fit receipts bind deterministic
-    evidence to explicit artifacts. The blocked binary preflight receipt binds
-    its exact retained provider artifact, input CSV, non-installed executable,
-    and frozen failed gate. Build trees, caches, temporary replay receipts, and
-    wheels remain outside the repository.
+    evidence to explicit artifacts. The compact blocked binary receipt retains
+    the exact rejected result and its immutable Regression/Migration provenance;
+    its removed executable owners remain available only from Git history. Build
+    trees, caches, temporary replay receipts, and wheels remain outside the
+    repository.
   oversized_files:
     - path: src/epcsaft_regression/native/pure_saturation_fit.cpp
       physical_lines: 920

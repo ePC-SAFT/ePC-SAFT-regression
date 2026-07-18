@@ -1,7 +1,7 @@
 {
   "authority_effect": "none",
   "blocking_gate": {
-    "interpretation": "the frozen fixed-composition lifted-volume fit cannot satisfy the approved physical closure gate",
+    "interpretation": "the three declared converged equal-weight starts did not meet the approved 1e-8 pressure-closure gate",
     "name": "scaled_pressure_closure_le_1e-8",
     "observed": 0.022691483584976503,
     "threshold": 1e-08,
@@ -60,7 +60,7 @@
       "representative_row_id": "may2015-ch4-c2h6-001"
     }
   },
-  "claim": "installed-artifact derivative and in-sample numerical preflight feasibility only",
+  "claim": "the three declared converged equal-weight starts did not meet the 1e-8 pressure-closure gate; no global infeasibility or model/data incompatibility claim",
   "confirmation": [
     {
       "scaled_kij_delta_from_primary": 2.255772852538529e-06,
@@ -87,6 +87,7 @@
     "native_module_sha256": "2e9596fac81a52f13075be13fd203232f371104e4d565472e481c9b35feca679",
     "native_source_sha256": "add2e273861fbe7f961b6d15d0104856b369af6c22361aff95790924229b4fd7",
     "public_api": false,
+    "retention": "hashes identify the rejected alternative at the provenance commit; executable owners are removed from clean Regression HEAD",
     "runner_sha256": "857ae3325d52fb71a9f1ae9e2a8411c7fb6c2a1a90e5174a55f9e8a28407f90b"
   },
   "predictive_status": "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF",
@@ -145,6 +146,12 @@
     "variable_count": 35,
     "variables": "[z_kij, u_L_1, u_V_1, ..., u_L_17, u_V_17]"
   },
+  "provenance": {
+    "migration_control_plane_commit": "4fd0e6eff5fd17399573132430d13c7e34626b98",
+    "rejected_alternative_receipt_subject_sha256": "d51c9f0713b6a7355be719b6843e4459f41d46d16d973668d694715d36b63676",
+    "rejected_alternative_regression_commit": "47a2a8d9579a01347df7ccaa977337ad7d4047af",
+    "retention": "compact evidence only; replay harness removed from clean Regression HEAD"
+  },
   "provider": {
     "callback_coordinates": [
       "n_methane_mol",
@@ -171,7 +178,7 @@
     "wheel_sha256": "95d2292b052ab74657931f2dec97c3ea4160d9b17812956515c7195a853e6c5b"
   },
   "receipt_id": "binary-kij-all-may2015-installed-artifact-preflight-v1",
-  "receipt_payload_sha256": "d51c9f0713b6a7355be719b6843e4459f41d46d16d973668d694715d36b63676",
+  "receipt_payload_sha256": "f9033e6d1b00b0bfc11b421e6ef1e388db714d95431618b981d294d11f728d62",
   "solves": [
     {
       "complete_finite_jacobian": true,

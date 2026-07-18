@@ -9,12 +9,10 @@ provider-catalog parameter, promotion, or predictive claim.
 
 ## Checkpoint order and readiness
 
-Checkpoint A extends the existing pure-saturation engine to propane. Runtime
-work remains at
-`READY_WAITING_PROPANE_PRIMARY_SOURCE_PACKET` until validation commits its new
-direct-experimental primary-source packet. Validation commit `267f853` retains
-NIST WebBook reference-EOS calculations, so it does not meet this gate. No lab
-file can substitute for experimental source evidence.
+Checkpoint A extends the existing pure-saturation engine to propane.
+Validation's direct-experimental source packet is accepted at
+`7e51590757f1cb85f51df98e9fe1f88cd4255a88`. This evidence correction does not
+start propane runtime work.
 
 Checkpoint B fits one constant methane/ethane `kij`. The manager-retained
 provider subject is commit
@@ -24,10 +22,11 @@ provider subject is commit
 and installed public-header SHA-256
 `6f3a186bf5359f32449a31c544e8b8525be6c594804151d3e74a74e411ded8f4`.
 The exact installed artifact passes the derivative and numerical feasibility
-checks below, but runtime work is `BLOCKED_FROZEN_PRESSURE_CLOSURE`: the
-approved fixed-composition formulation misses its `1e-8` physical closure
-gate. The preflight is a non-installed evidence target, not a package API or
-runtime implementation.
+checks below, but runtime work is `BLOCKED_FROZEN_PRESSURE_CLOSURE`: the three
+declared converged equal-weight starts did not meet the `1e-8` physical
+pressure-closure gate. This result does not establish global infeasibility or
+model/data incompatibility. Clean Regression HEAD retains no binary executable
+target, package API, or runtime implementation.
 
 ## Frozen source and model identity
 
@@ -189,35 +188,24 @@ approved.
 
 ## Installed-artifact preflight result
 
-The non-installed preflight consumed the exact retained wheel and installed
-header, the audited CSV above, and no sibling provider source. Its deterministic
-receipt is `evidence/binary-kij-preflight.json` (subject SHA-256
-`d51c9f0713b6a7355be719b6843e4459f41d46d16d973668d694715d36b63676`, file
-SHA-256
-`27c7eab578290a791f47a4aabd16d4a4b95949d13a6b6b022d482c5130309f28`).
+The preflight consumed the retained installed wheel/header and audited CSV,
+with no sibling provider source. Provider derivative checks, the exact
+`68 x 35` Jacobian check, rank 35, projected parameter rank 1, a finite
+non-bound fitted `kij`, and confirmation from starts `-0.05` and `+0.05`
+passed. The three declared converged equal-weight starts did not meet the
+`1e-8` pressure-closure gate. The primary start reached
+`0.022691483584976503` at row `may2015-ch4-c2h6-002`; no weight, tolerance,
+bounds, variable, row, provider binding, or formulation was changed.
 
-Provider value/gradient/Hessian directional checks pass, including the active
-`kij` coordinate. The exact scaled residual Jacobian directional check has
-maximum absolute error `3.2377076436551633e-9` and scaled error
-`0.012687348470964473`. The primary solve converges in seven iterations to
-`kij = -0.008430339623289762`, away from both declared bounds. Its complete
-scaled Jacobian has rank 35, condition number `1345.943122509698`, and rank
-threshold `3.814411826697633e-13`; the projected parameter singular value is
-`0.01886370066465226` and its rank is 1.
-
-The starts at `-0.05` and `+0.05` converge to `-0.008430317065561237` and
-`-0.00843032253373879`. Their scaled parameter deltas from the primary result
-are `2.255772852538529e-6` and `1.7089550972265721e-6`; symmetric relative
-cost deltas are `6.045202596244109e-11` and `7.31892665322379e-11`.
-
-Solver convergence and numerical confirmation therefore pass. Physical
-acceptance does not: the maximum relative pressure closure is
-`0.022691483584976503`, not `<= 1e-8`. The worst row is
-`may2015-ch4-c2h6-002`, with liquid and vapor relative pressure closures
-`0.003910995749513778` and `-0.022691483584976503`, methane and ethane
-`mu/RT` equality residuals `0.014205213221523572` and
-`-0.06950599355260767`. No tolerance, residual weight, variable, or target was
-changed after observing this result.
+The compact retained receipt is `evidence/binary-kij-preflight.json`. The
+rejected executable alternative and its original receipt subject remain
+immutable provenance at Regression
+`47a2a8d9579a01347df7ccaa977337ad7d4047af`, subject
+`d51c9f0713b6a7355be719b6843e4459f41d46d16d973668d694715d36b63676`,
+and Migration `4fd0e6eff5fd17399573132430d13c7e34626b98`. Clean HEAD retains no
+replay harness. The corrected retained receipt subject and file SHA-256 are
+`f9033e6d1b00b0bfc11b421e6ef1e388db714d95431618b981d294d11f728d62`
+and `c734bb9f56768f89a710575d58c45b460543c0828e913c5ea5372603c768ff78`.
 
 ## Explicit exclusions
 

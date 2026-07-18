@@ -42,14 +42,18 @@ hydrocarbon program with propane followed by one constant methane/ethane
 `kij`. Its regression equations, numerical contract, and deferred readiness
 gates are owned only by
 `docs/science/neutral-hydrocarbon-next-slice.md`. No packaged planning
-framework or runtime API exists. Propane runtime remains dependency-gated at
-`READY_WAITING_PROPANE_PRIMARY_SOURCE_PACKET`; the retained NIST packet is
-reference-EOS output rather than direct experimental evidence. The exact
-manager-retained active-`kij` wheel/header now has a non-installed numerical
-preflight. Derivatives, the `68 x 35` Jacobian, rank 35, projected parameter
-rank 1, a finite non-bound `kij`, and both perturbed starts pass, while the
-frozen physical pressure-closure gate is blocked: row
-`may2015-ch4-c2h6-002` reaches `2.2691483584976503e-2` versus `1e-8`.
-Evidence is in `evidence/binary-kij-preflight.json`; all 17 rows are training
-data, so it supports only in-sample preflight feasibility. This preparation
-changes no public surface or authority.
+framework, binary executable owner, or runtime API exists. Validation's direct-
+experimental propane packet is accepted at `7e51590757f1cb85f51df98e9fe1f88cd4255a88`;
+propane runtime work is not part of this correction.
+
+For binary `kij`, provider derivatives, the `68 x 35` Jacobian, rank 35,
+projected parameter rank 1, a finite non-bound result, and both perturbed starts
+passed. The three declared converged equal-weight starts did not meet the
+`1e-8` pressure-closure gate: row `may2015-ch4-c2h6-002` reached
+`2.2691483584976503e-2`. This does not establish global infeasibility or
+model/data incompatibility. Compact evidence remains at
+`evidence/binary-kij-preflight.json`; the rejected executable alternative is
+immutable at Regression `47a2a8d9579a01347df7ccaa977337ad7d4047af`, receipt
+subject `d51c9f0713b6a7355be719b6843e4459f41d46d16d973668d694715d36b63676`,
+and Migration `4fd0e6eff5fd17399573132430d13c7e34626b98`. All 17 rows are
+training data. This correction changes no public surface or authority.
