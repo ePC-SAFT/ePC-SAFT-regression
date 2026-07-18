@@ -36,3 +36,12 @@ with no added runtime test seam.
 `candidate_capability: pure-ethane-saturation-parameter-candidate-v1`
 
 `candidate_status: draft-promotion-packet-pending-exact-migration-approval`
+
+The approved next regression direction is one authority-neutral neutral-
+hydrocarbon program with propane followed by one constant methane/ethane
+`kij`. Its private immutable contract is frozen in
+`src/epcsaft_regression/_next_slice.py` and
+`docs/science/neutral-hydrocarbon-next-slice.md`. Runtime implementation is
+dependency-gated at `READY_WAITING_PROPANE_PRIMARY_SOURCE_PACKET` and
+`READY_WAITING_PROVIDER_ACTIVE_KIJ_CALLBACK`; this preparation changes no
+public surface or authority.

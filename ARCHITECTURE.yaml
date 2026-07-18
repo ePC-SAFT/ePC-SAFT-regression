@@ -28,6 +28,24 @@ owners:
   residual_jacobian_and_ceres: src/epcsaft_regression/native/pure_saturation_fit.cpp
   provider_capsule_gate: src/epcsaft_regression/native/module.cpp
   component_receipt_runner: tools/run_candidate.py
+  private_next_slice_contract: src/epcsaft_regression/_next_slice.py
+
+preparatory_contracts:
+  neutral_hydrocarbon_next_slice_v1:
+    status: dependency-gated-authority-neutral
+    public_exports: []
+    checkpoint_order: [propane-pure-saturation, methane-ethane-constant-kij]
+    propane_gate: READY_WAITING_PROPANE_PRIMARY_SOURCE_PACKET
+    binary_gate: READY_WAITING_PROVIDER_ACTIVE_KIJ_CALLBACK
+    binary_problem:
+      rows: 17
+      variables: 35
+      residuals: 68
+      provider_coordinate_order: [methane_amount_mol, ethane_amount_mol, volume_m3, kij]
+      derivative_order: 2
+      required_full_rank: 35
+      required_projected_parameter_rank: 1
+    authority_effect: none
 
 public_surface:
   exports:
@@ -112,14 +130,14 @@ candidate_artifact:
     authority_effect: none
 
 manifest:
-  tracked_files_after_candidate_receipt: 38
-  production_python_files: 3
+  tracked_files_after_next_slice_preparation: 41
+  production_python_files: 4
   native_source_files: 5
   installed_data_files: 2
-  package_test_files: 3
+  package_test_files: 4
   ide_project_files: 7
-  physical_production_lines: 2673
-  physical_package_test_lines: 725
+  physical_production_lines: 2929
+  physical_package_test_lines: 831
   tracked_generated_evidence_files_after_candidate_receipt: 2
   generated_file_policy: >-
     The accepted methane and local ethane fit receipts bind deterministic
@@ -150,7 +168,7 @@ evidence_limits:
   uncertainty: not-claimed
 
 excluded:
-  - binary interaction regression
+  - runtime binary interaction regression; the private dependency-gated contract grants no capability
   - association regression
   - electrolyte regression
   - reactive regression
