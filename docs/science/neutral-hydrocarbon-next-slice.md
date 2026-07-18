@@ -11,14 +11,17 @@ provider-catalog parameter, promotion, or predictive claim.
 Checkpoint A extends the existing pure-saturation engine to propane. Runtime
 work remains at
 `READY_WAITING_PROPANE_PRIMARY_SOURCE_PACKET` until validation commits its new
-primary-source packet and supplies the exact validation commit, packet
-SHA-256, and retained CSV SHA-256. No lab file can fill those fields.
+direct-experimental primary-source packet. Validation commit `267f853` retains
+NIST WebBook reference-EOS calculations, so it does not meet this gate. No lab
+file can substitute for experimental source evidence.
 
 Checkpoint B fits one constant methane/ethane `kij`. Runtime work remains at
-`READY_WAITING_PROVIDER_ACTIVE_KIJ_CALLBACK` until an installed provider wheel
-supplies the active parameter coordinate described below. Required evidence is
-the provider implementation commit, installed public-header SHA-256, and wheel
-SHA-256.
+`READY_WAITING_PROVIDER_CORRECTION`. Provider commits `00bca67` and `a45c0cd`
+show the separately appended active-`kij` callback shape described below, but
+they remain under review and do not have a stable corrected wheel. The exact
+corrected implementation commit, installed public-header SHA-256, and wheel
+SHA-256 will be recorded only when that artifact exists. The executable
+preflight does not accept unchecked identity strings as readiness evidence.
 
 ## Frozen source and model identity
 
@@ -135,7 +138,10 @@ Ceres residual Jacobian from a second-order CppAD provider tensor. No third
 derivative, density root, implicit branch derivative, equilibrium dependency,
 or numerical production derivative is consumed.
 
-## Result and acceptance diagnostics
+## Future result and acceptance diagnostics
+
+These are the documented requirements for the later binary implementation;
+no forward result or diagnostic types are packaged by the current preparation.
 
 The private immutable result contract retains exact source/provider hashes;
 separate solver, numerical, and physical statuses; termination and usability;
