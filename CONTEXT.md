@@ -42,9 +42,14 @@ hydrocarbon program with propane followed by one constant methane/ethane
 `kij`. Its regression equations, numerical contract, and deferred readiness
 gates are owned only by
 `docs/science/neutral-hydrocarbon-next-slice.md`. No packaged planning
-preflight exists. Runtime implementation is dependency-gated at
-`READY_WAITING_PROPANE_PRIMARY_SOURCE_PACKET` and
-`READY_WAITING_PROVIDER_CORRECTION`. The retained propane NIST packet is
-reference-EOS output rather than direct experimental evidence, and the
-under-review active-`kij` header has no stable corrected wheel. This
-preparation changes no public surface or authority.
+framework or runtime API exists. Propane runtime remains dependency-gated at
+`READY_WAITING_PROPANE_PRIMARY_SOURCE_PACKET`; the retained NIST packet is
+reference-EOS output rather than direct experimental evidence. The exact
+manager-retained active-`kij` wheel/header now has a non-installed numerical
+preflight. Derivatives, the `68 x 35` Jacobian, rank 35, projected parameter
+rank 1, a finite non-bound `kij`, and both perturbed starts pass, while the
+frozen physical pressure-closure gate is blocked: row
+`may2015-ch4-c2h6-002` reaches `2.2691483584976503e-2` versus `1e-8`.
+Evidence is in `evidence/binary-kij-preflight.json`; all 17 rows are training
+data, so it supports only in-sample preflight feasibility. This preparation
+changes no public surface or authority.

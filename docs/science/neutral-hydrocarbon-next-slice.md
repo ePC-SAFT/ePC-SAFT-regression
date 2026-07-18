@@ -1,6 +1,7 @@
 # Neutral-Hydrocarbon Next-Slice Contract
 
-Status: private dependency-gated preparation; authority effect none.
+Status: binary preflight blocked by frozen pressure closure; authority effect
+none.
 
 This record freezes the smallest regression-owned contract for two ordered
 checkpoints. It adds no runtime fit, public export, provider equation,
@@ -15,15 +16,18 @@ direct-experimental primary-source packet. Validation commit `267f853` retains
 NIST WebBook reference-EOS calculations, so it does not meet this gate. No lab
 file can substitute for experimental source evidence.
 
-Checkpoint B fits one constant methane/ethane `kij`. Runtime work remains at
-`READY_WAITING_PROVIDER_CORRECTION`. Provider commits `00bca67` and `a45c0cd`
-show the separately appended active-`kij` callback shape described below, but
-they remain under review and do not have a stable corrected wheel. The exact
-corrected implementation commit, installed public-header SHA-256, and wheel
-SHA-256 will be recorded only when that artifact exists. No executable
-readiness preflight is packaged during planning. The later binary numerical
-preflight must consume the exact installed artifact directly and remain
-implementation evidence.
+Checkpoint B fits one constant methane/ethane `kij`. The manager-retained
+provider subject is commit
+`45d5764f61729d387100348a8ff91792f6e0a395`, tree
+`271d4848faf73afd4cf0683efe5c855053df7d01`, wheel SHA-256
+`95d2292b052ab74657931f2dec97c3ea4160d9b17812956515c7195a853e6c5b`,
+and installed public-header SHA-256
+`6f3a186bf5359f32449a31c544e8b8525be6c594804151d3e74a74e411ded8f4`.
+The exact installed artifact passes the derivative and numerical feasibility
+checks below, but runtime work is `BLOCKED_FROZEN_PRESSURE_CLOSURE`: the
+approved fixed-composition formulation misses its `1e-8` physical closure
+gate. The preflight is a non-installed evidence target, not a package API or
+runtime implementation.
 
 ## Frozen source and model identity
 
@@ -182,6 +186,38 @@ and volumes, provider-domain success, ordered separated phases, stable phase
 slopes, and scaled pressure closure `<= 1e-8`. The fitted chemical-potential
 residuals remain reported calibration errors because no accuracy cutoff was
 approved.
+
+## Installed-artifact preflight result
+
+The non-installed preflight consumed the exact retained wheel and installed
+header, the audited CSV above, and no sibling provider source. Its deterministic
+receipt is `evidence/binary-kij-preflight.json` (subject SHA-256
+`d51c9f0713b6a7355be719b6843e4459f41d46d16d973668d694715d36b63676`, file
+SHA-256
+`27c7eab578290a791f47a4aabd16d4a4b95949d13a6b6b022d482c5130309f28`).
+
+Provider value/gradient/Hessian directional checks pass, including the active
+`kij` coordinate. The exact scaled residual Jacobian directional check has
+maximum absolute error `3.2377076436551633e-9` and scaled error
+`0.012687348470964473`. The primary solve converges in seven iterations to
+`kij = -0.008430339623289762`, away from both declared bounds. Its complete
+scaled Jacobian has rank 35, condition number `1345.943122509698`, and rank
+threshold `3.814411826697633e-13`; the projected parameter singular value is
+`0.01886370066465226` and its rank is 1.
+
+The starts at `-0.05` and `+0.05` converge to `-0.008430317065561237` and
+`-0.00843032253373879`. Their scaled parameter deltas from the primary result
+are `2.255772852538529e-6` and `1.7089550972265721e-6`; symmetric relative
+cost deltas are `6.045202596244109e-11` and `7.31892665322379e-11`.
+
+Solver convergence and numerical confirmation therefore pass. Physical
+acceptance does not: the maximum relative pressure closure is
+`0.022691483584976503`, not `<= 1e-8`. The worst row is
+`may2015-ch4-c2h6-002`, with liquid and vapor relative pressure closures
+`0.003910995749513778` and `-0.022691483584976503`, methane and ethane
+`mu/RT` equality residuals `0.014205213221523572` and
+`-0.06950599355260767`. No tolerance, residual weight, variable, or target was
+changed after observing this result.
 
 ## Explicit exclusions
 
