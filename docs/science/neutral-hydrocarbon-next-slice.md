@@ -20,8 +20,10 @@ Checkpoint B fits one constant methane/ethane `kij`. Runtime work remains at
 show the separately appended active-`kij` callback shape described below, but
 they remain under review and do not have a stable corrected wheel. The exact
 corrected implementation commit, installed public-header SHA-256, and wheel
-SHA-256 will be recorded only when that artifact exists. The executable
-preflight does not accept unchecked identity strings as readiness evidence.
+SHA-256 will be recorded only when that artifact exists. No executable
+readiness preflight is packaged during planning. The later binary numerical
+preflight must consume the exact installed artifact directly and remain
+implementation evidence.
 
 ## Frozen source and model identity
 

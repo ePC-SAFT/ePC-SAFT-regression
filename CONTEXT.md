@@ -39,10 +39,10 @@ with no added runtime test seam.
 
 The approved next regression direction is one authority-neutral neutral-
 hydrocarbon program with propane followed by one constant methane/ethane
-`kij`. Its regression equations and numerical contract are frozen in
-`docs/science/neutral-hydrocarbon-next-slice.md`; the packaged private
-`src/epcsaft_regression/_next_slice.py` owns only the cheap provider-header
-shape check. Runtime implementation is dependency-gated at
+`kij`. Its regression equations, numerical contract, and deferred readiness
+gates are owned only by
+`docs/science/neutral-hydrocarbon-next-slice.md`. No packaged planning
+preflight exists. Runtime implementation is dependency-gated at
 `READY_WAITING_PROPANE_PRIMARY_SOURCE_PACKET` and
 `READY_WAITING_PROVIDER_CORRECTION`. The retained propane NIST packet is
 reference-EOS output rather than direct experimental evidence, and the

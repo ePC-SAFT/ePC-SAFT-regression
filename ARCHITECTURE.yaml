@@ -28,7 +28,6 @@ owners:
   residual_jacobian_and_ceres: src/epcsaft_regression/native/pure_saturation_fit.cpp
   provider_capsule_gate: src/epcsaft_regression/native/module.cpp
   component_receipt_runner: tools/run_candidate.py
-  private_next_slice_header_preflight: src/epcsaft_regression/_next_slice.py
   next_slice_equations_and_numerical_contract: docs/science/neutral-hydrocarbon-next-slice.md
 
 preparatory_contracts:
@@ -131,14 +130,14 @@ candidate_artifact:
     authority_effect: none
 
 manifest:
-  tracked_files_after_next_slice_preparation: 41
-  production_python_files: 4
+  tracked_files_after_next_slice_preparation: 39
+  production_python_files: 3
   native_source_files: 5
   installed_data_files: 2
-  package_test_files: 4
+  package_test_files: 3
   ide_project_files: 7
-  physical_production_lines: 2767
-  physical_package_test_lines: 778
+  physical_production_lines: 2673
+  physical_package_test_lines: 725
   tracked_generated_evidence_files_after_candidate_receipt: 2
   generated_file_policy: >-
     The accepted methane and local ethane fit receipts bind deterministic
