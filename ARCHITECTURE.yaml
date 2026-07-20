@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-propane-checkpoint-a-blocked-resolution-design
+status: authoritative-methane-and-ethane-with-deferred-propane-and-binary-provenance
 
 authority:
   accepted_capabilities:
@@ -11,7 +11,16 @@ authority:
     - promotion-0023-regression-pure-saturation-ethane-v1
   promotion_status: accepted
   ethane_publication_state: state-0025-regression-ethane-publication
-  local_candidate: pure-propane-saturation-parameter-candidate-v1-blocked
+  local_candidate: none-active
+  deferred_nonproduction_evidence:
+    propane_checkpoint_a:
+      regression_subject: 33228253383ab8755384170b3caac7b38733e157
+      receipt_subject_sha256: c059e5381a3fbf0cf00a43aaa0cc28b67c074e325f1a33066b6937c16cc0a761
+      resolution_protocol_commit: f8eee367fb54295c90cd9d5e7d8e8a73e4b8a1ae
+      resolution_protocol_tree: e60cb9262eaef886479beef842549650d61cdf10
+    methane_ethane_constant_kij:
+      rejected_alternative_commit: 47a2a8d9579a01347df7ccaa977337ad7d4047af
+      compact_record_commit: e01a272e7d11e39db3cdc4105e0c460aceca637d
   checkpoint_a_authority_effect: none
   predictive_validation: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
   fitted_parameter_admission: none
@@ -37,11 +46,12 @@ owners:
 
 preparatory_contracts:
   neutral_hydrocarbon_next_slice_v1:
-    status: binary-preflight-blocked-authority-neutral
+    status: deferred-nonproduction-provenance-under-d023
     public_exports: []
-    checkpoint_order: [propane-pure-saturation, methane-ethane-constant-kij]
-    propane_gate: BLOCKED_CHECKPOINT_A_120_K_PRESSURE_CLOSURE
-    binary_gate: BLOCKED_FROZEN_PRESSURE_CLOSURE
+    historical_checkpoint_order: [propane-pure-saturation, methane-ethane-constant-kij]
+    retained_propane_status: BLOCKED_CHECKPOINT_A_120_K_PRESSURE_CLOSURE
+    retained_binary_status: BLOCKED_FROZEN_PRESSURE_CLOSURE
+    active_migration_blocker: false
     binary_preflight_evidence: evidence/binary-kij-preflight.json
     binary_preflight_claim: >-
       The three declared converged equal-weight starts did not meet the 1e-8
@@ -62,7 +72,7 @@ preparatory_contracts:
       observed_max_pressure_relative_closure: 0.022691483584976503
       required_max_pressure_relative_closure: 1.0e-8
     pressure_resolution_protocol:
-      status: design-only-waiting-provider-oracle-and-validation-campaign
+      status: provenance-only-no-active-migration-effect
       formula: abs(P_phase - P_report) <= atol_resolution + 1.0e-8 * abs(P_observed)
       relative_term: 1.0e-8
       observed_pressure_meaning: magnitude scale only; not experimental uncertainty
@@ -82,12 +92,34 @@ preparatory_contracts:
       binary_role: >-
         All 17 rows at the three frozen starts are challenge evidence only;
         they cannot derive or widen the pure candidate.
-      provider_oracle: missing-test-only-pure-pressure-resolution-oracle
-      validation_campaign: not-run
+      provider_oracle: not-produced-and-not-active-under-d023
+      validation_campaign: not-run-and-not-active-under-d023
       runtime_effect: none
       receipt_effect: none
       authority_effect: none
     authority_effect: none
+
+active_regression_objective:
+  status: WAITING_FOR_FIGIEL_SOURCE_AND_PROVIDER_DESIGN
+  migration_decision: D-023
+  migration_control_plane_commit: fab44bd6d795afd923ffe85cc8393e7bfe576c65
+  migration_control_plane_tree: 6588d2576bab575eca0aeb56db5f468bfa43d1f1
+  scope: current-catalog-ion-born-diameter-ceres-tracer
+  upstream_prerequisites:
+    validation: stable-reviewed-figiel-main-paper-and-official-si-target-packet
+    provider: permanent-lab-approved-model-bound-active-born-exact-derivative-design
+  regression_design_readiness_gates:
+    - source-and-specification-contract
+    - parameter-bounds-and-residual-variable-scaling
+    - exact-residual-jacobian-from-approved-provider-seam
+    - rank-and-conditioning-gates
+    - declared-start-and-perturbed-start-confirmation
+    - separate-solver-numerical-and-physical-statuses
+    - installed-artifact-validation-plan
+  residual_equations: not-designed-pending-upstream-contracts
+  provider_api: not-assumed
+  public_surface_effect: none
+  authority_effect: none
 
 public_surface:
   exports:
@@ -157,10 +189,10 @@ parameter_family_readiness:
     installed-artifact validation plan, and separately approved scope.
   pure_m_sigma_epsilon_over_k:
     methane_ethane: accepted-exact-workflows
-    propane: NOT_READY_PENDING_RESOLUTION_ORACLE_VALIDATION_AND_READJUDICATION
+    propane: NOT_READY_DEFERRED_NONPRODUCTION_UNDER_D023
   constant_methane_ethane_kij:
-    status: NOT_READY_PENDING_CHECKPOINT_A_ORACLE_PRESSURE_AND_CHEMICAL_POTENTIAL_CRITERION
-    design_authority: D-022
+    status: NOT_READY_DEFERRED_NONPRODUCTION_UNDER_D023
+    retained_evidence_authority: D-022
   association_parameters: NOT_READY
   polar_parameters: NOT_READY
   electrolyte_born_parameters: NOT_READY
@@ -280,6 +312,7 @@ evidence_limits:
     callback replay is bit-identical and the continuous correction is below
     one local volume ULP, but no mixed-criterion atol is selected
   pressure_resolution_oracle: missing for the finite pure-parameter replay matrix
+  pressure_resolution_protocol_effect: provenance-only-under-d023
   ethane_stress_100_k: reporting closure failed at the 1 Pa pressure floor
   reporting_jacobian_directional_check: absent; no runtime seam added
   held_out_accuracy_cutoff: none-approved

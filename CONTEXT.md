@@ -1,8 +1,9 @@
 # Regression Repository Context
 
 This repository owns one strict pure-saturation regression workflow. Methane
-and ethane are accepted; propane Checkpoint A is an authority-neutral blocked
-local candidate.
+and ethane are accepted. The propane Checkpoint A and constant methane/ethane
+`kij` subjects are retained authority-neutral, non-production provenance; D-023
+removes both from the active migration sequence.
 
 `governance_doctrine_revision: 2`
 
@@ -34,22 +35,25 @@ with no added runtime test seam.
 
 `runtime_source_of_truth: accepted-methane-and-ethane-workflows`
 
-`candidate_capability: pure-propane-saturation-parameter-candidate-v1`
+`deferred_propane_evidence: pure-propane-saturation-parameter-candidate-v1`
 
-`candidate_status: BLOCKED_CHECKPOINT_A_120_K_PRESSURE_CLOSURE`
+`deferred_propane_status: BLOCKED_CHECKPOINT_A_120_K_PRESSURE_CLOSURE`
 
-The approved next regression direction is one authority-neutral neutral-
-hydrocarbon program with propane followed by one constant methane/ethane
-`kij`. Its regression equations, numerical contract, and deferred readiness
-gates are owned only by
-`docs/science/neutral-hydrocarbon-next-slice.md`. No packaged planning
+`active_regression_status: WAITING_FOR_FIGIEL_SOURCE_AND_PROVIDER_DESIGN`
+
+Migration D-023 at control-plane commit
+`fab44bd6d795afd923ffe85cc8393e7bfe576c65` supersedes D-022's active order
+without rewriting its evidence. The frozen neutral-hydrocarbon equations and
+numerical contract remain in
+`docs/science/neutral-hydrocarbon-next-slice.md`; no packaged planning
 framework, binary executable owner, or runtime API exists. Validation's direct-
-experimental propane packet is accepted at
-`7e51590757f1cb85f51df98e9fe1f88cd4255a88`; Migration coordination commit
-`76f9946a99ac0e000ecafd5644d4ed227f469b5e` authorizes local Checkpoint A
-implementation through the existing pure-saturation workflow. It transfers no
-authority and does not resume the blocked binary formulation.
+experimental propane packet remains accepted source evidence at
+`7e51590757f1cb85f51df98e9fe1f88cd4255a88`, but it no longer authorizes active
+Checkpoint A work.
 
+The exact blocked propane evidence subject is Regression
+`33228253383ab8755384170b3caac7b38733e157`; its receipt subject is
+`c059e5381a3fbf0cf00a43aaa0cc28b67c074e325f1a33066b6937c16cc0a761`.
 Checkpoint A implementation commit
 `aab87ebd4a40cb29f21486e06687c10eb1e44624` (tree
 `462cda550cf5461e4b13cc7e40630708dd336bd7`) retains one wheel with SHA-256
@@ -70,16 +74,16 @@ and file SHA-256
 No source uncertainty is treated as an acceptance cutoff, and predictive
 status remains `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
-Permanent-lab verdict `CORRECTION_DESIGN_JUSTIFIED` authorizes only a design
-and evidence protocol for
+Permanent-lab verdict `CORRECTION_DESIGN_JUSTIFIED` produced a design and
+evidence protocol for
 `abs(P_phase - P_report) <= atol_resolution + 1e-8*abs(P_observed)`.
 The relative term is unchanged, observed pressure remains only a magnitude
 scale, and no value of `atol_resolution` is selected. The derivation and replay
-protocol is frozen in the two existing science owners. Runtime, result types,
-blocked receipts, artifacts, and authority remain unchanged pending a
-Provider-owned independent high-precision pressure oracle, a Validation-owned
-installed-artifact campaign, permanent-lab re-adjudication, and explicit
-approval of any numeric value.
+protocol is frozen in the two existing science owners at documentation commit
+`f8eee367fb54295c90cd9d5e7d8e8a73e4b8a1ae`, tree
+`e60cb9262eaef886479beef842549650d61cdf10`. Under D-023 it is provenance only:
+no numeric selection, runtime correction, re-adjudication, or active blocker
+follows from it.
 
 For binary `kij`, provider derivatives, the `68 x 35` Jacobian, rank 35,
 projected parameter rank 1, a finite non-bound result, and both perturbed starts
@@ -92,5 +96,18 @@ checkpoint ready. Compact evidence remains at
 `evidence/binary-kij-preflight.json`; the rejected executable alternative is
 immutable at Regression `47a2a8d9579a01347df7ccaa977337ad7d4047af`, receipt
 subject `d51c9f0713b6a7355be719b6843e4459f41d46d16d973668d694715d36b63676`,
-and Migration `4fd0e6eff5fd17399573132430d13c7e34626b98`. All 17 rows are
-training data. This correction changes no public surface or authority.
+compact-record head `e01a272e7d11e39db3cdc4105e0c460aceca637d`, and Migration
+`4fd0e6eff5fd17399573132430d13c7e34626b98`. All 17 rows are training data.
+The formulation is deferred and non-production; it is not an active blocker.
+
+The next active objective is a source-faithful Figiel, Yu, and Held 2025
+current-catalog ion Born-diameter tracer. Regression may design its Ceres
+formulation only after Validation returns a stable reviewed target packet from
+the main paper and official supporting information and Provider returns a
+permanent-lab-approved, model-bound active-Born exact-derivative seam. The
+later bounded design must then freeze the source/specification contract,
+bounds and scaling, exact residual Jacobian, rank and conditioning gates,
+perturbed-start confirmation, separate solver/numerical/physical statuses, and
+installed-artifact validation plan. Until both upstream designs exist,
+`electrolyte_born_parameters` is `NOT_READY`; no target equation or provider
+API is inferred here.

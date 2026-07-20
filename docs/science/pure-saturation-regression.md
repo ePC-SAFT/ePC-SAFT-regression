@@ -2,8 +2,10 @@
 
 The package fits segment count, segment diameter, and dispersion energy for
 one closed pure-component record per call. Methane and ethane are accepted
-reproducible workflows. Propane Checkpoint A is an authority-neutral local
-candidate. The installed `epcsaft` provider owns Helmholtz energy and nonlinear
+reproducible workflows. Propane Checkpoint A is retained authority-neutral,
+non-production evidence. Migration D-023 closes its 120 K admission effort as
+an active gate; the pressure-resolution protocol below remains provenance only.
+The installed `epcsaft` provider owns Helmholtz energy and nonlinear
 derivatives.
 
 ## Source records

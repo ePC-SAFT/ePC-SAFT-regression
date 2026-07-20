@@ -1,23 +1,24 @@
 # Neutral-Hydrocarbon Next-Slice Contract
 
-Status: propane and binary pressure closure blocked; mixed-resolution design
-pending independent Provider/Validation evidence; authority effect none.
+Status: D-023 defers propane and binary as authority-neutral, non-production
+provenance; neither is an active migration blocker. Authority effect none.
 
-This record freezes the smallest regression-owned contract for two ordered
-checkpoints. It adds no runtime fit, public export, provider equation,
-provider-catalog parameter, promotion, or predictive claim.
+This record preserves the smallest regression-owned contract for the two
+historical checkpoints. It adds no runtime fit, public export, provider
+equation, provider-catalog parameter, promotion, or predictive claim.
 
-## Checkpoint order and readiness
+## Deferred checkpoint provenance and active objective
 
-Checkpoint A extends the existing pure-saturation engine to propane.
+Checkpoint A was defined to extend the existing pure-saturation engine to
+propane.
 Validation's direct-experimental source packet is accepted at
 `7e51590757f1cb85f51df98e9fe1f88cd4255a88`. The exact candidate is retained
 as blocked evidence at Regression
 `33228253383ab8755384170b3caac7b38733e157`; the pressure-resolution design
 below changes neither that subject nor its runtime.
 
-Checkpoint B fits one constant methane/ethane `kij`. The manager-retained
-provider subject is commit
+Checkpoint B was defined to fit one constant methane/ethane `kij`. The manager-
+retained provider subject is commit
 `45d5764f61729d387100348a8ff91792f6e0a395`, tree
 `271d4848faf73afd4cf0683efe5c855053df7d01`, wheel SHA-256
 `95d2292b052ab74657931f2dec97c3ea4160d9b17812956515c7195a853e6c5b`,
@@ -29,6 +30,27 @@ declared converged equal-weight starts did not meet the `1e-8` physical
 pressure-closure gate. This result does not establish global infeasibility or
 model/data incompatibility. Clean Regression HEAD retains no binary executable
 target, package API, or runtime implementation.
+
+Migration D-023 supersedes this checkpoint order without rewriting the frozen
+evidence. The active sequence is now Validation's stable Figiel, Yu, and Held
+2025 main-paper and official-SI target packet, Provider's permanent-lab-
+approved model-bound active-Born exact-derivative design for current-catalog
+ions, and only then Regression's bounded Ceres tracer design. Regression status
+is `WAITING_FOR_FIGIEL_SOURCE_AND_PROVIDER_DESIGN`.
+
+That future design is ready for review only after it fixes all of the following
+without guessing a target or provider API:
+
+- the source and specification contract from the stable Validation packet;
+- parameter bounds and residual/variable scaling;
+- the exact residual Jacobian consuming only the approved Provider seam;
+- rank and conditioning gates for the admitted lifted formulation;
+- a declared-start and perturbed-start confirmation design;
+- separate solver, numerical, and physical status semantics; and
+- an exact installed-artifact validation campaign.
+
+No residual equation, target value, active-Born callback shape, or fitted-
+parameter persistence contract is admitted by this status checkpoint.
 
 ## Frozen source and model identity
 
@@ -215,6 +237,8 @@ The canonical formula, candidate-derivation comparison, pure-component replay
 matrix, and status semantics are in
 `docs/science/pure-saturation-regression.md`. This record adds only the binary
 and staged-maturity constraints. No numeric `atol_resolution` is selected.
+Under D-023 this entire protocol is retained provenance, not an active
+Regression, Provider, or Validation prerequisite.
 
 The frozen candidate formula is
 
@@ -363,11 +387,11 @@ provider gates are unchanged. Predictive status remains
 
 | Parameter family | Source-backed target | Exact provider seam | Rank-sufficient formulation | Bounds/scaling/confirmation | Installed-artifact plan | Approved scope | Readiness |
 |---|---|---|---|---|---|---|---|
-| Pure `m`, `sigma`, `epsilon/k` | yes for methane, ethane, propane | yes, five-coordinate Hessian | yes, rank 3 and full lifted system | yes | yes; correction campaign pending for propane | yes, component-specific | `NOT_READY` for propane until resolution re-adjudication; methane/ethane remain accepted |
-| Constant methane/ethane `kij` | yes, all 17 May rows | yes, active-`kij` value/gradient/Hessian | yes, rank 35 and projected rank 1 | yes | design frozen; no runtime artifact | yes under D-022 after Checkpoint A | `NOT_READY` pending Checkpoint A, oracle evidence, pressure closure, and an approved chemical-potential criterion |
+| Pure `m`, `sigma`, `epsilon/k` | yes for methane, ethane, propane | yes, five-coordinate Hessian | yes, rank 3 and full lifted system | yes | retained propane campaign only | yes, component-specific | methane/ethane accepted; propane `NOT_READY`, deferred non-production under D-023 |
+| Constant methane/ethane `kij` | yes, all 17 May rows | yes, active-`kij` value/gradient/Hessian | yes, rank 35 and projected rank 1 | yes | frozen preflight only; no runtime artifact | historical D-022 evidence only | `NOT_READY`, deferred non-production under D-023 |
 | Association parameters | no admitted target | no admitted complete parameter/association-state derivative seam | no | no | no | no | `NOT_READY` |
 | Polar parameters | no admitted target | no admitted polar parameter derivative seam | no | no | no | no | `NOT_READY` |
-| Electrolyte/Born parameters | no admitted target | no admitted parameterized electrolyte/Born seam | no | no | no | no | `NOT_READY` |
+| Current-catalog ion Born diameter | waiting on stable Figiel target packet | waiting on permanent-lab-approved active-Born seam | not designed | not designed | not designed | sequenced by D-023; bounded design not yet admitted | `NOT_READY` |
 | Reactive or temperature-dependent parameters | no admitted target | no admitted exact derivative seam | no | no | no | no | `NOT_READY` |
 
 Uncertainty, global identifiability, provider-catalog persistence, and a

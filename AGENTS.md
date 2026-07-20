@@ -3,7 +3,8 @@
 Repository Profile: scientific-computing
 
 Accepted workflows: pure methane under promotion 0020 and pure ethane under
-promotion 0023/state 0025. Active local candidate: pure propane Checkpoint A.
+promotion 0023/state 0025. No local candidate has production or active-
+migration status.
 
 Before work, read doctrine revision 2 at
 `../ePC-SAFT-organization/GOVERNANCE.md`. Its future published home is
@@ -21,8 +22,13 @@ the production owner of those exact reproducible workflows; state receipt
 acceptance does not admit fitted parameters as predictive or scientific
 authority. Held-out errors remain descriptive because no acceptance cutoff was
 approved. The reporting-block directional Jacobian remains an explicit
-evidence limit; do not add a runtime seam merely to close it. Checkpoint A may
-add only the approved direct-experimental propane slice through the same
-workflow. Do not broaden it to generic, binary, association, electrolyte,
-reactive, uncertainty, or global-identifiability claims. Stress rows cannot
-determine solver or scientific acceptance.
+evidence limit; do not add a runtime seam merely to close it. The blocked
+propane subject and frozen methane/ethane binary preflight are retained only as
+authority-neutral, non-production provenance and are not active blockers.
+Under Migration D-023, the next objective is a source-bound Ceres tracer for
+current-catalog ion Born diameters, but Regression remains
+`WAITING_FOR_FIGIEL_SOURCE_AND_PROVIDER_DESIGN` until Validation freezes the
+exact Figiel target contract and Provider returns a permanent-lab-approved
+active-Born exact-derivative design. Do not guess targets, residuals, bounds,
+or a provider API, and do not broaden this sequence to a generic registry or
+full electrolyte, reactive, uncertainty, or global-identifiability surface.
