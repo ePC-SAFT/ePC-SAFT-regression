@@ -75,6 +75,33 @@ constexpr std::array<double, 10> ethane_liquid_densities{
     523.97698, 496.27145, 465.30887, 429.07617, 382.72712,
 };
 
+constexpr std::array<const char*, 24> propane_row_ids{
+    "glos2004-propane-sat-110-k", "glos2004-propane-sat-120-k",
+    "glos2004-propane-sat-130-k", "glos2004-propane-sat-140-k",
+    "glos2004-propane-sat-150-k", "glos2004-propane-sat-160-k",
+    "glos2004-propane-sat-170-k", "glos2004-propane-sat-180-k",
+    "glos2004-propane-sat-190-k", "glos2004-propane-sat-200-k",
+    "glos2004-propane-sat-210-k", "glos2004-propane-sat-220-k",
+    "glos2004-propane-sat-230-k", "glos2004-propane-sat-240-k",
+    "glos2004-propane-sat-250-k", "glos2004-propane-sat-260-k",
+    "glos2004-propane-sat-270-k", "glos2004-propane-sat-280-k",
+    "glos2004-propane-sat-290-k", "glos2004-propane-sat-300-k",
+    "glos2004-propane-sat-310-k", "glos2004-propane-sat-320-k",
+    "glos2004-propane-sat-330-k", "glos2004-propane-sat-340-k",
+};
+constexpr std::array<double, 24> propane_pressures{
+    0.6, 3.2, 18.0, 78.0, 283.0, 851.0, 2205.0, 5068.0,
+    10547.0, 20193.0, 36032.0, 60574.0, 96775.0, 148000.0,
+    217964.0, 310685.0, 430425.0, 581684.0, 769143.0, 997682.0,
+    1272430.0, 1598870.0, 1983000.0, 2431450.0,
+};
+constexpr std::array<double, 24> propane_liquid_densities{
+    707.968, 697.825, 687.713, 677.601, 667.462, 657.272,
+    647.004, 636.628, 626.123, 615.456, 604.594, 593.499,
+    582.132, 570.444, 558.383, 545.88, 532.853, 519.198,
+    504.796, 489.465, 472.968, 454.951, 434.869, 411.772,
+};
+
 std::vector<std::string> expected_identity(const std::string& component_id) {
     if (component_id == "methane") {
         return {
@@ -130,21 +157,60 @@ std::vector<std::string> expected_identity(const std::string& component_id) {
             "DENSE_QR", "SILENT",
         };
     }
-    throw std::invalid_argument("component identity must be methane or ethane");
+    if (component_id == "propane") {
+        return {
+            "glos-2004-experimental-propane-saturation-110-340-k-v1",
+            "propane", "K", "Pa", "kg/m3",
+            "glos-2004-propane-coexistence-experiment",
+            "Glos, Kleinrahm, and Wagner, Journal of Chemical Thermodynamics 36 (2004) 1037-1059, doi:10.1016/j.jct.2004.07.017",
+            "Table 2 propane coexistence measurements; NIST ThermoML datasets 1, 2, and 3",
+            "https://trc.nist.gov/ThermoML/10.1016/j.jct.2004.07.017.json",
+            "2026-07-17",
+            "Direct primary experimental Glos 2004 measurements retained from the hash-bound Validation packet as source evidence, not model-acceptance cutoffs",
+            "Exact target CSV bytes from Validation commit 7e51590757f1cb85f51df98e9fe1f88cd4255a88, tree 05af9e948c786ddfcf43dba701970f1cbb6435a2. Target SHA-256: ccd1cfa15ec44432b06cbf22316d168c61b282631c9b1e1591e497b8d48b5676; packet YAML SHA-256: ba31448989f565d05d63908076e836977780aa87199f208310e9b80b03f64697; 63-row source receipt SHA-256: ed5eb703ccd3e6bb4c4cfa82ecd58c58f9da0c93ab07a204dee94d8b0ae8d081; fit-target contract SHA-256: 7f25259265dfa42f1de36bc04740baf6c78e09c8bc35a42392f06a4b8a32cb90; source-verification contract SHA-256: b0cb440613ec5fc764d1ccce7c40af371af208a129bb211fb1d749d34046020c; comparison contract SHA-256: 522b55f8c9641bab7b572f1741fc24cf48b7a2df10706ade17064cd4c79ba2f2; ThermoML JSON SHA-256: 322495c5a01c003e83376e5bad544c3abced330d5054ff0411a7a00b70a963c9; ThermoML XML SHA-256: 1b2e47d4cafff0f21cf7779d8d01b522bc2fa8d885ce4d6ebc04c151e0504829. Pressure converted exactly from kPa to Pa by Validation; density units unchanged.",
+            "temperature", "K", "pressure", "Pa", "saturated_liquid_mass_density", "kg/m3",
+            "ccd1cfa15ec44432b06cbf22316d168c61b282631c9b1e1591e497b8d48b5676",
+            "ccd1cfa15ec44432b06cbf22316d168c61b282631c9b1e1591e497b8d48b5676",
+            "pure-propane-saturation-lifted-volumes-v1",
+            "segment_count", "segment_diameter_angstrom", "dispersion_energy_over_k_kelvin",
+            "1", "angstrom", "K",
+            "liquid_pressure", "vapor_pressure", "chemical_potential_equality", "liquid_density",
+            "mol", "m3/mol", "epcsaft.native_sdk.v1",
+            "sha256:9bfbc8d7789e51609945e61dbdf7a020decc8f9e31b408b0977724c7cb3e1551",
+            "p_j = start_j + parameter_scale_j * z_j",
+            "V_liquid = (molar_mass / observed_liquid_density) * exp(u_liquid)",
+            "V_vapor = (R * T / observed_pressure) * exp(u_vapor)",
+            "P_report = observed_pressure * exp(u_pressure)",
+            "DENSE_QR", "SILENT",
+        };
+    }
+    throw std::invalid_argument("component identity must be methane, ethane, or propane");
 }
 
 bool component_specific_contract_matches(const Payload& payload) {
     if (payload.identity[1] == "methane") {
         return payload.start == std::array<double, 3>{1.08, 3.555744, 157.5315}
             && payload.molar_mass == 0.016043
+            && payload.liquid_volume_bounds == std::array<double, 2>{2.0e-5, 1.0e-4}
             && payload.vapor_volume_bounds == std::array<double, 2>{1.5e-4, 0.1}
+            && payload.max_iterations == 500
             && payload.reporting_pressure_bounds == std::array<double, 2>{1.0e3, 1.0e7};
     }
     if (payload.identity[1] == "ethane") {
         return payload.start == std::array<double, 3>{1.6069, 3.5206, 191.42}
             && payload.molar_mass == 0.030070
+            && payload.liquid_volume_bounds == std::array<double, 2>{2.0e-5, 1.0e-4}
             && payload.vapor_volume_bounds == std::array<double, 2>{1.5e-4, 100.0}
+            && payload.max_iterations == 500
             && payload.reporting_pressure_bounds == std::array<double, 2>{1.0, 1.0e7};
+    }
+    if (payload.identity[1] == "propane") {
+        return payload.start == std::array<double, 3>{2.002, 3.6184, 208.11}
+            && payload.molar_mass == 0.044096
+            && payload.liquid_volume_bounds == std::array<double, 2>{2.0e-5, 1.2e-4}
+            && payload.vapor_volume_bounds == std::array<double, 2>{1.5e-4, 2.0e3}
+            && payload.max_iterations == 5000
+            && payload.reporting_pressure_bounds == std::array<double, 2>{0.1, 1.0e7};
     }
     return false;
 }
@@ -177,7 +243,8 @@ std::vector<double> doubles(PyObject* object, std::size_t expected, const char* 
 std::size_t reporting_row_count(const Payload& payload) {
     if (payload.identity[1] == "methane") return methane_row_ids.size();
     if (payload.identity[1] == "ethane") return ethane_row_ids.size();
-    throw std::invalid_argument("component identity must be methane or ethane");
+    if (payload.identity[1] == "propane") return propane_row_ids.size();
+    throw std::invalid_argument("component identity must be methane, ethane, or propane");
 }
 
 Row parse_row(PyObject* object, const std::string& component_id, std::size_t source_index) {
@@ -209,6 +276,13 @@ Row parse_row(PyObject* object, const std::string& component_id, std::size_t sou
             && row.pressure == ethane_pressures[source_index]
             && row.liquid_density == ethane_liquid_densities[source_index]
             && row.source_id == "nist-webbook-srd69-ethane-saturation";
+    } else if (component_id == "propane" && source_index < propane_row_ids.size()) {
+        matches = row.row_id == propane_row_ids[source_index]
+            && row.component_id == "propane"
+            && row.temperature == 110.0 + 10.0 * static_cast<double>(source_index)
+            && row.pressure == propane_pressures[source_index]
+            && row.liquid_density == propane_liquid_densities[source_index]
+            && row.source_id == "glos-2004-propane-coexistence-experiment";
     }
     if (PyErr_Occurred() != nullptr || !matches) {
         throw std::invalid_argument("source row violates the exact retained identity and values");
@@ -229,8 +303,9 @@ Payload parse_payload(PyObject* object) {
     PyObject** items = PySequence_Fast_ITEMS(sequence.get());
     Payload payload{};
     payload.identity = texts(items[0], 41, "compiled problem identity");
-    if (payload.identity[1] != "methane" && payload.identity[1] != "ethane") {
-        throw std::invalid_argument("component identity must be methane or ethane");
+    if (payload.identity[1] != "methane" && payload.identity[1] != "ethane"
+        && payload.identity[1] != "propane") {
+        throw std::invalid_argument("component identity must be methane, ethane, or propane");
     }
     if (payload.identity != expected_identity(payload.identity[1])) {
         throw std::invalid_argument("compiled problem identity does not match an admitted component");
@@ -240,9 +315,14 @@ Payload parse_payload(PyObject* object) {
         || PySequence_Fast_GET_SIZE(rows.get()) != static_cast<Py_ssize_t>(row_count)) {
         throw std::invalid_argument("training rows must contain exactly four rows");
     }
-    const std::array<std::size_t, row_count> source_indices = payload.identity[1] == "methane"
-        ? std::array<std::size_t, row_count>{1, 3, 5, 7}
-        : std::array<std::size_t, row_count>{2, 4, 6, 8};
+    std::array<std::size_t, row_count> source_indices{};
+    if (payload.identity[1] == "methane") {
+        source_indices = {1, 3, 5, 7};
+    } else if (payload.identity[1] == "ethane") {
+        source_indices = {2, 4, 6, 8};
+    } else {
+        source_indices = {4, 10, 16, 22};
+    }
     for (std::size_t index = 0; index < row_count; ++index) {
         payload.rows[index] = parse_row(
             PySequence_Fast_GET_ITEM(rows.get(), static_cast<Py_ssize_t>(index)),
@@ -283,9 +363,7 @@ Payload parse_payload(PyObject* object) {
         || payload.parameter_scale != std::array<double, 3>{0.1, 0.1, 10.0}
         || payload.amount != 1.0
         || payload.weights != std::array<double, 4>{0.25, 0.25, 0.25, 0.25}
-        || payload.liquid_volume_bounds != std::array<double, 2>{2.0e-5, 1.0e-4}
         || payload.topology_separation != 1.0e-3
-        || payload.max_iterations != 500
         || payload.function_tolerance != 1.0e-10
         || payload.gradient_tolerance != 1.0e-10
         || payload.parameter_tolerance != 1.0e-10

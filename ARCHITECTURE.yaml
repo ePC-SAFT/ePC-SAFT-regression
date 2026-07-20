@@ -18,11 +18,13 @@ authority:
   persistence_authority: none
 
 scope: >-
-  Fit one strict pure methane or ethane saturation dataset per call through a
+  Fit one strict pure methane, ethane, or propane saturation dataset per call through a
   shared lifted-volume Ceres formulation and the installed provider parameter-
   Hessian entry. Methane preserves the accepted 110, 130, 150, and 170 K fit.
   Ethane fits 140, 180, 220, and 260 K, holds out 120, 160, 200, and 240 K,
-  and reports 100 and 280 K as domain stress.
+  and reports 100 and 280 K as domain stress. The authority-neutral propane
+  candidate fits 150, 210, 270, and 330 K, holds out 18 interior rows, and
+  reports 110 and 340 K as stress.
 
 owners:
   immutable_sources_and_specifications: src/epcsaft_regression/records.py
@@ -65,6 +67,7 @@ public_surface:
   exports:
     - METHANE_SATURATION_FIT_V1
     - ETHANE_SATURATION_FIT_V1
+    - PROPANE_SATURATION_FIT_V1
     - load_pure_saturation_dataset
     - PureSaturationFitResult
     - fit_pure_saturation
@@ -105,6 +108,16 @@ component_contracts:
     held_out_temperatures_k: [120.0, 160.0, 200.0, 240.0]
     stress_temperatures_k: [100.0, 280.0]
     stress_acceptance_effect: none
+  propane:
+    status: authority-neutral-local-checkpoint-a
+    dataset: glos-2004-experimental-propane-saturation-110-340-k-v1
+    source_packet_commit: 7e51590757f1cb85f51df98e9fe1f88cd4255a88
+    source_packet_tree: 05af9e948c786ddfcf43dba701970f1cbb6435a2
+    expected_provider_fingerprint: sha256:9bfbc8d7789e51609945e61dbdf7a020decc8f9e31b408b0977724c7cb3e1551
+    training_temperatures_k: [150.0, 210.0, 270.0, 330.0]
+    held_out_row_count: 18
+    stress_temperatures_k: [110.0, 340.0]
+    source_uncertainty_acceptance_effect: none
 
 accepted_ethane_artifact:
   implementation_commit: 50a488b91686388432fd50a0d6bfc5b15825e4f1
@@ -144,16 +157,16 @@ accepted_ethane_artifact:
     publication_state: state-0025-regression-ethane-publication
 
 manifest:
-  tracked_files_after_checkpoint_a_plan: 42
+  tracked_files_after_checkpoint_a_implementation: 43
   production_python_files: 3
   native_source_files: 5
-  installed_data_files: 2
+  installed_data_files: 3
   package_test_files: 3
   retained_binary_input_evidence_files: 1
   retained_binary_result_evidence_files: 1
   ide_project_files: 7
-  physical_production_lines: 2673
-  physical_package_test_lines: 725
+  physical_production_lines: 3008
+  physical_package_test_lines: 883
   tracked_generated_evidence_files_after_binary_preflight: 3
   generated_file_policy: >-
     The accepted methane and ethane fit receipts bind deterministic
@@ -166,20 +179,22 @@ manifest:
     - path: src/epcsaft_regression/native/pure_saturation_fit.cpp
       physical_lines: 920
     - path: src/epcsaft_regression/records.py
-      physical_lines: 618
+      physical_lines: 870
     - path: src/epcsaft_regression/workflow.py
-      physical_lines: 551
+      physical_lines: 554
   oversized_file_policy: >-
-    Slice 2 adds one component to the existing owners without a second engine,
-    registry, or result type. A later capability must not grow these files
-    without a named ownership constraint and evidence that extraction reduces
-    conceptual surface.
+    Checkpoint A adds one closed component record to the existing source owner
+    without a second engine, registry, or result type. A later capability must
+    not grow these files without a named ownership constraint and evidence that
+    extraction reduces conceptual surface.
 
 evidence_limits:
   methane_numerical_parity: frozen accepted parameters, costs, ranks, and nine reporting predictions
   fitted_parameter_rank_gate: solver acceptance requires all 3 fitted parameter columns
   confirmation_cost_agreement: symmetric relative difference with a 1e-8 maximum
   ethane_training_jacobian: centered directional residual check passed
+  propane_training_jacobian: centered directional residual check passed
+  propane_120_k: held-out reporting pressure closure remains above the frozen gate
   ethane_stress_100_k: reporting closure failed at the 1 Pa pressure floor
   reporting_jacobian_directional_check: absent; no runtime seam added
   held_out_accuracy_cutoff: none-approved

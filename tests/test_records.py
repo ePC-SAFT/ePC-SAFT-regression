@@ -13,6 +13,11 @@ from epcsaft_regression.records import (
     METHANE_DATA_SHA256,
     METHANE_PACKAGED_DATA_SHA256,
     METHANE_SATURATION_FIT_V1,
+    PROPANE_FIT_TARGET_CONTRACT_SHA256,
+    PROPANE_PACKAGED_DATA_SHA256,
+    PROPANE_PACKET_YAML_SHA256,
+    PROPANE_SATURATION_FIT_V1,
+    PROPANE_SOURCE_RECEIPT_SHA256,
     SourceIdentity,
     SaturationObservation,
     load_pure_saturation_dataset,
@@ -42,12 +47,39 @@ ETHANE_ROWS = (
     (260.0, 1_711_835.4, 429.07617),
     (280.0, 2_806_735.8, 382.72712),
 )
+PROPANE_ROWS = (
+    (110.0, 0.6, 707.968),
+    (120.0, 3.2, 697.825),
+    (130.0, 18.0, 687.713),
+    (140.0, 78.0, 677.601),
+    (150.0, 283.0, 667.462),
+    (160.0, 851.0, 657.272),
+    (170.0, 2_205.0, 647.004),
+    (180.0, 5_068.0, 636.628),
+    (190.0, 10_547.0, 626.123),
+    (200.0, 20_193.0, 615.456),
+    (210.0, 36_032.0, 604.594),
+    (220.0, 60_574.0, 593.499),
+    (230.0, 96_775.0, 582.132),
+    (240.0, 148_000.0, 570.444),
+    (250.0, 217_964.0, 558.383),
+    (260.0, 310_685.0, 545.88),
+    (270.0, 430_425.0, 532.853),
+    (280.0, 581_684.0, 519.198),
+    (290.0, 769_143.0, 504.796),
+    (300.0, 997_682.0, 489.465),
+    (310.0, 1_272_430.0, 472.968),
+    (320.0, 1_598_870.0, 454.951),
+    (330.0, 1_983_000.0, 434.869),
+    (340.0, 2_431_450.0, 411.772),
+)
 
 
 def test_public_surface_is_pure_saturation_only() -> None:
     assert hasattr(epcsaft_regression, "load_pure_saturation_dataset")
     assert hasattr(epcsaft_regression, "fit_pure_saturation")
     assert hasattr(epcsaft_regression, "PureSaturationFitResult")
+    assert epcsaft_regression.PROPANE_SATURATION_FIT_V1 is PROPANE_SATURATION_FIT_V1
     for retired in (
         "load_methane_dataset",
         "fit_methane_saturation",
@@ -78,6 +110,15 @@ def test_public_surface_is_pure_saturation_only() -> None:
             ETHANE_DATA_SHA256,
             ETHANE_PACKAGED_DATA_SHA256,
         ),
+        (
+            "propane",
+            PROPANE_ROWS,
+            (150.0, 210.0, 270.0, 330.0),
+            tuple(float(value) for value in range(120, 330, 10) if value not in (150, 210, 270)),
+            (110.0, 340.0),
+            PROPANE_PACKAGED_DATA_SHA256,
+            PROPANE_PACKAGED_DATA_SHA256,
+        ),
     ),
 )
 def test_retained_dataset_has_exact_source_rows_and_partition(
@@ -96,7 +137,12 @@ def test_retained_dataset_has_exact_source_rows_and_partition(
     assert dataset.pressure_unit == "Pa"
     assert dataset.liquid_density_unit == "kg/m3"
     assert dataset.source.retrieved_on == "2026-07-17"
-    assert "CRLF line endings normalized to LF" in dataset.source.transformation
+    if component_id in ("methane", "ethane"):
+        assert "CRLF line endings normalized to LF" in dataset.source.transformation
+    else:
+        assert "Validation commit 7e51590757f1cb85f51df98e9fe1f88cd4255a88" in (
+            dataset.source.transformation
+        )
     assert dataset.source.data_sha256 == raw_hash
     assert dataset.source.packaged_data_sha256 == packaged_hash
     assert tuple(
@@ -124,6 +170,13 @@ def test_retained_dataset_has_exact_source_rows_and_partition(
             (1.6069, 3.5206, 191.42),
             0.030070,
             "sha256:288fbcaa1304881c16f64c3a784eeed19b75c58cca4558f92a21268e5e91258a",
+        ),
+        (
+            "propane",
+            PROPANE_SATURATION_FIT_V1,
+            (2.002, 3.6184, 208.11),
+            0.044096,
+            "sha256:9bfbc8d7789e51609945e61dbdf7a020decc8f9e31b408b0977724c7cb3e1551",
         ),
     ),
 )
@@ -153,11 +206,12 @@ def test_component_specification_is_explicit_and_dimensionally_fixed(
     assert specification.confirmation_cost_relative_delta == 1.0e-8
     assert specification.reporting_pressure_scaled_residual_max == 1.0e-8
     assert specification.reporting_chemical_potential_residual_max == 1.0e-8
+    assert specification.max_num_iterations == (5000 if component_id == "propane" else 500)
 
 
-@pytest.mark.parametrize("value", ("Methane", "ETHANE", "propane", ""))
+@pytest.mark.parametrize("value", ("Methane", "ETHANE", "Propane", "PROPANE", "butane", ""))
 def test_loader_rejects_aliases_case_variants_and_unknown_strings(value: str) -> None:
-    with pytest.raises(ValueError, match="'methane' or 'ethane'"):
+    with pytest.raises(ValueError, match="'methane', 'ethane', or 'propane'"):
         load_pure_saturation_dataset(value)
 
 
@@ -171,7 +225,7 @@ def test_loader_rejects_non_strings(value: object) -> None:
     ("field", "value", "match"),
     (
         ("row_id", "", "row_id"),
-        ("component_id", "propane", "component_id"),
+        ("component_id", "butane", "component_id"),
         ("temperature_k", math.nan, "finite"),
         ("pressure_pa", 0.0, "positive"),
         ("liquid_density_kg_m3", math.inf, "finite"),
@@ -214,3 +268,57 @@ def test_source_record_is_frozen() -> None:
 
     with pytest.raises(AttributeError):
         source.source_id = "changed"  # type: ignore[misc]
+
+
+def test_propane_packet_identity_and_uncertainties_are_retained_without_cutoffs() -> None:
+    dataset = load_pure_saturation_dataset("propane")
+
+    assert PROPANE_PACKAGED_DATA_SHA256 == (
+        "ccd1cfa15ec44432b06cbf22316d168c61b282631c9b1e1591e497b8d48b5676"
+    )
+    assert PROPANE_PACKET_YAML_SHA256 == (
+        "ba31448989f565d05d63908076e836977780aa87199f208310e9b80b03f64697"
+    )
+    assert PROPANE_SOURCE_RECEIPT_SHA256 == (
+        "ed5eb703ccd3e6bb4c4cfa82ecd58c58f9da0c93ab07a204dee94d8b0ae8d081"
+    )
+    assert PROPANE_FIT_TARGET_CONTRACT_SHA256 == (
+        "7f25259265dfa42f1de36bc04740baf6c78e09c8bc35a42392f06a4b8a32cb90"
+    )
+    assert tuple(
+        (
+            row.pressure_expanded_uncertainty_pa,
+            row.liquid_density_expanded_uncertainty_kg_m3,
+            row.vapor_density_kg_m3,
+            row.vapor_density_expanded_uncertainty_kg_m3,
+        )
+        for row in dataset.rows
+    ) == (
+        (0.6, 0.133, None, None),
+        (1.6, 0.131, None, None),
+        (1.1, 0.13, None, None),
+        (3.1, 0.128, None, None),
+        (5.0, 0.127, None, None),
+        (9.0, 0.125, None, None),
+        (10.0, 0.124, None, None),
+        (11.0, 0.122, None, None),
+        (16.0, 0.121, None, None),
+        (19.0, 0.119, None, None),
+        (23.0, 0.118, None, None),
+        (19.0, 0.117, None, None),
+        (24.0, 0.116, 2.3148, 0.0051),
+        (33.0, 0.115, 3.4379, 0.0063),
+        (37.0, 0.114, 4.9398, 0.0081),
+        (50.0, 0.113, 6.9029, 0.0098),
+        (65.0, 0.113, 9.423, 0.0125),
+        (70.0, 0.113, 12.6155, 0.0158),
+        (77.0, 0.114, 16.6231, 0.0201),
+        (90.0, 0.115, 21.6299, 0.0257),
+        (100.0, 0.118, 27.8854, 0.0331),
+        (110.0, 0.124, 35.7463, 0.043),
+        (140.0, 0.132, 45.7626, 0.057),
+        (170.0, 0.138, 58.878, 0.0666),
+    )
+    assert dataset.source.use_basis.endswith(
+        "source evidence, not model-acceptance cutoffs"
+    )

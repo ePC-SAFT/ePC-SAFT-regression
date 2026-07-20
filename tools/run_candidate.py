@@ -151,7 +151,7 @@ def _canonical_receipt_bytes(payload: dict[str, object]) -> bytes:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate one pure-saturation regression receipt.")
-    parser.add_argument("--component", choices=("methane", "ethane"), required=True)
+    parser.add_argument("--component", choices=("methane", "ethane", "propane"), required=True)
     parser.add_argument("--provider-wheel", type=Path, required=True)
     parser.add_argument("--provider-test-receipt", type=Path, required=True)
     parser.add_argument("--regression-wheel", type=Path, required=True)
@@ -202,6 +202,7 @@ def main() -> int:
     from epcsaft_regression import (
         ETHANE_SATURATION_FIT_V1,
         METHANE_SATURATION_FIT_V1,
+        PROPANE_SATURATION_FIT_V1,
         fit_pure_saturation,
         load_pure_saturation_dataset,
     )
@@ -223,9 +224,16 @@ def main() -> int:
         METHANE_SATURATION_FIT_V1
         if component_id == "methane"
         else ETHANE_SATURATION_FIT_V1
+        if component_id == "ethane"
+        else PROPANE_SATURATION_FIT_V1
+    )
+    bundle_id = (
+        "gross-2001-propane"
+        if component_id == "propane"
+        else "gross-2001-methane-ethane"
     )
     parameters = ParameterBundle.from_catalog(
-        "gross-2001-methane-ethane", version=1
+        bundle_id, version=1
     ).select((component_id,))
     model = EPCSAFT(parameters)
     result = fit_pure_saturation(
@@ -233,8 +241,11 @@ def main() -> int:
         dataset=dataset,
         specification=specification,
     )
-    if not (result.solver_converged and result.numerically_converged and result.physically_valid):
-        raise SystemExit(f"candidate failed strict gates: {result.failure_reasons}")
+    strict_gates_passed = (
+        result.solver_converged
+        and result.numerically_converged
+        and result.physically_valid
+    )
 
     held_out_temperatures = frozenset(dataset.held_out_temperatures_k)
     stress_temperatures = frozenset(dataset.stress_temperatures_k)
@@ -249,10 +260,13 @@ def main() -> int:
         "capability": f"pure-{component_id}-saturation-parameter-candidate-v1",
         "component_id": component_id,
         "owner": "ePC-SAFT/ePC-SAFT-regression",
+        "strict_local_gates_passed": strict_gates_passed,
         "authority_status": (
             "promotion-0020 accepted for the exact reproducible workflow; replay changes no authority"
             if component_id == "methane"
-            else "local candidate; independent review and validation admission pending"
+            else "promotion-0023 accepted for the exact reproducible workflow; replay changes no authority"
+            if component_id == "ethane"
+            else "authority-neutral local candidate; independent review and validation admission pending"
         ),
         "source": source,
         "rows": rows,
@@ -307,11 +321,15 @@ def main() -> int:
                 "retained M5 displaced methane start: (1.0*1.08, 3.7039*0.96, 150.03*1.05)"
                 if component_id == "methane"
                 else "Gross 2001 ethane source parameters: (1.6069, 3.5206, 191.42)"
+                if component_id == "ethane"
+                else "Gross 2001 propane source parameters: (2.0020, 3.6184, 208.11)"
             ),
             "molar_mass_provenance": (
                 "fixed formulation constant 0.016043 kg/mol retained by the admitted M5 plan"
                 if component_id == "methane"
                 else "source-backed ethane molar mass 0.030070 kg/mol"
+                if component_id == "ethane"
+                else "source-backed propane molar mass 0.044096 kg/mol"
             ),
         },
         "residuals": {
@@ -371,7 +389,13 @@ def main() -> int:
     subject_sha256 = _canonical_json_sha256(subject)
     receipt = {
         "schema_version": "epcsaft-regression-candidate-fit-receipt-v1",
-        "status": "accepted-workflow-replay" if component_id == "methane" else "candidate",
+        "status": (
+            "accepted-workflow-replay"
+            if component_id in ("methane", "ethane")
+            else "candidate"
+            if strict_gates_passed
+            else "blocked-local-physical-gate"
+        ),
         "subject_sha256": subject_sha256,
         "subject": subject,
         "producer": "codex:/root",
@@ -384,8 +408,16 @@ def main() -> int:
     }
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     arguments.output.write_bytes(_canonical_receipt_bytes(receipt))
-    print(json.dumps({"output": str(arguments.output), "subject_sha256": subject_sha256}))
-    return 0
+    print(
+        json.dumps(
+            {
+                "output": str(arguments.output),
+                "subject_sha256": subject_sha256,
+                "strict_local_gates_passed": strict_gates_passed,
+            }
+        )
+    )
+    return 0 if strict_gates_passed else 2
 
 
 if __name__ == "__main__":

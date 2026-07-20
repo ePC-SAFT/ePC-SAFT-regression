@@ -9,6 +9,18 @@ import math
 
 
 EXPECTED_HEADER = ("species", "T_K", "p_sat_Pa", "rho_sat_liq_kg_m3", "source")
+PROPANE_EXPECTED_HEADER = (
+    "row_id",
+    "component_id",
+    "role",
+    "T_K",
+    "p_sat_Pa",
+    "p_sat_expanded_uncertainty_Pa",
+    "rho_sat_liq_kg_m3",
+    "rho_sat_liq_expanded_uncertainty_kg_m3",
+    "rho_sat_vap_kg_m3",
+    "rho_sat_vap_expanded_uncertainty_kg_m3",
+)
 SOURCE_RETRIEVED_ON = "2026-07-17"
 SOURCE_USE_BASIS = (
     "NIST Standard Reference Data retained as compact source-backed candidate evidence; "
@@ -67,6 +79,70 @@ ETHANE_TRAINING_TEMPERATURES_K = (140.0, 180.0, 220.0, 260.0)
 ETHANE_HELD_OUT_TEMPERATURES_K = (120.0, 160.0, 200.0, 240.0)
 ETHANE_STRESS_TEMPERATURES_K = (100.0, 280.0)
 
+PROPANE_PACKAGED_DATA_SHA256 = (
+    "ccd1cfa15ec44432b06cbf22316d168c61b282631c9b1e1591e497b8d48b5676"
+)
+PROPANE_PACKET_YAML_SHA256 = (
+    "ba31448989f565d05d63908076e836977780aa87199f208310e9b80b03f64697"
+)
+PROPANE_SOURCE_RECEIPT_SHA256 = (
+    "ed5eb703ccd3e6bb4c4cfa82ecd58c58f9da0c93ab07a204dee94d8b0ae8d081"
+)
+PROPANE_FIT_TARGET_CONTRACT_SHA256 = (
+    "7f25259265dfa42f1de36bc04740baf6c78e09c8bc35a42392f06a4b8a32cb90"
+)
+PROPANE_SOURCE_VERIFICATION_CONTRACT_SHA256 = (
+    "b0cb440613ec5fc764d1ccce7c40af371af208a129bb211fb1d749d34046020c"
+)
+PROPANE_COMPARISON_CONTRACT_SHA256 = (
+    "522b55f8c9641bab7b572f1741fc24cf48b7a2df10706ade17064cd4c79ba2f2"
+)
+PROPANE_THERMOML_JSON_SHA256 = (
+    "322495c5a01c003e83376e5bad544c3abced330d5054ff0411a7a00b70a963c9"
+)
+PROPANE_THERMOML_XML_SHA256 = (
+    "1b2e47d4cafff0f21cf7779d8d01b522bc2fa8d885ce4d6ebc04c151e0504829"
+)
+PROPANE_SOURCE_ID = "glos-2004-propane-coexistence-experiment"
+PROPANE_SOURCE_URL = "https://trc.nist.gov/ThermoML/10.1016/j.jct.2004.07.017.json"
+PROPANE_SOURCE_CITATION = (
+    "Glos, Kleinrahm, and Wagner, Journal of Chemical Thermodynamics 36 "
+    "(2004) 1037-1059, doi:10.1016/j.jct.2004.07.017"
+)
+PROPANE_SOURCE_LOCATOR = (
+    "Table 2 propane coexistence measurements; NIST ThermoML datasets 1, 2, and 3"
+)
+PROPANE_SOURCE_USE_BASIS = (
+    "Direct primary experimental Glos 2004 measurements retained from the hash-bound "
+    "Validation packet as source evidence, not model-acceptance cutoffs"
+)
+PROPANE_SOURCE_TRANSFORMATION = (
+    "Exact target CSV bytes from Validation commit "
+    "7e51590757f1cb85f51df98e9fe1f88cd4255a88, tree "
+    "05af9e948c786ddfcf43dba701970f1cbb6435a2. Target SHA-256: "
+    f"{PROPANE_PACKAGED_DATA_SHA256}; packet YAML SHA-256: "
+    f"{PROPANE_PACKET_YAML_SHA256}; 63-row source receipt SHA-256: "
+    f"{PROPANE_SOURCE_RECEIPT_SHA256}; fit-target contract SHA-256: "
+    f"{PROPANE_FIT_TARGET_CONTRACT_SHA256}; source-verification contract SHA-256: "
+    f"{PROPANE_SOURCE_VERIFICATION_CONTRACT_SHA256}; comparison contract SHA-256: "
+    f"{PROPANE_COMPARISON_CONTRACT_SHA256}; ThermoML JSON SHA-256: "
+    f"{PROPANE_THERMOML_JSON_SHA256}; ThermoML XML SHA-256: "
+    f"{PROPANE_THERMOML_XML_SHA256}. Pressure converted exactly from kPa to Pa by "
+    "Validation; density units unchanged."
+)
+PROPANE_TEMPERATURES_K = tuple(float(value) for value in range(110, 341, 10))
+PROPANE_TRAINING_TEMPERATURES_K = (150.0, 210.0, 270.0, 330.0)
+PROPANE_HELD_OUT_TEMPERATURES_K = tuple(
+    temperature
+    for temperature in PROPANE_TEMPERATURES_K
+    if temperature not in (*PROPANE_TRAINING_TEMPERATURES_K, 110.0, 340.0)
+)
+PROPANE_STRESS_TEMPERATURES_K = (110.0, 340.0)
+PROPANE_ROW_IDS = tuple(
+    f"glos2004-propane-sat-{int(temperature)}-k"
+    for temperature in PROPANE_TEMPERATURES_K
+)
+
 # Retained import names used only by the accepted methane receipt tooling.
 EXPECTED_DATA_SHA256 = METHANE_DATA_SHA256
 EXPECTED_PACKAGED_DATA_SHA256 = METHANE_PACKAGED_DATA_SHA256
@@ -98,6 +174,23 @@ def _source_fields(source_id: str) -> tuple[str, str, str, str, str, str]:
             ETHANE_DATA_SHA256,
             ETHANE_PACKAGED_DATA_SHA256,
         )
+    if source_id == PROPANE_SOURCE_ID:
+        return (
+            PROPANE_SOURCE_CITATION,
+            PROPANE_SOURCE_LOCATOR,
+            PROPANE_SOURCE_URL,
+            PROPANE_SOURCE_TRANSFORMATION,
+            PROPANE_PACKAGED_DATA_SHA256,
+            PROPANE_PACKAGED_DATA_SHA256,
+        )
+    raise ValueError("source_id must identify an admitted pure-saturation table")
+
+
+def _source_provenance(source_id: str) -> tuple[str, str, tuple[tuple[str, str], ...]]:
+    if source_id in (METHANE_SOURCE_ID, ETHANE_SOURCE_ID):
+        return SOURCE_RETRIEVED_ON, SOURCE_USE_BASIS, SOURCE_UNITS
+    if source_id == PROPANE_SOURCE_ID:
+        return SOURCE_RETRIEVED_ON, PROPANE_SOURCE_USE_BASIS, SOURCE_UNITS
     raise ValueError("source_id must identify an admitted pure-saturation table")
 
 
@@ -136,10 +229,10 @@ class SourceIdentity:
             self.packaged_data_sha256,
         ) != expected:
             raise ValueError("source fields must match the exact retained source identity")
-        if self.retrieved_on != SOURCE_RETRIEVED_ON or self.use_basis != SOURCE_USE_BASIS:
+        if (self.retrieved_on, self.use_basis, self.units) != _source_provenance(
+            self.source_id
+        ):
             raise ValueError("source provenance must match the exact retained source identity")
-        if self.units != SOURCE_UNITS:
-            raise ValueError("source units must match the exact retained table")
 
 
 METHANE_SOURCE_V1 = SourceIdentity(
@@ -166,6 +259,18 @@ ETHANE_SOURCE_V1 = SourceIdentity(
     data_sha256=ETHANE_DATA_SHA256,
     packaged_data_sha256=ETHANE_PACKAGED_DATA_SHA256,
 )
+PROPANE_SOURCE_V1 = SourceIdentity(
+    source_id=PROPANE_SOURCE_ID,
+    citation=PROPANE_SOURCE_CITATION,
+    locator=PROPANE_SOURCE_LOCATOR,
+    url=PROPANE_SOURCE_URL,
+    retrieved_on=SOURCE_RETRIEVED_ON,
+    use_basis=PROPANE_SOURCE_USE_BASIS,
+    transformation=PROPANE_SOURCE_TRANSFORMATION,
+    units=SOURCE_UNITS,
+    data_sha256=PROPANE_PACKAGED_DATA_SHA256,
+    packaged_data_sha256=PROPANE_PACKAGED_DATA_SHA256,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -176,18 +281,49 @@ class SaturationObservation:
     pressure_pa: float
     liquid_density_kg_m3: float
     source_id: str
+    pressure_expanded_uncertainty_pa: float | None = None
+    liquid_density_expanded_uncertainty_kg_m3: float | None = None
+    vapor_density_kg_m3: float | None = None
+    vapor_density_expanded_uncertainty_kg_m3: float | None = None
 
     def __post_init__(self) -> None:
         if not self.row_id.strip():
             raise ValueError("row_id must be nonblank")
-        if self.component_id not in ("methane", "ethane"):
-            raise ValueError("component_id must be 'methane' or 'ethane'")
+        if self.component_id not in ("methane", "ethane", "propane"):
+            raise ValueError("component_id must be 'methane', 'ethane', or 'propane'")
         _positive_finite(self.temperature_k, "temperature_k")
         _positive_finite(self.pressure_pa, "pressure_pa")
         _positive_finite(self.liquid_density_kg_m3, "liquid_density_kg_m3")
-        expected_source = METHANE_SOURCE_ID if self.component_id == "methane" else ETHANE_SOURCE_ID
+        expected_source = {
+            "methane": METHANE_SOURCE_ID,
+            "ethane": ETHANE_SOURCE_ID,
+            "propane": PROPANE_SOURCE_ID,
+        }[self.component_id]
         if self.source_id != expected_source:
             raise ValueError("source_id does not match the pure component")
+        uncertainty_fields = (
+            (self.pressure_expanded_uncertainty_pa, "pressure uncertainty"),
+            (
+                self.liquid_density_expanded_uncertainty_kg_m3,
+                "liquid density uncertainty",
+            ),
+            (self.vapor_density_kg_m3, "vapor density"),
+            (
+                self.vapor_density_expanded_uncertainty_kg_m3,
+                "vapor density uncertainty",
+            ),
+        )
+        for value, field in uncertainty_fields:
+            if value is not None:
+                _positive_finite(value, field)
+        if self.component_id != "propane" and any(
+            value is not None for value, _ in uncertainty_fields
+        ):
+            raise ValueError("source uncertainty fields belong only to the propane packet")
+        if (self.vapor_density_kg_m3 is None) != (
+            self.vapor_density_expanded_uncertainty_kg_m3 is None
+        ):
+            raise ValueError("vapor density and uncertainty must be present together")
 
 
 @dataclass(frozen=True, slots=True)
@@ -222,8 +358,17 @@ class PureSaturationDataset:
                 ETHANE_HELD_OUT_TEMPERATURES_K,
                 ETHANE_STRESS_TEMPERATURES_K,
             )
+        elif self.component_id == "propane":
+            expected = (
+                "glos-2004-experimental-propane-saturation-110-340-k-v1",
+                PROPANE_SOURCE_ID,
+                PROPANE_TEMPERATURES_K,
+                PROPANE_TRAINING_TEMPERATURES_K,
+                PROPANE_HELD_OUT_TEMPERATURES_K,
+                PROPANE_STRESS_TEMPERATURES_K,
+            )
         else:
-            raise ValueError("component_id must be 'methane' or 'ethane'")
+            raise ValueError("component_id must be 'methane', 'ethane', or 'propane'")
         dataset_id, source_id, temperatures, training, held_out, stress = expected
         if self.dataset_id != dataset_id:
             raise ValueError("dataset_id does not match the admitted component table")
@@ -246,8 +391,13 @@ class PureSaturationDataset:
             raise ValueError("dataset temperatures must be strictly increasing")
         if observed_temperatures != temperatures:
             raise ValueError("dataset temperatures do not match the retained reporting grid")
-        expected_row_ids = tuple(
-            f"nist-{self.component_id}-sat-{int(temperature)}-k" for temperature in temperatures
+        expected_row_ids = (
+            PROPANE_ROW_IDS
+            if self.component_id == "propane"
+            else tuple(
+                f"nist-{self.component_id}-sat-{int(temperature)}-k"
+                for temperature in temperatures
+            )
         )
         if row_ids != expected_row_ids:
             raise ValueError("dataset row IDs must match their retained temperatures")
@@ -333,6 +483,7 @@ class PureSaturationFitSpecification:
                 "sha256:5f836aa84935df70be2e5cffae51b178a7b797c2cee036e9ff47d8097ca94bbf",
                 (1.08, 3.555744, 157.5315),
                 0.016043,
+                (2.0e-5, 1.0e-4),
                 (1.5e-4, 0.1),
                 METHANE_TRAINING_TEMPERATURES_K,
                 (1.0e3, 1.0e7),
@@ -345,12 +496,26 @@ class PureSaturationFitSpecification:
                 "sha256:288fbcaa1304881c16f64c3a784eeed19b75c58cca4558f92a21268e5e91258a",
                 (1.6069, 3.5206, 191.42),
                 0.030070,
+                (2.0e-5, 1.0e-4),
                 (1.5e-4, 100.0),
                 ETHANE_TRAINING_TEMPERATURES_K,
                 (1.0, 1.0e7),
             )
+        elif self.component_id == "propane":
+            expected_identity = (
+                "pure-propane-saturation-lifted-volumes-v1",
+                "glos-2004-experimental-propane-saturation-110-340-k-v1",
+                PROPANE_SOURCE_ID,
+                "sha256:9bfbc8d7789e51609945e61dbdf7a020decc8f9e31b408b0977724c7cb3e1551",
+                (2.002, 3.6184, 208.11),
+                0.044096,
+                (2.0e-5, 1.2e-4),
+                (1.5e-4, 2.0e3),
+                PROPANE_TRAINING_TEMPERATURES_K,
+                (0.1, 1.0e7),
+            )
         else:
-            raise ValueError("component_id must be 'methane' or 'ethane'")
+            raise ValueError("component_id must be 'methane', 'ethane', or 'propane'")
         if (
             self.specification_id,
             self.dataset_id,
@@ -358,6 +523,7 @@ class PureSaturationFitSpecification:
             self.expected_provider_fingerprint,
             self.start,
             self.molar_mass_kg_per_mol,
+            self.liquid_volume_bounds_m3,
             self.vapor_volume_bounds_m3,
             self.training_temperatures_k,
             self.reporting_pressure_bounds_pa,
@@ -399,11 +565,10 @@ class PureSaturationFitSpecification:
             raise ValueError("residual ordering must match the lifted-volume formulation")
         if self.residual_weights != (0.25, 0.25, 0.25, 0.25):
             raise ValueError("residual weights must be the declared equal row normalization")
-        if self.liquid_volume_bounds_m3 != (2.0e-5, 1.0e-4):
-            raise ValueError("liquid volume bounds do not match the pure-saturation contract")
         if self.liquid_volume_bounds_m3[1] >= self.vapor_volume_bounds_m3[0]:
             raise ValueError("phase volume bounds must enforce liquid below vapor")
-        if self.max_num_iterations != 500:
+        expected_max_num_iterations = 5000 if self.component_id == "propane" else 500
+        if self.max_num_iterations != expected_max_num_iterations:
             raise ValueError("max_num_iterations does not match the pure-saturation contract")
         for value in (
             self.function_tolerance,
@@ -460,6 +625,8 @@ def _fit_specification(
     vapor_volume_bounds_m3: tuple[float, float],
     training_temperatures_k: tuple[float, float, float, float],
     reporting_pressure_bounds_pa: tuple[float, float],
+    liquid_volume_bounds_m3: tuple[float, float] = (2.0e-5, 1.0e-4),
+    max_num_iterations: int = 500,
 ) -> PureSaturationFitSpecification:
     return PureSaturationFitSpecification(
         specification_id=specification_id,
@@ -486,10 +653,10 @@ def _fit_specification(
             "liquid_density",
         ),
         residual_weights=(0.25, 0.25, 0.25, 0.25),
-        liquid_volume_bounds_m3=(2.0e-5, 1.0e-4),
+        liquid_volume_bounds_m3=liquid_volume_bounds_m3,
         vapor_volume_bounds_m3=vapor_volume_bounds_m3,
         training_temperatures_k=training_temperatures_k,
-        max_num_iterations=500,
+        max_num_iterations=max_num_iterations,
         function_tolerance=1.0e-10,
         gradient_tolerance=1.0e-10,
         parameter_tolerance=1.0e-10,
@@ -534,6 +701,22 @@ ETHANE_SATURATION_FIT_V1 = _fit_specification(
     vapor_volume_bounds_m3=(1.5e-4, 100.0),
     training_temperatures_k=ETHANE_TRAINING_TEMPERATURES_K,
     reporting_pressure_bounds_pa=(1.0, 1.0e7),
+)
+PROPANE_SATURATION_FIT_V1 = _fit_specification(
+    component_id="propane",
+    specification_id="pure-propane-saturation-lifted-volumes-v1",
+    dataset_id="glos-2004-experimental-propane-saturation-110-340-k-v1",
+    source_id=PROPANE_SOURCE_ID,
+    expected_provider_fingerprint=(
+        "sha256:9bfbc8d7789e51609945e61dbdf7a020decc8f9e31b408b0977724c7cb3e1551"
+    ),
+    start=(2.002, 3.6184, 208.11),
+    molar_mass_kg_per_mol=0.044096,
+    liquid_volume_bounds_m3=(2.0e-5, 1.2e-4),
+    vapor_volume_bounds_m3=(1.5e-4, 2.0e3),
+    training_temperatures_k=PROPANE_TRAINING_TEMPERATURES_K,
+    reporting_pressure_bounds_pa=(0.1, 1.0e7),
+    max_num_iterations=5000,
 )
 
 
@@ -588,6 +771,73 @@ def _load_dataset(
     )
 
 
+def _load_propane_dataset() -> PureSaturationDataset:
+    data = files("epcsaft_regression").joinpath("data/propane_saturation.csv").read_bytes()
+    if hashlib.sha256(data).hexdigest() != PROPANE_PACKAGED_DATA_SHA256:
+        raise ValueError("packaged propane data SHA-256 does not match the source record")
+    parsed = csv.reader(io.StringIO(data.decode("utf-8"), newline=""))
+    if tuple(next(parsed)) != PROPANE_EXPECTED_HEADER:
+        raise ValueError("propane source data header or units changed")
+    rows: list[SaturationObservation] = []
+    for values in parsed:
+        if len(values) != len(PROPANE_EXPECTED_HEADER):
+            raise ValueError("propane source row has a missing field")
+        (
+            row_id,
+            component_id,
+            role,
+            temperature,
+            pressure,
+            pressure_uncertainty,
+            liquid_density,
+            liquid_density_uncertainty,
+            vapor_density,
+            vapor_density_uncertainty,
+        ) = values
+        temperature_k = float(temperature)
+        expected_role = (
+            "training"
+            if temperature_k in PROPANE_TRAINING_TEMPERATURES_K
+            else "held_out"
+            if temperature_k in PROPANE_HELD_OUT_TEMPERATURES_K
+            else "stress"
+        )
+        if component_id != "propane" or role != expected_role:
+            raise ValueError("propane source component or frozen role changed")
+        rows.append(
+            SaturationObservation(
+                row_id=row_id,
+                component_id=component_id,
+                temperature_k=temperature_k,
+                pressure_pa=float(pressure),
+                liquid_density_kg_m3=float(liquid_density),
+                source_id=PROPANE_SOURCE_ID,
+                pressure_expanded_uncertainty_pa=float(pressure_uncertainty),
+                liquid_density_expanded_uncertainty_kg_m3=float(
+                    liquid_density_uncertainty
+                ),
+                vapor_density_kg_m3=float(vapor_density) if vapor_density else None,
+                vapor_density_expanded_uncertainty_kg_m3=(
+                    float(vapor_density_uncertainty)
+                    if vapor_density_uncertainty
+                    else None
+                ),
+            )
+        )
+    return PureSaturationDataset(
+        dataset_id="glos-2004-experimental-propane-saturation-110-340-k-v1",
+        component_id="propane",
+        temperature_unit="K",
+        pressure_unit="Pa",
+        liquid_density_unit="kg/m3",
+        source=PROPANE_SOURCE_V1,
+        rows=tuple(rows),
+        training_temperatures_k=PROPANE_TRAINING_TEMPERATURES_K,
+        held_out_temperatures_k=PROPANE_HELD_OUT_TEMPERATURES_K,
+        stress_temperatures_k=PROPANE_STRESS_TEMPERATURES_K,
+    )
+
+
 def load_pure_saturation_dataset(component_id: str) -> PureSaturationDataset:
     if type(component_id) is not str:
         raise TypeError("component_id must be an exact string")
@@ -615,4 +865,6 @@ def load_pure_saturation_dataset(component_id: str) -> PureSaturationDataset:
             ETHANE_HELD_OUT_TEMPERATURES_K,
             ETHANE_STRESS_TEMPERATURES_K,
         )
-    raise ValueError("component_id must be 'methane' or 'ethane'")
+    if component_id == "propane":
+        return _load_propane_dataset()
+    raise ValueError("component_id must be 'methane', 'ethane', or 'propane'")

@@ -18,6 +18,7 @@ PARAMETER_TRANSFORM = "p_j = start_j + parameter_scale_j * z_j"
 LIQUID_VOLUME_TRANSFORM = "V_liquid = (molar_mass / observed_liquid_density) * exp(u_liquid)"
 VAPOR_VOLUME_TRANSFORM = "V_vapor = (R * T / observed_pressure) * exp(u_vapor)"
 REPORTING_PRESSURE_TRANSFORM = "P_report = observed_pressure * exp(u_pressure)"
+PREDICTIVE_STATUS = "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
 
 
 def _row_payload(row: SaturationObservation) -> tuple[object, ...]:
@@ -113,6 +114,7 @@ class PureSaturationFitResult:
     solver_converged: bool
     numerically_converged: bool
     physically_valid: bool
+    predictive_status: str
     termination: str
     solution_usable: bool
     initial_cost: float
@@ -534,6 +536,7 @@ def fit_pure_saturation(
         solver_converged=solver_converged,
         numerically_converged=numerically_converged,
         physically_valid=physical_valid,
+        predictive_status=PREDICTIVE_STATUS,
         termination=termination,
         solution_usable=usable,
         initial_cost=initial_cost,

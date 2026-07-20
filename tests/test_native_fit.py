@@ -13,6 +13,7 @@ import epcsaft_regression._native as native
 from epcsaft_regression.records import (
     ETHANE_SATURATION_FIT_V1,
     METHANE_SATURATION_FIT_V1,
+    PROPANE_SATURATION_FIT_V1,
     PureSaturationFitSpecification,
     load_pure_saturation_dataset,
 )
@@ -23,6 +24,7 @@ from epcsaft_regression.workflow import _native_payload, fit_pure_saturation
 SPECIFICATIONS = {
     "methane": METHANE_SATURATION_FIT_V1,
     "ethane": ETHANE_SATURATION_FIT_V1,
+    "propane": PROPANE_SATURATION_FIT_V1,
 }
 
 
@@ -66,8 +68,13 @@ class _NativeSdkTable(ctypes.Structure):
 
 
 def _model(component_id: str) -> EPCSAFT:
+    bundle_id = (
+        "gross-2001-propane"
+        if component_id == "propane"
+        else "gross-2001-methane-ethane"
+    )
     parameters = ParameterBundle.from_catalog(
-        "gross-2001-methane-ethane", version=1
+        bundle_id, version=1
     ).select((component_id,))
     return EPCSAFT(parameters)
 
@@ -131,7 +138,7 @@ def test_methane_start_residuals_match_accepted_provider_anchor() -> None:
     assert fingerprint.startswith("sha256:")
 
 
-@pytest.mark.parametrize("component_id", ("methane", "ethane"))
+@pytest.mark.parametrize("component_id", ("methane", "ethane", "propane"))
 def test_exact_jacobian_matches_independent_directional_residual_difference(
     component_id: str,
 ) -> None:
@@ -185,6 +192,7 @@ def test_public_workflow_returns_strict_component_diagnostics(
     assert result.solver_converged, result.failure_reasons
     assert result.numerically_converged, result.failure_reasons
     assert result.physically_valid, result.failure_reasons
+    assert result.predictive_status == "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
     assert result.termination == "CONVERGENCE"
     assert result.solution_usable
     assert result.final_cost < result.initial_cost
@@ -220,6 +228,48 @@ def test_public_workflow_returns_strict_component_diagnostics(
     assert len(captured_transport[0]) == 24
     assert tuple(captured_transport[0][22]) == result.compiled_problem_identity
     assert captured_transport[0][23] == ""
+
+
+def test_propane_fit_preserves_distinct_statuses_at_the_frozen_pressure_gate() -> None:
+    result = fit_pure_saturation(
+        model=_model("propane"),
+        dataset=load_pure_saturation_dataset("propane"),
+        specification=PROPANE_SATURATION_FIT_V1,
+    )
+
+    assert result.solver_converged
+    assert result.numerically_converged
+    assert not result.physically_valid
+    assert result.predictive_status == "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
+    assert result.termination == "CONVERGENCE"
+    assert result.confirmation_termination == "CONVERGENCE"
+    assert result.iterations == 1090
+    assert result.jacobian.full_rank == 11
+    assert result.jacobian.parameter_rank == 3
+    assert not any(parameter.active_bound for parameter in result.parameters)
+    assert result.confirmation_parameter_scaled_max_delta <= 1.0e-5
+    assert result.confirmation_cost_relative_delta <= 1.0e-8
+    failed_rows = tuple(row for row in result.reporting_rows if not row.physically_valid)
+    assert tuple(row.row_id for row in failed_rows) == (
+        "glos2004-propane-sat-110-k",
+        "glos2004-propane-sat-120-k",
+    )
+    held_out_120 = failed_rows[1]
+    assert held_out_120.partition == "held_out"
+    assert held_out_120.raw_equilibrium_residuals[0] == pytest.approx(
+        1.0540036887718429e-7,
+        rel=1.0e-6,
+        abs=1.0e-12,
+    )
+    assert (
+        abs(held_out_120.raw_equilibrium_residuals[0])
+        / held_out_120.observed_pressure_pa
+        > PROPANE_SATURATION_FIT_V1.reporting_pressure_scaled_residual_max
+    )
+    assert result.failure_reasons == (
+        "glos2004-propane-sat-120-k: reporting scaled pressure closure exceeded its threshold",
+        "training or reporting physical validity gate failed",
+    )
 
 
 def test_rank_deficient_parameter_jacobian_cannot_be_accepted(
