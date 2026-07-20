@@ -7,7 +7,7 @@ This record preserves the smallest regression-owned contract for the two
 historical checkpoints. It adds no runtime fit, public export, provider
 equation, provider-catalog parameter, promotion, or predictive claim.
 
-## Deferred checkpoint provenance and active objective
+## Deferred checkpoint provenance and successor
 
 Checkpoint A was defined to extend the existing pure-saturation engine to
 propane.
@@ -32,25 +32,12 @@ model/data incompatibility. Clean Regression HEAD retains no binary executable
 target, package API, or runtime implementation.
 
 Migration D-023 supersedes this checkpoint order without rewriting the frozen
-evidence. The active sequence is now Validation's stable Figiel, Yu, and Held
-2025 main-paper and official-SI target packet, Provider's permanent-lab-
-approved model-bound active-Born exact-derivative design for current-catalog
-ions, and only then Regression's bounded Ceres tracer design. Regression status
-is `WAITING_FOR_FIGIEL_SOURCE_AND_PROVIDER_DESIGN`.
-
-That future design is ready for review only after it fixes all of the following
-without guessing a target or provider API:
-
-- the source and specification contract from the stable Validation packet;
-- parameter bounds and residual/variable scaling;
-- the exact residual Jacobian consuming only the approved Provider seam;
-- rank and conditioning gates for the admitted lifted formulation;
-- a declared-start and perturbed-start confirmation design;
-- separate solver, numerical, and physical status semantics; and
-- an exact installed-artifact validation campaign.
-
-No residual equation, target value, active-Born callback shape, or fitted-
-parameter persistence contract is admitted by this status checkpoint.
+evidence. The approved Figiel source and Provider design prerequisites and the
+resulting five-ion Ceres contract are now bound only by
+`docs/science/figiel-born-diameter-tracer.md`. Regression status is
+`FIGIEL_BORN_TRACER_DESIGN_READY_FOR_PERMANENT_LAB_REVIEW`; runtime remains
+unauthorized. This historical neutral-hydrocarbon record admits no Figiel
+residual, callback, fit, persistence contract, or implementation surface.
 
 ## Frozen source and model identity
 
@@ -391,7 +378,7 @@ provider gates are unchanged. Predictive status remains
 | Constant methane/ethane `kij` | yes, all 17 May rows | yes, active-`kij` value/gradient/Hessian | yes, rank 35 and projected rank 1 | yes | frozen preflight only; no runtime artifact | historical D-022 evidence only | `NOT_READY`, deferred non-production under D-023 |
 | Association parameters | no admitted target | no admitted complete parameter/association-state derivative seam | no | no | no | no | `NOT_READY` |
 | Polar parameters | no admitted target | no admitted polar parameter derivative seam | no | no | no | no | `NOT_READY` |
-| Current-catalog ion Born diameter | waiting on stable Figiel target packet | waiting on permanent-lab-approved active-Born seam | not designed | not designed | not designed | sequenced by D-023; bounded design not yet admitted | `NOT_READY` |
+| Current-catalog ion Born diameter | approved Validation packet `8944d34f` | approved Provider design `da966048`; no runtime | frozen `5 x 5` diagonal design | frozen in sole design owner | frozen; no artifact exists | D-023 design checkpoint only | design ready for permanent-lab review; runtime `NOT_READY` |
 | Reactive or temperature-dependent parameters | no admitted target | no admitted exact derivative seam | no | no | no | no | `NOT_READY` |
 
 Uncertainty, global identifiability, provider-catalog persistence, and a

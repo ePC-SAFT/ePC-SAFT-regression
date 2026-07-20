@@ -26,9 +26,11 @@ evidence limit; do not add a runtime seam merely to close it. The blocked
 propane subject and frozen methane/ethane binary preflight are retained only as
 authority-neutral, non-production provenance and are not active blockers.
 Under Migration D-023, the next objective is a source-bound Ceres tracer for
-current-catalog ion Born diameters, but Regression remains
-`WAITING_FOR_FIGIEL_SOURCE_AND_PROVIDER_DESIGN` until Validation freezes the
-exact Figiel target contract and Provider returns a permanent-lab-approved
-active-Born exact-derivative design. Do not guess targets, residuals, bounds,
-or a provider API, and do not broaden this sequence to a generic registry or
-full electrolyte, reactive, uncertainty, or global-identifiability surface.
+current-catalog ion Born diameters. Provider design `da966048` and Validation
+source packet `8944d34f` are permanent-lab approved; the sole Regression design
+owner is `docs/science/figiel-born-diameter-tracer.md`. Current status is
+`FIGIEL_BORN_TRACER_DESIGN_READY_FOR_PERMANENT_LAB_REVIEW`. Runtime remains
+unauthorized until that exact design is approved and Migration separately
+binds an implemented Provider artifact. Do not broaden this sequence to a
+generic registry or full electrolyte, reactive, uncertainty, or global-
+identifiability surface.

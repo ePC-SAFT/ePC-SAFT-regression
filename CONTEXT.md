@@ -39,11 +39,13 @@ with no added runtime test seam.
 
 `deferred_propane_status: BLOCKED_CHECKPOINT_A_120_K_PRESSURE_CLOSURE`
 
-`active_regression_status: WAITING_FOR_FIGIEL_SOURCE_AND_PROVIDER_DESIGN`
+`active_regression_status: FIGIEL_BORN_TRACER_DESIGN_READY_FOR_PERMANENT_LAB_REVIEW`
+
+`runtime_status: NOT_AUTHORIZED_WAITING_PROVIDER_ACTIVE_BORN_ARTIFACT`
 
 Migration D-023 at control-plane commit
-`9ceb1dae796b44fad7789762efcca9c11491e9c2`, tree
-`6757a261bffb9486a25f45194bde870605094bb0`, supersedes D-022's active order
+`e0d6930228ad8d9f7c98c419110bbb01bde3a62f`, tree
+`582c4c02bb864069e379c9fd2373cf8887ffc1c6`, supersedes D-022's active order
 without rewriting its evidence. The frozen neutral-hydrocarbon equations and
 numerical contract remain in
 `docs/science/neutral-hydrocarbon-next-slice.md`; no packaged planning
@@ -102,16 +104,21 @@ compact-record head `e01a272e7d11e39db3cdc4105e0c460aceca637d`, and Migration
 The formulation is deferred and non-production; it is not an active blocker.
 
 The next active objective is a source-faithful Figiel, Yu, and Held 2025
-current-catalog ion Born-diameter tracer. Regression may design its Ceres
-formulation only after Validation returns a stable reviewed target packet from
-the main paper and official supporting information and Provider returns a
-permanent-lab-approved, model-bound active-Born exact-derivative seam. The
-later bounded design must then freeze the source/specification contract,
-bounds and scaling, exact residual Jacobian, rank and conditioning gates,
-perturbed-start confirmation, separate solver/numerical/physical statuses, and
-installed-artifact validation plan. Until both upstream designs exist,
-`electrolyte_born_parameters` is `NOT_READY`; no target equation or provider
-API is inferred here.
+current-catalog ion Born-diameter tracer. Provider design
+`da9660481f08bb5557cc03da528edec15cc15e1f`, tree
+`e34575ae646c40f3fb63b5994c957e30bb035f69`, and Validation source packet
+`8944d34f7002cda1bb8760e606cc1f11696f58cd`, tree
+`6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd`, are permanent-lab approved.
+The complete source-bound Ceres contract is now singularly owned by
+`docs/science/figiel-born-diameter-tracer.md`. It fixes exactly five Table S5
+reported-average targets, five active Born diameters, the diagonal exact
+Jacobian, source-resolution comparisons, confirmation, statuses, and future
+installed-artifact evidence without creating runtime or authority.
+
+`electrolyte_born_parameters` remains `NOT_READY`: the Regression design must
+receive permanent-lab approval, Provider must then implement and validate its
+approved callback under separate authorization, and Migration must bind an
+exact installed artifact before any Regression implementation or fit.
 
 The eventual direction is a staged, family-by-family recovery campaign for
 Figiel Tables 2–5. That later intent does not broaden the first Born-diameter
