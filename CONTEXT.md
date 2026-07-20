@@ -111,3 +111,9 @@ perturbed-start confirmation, separate solver/numerical/physical statuses, and
 installed-artifact validation plan. Until both upstream designs exist,
 `electrolyte_born_parameters` is `NOT_READY`; no target equation or provider
 API is inferred here.
+
+The eventual direction is a staged, family-by-family recovery campaign for
+Figiel Tables 2–5. That later intent does not broaden the first Born-diameter
+tracer into a simultaneous all-table fit or generic registry. Validation's
+future exact ledger alone will classify each value as fitted, inherited,
+fixed, or blank; Regression makes none of those assignments in advance.
