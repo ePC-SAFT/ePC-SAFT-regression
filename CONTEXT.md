@@ -1,7 +1,8 @@
 # Regression Repository Context
 
-This repository owns one strict pure-saturation regression workflow for
-methane and ethane.
+This repository owns one strict pure-saturation regression workflow. Methane
+and ethane are accepted; propane Checkpoint A is an authority-neutral blocked
+local candidate.
 
 `governance_doctrine_revision: 2`
 
@@ -35,7 +36,7 @@ with no added runtime test seam.
 
 `candidate_capability: pure-propane-saturation-parameter-candidate-v1`
 
-`candidate_status: checkpoint-a-local-implementation-authorized`
+`candidate_status: BLOCKED_CHECKPOINT_A_120_K_PRESSURE_CLOSURE`
 
 The approved next regression direction is one authority-neutral neutral-
 hydrocarbon program with propane followed by one constant methane/ethane
@@ -48,6 +49,23 @@ experimental propane packet is accepted at
 `76f9946a99ac0e000ecafd5644d4ed227f469b5e` authorizes local Checkpoint A
 implementation through the existing pure-saturation workflow. It transfers no
 authority and does not resume the blocked binary formulation.
+
+Checkpoint A implementation commit
+`aab87ebd4a40cb29f21486e06687c10eb1e44624` (tree
+`462cda550cf5461e4b13cc7e40630708dd336bd7`) retains one wheel with SHA-256
+`32b815fc00241516f13574594af3cf631f8fe30629bbec45ac3828d9357d705f`.
+The exact installed-artifact result is solver-converged and numerically
+confirmed with full rank 11 and fitted-parameter rank 3, but is not physically
+valid. Held-out row `glos2004-propane-sat-120-k` has liquid-pressure closure
+`1.0540036887718429e-7 Pa`, or `3.293761527412009e-8` scaled by the observed
+`3.2 Pa`, above the frozen `1e-8` gate. Tightening a diagnostic-only reporting
+step tolerance did not move this provider-returned pressure plateau and was
+removed. Receipt `evidence/propane-candidate-fit-receipt.json` has subject
+SHA-256 `c059e5381a3fbf0cf00a43aaa0cc28b67c074e325f1a33066b6937c16cc0a761`
+and file SHA-256
+`daaa93a2f5d0e0dbf81fc83562bb809c687a36e66578071c68ea66b1988ccaec`.
+No source uncertainty is treated as an acceptance cutoff, and predictive
+status remains `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
 For binary `kij`, provider derivatives, the `68 x 35` Jacobian, rank 35,
 projected parameter rank 1, a finite non-bound result, and both perturbed starts

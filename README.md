@@ -43,3 +43,9 @@ no added runtime seam. The candidate excludes binary interactions,
 association, electrolytes, reactions, generic target families, and parameter
 persistence. See [the scientific contract](docs/science/pure-saturation-regression.md)
 and [candidate capability record](evidence/candidate-capability.yaml).
+
+The local propane Checkpoint A candidate converges and confirms with complete
+rank, but held-out 120 K pressure closure is about `3.29e-8`, above the frozen
+`1e-8` numerical gate. It is therefore retained as blocked evidence, not as a
+predictive or promoted workflow. The pointwise Glos uncertainties remain
+reporting context and are not substituted for that gate.

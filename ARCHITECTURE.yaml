@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-propane-checkpoint-a-active
+status: authoritative-methane-and-ethane-with-propane-checkpoint-a-blocked
 
 authority:
   accepted_capabilities:
@@ -11,7 +11,7 @@ authority:
     - promotion-0023-regression-pure-saturation-ethane-v1
   promotion_status: accepted
   ethane_publication_state: state-0025-regression-ethane-publication
-  local_candidate: pure-propane-saturation-parameter-candidate-v1
+  local_candidate: pure-propane-saturation-parameter-candidate-v1-blocked
   checkpoint_a_authority_effect: none
   predictive_validation: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
   fitted_parameter_admission: none
@@ -40,7 +40,7 @@ preparatory_contracts:
     status: binary-preflight-blocked-authority-neutral
     public_exports: []
     checkpoint_order: [propane-pure-saturation, methane-ethane-constant-kij]
-    propane_gate: CHECKPOINT_A_LOCAL_IMPLEMENTATION_AUTHORIZED_MIGRATION_76f9946
+    propane_gate: BLOCKED_CHECKPOINT_A_120_K_PRESSURE_CLOSURE
     binary_gate: BLOCKED_FROZEN_PRESSURE_CLOSURE
     binary_preflight_evidence: evidence/binary-kij-preflight.json
     binary_preflight_claim: >-
@@ -109,7 +109,7 @@ component_contracts:
     stress_temperatures_k: [100.0, 280.0]
     stress_acceptance_effect: none
   propane:
-    status: authority-neutral-local-checkpoint-a
+    status: authority-neutral-local-candidate-blocked-physical-pressure-closure
     dataset: glos-2004-experimental-propane-saturation-110-340-k-v1
     source_packet_commit: 7e51590757f1cb85f51df98e9fe1f88cd4255a88
     source_packet_tree: 05af9e948c786ddfcf43dba701970f1cbb6435a2
@@ -156,8 +156,41 @@ accepted_ethane_artifact:
     status: accepted
     publication_state: state-0025-regression-ethane-publication
 
+propane_candidate_artifact:
+  implementation_commit: aab87ebd4a40cb29f21486e06687c10eb1e44624
+  implementation_tree: 462cda550cf5461e4b13cc7e40630708dd336bd7
+  source_date_epoch: 1784567065
+  local_wheel: ../artifacts/regression-pure-saturation-v1/aab87eb/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl
+  wheel_sha256: 32b815fc00241516f13574594af3cf631f8fe30629bbec45ac3828d9357d705f
+  archive_byte_reproducibility: not-claimed-single-build
+  installed_wheel_tests: 48-passed
+  wheel_members: 11
+  canonical_runner_byte_stable: true
+  receipt: evidence/propane-candidate-fit-receipt.json
+  receipt_subject_sha256: c059e5381a3fbf0cf00a43aaa0cc28b67c074e325f1a33066b6937c16cc0a761
+  receipt_payload_sha256: 994a14cfa7b8534a5907c6983f32355d7c4be238eaae07e6840b28ab35aacf0c
+  receipt_file_sha256: daaa93a2f5d0e0dbf81fc83562bb809c687a36e66578071c68ea66b1988ccaec
+  result:
+    status: BLOCKED_CHECKPOINT_A_120_K_PRESSURE_CLOSURE
+    solver_converged: true
+    numerically_converged: true
+    physically_valid: false
+    predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
+    fitted_parameters: [1.9835426308533168, 3.627861545037305, 209.27852823846877]
+    full_rank: 11
+    parameter_rank: 3
+    failed_held_out_row: glos2004-propane-sat-120-k
+    liquid_pressure_closure_pa: 1.0540036887718429e-7
+    scaled_liquid_pressure_closure: 3.293761527412009e-8
+    required_scaled_pressure_closure: 1.0e-8
+  provider:
+    commit: 4b10cb899c94687cae734980285badb224dc95e6
+    wheel_sha256: f92f79c8d6f614660e5c201b7061c9b02b5cd1a25a4ed8c8fee0b59adaabf2bf
+    installed_public_header_sha256: 414c257d28322d6be41809a8dc6b98023859dd156202a5205079d674b28b4070
+    test_receipt_sha256: 07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480
+
 manifest:
-  tracked_files_after_checkpoint_a_implementation: 43
+  tracked_files_after_checkpoint_a_evidence: 44
   production_python_files: 3
   native_source_files: 5
   installed_data_files: 3
@@ -167,7 +200,7 @@ manifest:
   ide_project_files: 7
   physical_production_lines: 3008
   physical_package_test_lines: 883
-  tracked_generated_evidence_files_after_binary_preflight: 3
+  tracked_generated_evidence_files_after_checkpoint_a: 4
   generated_file_policy: >-
     The accepted methane and ethane fit receipts bind deterministic
     evidence to explicit artifacts. The compact blocked binary receipt retains
