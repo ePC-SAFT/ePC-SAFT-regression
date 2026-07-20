@@ -42,7 +42,8 @@ with no added runtime test seam.
 `active_regression_status: WAITING_FOR_FIGIEL_SOURCE_AND_PROVIDER_DESIGN`
 
 Migration D-023 at control-plane commit
-`fab44bd6d795afd923ffe85cc8393e7bfe576c65` supersedes D-022's active order
+`9ceb1dae796b44fad7789762efcca9c11491e9c2`, tree
+`6757a261bffb9486a25f45194bde870605094bb0`, supersedes D-022's active order
 without rewriting its evidence. The frozen neutral-hydrocarbon equations and
 numerical contract remain in
 `docs/science/neutral-hydrocarbon-next-slice.md`; no packaged planning

@@ -102,8 +102,8 @@ preparatory_contracts:
 active_regression_objective:
   status: WAITING_FOR_FIGIEL_SOURCE_AND_PROVIDER_DESIGN
   migration_decision: D-023
-  migration_control_plane_commit: fab44bd6d795afd923ffe85cc8393e7bfe576c65
-  migration_control_plane_tree: 6588d2576bab575eca0aeb56db5f468bfa43d1f1
+  migration_control_plane_commit: 9ceb1dae796b44fad7789762efcca9c11491e9c2
+  migration_control_plane_tree: 6757a261bffb9486a25f45194bde870605094bb0
   scope: current-catalog-ion-born-diameter-ceres-tracer
   upstream_prerequisites:
     validation: stable-reviewed-figiel-main-paper-and-official-si-target-packet
