@@ -1,9 +1,10 @@
 # ePC-SAFT Regression
 
-This repository owns one strict pure-saturation Ceres workflow. It reproduces
-the accepted methane fit and adds a local ethane candidate from retained NIST
-saturation rows. It calls the installed `epcsaft.native_sdk.v1` provider
-capsule for every Helmholtz value and derivative.
+This repository owns one strict pure-saturation Ceres workflow. Its methane and
+ethane forms are accepted reproducible workflows. Checkpoint A extends that
+same workflow to one local propane candidate from the approved Glos 2004
+direct-experimental packet. Every Helmholtz value and derivative comes from the
+installed `epcsaft.native_sdk.v1` provider capsule.
 
 The public workflow is:
 
@@ -31,11 +32,12 @@ Builds require Ceres 2.2 and `EPCSAFT_INCLUDE_DIR` set to the public include
 directory of an installed compatible provider wheel. The build does not search
 sibling source trees.
 
-Accepted migration receipt `promotion-0020-regression-methane-saturation-v1`
-makes this repository the production owner of the exact reproducible methane
-workflow. It does not admit the fitted parameters as predictive or scientific
-authority. Held-out errors are descriptive because no admission cutoff was
-approved, and the
+Accepted migration receipts `promotion-0020-regression-methane-saturation-v1`
+and `promotion-0023-regression-pure-saturation-ethane-v1` make this repository
+the production owner of the exact reproducible methane and ethane workflows;
+`state-0025-regression-ethane-publication` verifies ethane publication. They do
+not admit fitted parameters as predictive or scientific authority. Held-out
+errors are descriptive because no admission cutoff was approved, and the
 reporting-block directional Jacobian remains an explicit evidence limit with
 no added runtime seam. The candidate excludes binary interactions,
 association, electrolytes, reactions, generic target families, and parameter

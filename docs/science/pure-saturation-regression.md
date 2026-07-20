@@ -1,9 +1,10 @@
 # Pure-Saturation Regression
 
 The package fits segment count, segment diameter, and dispersion energy for
-one admitted pure component per call. It reproduces the accepted methane
-workflow and adds a local ethane candidate. The installed `epcsaft` provider
-owns Helmholtz energy and nonlinear derivatives.
+one closed pure-component record per call. Methane and ethane are accepted
+reproducible workflows. Propane Checkpoint A is an authority-neutral local
+candidate. The installed `epcsaft` provider owns Helmholtz energy and nonlinear
+derivatives.
 
 ## Source records
 
@@ -115,7 +116,7 @@ observed pressure. Chemical-potential closure uses `1e-8`.
 Stress rows retain their termination, closure, topology, predictions, and
 failure reasons. They do not enter solver or physical acceptance and do not
 receive aggregate errors unless the reporting state passes the physical
-gates. In the local ethane candidate, 280 K passes. The 100 K solve terminates
+gates. In the accepted ethane workflow, 280 K passes. The 100 K solve terminates
 at the `1 Pa` lower pressure bound and fails pressure and chemical-potential
 closure, so the receipt records no valid 100 K prediction.
 

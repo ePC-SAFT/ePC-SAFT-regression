@@ -1,19 +1,20 @@
 schema_version: epcsaft-regression-candidate-capability-v2
-status: draft-promotion-packet-ready
-authority: pending-exact-migration-approval
+status: accepted-methane-and-ethane-with-propane-checkpoint-a-active
+authority: accepted-for-recorded-methane-and-ethane-workflows-only
 owner: ePC-SAFT/ePC-SAFT-regression
 scope: >-
-  Preserve the accepted pure-methane saturation workflow and add one local
-  source-backed ethane fit through the same Ceres engine and installed provider
-  parameter-Hessian entry. Predictive, uncertainty, scientific, persistence,
-  and runtime-authority admission remain excluded.
+  Preserve the accepted pure-methane and pure-ethane saturation workflows while
+  Checkpoint A adds one authority-neutral propane candidate through the same
+  Ceres engine and installed provider parameter-Hessian entry. Predictive,
+  uncertainty, scientific, persistence, and propane runtime-authority admission
+  remain excluded.
 accepted_methane:
   promotion_receipt: promotion-0020-regression-methane-saturation-v1
   canonical_receipt:
     path: evidence/candidate-fit-receipt.json
     subject_sha256: 3ba15a2859cf2bb4e75bd489985072b8546a1942799c911ad99af4f19bc5d78c
   numerical_parity_required: true
-ethane_candidate:
+accepted_ethane:
   component_id: ethane
   dataset_id: nist-webbook-ethane-saturation-100-280-k-v1
   training_temperatures_k: [140.0, 180.0, 220.0, 260.0]
@@ -51,10 +52,10 @@ ethane_candidate:
     record_sha256: 239c84788f75f8c66240c83e4f5874f112e1197dafad6273e1c8ec4efe994d24
     predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
     ethane_100_k: ETHANE_100_K_EXCLUDED_FAILURE
-  draft_promotion:
+  accepted_promotion:
     packet_id: promotion-0023-regression-pure-saturation-ethane-v1
-    status: pending-exact-migration-approval
-    authority_effect: none
+    status: accepted
+    publication_state: state-0025-regression-ethane-publication
 boundaries:
   held_out_accuracy_cutoff: none approved
   stress_acceptance_effect: none

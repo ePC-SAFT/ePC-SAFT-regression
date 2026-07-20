@@ -7,13 +7,13 @@ methane and ethane.
 
 Canonical local doctrine: `../ePC-SAFT-organization/GOVERNANCE.md`.
 
-Accepted migration receipt `promotion-0020-regression-methane-saturation-v1`
-makes this repository the production owner of the exact reproducible methane
-workflow. Permanent lab adjudication now records `APPROVE_LOCAL_CANDIDATE`,
-and validation admits the exact regression artifact with `PASS`. Draft packet
-`promotion-0023-regression-pure-saturation-ethane-v1` remains pending exact
-migration approval, so the ethane candidate changes no authority and receives
-no predictive, uncertainty, scientific, or provider-catalog admission.
+Accepted migration receipts `promotion-0020-regression-methane-saturation-v1`
+and `promotion-0023-regression-pure-saturation-ethane-v1` make this repository
+the production owner of the exact reproducible methane and ethane workflows.
+Validation receipt `validation-0022-regression-pure-saturation-ethane-v1`
+passed, and state receipt `state-0025-regression-ethane-publication` verifies
+ethane publication. Neither workflow gives its fitted parameters predictive,
+uncertainty, scientific, or provider-catalog admission.
 
 Both components use the installed provider capsule, one Ceres engine, exact
 residual Jacobians, and immutable source and specification records. The ethane
@@ -31,11 +31,11 @@ as `ETHANE_100_K_EXCLUDED_FAILURE`. Final validation evidence is at
 The reporting-block directional Jacobian remains an explicit evidence limit,
 with no added runtime test seam.
 
-`runtime_source_of_truth: methane-workflow-only`
+`runtime_source_of_truth: accepted-methane-and-ethane-workflows`
 
-`candidate_capability: pure-ethane-saturation-parameter-candidate-v1`
+`candidate_capability: pure-propane-saturation-parameter-candidate-v1`
 
-`candidate_status: draft-promotion-packet-pending-exact-migration-approval`
+`candidate_status: checkpoint-a-local-implementation-authorized`
 
 The approved next regression direction is one authority-neutral neutral-
 hydrocarbon program with propane followed by one constant methane/ethane
@@ -43,8 +43,11 @@ hydrocarbon program with propane followed by one constant methane/ethane
 gates are owned only by
 `docs/science/neutral-hydrocarbon-next-slice.md`. No packaged planning
 framework, binary executable owner, or runtime API exists. Validation's direct-
-experimental propane packet is accepted at `7e51590757f1cb85f51df98e9fe1f88cd4255a88`;
-propane runtime work is not part of this correction.
+experimental propane packet is accepted at
+`7e51590757f1cb85f51df98e9fe1f88cd4255a88`; Migration coordination commit
+`76f9946a99ac0e000ecafd5644d4ed227f469b5e` authorizes local Checkpoint A
+implementation through the existing pure-saturation workflow. It transfers no
+authority and does not resume the blocked binary formulation.
 
 For binary `kij`, provider derivatives, the `68 x 35` Jacobian, rank 35,
 projected parameter rank 1, a finite non-bound result, and both perturbed starts

@@ -1,15 +1,18 @@
 version: 2
-status: authoritative-methane-with-ethane-draft-promotion-pending
+status: authoritative-methane-and-ethane-with-propane-checkpoint-a-active
 
 authority:
-  accepted_capability: reproducible-pure-methane-saturation-workflow-v1
+  accepted_capabilities:
+    - reproducible-pure-methane-saturation-workflow-v1
+    - reproducible-pure-ethane-saturation-workflow-v1
   production_runtime_owner: ePC-SAFT/ePC-SAFT-regression
-  promotion_receipt: promotion-0020-regression-methane-saturation-v1
+  promotion_receipts:
+    - promotion-0020-regression-methane-saturation-v1
+    - promotion-0023-regression-pure-saturation-ethane-v1
   promotion_status: accepted
-  local_candidate: pure-ethane-saturation-parameter-candidate-v1
-  draft_promotion_packet: promotion-0023-regression-pure-saturation-ethane-v1
-  ethane_authority: pending-exact-migration-approval
-  candidate_authority_effect: none
+  ethane_publication_state: state-0025-regression-ethane-publication
+  local_candidate: pure-propane-saturation-parameter-candidate-v1
+  checkpoint_a_authority_effect: none
   predictive_validation: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
   fitted_parameter_admission: none
   persistence_authority: none
@@ -35,7 +38,7 @@ preparatory_contracts:
     status: binary-preflight-blocked-authority-neutral
     public_exports: []
     checkpoint_order: [propane-pure-saturation, methane-ethane-constant-kij]
-    propane_gate: PRIMARY_SOURCE_PACKET_ACCEPTED_VALIDATION_7e515907_RUNTIME_NOT_STARTED
+    propane_gate: CHECKPOINT_A_LOCAL_IMPLEMENTATION_AUTHORIZED_MIGRATION_76f9946
     binary_gate: BLOCKED_FROZEN_PRESSURE_CLOSURE
     binary_preflight_evidence: evidence/binary-kij-preflight.json
     binary_preflight_claim: >-
@@ -95,7 +98,7 @@ component_contracts:
     held_out_temperatures_k: [100.0, 120.0, 140.0, 160.0, 180.0]
     stress_temperatures_k: []
   ethane:
-    status: local-candidate-review-and-artifact-admission-complete
+    status: authoritative-workflow-publication-verified
     dataset: nist-webbook-ethane-saturation-100-280-k-v1
     expected_provider_fingerprint: sha256:288fbcaa1304881c16f64c3a784eeed19b75c58cca4558f92a21268e5e91258a
     training_temperatures_k: [140.0, 180.0, 220.0, 260.0]
@@ -103,7 +106,7 @@ component_contracts:
     stress_temperatures_k: [100.0, 280.0]
     stress_acceptance_effect: none
 
-candidate_artifact:
+accepted_ethane_artifact:
   implementation_commit: 50a488b91686388432fd50a0d6bfc5b15825e4f1
   source_date_epoch: 1784327029
   local_wheel: ../artifacts/regression-pure-saturation-v1/50a488b/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl
@@ -135,13 +138,13 @@ candidate_artifact:
     record_sha256: 239c84788f75f8c66240c83e4f5874f112e1197dafad6273e1c8ec4efe994d24
     predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
     ethane_100_k: ETHANE_100_K_EXCLUDED_FAILURE
-  draft_promotion:
+  accepted_promotion:
     packet_id: promotion-0023-regression-pure-saturation-ethane-v1
-    status: pending-exact-migration-approval
-    authority_effect: none
+    status: accepted
+    publication_state: state-0025-regression-ethane-publication
 
 manifest:
-  tracked_files_after_evidence_minimality_correction: 41
+  tracked_files_after_checkpoint_a_plan: 42
   production_python_files: 3
   native_source_files: 5
   installed_data_files: 2
@@ -153,7 +156,7 @@ manifest:
   physical_package_test_lines: 725
   tracked_generated_evidence_files_after_binary_preflight: 3
   generated_file_policy: >-
-    The accepted methane and local ethane fit receipts bind deterministic
+    The accepted methane and ethane fit receipts bind deterministic
     evidence to explicit artifacts. The compact blocked binary receipt retains
     the exact rejected result and its immutable Regression/Migration provenance;
     its removed executable owners remain available only from Git history. Build
@@ -193,7 +196,7 @@ excluded:
   - provider source, private headers, or copied EOS equations
   - provider catalog persistence
   - predictive validation admission
-  - runtime authority promotion for ethane
+  - runtime authority promotion for the local propane candidate
 
 ratchet:
   rule: Every increase must serve one approved regression capability and keep EOS ownership in the provider.
