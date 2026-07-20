@@ -58,21 +58,37 @@ The exact installed-artifact result is solver-converged and numerically
 confirmed with full rank 11 and fitted-parameter rank 3, but is not physically
 valid. Held-out row `glos2004-propane-sat-120-k` has liquid-pressure closure
 `1.0540036887718429e-7 Pa`, or `3.293761527412009e-8` scaled by the observed
-`3.2 Pa`, above the frozen `1e-8` gate. Tightening a diagnostic-only reporting
-step tolerance did not move this provider-returned pressure plateau and was
-removed. Receipt `evidence/propane-candidate-fit-receipt.json` has subject
+`3.2 Pa`, above the frozen `1e-8` gate. The exact installed-callback diagnostic
+reproduced that pressure and residual bit-for-bit. The required continuous
+volume correction is `0.42624401466815054` local liquid-volume ULP, while both
+adjacent representable volumes change pressure; this is a measured binary64
+resolution limit, not a single-ULP pressure plateau or a provider-defect
+finding. Receipt `evidence/propane-candidate-fit-receipt.json` has subject
 SHA-256 `c059e5381a3fbf0cf00a43aaa0cc28b67c074e325f1a33066b6937c16cc0a761`
 and file SHA-256
 `daaa93a2f5d0e0dbf81fc83562bb809c687a36e66578071c68ea66b1988ccaec`.
 No source uncertainty is treated as an acceptance cutoff, and predictive
 status remains `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
+Permanent-lab verdict `CORRECTION_DESIGN_JUSTIFIED` authorizes only a design
+and evidence protocol for
+`abs(P_phase - P_report) <= atol_resolution + 1e-8*abs(P_observed)`.
+The relative term is unchanged, observed pressure remains only a magnitude
+scale, and no value of `atol_resolution` is selected. The derivation and replay
+protocol is frozen in the two existing science owners. Runtime, result types,
+blocked receipts, artifacts, and authority remain unchanged pending a
+Provider-owned independent high-precision pressure oracle, a Validation-owned
+installed-artifact campaign, permanent-lab re-adjudication, and explicit
+approval of any numeric value.
+
 For binary `kij`, provider derivatives, the `68 x 35` Jacobian, rank 35,
 projected parameter rank 1, a finite non-bound result, and both perturbed starts
 passed. The three declared converged equal-weight starts did not meet the
 `1e-8` pressure-closure gate: row `may2015-ch4-c2h6-002` reached
 `2.2691483584976503e-2`. This does not establish global infeasibility or
-model/data incompatibility. Compact evidence remains at
+model/data incompatibility. No chemical-potential equality cutoff is approved,
+so the pressure-resolution protocol cannot by itself make the binary
+checkpoint ready. Compact evidence remains at
 `evidence/binary-kij-preflight.json`; the rejected executable alternative is
 immutable at Regression `47a2a8d9579a01347df7ccaa977337ad7d4047af`, receipt
 subject `d51c9f0713b6a7355be719b6843e4459f41d46d16d973668d694715d36b63676`,

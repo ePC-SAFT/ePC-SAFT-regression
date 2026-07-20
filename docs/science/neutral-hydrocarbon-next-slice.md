@@ -1,7 +1,7 @@
 # Neutral-Hydrocarbon Next-Slice Contract
 
-Status: binary preflight blocked by frozen pressure closure; authority effect
-none.
+Status: propane and binary pressure closure blocked; mixed-resolution design
+pending independent Provider/Validation evidence; authority effect none.
 
 This record freezes the smallest regression-owned contract for two ordered
 checkpoints. It adds no runtime fit, public export, provider equation,
@@ -11,8 +11,10 @@ provider-catalog parameter, promotion, or predictive claim.
 
 Checkpoint A extends the existing pure-saturation engine to propane.
 Validation's direct-experimental source packet is accepted at
-`7e51590757f1cb85f51df98e9fe1f88cd4255a88`. This evidence correction does not
-start propane runtime work.
+`7e51590757f1cb85f51df98e9fe1f88cd4255a88`. The exact candidate is retained
+as blocked evidence at Regression
+`33228253383ab8755384170b3caac7b38733e157`; the pressure-resolution design
+below changes neither that subject nor its runtime.
 
 Checkpoint B fits one constant methane/ethane `kij`. The manager-retained
 provider subject is commit
@@ -206,6 +208,171 @@ and Migration `4fd0e6eff5fd17399573132430d13c7e34626b98`. Clean HEAD retains no
 replay harness. The corrected retained receipt subject and file SHA-256 are
 `f9033e6d1b00b0bfc11b421e6ef1e388db714d95431618b981d294d11f728d62`
 and `c734bb9f56768f89a710575d58c45b460543c0828e913c5ea5372603c768ff78`.
+
+## Cross-checkpoint pressure-resolution evidence protocol
+
+The canonical formula, candidate-derivation comparison, pure-component replay
+matrix, and status semantics are in
+`docs/science/pure-saturation-regression.md`. This record adds only the binary
+and staged-maturity constraints. No numeric `atol_resolution` is selected.
+
+The frozen candidate formula is
+
+```text
+abs(P_phase - P_report)
+    <= atol_resolution + 1e-8 * abs(P_observed).
+```
+
+The `1e-8` relative term, residual weights, rows, variables, bounds, starts,
+provider callbacks, and solver controls remain unchanged. Observed pressure is
+a magnitude scale, not experimental uncertainty. The pure protocol derives one
+raw-Pa candidate from its predeclared calibration states using the certified
+high-precision discrepancy plus input-lattice bound. Propane 120 K and every
+binary row are locked challenges: neither blocked closure value can derive or
+widen the candidate.
+
+### Frozen artifacts and commands
+
+The immutable pure subject is:
+
+| Item | Identity |
+|---|---|
+| Regression blocked evidence | commit `33228253383ab8755384170b3caac7b38733e157`, tree `23f9528701123165a90b4887dbebf7e245c2b053` |
+| Regression implementation | commit `aab87ebd4a40cb29f21486e06687c10eb1e44624`, tree `462cda550cf5461e4b13cc7e40630708dd336bd7` |
+| Regression wheel | SHA-256 `32b815fc00241516f13574594af3cf631f8fe30629bbec45ac3828d9357d705f` |
+| Propane receipt | subject `c059e5381a3fbf0cf00a43aaa0cc28b67c074e325f1a33066b6937c16cc0a761`, file SHA-256 `daaa93a2f5d0e0dbf81fc83562bb809c687a36e66578071c68ea66b1988ccaec` |
+| Pure provider | commit `4b10cb899c94687cae734980285badb224dc95e6`, wheel SHA-256 `f92f79c8d6f614660e5c201b7061c9b02b5cd1a25a4ed8c8fee0b59adaabf2bf`, installed header SHA-256 `414c257d28322d6be41809a8dc6b98023859dd156202a5205079d674b28b4070` |
+
+The immutable binary subject is:
+
+| Item | Identity |
+|---|---|
+| Rejected executable provenance | Regression commit `47a2a8d9579a01347df7ccaa977337ad7d4047af`, subject `d51c9f0713b6a7355be719b6843e4459f41d46d16d973668d694715d36b63676` |
+| Compact blocked evidence | subject `f9033e6d1b00b0bfc11b421e6ef1e388db714d95431618b981d294d11f728d62`, file SHA-256 `c734bb9f56768f89a710575d58c45b460543c0828e913c5ea5372603c768ff78` |
+| Active-`kij` provider | commit `45d5764f61729d387100348a8ff91792f6e0a395`, tree `271d4848faf73afd4cf0683efe5c855053df7d01`, wheel SHA-256 `95d2292b052ab74657931f2dec97c3ea4160d9b17812956515c7195a853e6c5b`, installed header SHA-256 `6f3a186bf5359f32449a31c544e8b8525be6c594804151d3e74a74e411ded8f4` |
+| May source | Validation commit `73a37f5935e919a34d1e4fa3af285951d6fac8e7`, CSV SHA-256 `5cd1e74925a3c6504f5106dcf911f2cae2d6e99a5133fccc20454d8991bdbc7f` |
+
+Before any campaign, these frozen inputs are checked with:
+
+```bash
+git rev-parse HEAD HEAD^{tree}
+sha256sum \
+  ../artifacts/regression-pure-saturation-v1/aab87eb/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl \
+  ../artifacts/provider-native-sdk-v1/4b10cb8/epcsaft-0.1.0.dev0-cp313-cp313-linux_x86_64.whl \
+  evidence/propane-candidate-fit-receipt.json \
+  evidence/binary-kij-preflight.json \
+  evidence/may-2015-methane-ethane-vle.csv
+```
+
+The frozen pure artifact replay command is:
+
+```bash
+python3.13 tools/run_candidate.py \
+  --component propane \
+  --provider-wheel ../artifacts/provider-native-sdk-v1/4b10cb8/epcsaft-0.1.0.dev0-cp313-cp313-linux_x86_64.whl \
+  --provider-test-receipt ../artifacts/provider-native-sdk-v1/4b10cb8/provider-tests.xml \
+  --regression-wheel ../artifacts/regression-pure-saturation-v1/aab87eb/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl \
+  --output /tmp/propane-resolution-replay.json
+```
+
+Methane and ethane use the same command with only `--component` changed. The
+output is temporary comparison evidence and must not replace the retained
+receipt. The clean Regression tree does not regain the historical binary
+replay harness. Binary resolution evidence must be produced in a temporary
+detached worktree at exact commit `47a2a8d9579a01347df7ccaa977337ad7d4047af`,
+consume the retained active-`kij` wheel above, write only outside the worktree,
+and be deleted after its hashes and result are transferred to the independent
+review receipt.
+
+Provider's smallest prerequisite is two non-installed test-only oracle cases
+in its existing `tests/test_native_sdk.py` owner: one finite pure-parameter
+pressure matrix and one active-`kij` pressure matrix, each evaluated with an
+independent directed-rounding high-precision transcription. Their review
+command is frozen as:
+
+```bash
+python3.13 -m pytest -q \
+  tests/test_native_sdk.py::test_native_sdk_pure_parameterized_pressure_resolution_oracle \
+  tests/test_native_sdk.py::test_native_sdk_active_kij_pressure_resolution_oracle
+```
+
+Those test names do not exist in the retained provider subjects; their absence
+is an explicit prerequisite, not permission to fabricate output. Provider
+must return an exact commit, tree, wheel/header identities, oracle-data hash,
+and command result before Regression can propose a number.
+
+Validation then extends its existing installed-artifact pure-saturation
+campaign rather than creating a generic tolerance framework. Its source and
+campaign checks remain:
+
+```bash
+python3.13 -m pytest -q tests/test_pure_saturation_regression.py
+python3.13 campaigns/pure_saturation_regression.py \
+  --provider-wheel ../artifacts/provider-native-sdk-v1/4b10cb8/epcsaft-0.1.0.dev0-cp313-cp313-linux_x86_64.whl \
+  --regression-wheel ../artifacts/regression-pure-saturation-v1/aab87eb/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl \
+  --output-dir /tmp/propane-pressure-resolution-campaign
+```
+
+The current Validation campaign does not yet admit the propane artifact or the
+resolution oracle. The command freezes its exact input subject and output
+location; it becomes executable evidence only after the bounded Validation
+extension is reviewed. A later corrected Regression artifact requires a new
+hash-bound command and cannot silently replace this blocked input.
+
+### Binary replay matrix and gates
+
+The binary matrix includes all 17 May rows for each of the three frozen starts
+`kij = 0`, `-0.05`, and `+0.05`. For every converged solution it records the
+center and the one-axis `nextafter` minus/plus probes for liquid volume, vapor
+volume, and the observed common pressure used in residual subtraction. It
+retains callback/oracle pressure, `dP/dV`, both component chemical potentials,
+phase stability, topology, all four raw/scaled residuals, ranks, fitted `kij`,
+cost, and confirmation deltas. The common pressure remains fixed source data;
+its probes measure binary64 subtraction only and never reconcile data.
+
+The one candidate `atol_resolution` may be applied to binary evidence only if
+every active-`kij` oracle bound lies within the pure-derived candidate. A
+failure leaves Checkpoint B blocked and cannot widen the number. The row-002
+closure is then evaluated, never used to enlarge the candidate. Given the
+retained `2.2691483584976503e-2` relative miss, Checkpoint B remains `NOT_READY`
+unless the independently derived raw-Pa term passes the mixed criterion
+without violating negative controls. No current evidence makes that claim.
+The retained binary contract
+also has no approved chemical-potential equality cutoff; its maximum absolute
+component residual is `0.06950599355260767`. This pressure-resolution protocol
+does not create that missing physical-admission criterion, so a mixed pressure
+pass alone cannot make Checkpoint B ready.
+
+Accepted methane/ethane decisions and raw numerical outputs must remain
+unchanged. Ethane 100 K and propane 110 K remain failed. Both signs of a
+pressure perturbation
+
+```text
+max(100 * atol_resolution, 1e-6 * abs(P_observed))
+```
+
+must reject for pure and binary representative rows. Solver convergence,
+derivative, rank, bounds, topology, stability, chemical-potential, source, and
+provider gates are unchanged. Predictive status remains
+`NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
+
+## Staged parameter-family readiness
+
+`READY` requires all six columns below. A missing column makes the family
+`NOT_READY`; similarity to an admitted family is not evidence.
+
+| Parameter family | Source-backed target | Exact provider seam | Rank-sufficient formulation | Bounds/scaling/confirmation | Installed-artifact plan | Approved scope | Readiness |
+|---|---|---|---|---|---|---|---|
+| Pure `m`, `sigma`, `epsilon/k` | yes for methane, ethane, propane | yes, five-coordinate Hessian | yes, rank 3 and full lifted system | yes | yes; correction campaign pending for propane | yes, component-specific | `NOT_READY` for propane until resolution re-adjudication; methane/ethane remain accepted |
+| Constant methane/ethane `kij` | yes, all 17 May rows | yes, active-`kij` value/gradient/Hessian | yes, rank 35 and projected rank 1 | yes | design frozen; no runtime artifact | yes under D-022 after Checkpoint A | `NOT_READY` pending Checkpoint A, oracle evidence, pressure closure, and an approved chemical-potential criterion |
+| Association parameters | no admitted target | no admitted complete parameter/association-state derivative seam | no | no | no | no | `NOT_READY` |
+| Polar parameters | no admitted target | no admitted polar parameter derivative seam | no | no | no | no | `NOT_READY` |
+| Electrolyte/Born parameters | no admitted target | no admitted parameterized electrolyte/Born seam | no | no | no | no | `NOT_READY` |
+| Reactive or temperature-dependent parameters | no admitted target | no admitted exact derivative seam | no | no | no | no | `NOT_READY` |
+
+Uncertainty, global identifiability, provider-catalog persistence, and a
+generic target/parameter registry are not parameter families admitted by this
+matrix. They remain excluded rather than predesigned.
 
 ## Explicit exclusions
 

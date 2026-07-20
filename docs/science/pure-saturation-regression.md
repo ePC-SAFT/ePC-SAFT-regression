@@ -158,16 +158,166 @@ reaches the vapor-volume ceiling and has no acceptance effect. The 120 K
 held-out reporting solve converges and is usable, but its liquid-pressure
 closure is approximately `1.0540e-7 Pa`, or `3.29e-8` after division by the
 observed `3.2 Pa`; this exceeds the frozen `1e-8` numerical closure gate.
-Tightening a diagnostic-only reporting step tolerance did not improve the
-provider-returned pressure plateau and was not retained. The propane result is
-therefore solver-converged and numerically confirmed but not physically valid.
-Predictive status remains `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`; neither
-the source uncertainty nor this numerical failure is converted into a model-
-accuracy decision.
+The exact installed-callback diagnostic reproduces the retained pressure and
+residual bit-for-bit. The continuous correction is `0.42624401466815054`
+liquid-volume ULP, but the two adjacent representable volumes both change the
+callback pressure and differ from the first-order prediction. The result is
+therefore a binary64 representability finding, not a single-ULP plateau,
+provider defect, or model/data decision. The propane result remains
+solver-converged and numerically confirmed but not physically valid under the
+current criterion. Predictive status remains
+`NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`; neither the source uncertainty
+nor this numerical failure is converted into a model-accuracy decision.
+
+The diagnostic consumed provider wheel SHA-256
+`f92f79c8d6f614660e5c201b7061c9b02b5cd1a25a4ed8c8fee0b59adaabf2bf`
+and installed header SHA-256
+`414c257d28322d6be41809a8dc6b98023859dd156202a5205079d674b28b4070`.
+At liquid volume `6.296633932725173e-5 m3`, the callback returns
+`2.9409473148611442 Pa` and
+`dP/dV = -1.824582692583465e13 Pa/m3`. The immediately lower and higher
+volumes return `2.940948085635517 Pa` and `2.940946595244363 Pa`; their
+observed changes are `+7.707743727713989e-7 Pa` and
+`-7.196167812750787e-7 Pa`, versus first-order changes
+`+/-2.472770648973055e-7 Pa`. No tracked diagnostic program or replacement
+receipt is retained.
 
 The result reports full and parameter-column singular values, ranks, and
 condition numbers. Those local diagnostics provide no global identifiability
 or uncertainty claim. No source-row error has an approved pass threshold.
+
+## Pressure-resolution correction protocol
+
+This section is a design/evidence protocol. It changes no runtime, result,
+receipt, artifact, gate, or authority. The current accepted criterion remains
+
+```text
+abs(P_phase - P_report) <= 1e-8 * abs(P_observed).
+```
+
+Permanent-lab verdict `CORRECTION_DESIGN_JUSTIFIED` permits one candidate
+correction to be evaluated:
+
+```text
+abs(P_phase - P_report)
+    <= atol_resolution + 1e-8 * abs(P_observed).
+```
+
+The relative term is exactly `1e-8`. `P_observed` is only a magnitude scale;
+neither it nor any reported experimental uncertainty determines
+`atol_resolution`. No numeric absolute term is selected or approved here.
+
+### Candidate derivations
+
+Three derivations are considered:
+
+1. A fixed number of ULPs of the returned pressure is rejected. At propane
+   120 K the adjacent-volume callback changes span more than one billion ULPs
+   of the approximately `3 Pa` returned pressure, so output spacing alone does
+   not measure callback or input representability.
+2. The largest observed `nextafter` pressure jump is retained as a diagnostic
+   but rejected as the tolerance derivation. It combines real `dP/dV`
+   sensitivity with binary64 evaluation error and would make the tolerance
+   depend on the chosen state neighborhood.
+3. The recommended minimum design is a certified high-precision discrepancy plus
+   input-lattice bound. It uses an independently transcribed, non-installed
+   oracle and exact installed callbacks. It does not use the propane 120 K
+   closure miss or any experimental uncertainty.
+
+For phase `a` at calibration state `s`, let `P64` be the installed callback,
+`P*` and `(dP/dV)*` the independently evaluated high-precision values at the
+exact binary64 inputs, and `V-`, `V`, and `V+` the adjacent representable
+volume triplet. Define
+
+```text
+E_callback(s,a) = max_q abs(P64(q) - P*(q)), q in {V-, V, V+}
+half_step_V     = 0.5 * max(V - V-, V+ - V)
+E_lattice(s,a)  = half_step_V
+                  * max_q abs((dP/dV)*(q)), q in {V-, V, V+}
+E_transform(s,a)= certified propagated pressure error from binary64
+                  V_reference * exp(u_phase)
+E_report(s)     = certified absolute error plus half-ULP lattice bound for
+                  binary64 P_observed * exp(u_pressure)
+E_subtract(s,a) = 0.5 * ulp(P64(V) - P_report64)
+B(s,a)          = E_callback + E_lattice + E_transform
+                  + E_report + E_subtract.
+```
+
+The oracle must use directed rounding or a containing interval so each term is
+an upper bound. The single proposed `atol_resolution` is the smallest
+binary64 value not less than `max B(s,a)` over the predeclared calibration
+cohort. The campaign must verify round-to-nearest-even and record the CPU,
+libc/libm, compiler, and installed-wheel identities. No multiplier or
+fit-to-pass adjustment is allowed. The candidate applies only to those exact
+artifacts; a later provider or Regression artifact requires a fresh campaign
+and approval.
+
+The calibration cohort contains every immutable methane and ethane reporting
+state and every immutable propane state except
+`glos2004-propane-sat-120-k`, using primary reporting states and the existing
+confirmation outputs. The excluded 120 K row is the locked pure challenge and
+cannot enlarge the candidate. The binary extension in
+`docs/science/neutral-hydrocarbon-next-slice.md` may test the same frozen value
+but cannot participate in its derivation or widen it. If the 120 K certified
+bound exceeds the candidate, or if the candidate does not separate the
+declared negative controls, the protocol returns blocked and no replacement
+value is chosen in the same campaign.
+
+The current Provider suite has an independent 70-digit active-`kij` tensor
+point but no pure-parameter pressure-resolution oracle over this finite state
+matrix. Provider must add the smallest test-only independent pure
+`(n,V,m,sigma,epsilon/k)` pressure and `dP/dV` oracle without adding a runtime
+entry. Validation then owns the installed-artifact replay and the proposed
+numeric receipt. Regression cannot select the number from its blocked propane
+receipt.
+
+### Replay and status invariants
+
+For each methane, ethane, and propane training, held-out, and stress row, the
+campaign records the primary reporting state, plus the existing confirmation
+termination, usability, scaled-parameter delta, and cost delta. Each primary
+reporting state has seven pressure probes: center; `nextafter` minus/plus one
+ULP independently for liquid volume, vapor volume, and common reporting
+pressure. The campaign records raw and scaled phase pressure and
+chemical-potential closures, topology, stability, volume and pressure bounds,
+callback fingerprints, oracle intervals, and every term in `B`. Axis probes
+are sufficient; no Cartesian sweep or runtime ULP-probing surface is admitted.
+
+The low-pressure/boundary sentinels are ethane 100 K, propane 110 K, propane
+120 K, and one-ULP inside/outside probes for each declared liquid-volume,
+vapor-volume, and reporting-pressure bound. Outside probes must reject before
+scientific interpretation. Negative pressure-closure controls perturb the
+common pressure in both directions by
+
+```text
+max(100 * atol_resolution, 1e-6 * abs(P_observed))
+```
+
+and must fail the mixed criterion. Wrong source, row order, component,
+provider fingerprint, wheel, header, nonfinite input, topology, and stability
+controls retain their existing rejection meanings.
+
+Methane and ethane parameters, costs, ranks, reporting values, accepted
+receipts, and authority decisions must remain numerically unchanged. Ethane
+100 K and propane 110 K remain failed for their existing boundary and closure
+reasons. Propane 120 K may change status only after a candidate value, its full
+receipt, and the exact corrected artifact receive independent review.
+
+Solver status is unchanged. A reporting row is marked
+`pressure_resolution_limited = true` only when the original relative
+criterion fails, the mixed criterion passes, and the independent oracle
+certifies its bound. This one immutable row boolean is the minimum future
+diagnostic addition because the existing failure reasons cannot truthfully
+encode a successful but representability-limited result. No new result type or
+generic tolerance object is allowed. The existing specification may gain only
+one approved `reporting_pressure_resolution_atol_pa` scalar.
+
+Physical validity can be true only when both liquid and vapor pressure
+equalities pass the mixed criterion and chemical-potential closure, topology,
+phase ordering, stability, bounds, source identity, and provider identity all
+pass their existing gates. A representability-limited numerical pass does not
+waive another gate. Predictive status remains
+`NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
 ## Failure boundaries
 

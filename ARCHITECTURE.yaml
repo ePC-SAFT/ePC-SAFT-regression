@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-propane-checkpoint-a-blocked
+status: authoritative-methane-and-ethane-with-propane-checkpoint-a-blocked-resolution-design
 
 authority:
   accepted_capabilities:
@@ -61,6 +61,32 @@ preparatory_contracts:
       observed_fitted_kij: -0.008430339623289762
       observed_max_pressure_relative_closure: 0.022691483584976503
       required_max_pressure_relative_closure: 1.0e-8
+    pressure_resolution_protocol:
+      status: design-only-waiting-provider-oracle-and-validation-campaign
+      formula: abs(P_phase - P_report) <= atol_resolution + 1.0e-8 * abs(P_observed)
+      relative_term: 1.0e-8
+      observed_pressure_meaning: magnitude scale only; not experimental uncertainty
+      atol_resolution_pa: not-selected
+      derivation: >-
+        Smallest outward-rounded binary64 upper bound over an independently
+        evaluated high-precision callback discrepancy, half-ULP volume-lattice
+        pressure bound, reporting-pressure transform error, and subtraction
+        rounding. The propane 120 K closure and experimental uncertainties are
+        excluded from derivation.
+      calibration: >-
+        Every immutable methane and ethane row, every propane row except the
+        locked 120 K challenge, using primary reporting states, existing
+        confirmation outputs, and center/one-axis nextafter probes for phase
+        volumes and common pressure.
+      locked_challenge: glos2004-propane-sat-120-k
+      binary_role: >-
+        All 17 rows at the three frozen starts are challenge evidence only;
+        they cannot derive or widen the pure candidate.
+      provider_oracle: missing-test-only-pure-pressure-resolution-oracle
+      validation_campaign: not-run
+      runtime_effect: none
+      receipt_effect: none
+      authority_effect: none
     authority_effect: none
 
 public_surface:
@@ -118,6 +144,28 @@ component_contracts:
     held_out_row_count: 18
     stress_temperatures_k: [110.0, 340.0]
     source_uncertainty_acceptance_effect: none
+    pressure_resolution_diagnostic:
+      callback_replay_exact: true
+      local_liquid_volume_ulp_fraction_from_continuous_derivative: 0.42624401466815054
+      adjacent_volume_pressure_plateau: false
+      interpretation: binary64 resolution measured; no provider defect or model/data finding
+
+parameter_family_readiness:
+  rule: >-
+    READY requires a source-backed target, minimum exact provider derivative
+    seam, rank-sufficient formulation, bounds/scaling/confirmation design,
+    installed-artifact validation plan, and separately approved scope.
+  pure_m_sigma_epsilon_over_k:
+    methane_ethane: accepted-exact-workflows
+    propane: NOT_READY_PENDING_RESOLUTION_ORACLE_VALIDATION_AND_READJUDICATION
+  constant_methane_ethane_kij:
+    status: NOT_READY_PENDING_CHECKPOINT_A_ORACLE_PRESSURE_AND_CHEMICAL_POTENTIAL_CRITERION
+    design_authority: D-022
+  association_parameters: NOT_READY
+  polar_parameters: NOT_READY
+  electrolyte_born_parameters: NOT_READY
+  reactive_or_temperature_dependent_parameters: NOT_READY
+  full_breadth_regression: NOT_READY_NO_GENERIC_REGISTRY_OR_UNIVERSAL_SURFACE
 
 accepted_ethane_artifact:
   implementation_commit: 50a488b91686388432fd50a0d6bfc5b15825e4f1
@@ -227,7 +275,11 @@ evidence_limits:
   confirmation_cost_agreement: symmetric relative difference with a 1e-8 maximum
   ethane_training_jacobian: centered directional residual check passed
   propane_training_jacobian: centered directional residual check passed
-  propane_120_k: held-out reporting pressure closure remains above the frozen gate
+  propane_120_k: >-
+    held-out reporting pressure closure remains above the frozen gate; exact
+    callback replay is bit-identical and the continuous correction is below
+    one local volume ULP, but no mixed-criterion atol is selected
+  pressure_resolution_oracle: missing for the finite pure-parameter replay matrix
   ethane_stress_100_k: reporting closure failed at the 1 Pa pressure floor
   reporting_jacobian_directional_check: absent; no runtime seam added
   held_out_accuracy_cutoff: none-approved
