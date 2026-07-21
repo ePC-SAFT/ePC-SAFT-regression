@@ -5,9 +5,16 @@ and ethane are accepted. The propane Checkpoint A and constant methane/ethane
 `kij` subjects are retained authority-neutral, non-production provenance; D-023
 removes both from the active migration sequence.
 
-`governance_doctrine_revision: 2`
+`governance_doctrine_revision: 3`
 
 Canonical local doctrine: `../ePC-SAFT-organization/GOVERNANCE.md`.
+
+Regression owns both its package evidence and execution of assigned
+installed-artifact campaigns in the sibling Validation repository. The task
+remains based here; Validation remains the durable black-box evidence home and
+has no resident worker. Migration serializes exact campaign subjects and
+dispatches a separate reviewer only when required. This execution model does
+not change scientific admission or runtime authority.
 
 Accepted migration receipts `promotion-0020-regression-methane-saturation-v1`
 and `promotion-0023-regression-pure-saturation-ethane-v1` make this repository

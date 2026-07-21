@@ -6,7 +6,7 @@ Accepted workflows: pure methane under promotion 0020 and pure ethane under
 promotion 0023/state 0025. No local candidate has production or active-
 migration status.
 
-Before work, read doctrine revision 2 at
+Before work, read doctrine revision 3 at
 `../ePC-SAFT-organization/GOVERNANCE.md`. Its future published home is
 `https://github.com/ePC-SAFT/.github/blob/main/GOVERNANCE.md`. Local policy may
 narrow that doctrine but must not contradict it.
@@ -14,6 +14,12 @@ narrow that doctrine but must not contradict it.
 This repository is limited to strict target datasets, fitted parameters,
 Ceres, fit receipts, and regression results. It consumes a compatible
 installed provider and does not own provider internals, equilibrium, or Ipopt.
+
+The Regression task remains rooted in this repository and owns execution of its
+assigned black-box campaigns in the sibling Validation repository. Use only
+immutable installed public artifacts there; never import this source checkout or
+private seams. Do not create a resident Validation task. Package-authored
+evidence cannot self-accept promotion or broaden regression authority.
 
 Accepted migration receipts `promotion-0020-regression-methane-saturation-v1`
 and `promotion-0023-regression-pure-saturation-ethane-v1` make this repository
