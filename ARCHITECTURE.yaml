@@ -161,21 +161,21 @@ parallel_regression_track:
   authority_effect: none
 
 figiel_born_candidate_artifact:
-  implementation_commit: 51c8d2235b184741461a2f82ef3309fa33ed51a8
-  implementation_tree: e4527ebfa3452d5ce1c711a6dfec30dbd0e16942
-  source_date_epoch: 1784673660
-  local_wheel: ../artifacts/regression-figiel-born-tracer-v1/51c8d22/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl
-  wheel_sha256: b9da5af59f4e4c2e2ce392cf1dd6af9cd20d89a4e0dd0ae6bcec17e24d862feb
+  implementation_commit: 4eb122d4e40e08fb5e9cea94bfb2fe25ccfcab79
+  implementation_tree: 85d1f980ce986e1ab48ed417704fd74c95c68b66
+  source_date_epoch: 1784675282
+  local_wheel: ../artifacts/regression-figiel-born-tracer-v1/4eb122d/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl
+  wheel_sha256: 2210b172d60141c27dec4cc7a92c9cce812bbeda75018d81f5fcef7b15e287e5
   archive_byte_reproducibility: not-claimed-single-build
   wheel_members: 12
   installed_non_record_members_verified: 11
   canonical_evidence: evidence/figiel-born-diameter-candidate.json
-  evidence_file_sha256: bc597820408334877482947dd8fbf1d0f9932bc6d17e7bfefb2b0e69645d2ae5
-  evidence_subject_sha256: 8d3cc89ecd5b2ed57be14c63f7bf948ee0d0b5d5dbe043dcf7f447244e3335e5
-  evidence_payload_sha256: 7eb5fe2082aac3aaa589a6d5d385190ee02d87df73937c288466042cc1a5fc27
+  evidence_file_sha256: 99d46eafbdae3428f690543364096fb414b818db201d1c35b0c0da8b03ae91d5
+  evidence_subject_sha256: 55ea2cd69af62c45b26179cfab6939760de23058b5a7e8c880a79f67faa417ed
+  evidence_payload_sha256: efb22d0b91aff559ea90d3a09e53b3ac87d2048faad2628ad38d8f4eec7e328c
   derivative_checks: 5-passed
-  accepted_provider_legacy_replay: 48-passed
-  assigned_provider_suite: 51-passed-3-failed-legacy-numerical-compatibility
+  accepted_provider_legacy_replay: 49-passed
+  assigned_provider_suite: 52-passed-3-failed-legacy-numerical-compatibility
   package_validation_subset: 38-passed
   validation_campaign: not-started-waiting-migration-serialization
   authority_effect: none

@@ -386,17 +386,20 @@ observables are the actual residual targets and reproduce within their frozen
 source-faithful observable-reproduction result, not evidence of predictive
 validity, Provider catalog authority, global uniqueness, or uncertainty.
 
-The original implementation subject is Regression commit
-`51c8d2235b184741461a2f82ef3309fa33ed51a8`, tree
-`e4527ebfa3452d5ce1c711a6dfec30dbd0e16942`. The superseded blocked-gate
-evidence remains immutable at Regression `2df4a305`. The corrected exact
-implementation, wheel, and canonical evidence identities are recorded in the
-architecture and context owners after regeneration.
+The superseded blocked-gate evidence remains immutable at Regression
+`2df4a305`. The corrected exact implementation is Regression commit
+`4eb122d4e40e08fb5e9cea94bfb2fe25ccfcab79`, tree
+`85d1f980ce986e1ab48ed417704fd74c95c68b66`. Its commit-bound wheel has SHA-256
+`2210b172d60141c27dec4cc7a92c9cce812bbeda75018d81f5fcef7b15e287e5`.
+Canonical evidence at `evidence/figiel-born-diameter-candidate.json` has file
+SHA-256 `99d46eafbdae3428f690543364096fb414b818db201d1c35b0c0da8b03ae91d5`
+and subject SHA-256
+`55ea2cd69af62c45b26179cfab6939760de23058b5a7e8c880a79f67faa417ed`.
 All five step-halved derivative checks pass. The commit-bound Regression wheel
-also passes the 48 legacy tests against the retained accepted Provider runtime.
-With assigned Provider `907b077`, the six Born tests pass while three legacy
-numerical anchors differ; their accepted expected values are unchanged and the
-compatibility finding is part of the handoff.
+also passes the 49 non-Born tests against the retained accepted Provider
+runtime. With assigned Provider `907b077`, the six Born tests pass while three
+legacy numerical anchors differ; their accepted expected values are unchanged
+and the compatibility finding is part of the handoff.
 
 Validation later installs the exact Provider and Regression wheels in an
 isolated environment. Its one bounded campaign independently binds the five

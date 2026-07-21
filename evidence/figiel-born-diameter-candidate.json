@@ -1,5 +1,5 @@
 {
-  "evidence_payload_sha256": "7eb5fe2082aac3aaa589a6d5d385190ee02d87df73937c288466042cc1a5fc27",
+  "evidence_payload_sha256": "efb22d0b91aff559ea90d3a09e53b3ac87d2048faad2628ad38d8f4eec7e328c",
   "subject": {
     "authority_status": "authority-neutral non-production package candidate",
     "capability": "figiel-2025-five-ion-born-diameter-tracer-v1",
@@ -10,7 +10,7 @@
       "provider_catalog_admission": false,
       "uncertainty_claim": false
     },
-    "conclusion": "BLOCKED_PUBLISHED_DIAMETER_RECOVERY",
+    "conclusion": "FIGIEL_BORN_TRACER_CANDIDATE_PASSED",
     "derivative_checks": [
       {
         "absolute_difference": 4.5730615966022015e-05,
@@ -88,10 +88,10 @@
       "wheel_sha256": "c327b9a176e54bfc79b625cca7f0c87f2a62fc7d87059826e40c9d70e214f0cd"
     },
     "regression": {
-      "commit": "51c8d2235b184741461a2f82ef3309fa33ed51a8",
-      "tree": "e4527ebfa3452d5ce1c711a6dfec30dbd0e16942",
+      "commit": "4eb122d4e40e08fb5e9cea94bfb2fe25ccfcab79",
+      "tree": "85d1f980ce986e1ab48ed417704fd74c95c68b66",
       "wheel": "epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl",
-      "wheel_sha256": "b9da5af59f4e4c2e2ce392cf1dd6af9cd20d89a4e0dd0ae6bcec17e24d862feb"
+      "wheel_sha256": "2210b172d60141c27dec4cc7a92c9cce812bbeda75018d81f5fcef7b15e287e5"
     },
     "result": {
       "compiled_problem_identity": [
@@ -122,9 +122,7 @@
         9.547918011776346e-14,
         7.748466313017843e-10
       ],
-      "failure_reasons": [
-        "published-diameter recovery gate failed"
-      ],
+      "failure_reasons": [],
       "numerically_converged": true,
       "parameters": [
         {
@@ -196,7 +194,7 @@
         "sha256:7551f1eee5903b66061cf7520f3bb59b169896ce372f3df3d48aa7ec778c39d4",
         "sha256:70ae04599dfa8338175e793bac6b9e4dfad37a9b96a568b5484dc87f104ef1a9"
       ],
-      "scientifically_valid": false,
+      "scientifically_valid": true,
       "solver_converged": true,
       "specification_id": "figiel-2025-five-ion-born-diameter-tracer-v1",
       "starts": [
@@ -540,7 +538,7 @@
       "packaged_targets_sha256": "ed6fdcaf3fc9b2cf7b6dd8d1e95933ab1b28908441b334a4586aa2e2a3222087",
       "parameter_tolerance": 1e-10,
       "pressure_pa": 100000.0,
-      "published_diameter_round_trip_angstrom": 0.0005,
+      "published_diameter_reporting_half_increment_angstrom": 0.0005,
       "rank_threshold_multiplier": 100.0,
       "reference_convergence_error_max": 5e-05,
       "reference_molality_mol_per_kg": 1e-12,
@@ -636,7 +634,7 @@
       ],
       "temperature_k": 298.15
     },
-    "strict_local_gates_passed": false
+    "strict_local_gates_passed": true
   },
-  "subject_sha256": "8d3cc89ecd5b2ed57be14c63f7bf948ee0d0b5d5dbe043dcf7f447244e3335e5"
+  "subject_sha256": "55ea2cd69af62c45b26179cfab6939760de23058b5a7e8c880a79f67faa417ed"
 }

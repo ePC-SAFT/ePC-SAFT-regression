@@ -141,17 +141,21 @@ targets, and their `0.0005 angstrom` reporting half-increment is descriptive
 source-resolution context rather than a scientific veto. The candidate now
 passes its local solver, numerical, workflow, and source-observable gates;
 Validation writing has not started.
-Implementation commit `51c8d2235b184741461a2f82ef3309fa33ed51a8`,
-tree `e4527ebfa3452d5ce1c711a6dfec30dbd0e16942`, retains the exact Regression
-wheel under the shared artifact parent with SHA-256
-`b9da5af59f4e4c2e2ce392cf1dd6af9cd20d89a4e0dd0ae6bcec17e24d862feb`.
 The blocked-gate package evidence at Regression `2df4a305` remains immutable
-Git provenance. Canonical corrected package evidence and its commit-bound wheel
-replace the active local subject after regeneration below.
-The commit-bound wheel passes the 48 legacy tests against the retained accepted
-Provider runtime. Against assigned Provider `907b077`, all six Born tests pass
-but three legacy numerical anchors do not; that compatibility result is
-reported without moving their accepted expected values.
+Git provenance. Corrected implementation commit
+`4eb122d4e40e08fb5e9cea94bfb2fe25ccfcab79`, tree
+`85d1f980ce986e1ab48ed417704fd74c95c68b66`, retains the commit-bound wheel
+with SHA-256
+`2210b172d60141c27dec4cc7a92c9cce812bbeda75018d81f5fcef7b15e287e5`.
+Canonical package evidence is
+`evidence/figiel-born-diameter-candidate.json`, file SHA-256
+`99d46eafbdae3428f690543364096fb414b818db201d1c35b0c0da8b03ae91d5`,
+subject SHA-256
+`55ea2cd69af62c45b26179cfab6939760de23058b5a7e8c880a79f67faa417ed`.
+The commit-bound wheel passes the 49 non-Born tests against the retained
+accepted Provider runtime. Against assigned Provider `907b077`, all six Born
+tests pass but three legacy numerical anchors do not; that compatibility result
+is reported without moving their accepted expected values.
 
 `electrolyte_born_parameters` remains `NOT_READY`: this package candidate must
 not be interpreted as downstream readiness, predictive evidence, or Provider
