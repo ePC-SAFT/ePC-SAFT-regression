@@ -1,13 +1,18 @@
 # Figiel Current-Catalog Born-Diameter Tracer Design
 
-Status: authority-neutral design ready for permanent-lab review; runtime,
-Provider implementation, fitting, artifacts, and authority remain unauthorized.
+Status: authority-neutral design complete and preserved as a parallel, deferred
+Provider-dependent track; runtime, fitting, artifacts, and authority remain
+unauthorized.
 
-Migration decision D-023 authorizes this documentation-only checkpoint at
-Migration commit `e0d6930228ad8d9f7c98c419110bbb01bde3a62f`, tree
-`582c4c02bb864069e379c9fd2373cf8887ffc1c6`. This document is the sole
-Regression design owner for the first Figiel tracer. It creates no second plan
-or generic parameter-family contract.
+Migration decision D-023 authorized this documentation-only design, published
+at Regression commit `8191dcc9fc038caac1f52cd22303c600e2b61241`, tree
+`656cc22409e1e1632f536184e2f719640178748f`. Canonical Migration checkpoint
+`3a4ef0a0c6b98c43405d3cafc1ac4f5f87afa68d`, tree
+`9307c3f79581b6e0479d4ac2468932b2a68e5f5b`, preserves it as useful parallel
+Provider-parameter groundwork behind the HELD2 critical path. It establishes
+neither coupled-reactive capability nor downstream readiness. This document is
+the sole Regression design owner for the first Figiel tracer. It creates no
+second plan or generic parameter-family contract.
 
 ## Decision and problem shape
 
@@ -312,12 +317,12 @@ catalog-write request, or global-identifiability field.
 
 ## Installed-artifact evidence plan
 
-Runtime implementation cannot begin from this design alone. After permanent-
-lab approval, Provider must first implement its approved single-owner callback,
-return a stable commit plus exact wheel/header hashes, and pass its design's
-value, derivative, reference-owner parity, ABI, failure, and negative-space
-evidence. Migration must bind that exact artifact before Regression consumes
-it.
+Runtime implementation cannot begin from this design alone. The one remaining
+Provider prerequisite is an exact installed artifact implementing the approved
+single-owner callback, with a stable commit, exact wheel/header hashes, and the
+design's value, derivative, reference-owner parity, ABI, failure, and negative-
+space evidence. Migration must retain and bind that artifact before a separate
+bounded Regression runtime assignment may consume it.
 
 A later Regression implementation must then:
 

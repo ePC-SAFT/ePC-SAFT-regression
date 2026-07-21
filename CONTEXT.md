@@ -39,15 +39,17 @@ with no added runtime test seam.
 
 `deferred_propane_status: BLOCKED_CHECKPOINT_A_120_K_PRESSURE_CLOSURE`
 
-`active_regression_status: FIGIEL_BORN_TRACER_DESIGN_READY_FOR_PERMANENT_LAB_REVIEW`
+`parallel_regression_status: FIGIEL_BORN_TRACER_DESIGN_COMPLETE_DEFERRED_PROVIDER_DEPENDENT`
 
-`runtime_status: NOT_AUTHORIZED_WAITING_PROVIDER_ACTIVE_BORN_ARTIFACT`
+`runtime_status: NOT_AUTHORIZED_WAITING_MIGRATION_BOUND_PROVIDER_ACTIVE_BORN_ARTIFACT`
 
-Migration D-023 at control-plane commit
-`e0d6930228ad8d9f7c98c419110bbb01bde3a62f`, tree
-`582c4c02bb864069e379c9fd2373cf8887ffc1c6`, supersedes D-022's active order
-without rewriting its evidence. The frozen neutral-hydrocarbon equations and
-numerical contract remain in
+Migration D-023 supersedes D-022's active order without rewriting its evidence.
+Canonical Migration checkpoint
+`3a4ef0a0c6b98c43405d3cafc1ac4f5f87afa68d`, tree
+`9307c3f79581b6e0479d4ac2468932b2a68e5f5b`, preserves the published Figiel
+design as a useful parallel, deferred Provider-dependent track while HELD2
+retains Provider implementation priority. The frozen neutral-hydrocarbon
+equations and numerical contract remain in
 `docs/science/neutral-hydrocarbon-next-slice.md`; no packaged planning
 framework, binary executable owner, or runtime API exists. Validation's direct-
 experimental propane packet remains accepted source evidence at
@@ -103,8 +105,11 @@ compact-record head `e01a272e7d11e39db3cdc4105e0c460aceca637d`, and Migration
 `4fd0e6eff5fd17399573132430d13c7e34626b98`. All 17 rows are training data.
 The formulation is deferred and non-production; it is not an active blocker.
 
-The next active objective is a source-faithful Figiel, Yu, and Held 2025
-current-catalog ion Born-diameter tracer. Provider design
+The source-faithful Figiel, Yu, and Held 2025 current-catalog ion Born-diameter
+tracer is a complete, published design at Regression
+`8191dcc9fc038caac1f52cd22303c600e2b61241`, tree
+`656cc22409e1e1632f536184e2f719640178748f`, retained in parallel behind the
+HELD2 critical path. Provider design
 `da9660481f08bb5557cc03da528edec15cc15e1f`, tree
 `e34575ae646c40f3fb63b5994c957e30bb035f69`, and Validation source packet
 `8944d34f7002cda1bb8760e606cc1f11696f58cd`, tree
@@ -116,9 +121,11 @@ Jacobian, source-resolution comparisons, confirmation, statuses, and future
 installed-artifact evidence without creating runtime or authority.
 
 `electrolyte_born_parameters` remains `NOT_READY`: the Regression design must
-receive permanent-lab approval, Provider must then implement and validate its
-approved callback under separate authorization, and Migration must bind an
-exact installed artifact before any Regression implementation or fit.
+not be interpreted as downstream readiness. The one remaining technical
+prerequisite is an exact installed Provider artifact implementing and
+validating the approved active-Born callback, with its commit, wheel, header,
+and derivative evidence retained and bound by Migration. Regression runtime
+still requires a separate bounded assignment.
 
 The eventual direction is a staged, family-by-family recovery campaign for
 Figiel Tables 2–5. That later intent does not broaden the first Born-diameter

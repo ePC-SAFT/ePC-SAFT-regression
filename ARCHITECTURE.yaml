@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-figiel-born-tracer-design-candidate
+status: authoritative-methane-and-ethane-with-deferred-figiel-born-tracer-design
 
 authority:
   accepted_capabilities:
@@ -12,7 +12,7 @@ authority:
   promotion_status: accepted
   ethane_publication_state: state-0025-regression-ethane-publication
   local_candidate: none-active
-  design_candidate: figiel-current-catalog-born-diameter-tracer-v1
+  parallel_deferred_design: figiel-current-catalog-born-diameter-tracer-v1
   deferred_nonproduction_evidence:
     propane_checkpoint_a:
       regression_subject: 33228253383ab8755384170b3caac7b38733e157
@@ -103,12 +103,17 @@ preparatory_contracts:
       authority_effect: none
     authority_effect: none
 
-active_regression_objective:
-  status: FIGIEL_BORN_TRACER_DESIGN_READY_FOR_PERMANENT_LAB_REVIEW
+parallel_regression_track:
+  status: FIGIEL_BORN_TRACER_DESIGN_COMPLETE_DEFERRED_PROVIDER_DEPENDENT
   migration_decision: D-023
-  migration_control_plane_commit: e0d6930228ad8d9f7c98c419110bbb01bde3a62f
-  migration_control_plane_tree: 582c4c02bb864069e379c9fd2373cf8887ffc1c6
+  sequencing_decision: D-026
+  migration_control_plane_commit: 3a4ef0a0c6b98c43405d3cafc1ac4f5f87afa68d
+  migration_control_plane_tree: 9307c3f79581b6e0479d4ac2468932b2a68e5f5b
+  published_design_commit: 8191dcc9fc038caac1f52cd22303c600e2b61241
+  published_design_tree: 656cc22409e1e1632f536184e2f719640178748f
   scope: current-catalog-ion-born-diameter-ceres-tracer
+  critical_path_effect: none-held2-priority
+  downstream_readiness_effect: none
   upstream_prerequisites:
     validation:
       status: permanent-lab-approved-source-packet
@@ -132,7 +137,11 @@ active_regression_objective:
   design_owner: docs/science/figiel-born-diameter-tracer.md
   problem_shape: five-parameters-five-residuals-diagonal-jacobian
   provider_api: approved-design-no-runtime-artifact
-  runtime_status: NOT_AUTHORIZED_WAITING_PROVIDER_ACTIVE_BORN_ARTIFACT
+  remaining_provider_prerequisite: >-
+    Exact installed Provider active-Born artifact implementing the approved
+    callback, with commit, wheel, header, and derivative evidence retained and
+    bound by Migration.
+  runtime_status: NOT_AUTHORIZED_WAITING_MIGRATION_BOUND_PROVIDER_ACTIVE_BORN_ARTIFACT
   public_surface_effect: none
   authority_effect: none
 
@@ -211,7 +220,7 @@ parameter_family_readiness:
   association_parameters: NOT_READY
   polar_parameters: NOT_READY
   electrolyte_born_parameters: NOT_READY
-  figiel_current_catalog_born_tracer_design: READY_FOR_PERMANENT_LAB_REVIEW
+  figiel_current_catalog_born_tracer_design: DESIGN_COMPLETE_DEFERRED_PROVIDER_DEPENDENT
   reactive_or_temperature_dependent_parameters: NOT_READY
   full_breadth_regression: NOT_READY_NO_GENERIC_REGISTRY_OR_UNIVERSAL_SURFACE
 

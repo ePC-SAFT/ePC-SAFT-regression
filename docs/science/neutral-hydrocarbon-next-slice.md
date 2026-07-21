@@ -34,10 +34,11 @@ target, package API, or runtime implementation.
 Migration D-023 supersedes this checkpoint order without rewriting the frozen
 evidence. The approved Figiel source and Provider design prerequisites and the
 resulting five-ion Ceres contract are now bound only by
-`docs/science/figiel-born-diameter-tracer.md`. Regression status is
-`FIGIEL_BORN_TRACER_DESIGN_READY_FOR_PERMANENT_LAB_REVIEW`; runtime remains
-unauthorized. This historical neutral-hydrocarbon record admits no Figiel
-residual, callback, fit, persistence contract, or implementation surface.
+`docs/science/figiel-born-diameter-tracer.md`. Migration checkpoint `3a4ef0a`
+preserves that complete design as a parallel, deferred Provider-dependent
+track behind HELD2; runtime remains unauthorized. This historical neutral-
+hydrocarbon record admits no Figiel residual, callback, fit, persistence
+contract, or implementation surface.
 
 ## Frozen source and model identity
 
@@ -378,7 +379,7 @@ provider gates are unchanged. Predictive status remains
 | Constant methane/ethane `kij` | yes, all 17 May rows | yes, active-`kij` value/gradient/Hessian | yes, rank 35 and projected rank 1 | yes | frozen preflight only; no runtime artifact | historical D-022 evidence only | `NOT_READY`, deferred non-production under D-023 |
 | Association parameters | no admitted target | no admitted complete parameter/association-state derivative seam | no | no | no | no | `NOT_READY` |
 | Polar parameters | no admitted target | no admitted polar parameter derivative seam | no | no | no | no | `NOT_READY` |
-| Current-catalog ion Born diameter | approved Validation packet `8944d34f` | approved Provider design `da966048`; no runtime | frozen `5 x 5` diagonal design | frozen in sole design owner | frozen; no artifact exists | D-023 design checkpoint only | design ready for permanent-lab review; runtime `NOT_READY` |
+| Current-catalog ion Born diameter | approved Validation packet `8944d34f` | approved Provider design `da966048`; no runtime | frozen `5 x 5` diagonal design | frozen in sole design owner | frozen; no artifact exists | D-023 parallel/deferred design only | design complete; runtime `NOT_READY` pending a Migration-bound Provider artifact |
 | Reactive or temperature-dependent parameters | no admitted target | no admitted exact derivative seam | no | no | no | no | `NOT_READY` |
 
 Uncertainty, global identifiability, provider-catalog persistence, and a

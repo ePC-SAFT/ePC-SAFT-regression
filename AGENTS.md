@@ -25,12 +25,14 @@ approved. The reporting-block directional Jacobian remains an explicit
 evidence limit; do not add a runtime seam merely to close it. The blocked
 propane subject and frozen methane/ethane binary preflight are retained only as
 authority-neutral, non-production provenance and are not active blockers.
-Under Migration D-023, the next objective is a source-bound Ceres tracer for
-current-catalog ion Born diameters. Provider design `da966048` and Validation
-source packet `8944d34f` are permanent-lab approved; the sole Regression design
-owner is `docs/science/figiel-born-diameter-tracer.md`. Current status is
-`FIGIEL_BORN_TRACER_DESIGN_READY_FOR_PERMANENT_LAB_REVIEW`. Runtime remains
-unauthorized until that exact design is approved and Migration separately
-binds an implemented Provider artifact. Do not broaden this sequence to a
-generic registry or full electrolyte, reactive, uncertainty, or global-
-identifiability surface.
+Migration D-023 preserves a source-bound Ceres tracer for current-catalog ion
+Born diameters. Provider design `da966048` and Validation source packet
+`8944d34f` are permanent-lab approved; the sole Regression design owner is
+`docs/science/figiel-born-diameter-tracer.md`. Migration checkpoint `3a4ef0a`
+keeps the published design at `8191dcc` as a useful parallel, deferred track
+behind HELD2. Current status is
+`FIGIEL_BORN_TRACER_DESIGN_COMPLETE_DEFERRED_PROVIDER_DEPENDENT`. It is not
+downstream readiness. Runtime remains unauthorized until Migration binds an
+exact installed Provider active-Born artifact and issues a bounded assignment.
+Do not broaden this sequence to a generic registry or full electrolyte,
+reactive, uncertainty, or global-identifiability surface.
