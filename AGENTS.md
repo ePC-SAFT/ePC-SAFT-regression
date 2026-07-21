@@ -15,11 +15,24 @@ This repository is limited to strict target datasets, fitted parameters,
 Ceres, fit receipts, and regression results. It consumes a compatible
 installed provider and does not own provider internals, equilibrium, or Ipopt.
 
-The Regression task remains rooted in this repository and owns execution of its
-assigned black-box campaigns in the sibling Validation repository. Use only
-immutable installed public artifacts there; never import this source checkout or
-private seams. Do not create a resident Validation task. Package-authored
-evidence cannot self-accept promotion or broaden regression authority.
+## Agent home and Validation work
+
+- The Regression agent remains rooted in this repository and is the sole owner
+  of target contracts, fitted-parameter workflows, Ceres execution, fit
+  diagnostics, identifiability evidence, and regression result contracts.
+- When Migration assigns a bounded Regression campaign, this same agent may use
+  a clean checkout or worktree of the sibling Validation repository to author
+  and execute it. Its task home does not move to Validation.
+- Validation work must use exact immutable installed Provider and Regression
+  public artifacts. It must not import either source checkout, use private
+  seams, copy EOS or fit logic, or silently turn training evidence into
+  prediction.
+- The Regression agent owns the campaign execution and evidence commit, then
+  returns to Regression work. It does not create or wait on a resident
+  Validation task, accept its own promotion, approve an unselected predictive
+  cutoff, or broaden regression authority from its own evidence.
+- Migration serializes Validation writers and dispatches any required distinct
+  review after the exact stable subject is available.
 
 Accepted migration receipts `promotion-0020-regression-methane-saturation-v1`
 and `promotion-0023-regression-pure-saturation-ethane-v1` make this repository
