@@ -1,3 +1,4 @@
+#include "born_diameter_fit.hpp"
 #include "pure_saturation_fit.hpp"
 
 #include <epcsaft/native_sdk_v1.h>
@@ -138,6 +139,25 @@ PyObject* py_solve(PyObject*, PyObject* args) {
     return epcsaft_regression::solve_python(capsule, payload, reporting_rows);
 }
 
+PyObject* py_evaluate_born(PyObject*, PyObject* args) {
+    PyObject* capsules = nullptr;
+    PyObject* payload = nullptr;
+    PyObject* diameters = nullptr;
+    if (!PyArg_ParseTuple(args, "OOO:evaluate_born", &capsules, &payload, &diameters)) {
+        return nullptr;
+    }
+    return epcsaft_regression::evaluate_born_python(capsules, payload, diameters);
+}
+
+PyObject* py_solve_born(PyObject*, PyObject* args) {
+    PyObject* capsules = nullptr;
+    PyObject* payload = nullptr;
+    if (!PyArg_ParseTuple(args, "OO:solve_born", &capsules, &payload)) {
+        return nullptr;
+    }
+    return epcsaft_regression::solve_born_python(capsules, payload);
+}
+
 PyMethodDef methods[] = {
     {"transport_info", py_transport_info, METH_O, "Validate the installed provider capsule."},
     {
@@ -154,13 +174,20 @@ PyMethodDef methods[] = {
     },
     {"evaluate", py_evaluate, METH_VARARGS, "Evaluate exact pure-saturation residuals and Jacobian."},
     {"solve", py_solve, METH_VARARGS, "Fit pure-saturation parameters and evaluate reporting rows."},
+    {
+        "evaluate_born",
+        py_evaluate_born,
+        METH_VARARGS,
+        "Evaluate exact Figiel Born residuals and Jacobian."
+    },
+    {"solve_born", py_solve_born, METH_VARARGS, "Fit the five Figiel Born diameters."},
     {nullptr, nullptr, 0, nullptr},
 };
 
 PyModuleDef module = {
     PyModuleDef_HEAD_INIT,
     "_native",
-    "Native Ceres pure-saturation regression transport.",
+    "Native Ceres regression transport.",
     -1,
     methods,
     nullptr,

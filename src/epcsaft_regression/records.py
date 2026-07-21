@@ -147,6 +147,273 @@ PROPANE_ROW_IDS = tuple(
 EXPECTED_DATA_SHA256 = METHANE_DATA_SHA256
 EXPECTED_PACKAGED_DATA_SHA256 = METHANE_PACKAGED_DATA_SHA256
 
+FIGIEL_TARGETS_PACKAGED_SHA256 = (
+    "ed6fdcaf3fc9b2cf7b6dd8d1e95933ab1b28908441b334a4586aa2e2a3222087"
+)
+FIGIEL_VALIDATION_LEDGER_SHA256 = (
+    "f405a3e48d21cd979a8dd480d5f8cb3be40754f5d6babf368b505b5f305607f0"
+)
+FIGIEL_VALIDATION_PARAMETER_PACKET_SHA256 = (
+    "932e8baa90fcefbaa8c3a8730cdeadd83a4c01f0a3b109f4e4cd0319aee9312b"
+)
+FIGIEL_VALIDATION_METADATA_SHA256 = (
+    "8ea06c6ca5452d01448a03f9a76cf7d0c35bb99c9abe23ccb1729d56c71d468f"
+)
+FIGIEL_TARGET_HEADER = (
+    "target_id",
+    "ion_label",
+    "active_component_id",
+    "counterion_component_id",
+    "target_kj_per_mol",
+    "target_j_per_mol",
+    "published_born_diameter_angstrom",
+    "expected_provider_fingerprint",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class BornDiameterTarget:
+    target_id: str
+    ion_label: str
+    active_component_id: str
+    counterion_component_id: str
+    target_kj_per_mol: float
+    target_j_per_mol: float
+    published_diameter_angstrom: float
+    expected_provider_fingerprint: str
+
+    @property
+    def component_order(self) -> tuple[str, str, str]:
+        return ("water", self.active_component_id, self.counterion_component_id)
+
+
+@dataclass(frozen=True, slots=True)
+class BornDiameterTracerSpecification:
+    specification_id: str
+    targets: tuple[BornDiameterTarget, ...]
+    source_validation_commit: str
+    source_validation_tree: str
+    source_ledger_sha256: str
+    source_parameter_packet_sha256: str
+    source_metadata_sha256: str
+    packaged_targets_sha256: str
+    source_doi: str
+    source_si_doi: str
+    source_locator: str
+    source_basis: str
+    temperature_k: float
+    pressure_pa: float
+    reference_molality_mol_per_kg: float
+    reference_convergence_error_max: float
+    diameter_origin_angstrom: float
+    diameter_scale_angstrom: float
+    diameter_bounds_angstrom: tuple[float, float]
+    scaled_bounds: tuple[float, float]
+    start_diameters_angstrom: tuple[tuple[float, ...], ...]
+    max_num_iterations: int
+    function_tolerance: float
+    gradient_tolerance: float
+    parameter_tolerance: float
+    scaled_residual_max: float
+    confirmation_parameter_scaled_max_delta: float
+    observable_round_trip_j_per_mol: float
+    published_diameter_round_trip_angstrom: float
+    rank_threshold_multiplier: float
+    ceres_linear_solver: str
+    ceres_num_threads: int
+    ceres_logging: str
+
+    def __post_init__(self) -> None:
+        expected_targets = (
+            (
+                "figiel2025-s5-Lip-reported-average", "Li+", "lithium-cation",
+                "chloride-anion", -486.2, -486_200.0, 2.784,
+                "sha256:1bb528ebe8f5612757e148608fc55821f9fb03737dbcec6d0bc4fffd0f4cbc4c",
+            ),
+            (
+                "figiel2025-s5-Nap-reported-average", "Na+", "sodium-cation",
+                "chloride-anion", -381.1, -381_100.0, 3.445,
+                "sha256:7c637771bc9f717b8f47b44bb2a61044c3fe83084dca7c3c16102fba0989912d",
+            ),
+            (
+                "figiel2025-s5-Kp-reported-average", "K+", "potassium-cation",
+                "chloride-anion", -309.1, -309_100.0, 4.150,
+                "sha256:d29cef0c0f63034436d547d0aafa57934effe06783c8dffd89c94fa85e6940f4",
+            ),
+            (
+                "figiel2025-s5-Clm-reported-average", "Cl-", "chloride-anion",
+                "sodium-cation", -314.9, -314_900.0, 4.100,
+                "sha256:7551f1eee5903b66061cf7520f3bb59b169896ce372f3df3d48aa7ec778c39d4",
+            ),
+            (
+                "figiel2025-s5-Brm-reported-average", "Br-", "bromide-anion",
+                "sodium-cation", -290.9, -290_900.0, 4.480,
+                "sha256:70ae04599dfa8338175e793bac6b9e4dfad37a9b96a568b5484dc87f104ef1a9",
+            ),
+        )
+        observed_targets = tuple(
+            (
+                target.target_id,
+                target.ion_label,
+                target.active_component_id,
+                target.counterion_component_id,
+                target.target_kj_per_mol,
+                target.target_j_per_mol,
+                target.published_diameter_angstrom,
+                target.expected_provider_fingerprint,
+            )
+            for target in self.targets
+        )
+        if observed_targets != expected_targets:
+            raise ValueError("Born tracer targets must match the exact five-target contract")
+        exact_identity = (
+            self.specification_id,
+            self.source_validation_commit,
+            self.source_validation_tree,
+            self.source_ledger_sha256,
+            self.source_parameter_packet_sha256,
+            self.source_metadata_sha256,
+            self.packaged_targets_sha256,
+            self.source_doi,
+            self.source_si_doi,
+            self.source_locator,
+            self.source_basis,
+        )
+        expected_identity = (
+            "figiel-2025-five-ion-born-diameter-tracer-v1",
+            "8944d34f7002cda1bb8760e606cc1f11696f58cd",
+            "6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd",
+            FIGIEL_VALIDATION_LEDGER_SHA256,
+            FIGIEL_VALIDATION_PARAMETER_PACKET_SHA256,
+            FIGIEL_VALIDATION_METADATA_SHA256,
+            FIGIEL_TARGETS_PACKAGED_SHA256,
+            "10.1021/acs.iecr.5c00475",
+            "10.1021/acs.iecr.5c00475.s001",
+            "SI Table S5, PDF page 9 of 10, reported-average lit column",
+            (
+                "x-treatment at infinite dilution; gas at 1 bar to hypothetical "
+                "dilute-ideal aqueous solution at 1 bar; negative is favorable"
+            ),
+        )
+        if exact_identity != expected_identity:
+            raise ValueError("Born tracer source identity must match the approved packet")
+        numerical_contract = (
+            self.temperature_k,
+            self.pressure_pa,
+            self.reference_molality_mol_per_kg,
+            self.reference_convergence_error_max,
+            self.diameter_origin_angstrom,
+            self.diameter_scale_angstrom,
+            self.diameter_bounds_angstrom,
+            self.scaled_bounds,
+            self.start_diameters_angstrom,
+            self.max_num_iterations,
+            self.function_tolerance,
+            self.gradient_tolerance,
+            self.parameter_tolerance,
+            self.scaled_residual_max,
+            self.confirmation_parameter_scaled_max_delta,
+            self.observable_round_trip_j_per_mol,
+            self.published_diameter_round_trip_angstrom,
+            self.rank_threshold_multiplier,
+            self.ceres_linear_solver,
+            self.ceres_num_threads,
+            self.ceres_logging,
+        )
+        expected_numerical_contract = (
+            298.15, 100_000.0, 1.0e-12, 5.0e-5, 3.0, 1.0, (1.0, 6.0),
+            (-2.0, 3.0), ((3.0,) * 5, (2.0,) * 5, (5.0,) * 5), 500,
+            1.0e-10, 1.0e-10, 1.0e-10, 1.0e-8, 1.0e-5, 50.0, 0.0005,
+            100.0, "DENSE_QR", 1, "SILENT",
+        )
+        if numerical_contract != expected_numerical_contract:
+            raise ValueError("Born tracer numerical controls must match the frozen design")
+
+    @property
+    def target_ids(self) -> tuple[str, ...]:
+        return tuple(target.target_id for target in self.targets)
+
+    @property
+    def ion_labels(self) -> tuple[str, ...]:
+        return tuple(target.ion_label for target in self.targets)
+
+    @property
+    def active_component_ids(self) -> tuple[str, ...]:
+        return tuple(target.active_component_id for target in self.targets)
+
+    @property
+    def targets_j_per_mol(self) -> tuple[float, ...]:
+        return tuple(target.target_j_per_mol for target in self.targets)
+
+    @property
+    def published_diameters_angstrom(self) -> tuple[float, ...]:
+        return tuple(target.published_diameter_angstrom for target in self.targets)
+
+
+def _load_figiel_born_targets() -> tuple[BornDiameterTarget, ...]:
+    data = files("epcsaft_regression.data").joinpath("figiel-born-diameter-targets.csv").read_bytes()
+    if hashlib.sha256(data).hexdigest() != FIGIEL_TARGETS_PACKAGED_SHA256:
+        raise ValueError("packaged Figiel Born target hash does not match the approved contract")
+    reader = csv.DictReader(io.StringIO(data.decode("utf-8"), newline=""))
+    if tuple(reader.fieldnames or ()) != FIGIEL_TARGET_HEADER:
+        raise ValueError("packaged Figiel Born target header does not match the approved contract")
+    targets = tuple(
+        BornDiameterTarget(
+            target_id=row["target_id"],
+            ion_label=row["ion_label"],
+            active_component_id=row["active_component_id"],
+            counterion_component_id=row["counterion_component_id"],
+            target_kj_per_mol=float(row["target_kj_per_mol"]),
+            target_j_per_mol=float(row["target_j_per_mol"]),
+            published_diameter_angstrom=float(row["published_born_diameter_angstrom"]),
+            expected_provider_fingerprint=row["expected_provider_fingerprint"],
+        )
+        for row in reader
+    )
+    if any(target.target_j_per_mol != 1000.0 * target.target_kj_per_mol for target in targets):
+        raise ValueError("Figiel target kJ/mol to J/mol conversion must be exact")
+    return targets
+
+
+FIGIEL_BORN_DIAMETER_TRACER_V1 = BornDiameterTracerSpecification(
+    specification_id="figiel-2025-five-ion-born-diameter-tracer-v1",
+    targets=_load_figiel_born_targets(),
+    source_validation_commit="8944d34f7002cda1bb8760e606cc1f11696f58cd",
+    source_validation_tree="6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd",
+    source_ledger_sha256=FIGIEL_VALIDATION_LEDGER_SHA256,
+    source_parameter_packet_sha256=FIGIEL_VALIDATION_PARAMETER_PACKET_SHA256,
+    source_metadata_sha256=FIGIEL_VALIDATION_METADATA_SHA256,
+    packaged_targets_sha256=FIGIEL_TARGETS_PACKAGED_SHA256,
+    source_doi="10.1021/acs.iecr.5c00475",
+    source_si_doi="10.1021/acs.iecr.5c00475.s001",
+    source_locator="SI Table S5, PDF page 9 of 10, reported-average lit column",
+    source_basis=(
+        "x-treatment at infinite dilution; gas at 1 bar to hypothetical dilute-ideal "
+        "aqueous solution at 1 bar; negative is favorable"
+    ),
+    temperature_k=298.15,
+    pressure_pa=100_000.0,
+    reference_molality_mol_per_kg=1.0e-12,
+    reference_convergence_error_max=5.0e-5,
+    diameter_origin_angstrom=3.0,
+    diameter_scale_angstrom=1.0,
+    diameter_bounds_angstrom=(1.0, 6.0),
+    scaled_bounds=(-2.0, 3.0),
+    start_diameters_angstrom=((3.0,) * 5, (2.0,) * 5, (5.0,) * 5),
+    max_num_iterations=500,
+    function_tolerance=1.0e-10,
+    gradient_tolerance=1.0e-10,
+    parameter_tolerance=1.0e-10,
+    scaled_residual_max=1.0e-8,
+    confirmation_parameter_scaled_max_delta=1.0e-5,
+    observable_round_trip_j_per_mol=50.0,
+    published_diameter_round_trip_angstrom=0.0005,
+    rank_threshold_multiplier=100.0,
+    ceres_linear_solver="DENSE_QR",
+    ceres_num_threads=1,
+    ceres_logging="SILENT",
+)
+
 
 def _positive_finite(value: float, field: str) -> None:
     if not math.isfinite(value):

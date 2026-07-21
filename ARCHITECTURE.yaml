@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-deferred-figiel-born-tracer-design
+status: authoritative-methane-and-ethane-with-nonproduction-figiel-born-candidate
 
 authority:
   accepted_capabilities:
@@ -11,8 +11,8 @@ authority:
     - promotion-0023-regression-pure-saturation-ethane-v1
   promotion_status: accepted
   ethane_publication_state: state-0025-regression-ethane-publication
-  local_candidate: none-active
-  parallel_deferred_design: figiel-current-catalog-born-diameter-tracer-v1
+  local_candidate: figiel-born-tracer-blocked-published-diameter-recovery
+  parallel_deferred_design: none
   deferred_nonproduction_evidence:
     propane_checkpoint_a:
       regression_subject: 33228253383ab8755384170b3caac7b38733e157
@@ -34,17 +34,20 @@ scope: >-
   Ethane fits 140, 180, 220, and 260 K, holds out 120, 160, 200, and 240 K,
   and reports 100 and 280 K as domain stress. The authority-neutral propane
   candidate fits 150, 210, 270, and 330 K, holds out 18 interior rows, and
-  reports 110 and 340 K as stress. The authority-neutral Figiel design fixes a
-  future five-parameter/five-residual current-catalog Born-diameter tracer; no
-  Provider or Regression runtime implementation is admitted.
+  reports 110 and 340 K as stress. The authority-neutral Figiel package
+  candidate fits five current-catalog Born diameters to five reported-average
+  targets through the installed Provider first-derivative callback. It fails
+  the frozen published-diameter recovery gate and has no production authority.
 
 owners:
   immutable_sources_and_specifications: src/epcsaft_regression/records.py
   public_workflow_and_result: src/epcsaft_regression/workflow.py
   compiled_contract: src/epcsaft_regression/native/pure_saturation_contract.cpp
   residual_jacobian_and_ceres: src/epcsaft_regression/native/pure_saturation_fit.cpp
+  born_residual_jacobian_and_ceres: src/epcsaft_regression/native/born_diameter_fit.cpp
   provider_capsule_gate: src/epcsaft_regression/native/module.cpp
   component_receipt_runner: tools/run_candidate.py
+  figiel_candidate_evidence_runner: tools/run_figiel_born_candidate.py
   next_slice_equations_and_numerical_contract: docs/science/neutral-hydrocarbon-next-slice.md
   figiel_born_tracer_design: docs/science/figiel-born-diameter-tracer.md
 
@@ -104,13 +107,12 @@ preparatory_contracts:
     authority_effect: none
 
 parallel_regression_track:
-  status: FIGIEL_BORN_TRACER_DESIGN_COMPLETE_DEFERRED_PROVIDER_DEPENDENT
+  status: FIGIEL_BORN_TRACER_PACKAGE_CANDIDATE_BLOCKED_PUBLISHED_DIAMETER_RECOVERY
   migration_decision: D-023
-  sequencing_decision: D-026
-  migration_control_plane_commit: 3a4ef0a0c6b98c43405d3cafc1ac4f5f87afa68d
-  migration_control_plane_tree: 9307c3f79581b6e0479d4ac2468932b2a68e5f5b
-  published_design_commit: 8191dcc9fc038caac1f52cd22303c600e2b61241
-  published_design_tree: 656cc22409e1e1632f536184e2f719640178748f
+  sequencing_decision: D-027
+  migration_control_plane_commit: 049db47430d7e6c2c07722d4d1ed9fa2b0af46ab
+  regression_design_commit: 0550bb0879b27964680d927dde75a3493d51e50c
+  regression_design_tree: 81ebd4f32b8298b2a76d44b0d037fff125bdbf87
   scope: current-catalog-ion-born-diameter-ceres-tracer
   critical_path_effect: none-held2-priority
   downstream_readiness_effect: none
@@ -123,9 +125,11 @@ parallel_regression_track:
       parameter_packet_sha256: 932e8baa90fcefbaa8c3a8730cdeadd83a4c01f0a3b109f4e4cd0319aee9312b
       metadata_sha256: 8ea06c6ca5452d01448a03f9a76cf7d0c35bb99c9abe23ccb1729d56c71d468f
     provider:
-      status: permanent-lab-approved-design-no-runtime
-      commit: da9660481f08bb5557cc03da528edec15cc15e1f
-      tree: e34575ae646c40f3fb63b5994c957e30bb035f69
+      status: migration-bound-implemented-installed-artifact
+      commit: 907b077ec6f841a8a028fc759df14f899c79339c
+      tree: 2b315113c9961a16f75c776783f704db54d75e44
+      wheel_sha256: c327b9a176e54bfc79b625cca7f0c87f2a62fc7d87059826e40c9d70e214f0cd
+      installed_header_sha256: 610cc480f05c3e17e431d26fd1b2c8628eec3e2adb412102a284d4d5d6eb8171
   regression_design_readiness_gates:
     source_and_specification_contract: frozen
     parameter_bounds_and_residual_variable_scaling: frozen
@@ -133,16 +137,25 @@ parallel_regression_track:
     rank_and_conditioning_gates: frozen
     declared_start_and_perturbed_start_confirmation: frozen
     separate_solver_numerical_physical_predictive_statuses: frozen
-    installed_artifact_validation_plan: frozen
+    installed_artifact_validation_plan: regression-candidate-executed-validation-not-started
   design_owner: docs/science/figiel-born-diameter-tracer.md
   problem_shape: five-parameters-five-residuals-diagonal-jacobian
-  provider_api: approved-design-no-runtime-artifact
-  remaining_provider_prerequisite: >-
-    Exact installed Provider active-Born artifact implementing the approved
-    callback, with commit, wheel, header, and derivative evidence retained and
-    bound by Migration.
-  runtime_status: NOT_AUTHORIZED_WAITING_MIGRATION_BOUND_PROVIDER_ACTIVE_BORN_ARTIFACT
-  public_surface_effect: none
+  provider_api: evaluate_ion_solvation_born-v1-installed
+  remaining_provider_prerequisite: none
+  runtime_status: AUTHORITY_NEUTRAL_PACKAGE_IMPLEMENTED_VALIDATION_NOT_STARTED
+  local_result:
+    solver_converged: true
+    numerically_converged: true
+    workflow_valid: true
+    scientifically_valid: false
+    full_rank: 5
+    active_bounds: 0
+    condition_number_primary: 1.5419272226731302
+    fitted_diameters_angstrom: [2.7888130173797934, 3.4524616464076425, 4.147266741279482, 4.101505615791675, 4.476998527506598]
+    published_diameter_max_abs_delta_angstrom: 0.007461646407642686
+    published_diameter_gate_angstrom: 0.0005
+    predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
+  public_surface_effect: three-closed-family-exports
   authority_effect: none
 
 public_surface:
@@ -150,9 +163,12 @@ public_surface:
     - METHANE_SATURATION_FIT_V1
     - ETHANE_SATURATION_FIT_V1
     - PROPANE_SATURATION_FIT_V1
+    - FIGIEL_BORN_DIAMETER_TRACER_V1
     - load_pure_saturation_dataset
     - PureSaturationFitResult
+    - BornDiameterFitResult
     - fit_pure_saturation
+    - fit_figiel_born_diameters
   retired_without_aliases:
     - METHANE_FIT_SPECIFICATION_V1
     - load_methane_dataset
@@ -170,9 +186,15 @@ public_surface:
   native_targets: 1
   provider_transport:
     capsule: epcsaft.native_sdk.v1
-    entry: evaluate_pure_phase_parameters
-    coordinate_order: [amount_mol, volume_m3, segment_count, segment_diameter_angstrom, dispersion_energy_over_k_kelvin]
-    derivative_order: 2
+    entries:
+      pure_saturation:
+        entry: evaluate_pure_phase_parameters
+        coordinate_order: [amount_mol, volume_m3, segment_count, segment_diameter_angstrom, dispersion_energy_over_k_kelvin]
+        derivative_order: 2
+      figiel_born_tracer:
+        entry: evaluate_ion_solvation_born
+        coordinate: active_born_diameter_angstrom
+        derivative_order: 1
 
 component_contracts:
   methane:
@@ -219,8 +241,8 @@ parameter_family_readiness:
     retained_evidence_authority: D-022
   association_parameters: NOT_READY
   polar_parameters: NOT_READY
-  electrolyte_born_parameters: NOT_READY
-  figiel_current_catalog_born_tracer_design: DESIGN_COMPLETE_DEFERRED_PROVIDER_DEPENDENT
+  electrolyte_born_parameters: NOT_READY_NO_CATALOG_ADMISSION
+  figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_BLOCKED_PUBLISHED_DIAMETER_RECOVERY
   reactive_or_temperature_dependent_parameters: NOT_READY
   full_breadth_regression: NOT_READY_NO_GENERIC_REGISTRY_OR_UNIVERSAL_SURFACE
 
@@ -295,16 +317,16 @@ propane_candidate_artifact:
     test_receipt_sha256: 07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480
 
 manifest:
-  tracked_files_after_figiel_born_design: 45
+  tracked_files_after_figiel_born_package_implementation: 50
   production_python_files: 3
-  native_source_files: 5
-  installed_data_files: 3
-  package_test_files: 3
+  native_source_files: 7
+  installed_data_files: 4
+  package_test_files: 4
   retained_binary_input_evidence_files: 1
   retained_binary_result_evidence_files: 1
   ide_project_files: 7
-  physical_production_lines: 3008
-  physical_package_test_lines: 883
+  physical_production_lines: 4464
+  physical_package_test_lines: 1050
   tracked_generated_evidence_files_after_checkpoint_a: 4
   generated_file_policy: >-
     The accepted methane and ethane fit receipts bind deterministic
@@ -317,14 +339,18 @@ manifest:
     - path: src/epcsaft_regression/native/pure_saturation_fit.cpp
       physical_lines: 920
     - path: src/epcsaft_regression/records.py
-      physical_lines: 870
+      physical_lines: 1137
     - path: src/epcsaft_regression/workflow.py
-      physical_lines: 554
+      physical_lines: 953
+    - path: src/epcsaft_regression/native/born_diameter_fit.cpp
+      physical_lines: 714
   oversized_file_policy: >-
-    Checkpoint A adds one closed component record to the existing source owner
-    without a second engine, registry, or result type. A later capability must
-    not grow these files without a named ownership constraint and evidence that
-    extraction reduces conceptual surface.
+    The frozen Figiel design requires records.py and workflow.py to remain the
+    single source/specification and result/status owners. The family-specific
+    native cost stays outside the already oversized pure cost while sharing its
+    one module and target. A later capability must not grow these files without
+    a named ownership constraint and evidence that extraction reduces
+    conceptual surface.
 
 evidence_limits:
   methane_numerical_parity: frozen accepted parameters, costs, ranks, and nine reporting predictions
@@ -338,8 +364,8 @@ evidence_limits:
     one local volume ULP, but no mixed-criterion atol is selected
   pressure_resolution_oracle: missing for the finite pure-parameter replay matrix
   pressure_resolution_protocol_effect: provenance-only-under-d023
-  figiel_born_provider_runtime: absent-design-only
-  figiel_born_fit_result: not-run
+  figiel_born_provider_runtime: exact-installed-artifact-bound
+  figiel_born_fit_result: workflow-pass-scientific-published-diameter-gate-fail
   figiel_born_predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
   ethane_stress_100_k: reporting closure failed at the 1 Pa pressure floor
   reporting_jacobian_directional_check: absent; no runtime seam added
@@ -350,7 +376,7 @@ evidence_limits:
 excluded:
   - runtime binary interaction regression; the private dependency-gated contract grants no capability
   - association regression
-  - runtime electrolyte regression; only the bounded Figiel Born-tracer design is admitted
+  - electrolyte regression beyond the bounded nonproduction Figiel Born-tracer candidate
   - reactive regression
   - generic regression families or target registries
   - alternate or numerical production derivative backends

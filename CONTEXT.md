@@ -46,9 +46,9 @@ with no added runtime test seam.
 
 `deferred_propane_status: BLOCKED_CHECKPOINT_A_120_K_PRESSURE_CLOSURE`
 
-`parallel_regression_status: FIGIEL_BORN_TRACER_DESIGN_COMPLETE_DEFERRED_PROVIDER_DEPENDENT`
+`parallel_regression_status: FIGIEL_BORN_TRACER_PACKAGE_CANDIDATE_BLOCKED_PUBLISHED_DIAMETER_RECOVERY`
 
-`runtime_status: NOT_AUTHORIZED_WAITING_MIGRATION_BOUND_PROVIDER_ACTIVE_BORN_ARTIFACT`
+`runtime_status: AUTHORITY_NEUTRAL_PACKAGE_IMPLEMENTED_VALIDATION_NOT_STARTED`
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint
@@ -121,18 +121,27 @@ HELD2 critical path. Provider design
 `e34575ae646c40f3fb63b5994c957e30bb035f69`, and Validation source packet
 `8944d34f7002cda1bb8760e606cc1f11696f58cd`, tree
 `6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd`, are permanent-lab approved.
-The complete source-bound Ceres contract is now singularly owned by
+The complete source-bound Ceres contract is singularly owned by
 `docs/science/figiel-born-diameter-tracer.md`. It fixes exactly five Table S5
 reported-average targets, five active Born diameters, the diagonal exact
-Jacobian, source-resolution comparisons, confirmation, statuses, and future
-installed-artifact evidence without creating runtime or authority.
+Jacobian, source-resolution comparisons, confirmation, and statuses.
 
-`electrolyte_born_parameters` remains `NOT_READY`: the Regression design must
-not be interpreted as downstream readiness. The one remaining technical
-prerequisite is an exact installed Provider artifact implementing and
-validating the approved active-Born callback, with its commit, wheel, header,
-and derivative evidence retained and bound by Migration. Regression runtime
-still requires a separate bounded assignment.
+Migration D-027 bound Provider implementation
+`907b077ec6f841a8a028fc759df14f899c79339c`, wheel SHA-256
+`c327b9a176e54bfc79b625cca7f0c87f2a62fc7d87059826e40c9d70e214f0cd`,
+and installed-header SHA-256
+`610cc480f05c3e17e431d26fd1b2c8628eec3e2adb412102a284d4d5d6eb8171`.
+The package implementation consumes that callback through the existing native
+module and target. All three starts converge, every scaled residual is below
+`1e-8`, the `5 x 5` exact Jacobian has rank 5, and no bound is active. The
+source observables round-trip, but fitted-minus-published diameters range from
+`-0.003001472493401991` to `+0.007461646407642686 angstrom`, exceeding the
+frozen `0.0005 angstrom` comparison. The candidate is therefore scientifically
+non-admitted without changing any gate. Validation writing has not started.
+
+`electrolyte_born_parameters` remains `NOT_READY`: this package candidate must
+not be interpreted as downstream readiness, predictive evidence, or Provider
+catalog authority.
 
 The eventual direction is a staged, family-by-family recovery campaign for
 Figiel Tables 2–5. That later intent does not broaden the first Born-diameter

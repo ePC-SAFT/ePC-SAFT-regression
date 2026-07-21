@@ -75,7 +75,7 @@ PROPANE_ROWS = (
 )
 
 
-def test_public_surface_is_pure_saturation_only() -> None:
+def test_public_surface_preserves_pure_saturation_without_retired_aliases() -> None:
     assert hasattr(epcsaft_regression, "load_pure_saturation_dataset")
     assert hasattr(epcsaft_regression, "fit_pure_saturation")
     assert hasattr(epcsaft_regression, "PureSaturationFitResult")

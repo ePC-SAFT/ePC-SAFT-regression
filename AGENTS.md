@@ -47,11 +47,13 @@ authority-neutral, non-production provenance and are not active blockers.
 Migration D-023 preserves a source-bound Ceres tracer for current-catalog ion
 Born diameters. Provider design `da966048` and Validation source packet
 `8944d34f` are permanent-lab approved; the sole Regression design owner is
-`docs/science/figiel-born-diameter-tracer.md`. Migration checkpoint `3a4ef0a`
-keeps the published design at `8191dcc` as a useful parallel, deferred track
-behind HELD2. Current status is
-`FIGIEL_BORN_TRACER_DESIGN_COMPLETE_DEFERRED_PROVIDER_DEPENDENT`. It is not
-downstream readiness. Runtime remains unauthorized until Migration binds an
-exact installed Provider active-Born artifact and issues a bounded assignment.
+`docs/science/figiel-born-diameter-tracer.md`. Migration D-027 bound Provider
+implementation `907b077` and authorized the bounded Regression package
+implementation. Current status is
+`FIGIEL_BORN_TRACER_PACKAGE_CANDIDATE_BLOCKED_PUBLISHED_DIAMETER_RECOVERY`:
+the exact five-target fit is solver- and numerically converged with full local
+rank, but the frozen published-diameter round-trip gate fails. It is not
+downstream readiness or production authority. Validation writing remains
+closed until Migration serializes the exact package artifact subject.
 Do not broaden this sequence to a generic registry or full electrolyte,
 reactive, uncertainty, or global-identifiability surface.

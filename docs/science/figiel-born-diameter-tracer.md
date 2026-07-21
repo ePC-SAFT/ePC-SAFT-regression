@@ -1,8 +1,8 @@
 # Figiel Current-Catalog Born-Diameter Tracer Design
 
-Status: authority-neutral design complete and preserved as a parallel, deferred
-Provider-dependent track; runtime, fitting, artifacts, and authority remain
-unauthorized.
+Status: authority-neutral package candidate implemented under D-027; the
+frozen published-diameter recovery gate fails, Validation has not started, and
+no production, catalog, predictive, or promotion authority follows.
 
 Migration decision D-023 authorized this documentation-only design, published
 at Regression commit `8191dcc9fc038caac1f52cd22303c600e2b61241`, tree
@@ -39,7 +39,7 @@ Rejected alternatives are:
 - a generic active-parameter registry or overlay, which admits families and
   identity policy not required by these five targets.
 
-The eventual implementation may add one family-specific cost owner and one
+The implementation adds one family-specific cost owner and one
 family-specific immutable result to the existing `_native` module and native
 target. It must not generalize the accepted pure-saturation cost or result into
 a universal regression framework. Methane and ethane behavior remains
@@ -89,9 +89,15 @@ inferred here.
 
 ## Approved Provider boundary
 
-The Provider prerequisite is the permanent-lab-approved design at commit
+The Provider contract originated in the permanent-lab-approved design at commit
 `da9660481f08bb5557cc03da528edec15cc15e1f`, tree
-`e34575ae646c40f3fb63b5994c957e30bb035f69`. It specifies one future
+`e34575ae646c40f3fb63b5994c957e30bb035f69`. Migration D-027 bound Provider
+implementation `907b077ec6f841a8a028fc759df14f899c79339c`, tree
+`2b315113c9961a16f75c776783f704db54d75e44`, wheel SHA-256
+`c327b9a176e54bfc79b625cca7f0c87f2a62fc7d87059826e40c9d70e214f0cd`,
+and installed-header SHA-256
+`610cc480f05c3e17e431d26fd1b2c8628eec3e2adb412102a284d4d5d6eb8171`.
+It implements one
 model-bound callback, `evaluate_ion_solvation_born`, that returns:
 
 ```text
@@ -108,9 +114,8 @@ density roots, reference composition sequence, convergence adjudication,
 terminal fugacity selection, and the exact total fixed-pressure derivative.
 Regression copies none of those equations or algorithms.
 
-The future callback is design-only; no installed header, wheel, or runtime
-entry exists. Runtime work therefore remains dependency-gated after this
-design review.
+Regression consumes this callback only from the installed artifact. It does
+not import Provider source or persist the fitted diameters to the catalog.
 
 The admitted models and returned fingerprints are:
 
@@ -199,7 +204,7 @@ derivative, density-root derivative, or equilibrium dependency is consumed.
 
 ## Ceres and local sensitivity contract
 
-The future implementation reuses the accepted deterministic Ceres policy:
+The implementation reuses the accepted deterministic Ceres policy:
 
 ```text
 linear solver       = DENSE_QR
@@ -260,18 +265,20 @@ Initial/final costs and symmetric relative cost deltas are retained but are not
 an acceptance gate because an exactly determined root problem can drive both
 costs into the binary64 floor. A failed start is reported; it is not replaced.
 
-The immutable result keeps four meanings separate:
+The immutable result keeps five meanings separate:
 
 1. `solver_converged`: the primary Ceres termination, usability, finiteness,
    rank, bounds, cost-reduction, and callback gates pass.
 2. `numerically_converged`: solver convergence plus both confirmation and
    `1e-8` scaled-residual gates pass. The `1e-8` value is the repository's
    existing dimensionless numerical-closure policy, not source uncertainty.
-3. `physically_valid`: numerical convergence plus exact source/model/state/
-   x-process identities, Provider reference convergence, and both recovery
-   comparisons below pass. This status means source-bound workflow recovery,
-   not general physical or predictive validation.
-4. `predictive_status` remains
+3. `workflow_valid`: numerical convergence plus exact source/model/state/
+   x-process identities, Provider reference convergence, and the observable
+   comparison below pass.
+4. `scientifically_valid`: workflow validity plus the published-diameter
+   comparison below passes. This is source-bound parameter recovery, not a
+   claim of general physical validity or global uniqueness.
+5. `predictive_status` remains
    `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`. All five targets are training
    equations; no held-out observable or predictive cutoff exists.
 
@@ -288,10 +295,9 @@ These half-last-digit values express source resolution only. They are neither
 experimental uncertainty nor statistical confidence intervals. No tolerance
 may be changed after observing a fit; failure returns a failed recovery claim.
 
-## Singular ownership and future result
+## Singular ownership and result
 
-This design changes no runtime or public interface. If separately authorized,
-the minimum family surface is exactly:
+The authorized package implementation uses exactly this minimum family surface:
 
 - one immutable closed specification, `FIGIEL_BORN_DIAMETER_TRACER_V1`;
 - one workflow, `fit_figiel_born_diameters`, accepting the exact ordered
@@ -307,7 +313,7 @@ target; it must not be added to the already 920-line pure-saturation cost file.
 No per-ion class, target registry, backend selector, second native module, or
 second native target is admitted.
 
-The future result binds the three Validation hashes, Provider commit/header/
+The candidate evidence binds the three Validation hashes, Provider commit/header/
 wheel identities, five expected and observed fingerprints, target IDs and
 values, state and convention, starts/bounds/scales, Ceres controls, costs and
 iterations, raw and scaled residuals, raw derivatives, SVD/rank/conditioning,
@@ -315,16 +321,10 @@ active-bound distances, published-parameter deltas, confirmations, four
 statuses, and ordered failure reasons. It contains no covariance, uncertainty,
 catalog-write request, or global-identifiability field.
 
-## Installed-artifact evidence plan
+## Installed-artifact evidence and outcome
 
-Runtime implementation cannot begin from this design alone. The one remaining
-Provider prerequisite is an exact installed artifact implementing the approved
-single-owner callback, with a stable commit, exact wheel/header hashes, and the
-design's value, derivative, reference-owner parity, ABI, failure, and negative-
-space evidence. Migration must retain and bind that artifact before a separate
-bounded Regression runtime assignment may consume it.
-
-A later Regression implementation must then:
+Migration retained the exact Provider artifact above and authorized the bounded
+package implementation. Regression therefore:
 
 1. retain only the compact five-row source record plus durable DOI/table
    locators and the three approved Validation hashes; it must not copy the
@@ -351,6 +351,31 @@ A later Regression implementation must then:
 6. build one immutable Regression wheel and prove wheel members, import origin,
    linkage, native-module/target counts, and absence of lab, Migration,
    Validation, or sibling-source runtime paths.
+
+The package result is solver-converged and numerically confirmed from all three
+starts. Every callback succeeds, the exact diagonal Jacobian has rank 5 with a
+finite condition number near `1.54`, no bound is active, and every fitted
+observable is within the frozen `50 J/mol` source-resolution comparison. The
+fitted diameters are
+
+```text
+(2.7888130173797934, 3.4524616464076425, 4.147266741279482,
+ 4.101505615791675, 4.476998527506598) angstrom.
+```
+
+Their differences from the published Table 3 anchors are
+
+```text
+(+0.0048130173797935605, +0.007461646407642686,
+ -0.002733258720517995, +0.0015056157916752966,
+ -0.003001472493401991) angstrom.
+```
+
+All five exceed the frozen `0.0005 angstrom` gate. Consequently
+`solver_converged`, `numerically_converged`, and `workflow_valid` are true,
+while `scientifically_valid` is false. This is a source-faithful failed
+recovery comparison, not permission to tune the gate and not evidence of a
+Provider defect or global non-identifiability.
 
 Validation later installs the exact Provider and Regression wheels in an
 isolated environment. Its one bounded campaign independently binds the five

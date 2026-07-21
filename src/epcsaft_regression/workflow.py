@@ -7,6 +7,8 @@ from epcsaft import native_sdk
 
 from . import _native
 from .records import (
+    FIGIEL_BORN_DIAMETER_TRACER_V1,
+    BornDiameterTracerSpecification,
     PureSaturationDataset,
     PureSaturationFitSpecification,
     SaturationObservation,
@@ -19,6 +21,9 @@ LIQUID_VOLUME_TRANSFORM = "V_liquid = (molar_mass / observed_liquid_density) * e
 VAPOR_VOLUME_TRANSFORM = "V_vapor = (R * T / observed_pressure) * exp(u_vapor)"
 REPORTING_PRESSURE_TRANSFORM = "P_report = observed_pressure * exp(u_pressure)"
 PREDICTIVE_STATUS = "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
+DIAMETER_TRANSFORM = "d_i = 3.0 angstrom + 1.0 angstrom * z_i"
+BORN_RESIDUAL = "r_i = (G_i(d_i) - G_i_target) / abs(G_i_target)"
+BORN_JACOBIAN = "J_ij = delta_ij * G_i_prime(d_i) * 1 angstrom / abs(G_i_target)"
 
 
 def _row_payload(row: SaturationObservation) -> tuple[object, ...]:
@@ -129,6 +134,135 @@ class PureSaturationFitResult:
     confirmation_parameter_scaled_max_delta: float
     confirmation_cost_relative_delta: float
     failure_reasons: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class BornObservationDiagnostic:
+    target_id: str
+    ion_label: str
+    target_j_per_mol: float
+    modeled_j_per_mol: float
+    raw_error_j_per_mol: float
+    scaled_residual: float
+    derivative_j_per_mol_per_angstrom: float
+    scaled_jacobian: float
+    reference_molality_mol_per_kg: float
+    reference_convergence_error: float
+    provider_fingerprint: str
+
+
+@dataclass(frozen=True, slots=True)
+class BornStartDiagnostic:
+    name: str
+    termination: str
+    solution_usable: bool
+    initial_cost: float
+    final_cost: float
+    iterations: int
+    transformed_parameters: tuple[float, ...]
+    final_diameters_angstrom: tuple[float, ...]
+    observations: tuple[BornObservationDiagnostic, ...]
+    singular_values: tuple[float, ...]
+    rank_threshold: float
+    rank: int
+    condition_number: float
+    complete_columns: bool
+    inactive_bounds: bool
+    solver_converged: bool
+    failure_reasons: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class BornParameterDiagnostic:
+    ion_label: str
+    active_component_id: str
+    final_diameter_angstrom: float
+    published_diameter_angstrom: float
+    published_delta_angstrom: float
+    lower_bound_angstrom: float
+    upper_bound_angstrom: float
+    scaled_lower_bound_distance: float
+    scaled_upper_bound_distance: float
+    active_bound: bool
+
+
+@dataclass(frozen=True, slots=True)
+class BornDiameterFitResult:
+    specification_id: str
+    compiled_problem_identity: tuple[str, ...]
+    provider_fingerprints: tuple[str, ...]
+    solver_converged: bool
+    numerically_converged: bool
+    workflow_valid: bool
+    scientifically_valid: bool
+    predictive_status: str
+    parameters: tuple[BornParameterDiagnostic, ...]
+    starts: tuple[BornStartDiagnostic, ...]
+    confirmation_parameter_scaled_max_deltas: tuple[float, float]
+    failure_reasons: tuple[str, ...]
+
+    @property
+    def observations(self) -> tuple[BornObservationDiagnostic, ...]:
+        return self.starts[0].observations
+
+
+def _born_native_payload(
+    specification: BornDiameterTracerSpecification,
+) -> tuple[object, ...]:
+    identity = (
+        specification.specification_id,
+        specification.source_validation_commit,
+        specification.source_validation_tree,
+        specification.source_ledger_sha256,
+        specification.source_parameter_packet_sha256,
+        specification.source_metadata_sha256,
+        specification.packaged_targets_sha256,
+        specification.source_doi,
+        specification.source_si_doi,
+        specification.source_locator,
+        specification.source_basis,
+        "K",
+        "Pa",
+        "J/mol",
+        "angstrom",
+        "x-process at infinite dilution",
+        PROVIDER_CAPSULE,
+        DIAMETER_TRANSFORM,
+        BORN_RESIDUAL,
+        BORN_JACOBIAN,
+        specification.ceres_linear_solver,
+        specification.ceres_logging,
+    )
+    targets = tuple(
+        (
+            target.target_id,
+            target.ion_label,
+            target.active_component_id,
+            target.counterion_component_id,
+            target.target_j_per_mol,
+            target.published_diameter_angstrom,
+            target.expected_provider_fingerprint,
+        )
+        for target in specification.targets
+    )
+    return (
+        identity,
+        targets,
+        specification.temperature_k,
+        specification.pressure_pa,
+        specification.reference_molality_mol_per_kg,
+        specification.reference_convergence_error_max,
+        specification.diameter_origin_angstrom,
+        specification.diameter_scale_angstrom,
+        specification.diameter_bounds_angstrom,
+        specification.scaled_bounds,
+        specification.start_diameters_angstrom,
+        specification.max_num_iterations,
+        specification.function_tolerance,
+        specification.gradient_tolerance,
+        specification.parameter_tolerance,
+        specification.rank_threshold_multiplier,
+    )
 
 
 def _native_payload(
@@ -550,5 +684,270 @@ def fit_pure_saturation(
         confirmation_solution_usable=confirmation_usable,
         confirmation_parameter_scaled_max_delta=parameter_delta,
         confirmation_cost_relative_delta=cost_delta,
+        failure_reasons=tuple(failure_reasons),
+    )
+
+
+def _born_observations(
+    native_rows: tuple[object, ...],
+    specification: BornDiameterTracerSpecification,
+) -> tuple[BornObservationDiagnostic, ...]:
+    if len(native_rows) != len(specification.targets):
+        raise RuntimeError("native Born observations did not match the five-target contract")
+    return tuple(
+        BornObservationDiagnostic(
+            target_id=target.target_id,
+            ion_label=target.ion_label,
+            target_j_per_mol=target.target_j_per_mol,
+            modeled_j_per_mol=float(row[0]),
+            derivative_j_per_mol_per_angstrom=float(row[1]),
+            raw_error_j_per_mol=float(row[2]),
+            scaled_residual=float(row[3]),
+            scaled_jacobian=float(row[4]),
+            reference_molality_mol_per_kg=float(row[5]),
+            reference_convergence_error=float(row[6]),
+            provider_fingerprint=str(row[7]),
+        )
+        for target, row in zip(specification.targets, native_rows, strict=True)
+    )
+
+
+def _born_start_diagnostic(
+    native_start: tuple[object, ...],
+    specification: BornDiameterTracerSpecification,
+) -> BornStartDiagnostic:
+    (
+        name_native,
+        termination_native,
+        usable_native,
+        initial_cost_native,
+        final_cost_native,
+        iterations_native,
+        transformed_native,
+        residuals_native,
+        jacobian_native,
+        rows_native,
+        singular_values_native,
+        rank_native,
+        condition_native,
+        complete_columns_native,
+        failure_native,
+    ) = native_start
+    transformed = tuple(float(value) for value in transformed_native)
+    residuals = tuple(float(value) for value in residuals_native)
+    jacobian = tuple(float(value) for value in jacobian_native)
+    singular_values = tuple(float(value) for value in singular_values_native)
+    if not (
+        len(transformed) == len(residuals) == len(singular_values) == 5
+        and len(jacobian) == 25
+    ):
+        raise RuntimeError("native Born result dimensions did not match the 5 x 5 contract")
+    final_diameters = tuple(
+        specification.diameter_origin_angstrom
+        + specification.diameter_scale_angstrom * value
+        for value in transformed
+    )
+    active_tolerance = math.sqrt(math.ulp(1.0)) * max(
+        1.0,
+        abs(specification.scaled_bounds[0]),
+        abs(specification.scaled_bounds[1]),
+    )
+    inactive_bounds = all(
+        min(
+            value - specification.scaled_bounds[0],
+            specification.scaled_bounds[1] - value,
+        )
+        > active_tolerance
+        for value in transformed
+    )
+    observations = _born_observations(tuple(rows_native), specification)
+    initial_cost = float(initial_cost_native)
+    final_cost = float(final_cost_native)
+    condition_number = float(condition_native)
+    rank = int(rank_native)
+    complete_columns = bool(complete_columns_native)
+    native_failure = str(failure_native).strip()
+    finite = all(
+        math.isfinite(value)
+        for value in (
+            initial_cost,
+            final_cost,
+            condition_number,
+            *transformed,
+            *residuals,
+            *jacobian,
+            *singular_values,
+            *(row.modeled_j_per_mol for row in observations),
+            *(row.derivative_j_per_mol_per_angstrom for row in observations),
+        )
+    )
+    reasons: list[str] = []
+    if str(termination_native) != "CONVERGENCE":
+        reasons.append(f"Ceres termination was {termination_native}")
+    if not bool(usable_native):
+        reasons.append("Ceres solution was unusable")
+    if not finite:
+        reasons.append("Born solution or Jacobian was nonfinite")
+    if not final_cost < initial_cost:
+        reasons.append("Born solve did not strictly reduce cost")
+    if not complete_columns:
+        reasons.append("Born Jacobian columns were incomplete")
+    if rank != 5:
+        reasons.append(f"Born Jacobian rank was {rank} of 5")
+    if not inactive_bounds:
+        reasons.append("Born solution had an active or violated bound")
+    if native_failure:
+        reasons.append(native_failure)
+    rank_threshold = (
+        singular_values[0]
+        * 5.0
+        * math.ulp(1.0)
+        * specification.rank_threshold_multiplier
+    )
+    return BornStartDiagnostic(
+        name=str(name_native),
+        termination=str(termination_native),
+        solution_usable=bool(usable_native),
+        initial_cost=initial_cost,
+        final_cost=final_cost,
+        iterations=int(iterations_native),
+        transformed_parameters=transformed,
+        final_diameters_angstrom=final_diameters,
+        observations=observations,
+        singular_values=singular_values,
+        rank_threshold=rank_threshold,
+        rank=rank,
+        condition_number=condition_number,
+        complete_columns=complete_columns,
+        inactive_bounds=inactive_bounds,
+        solver_converged=not reasons,
+        failure_reasons=tuple(reasons),
+    )
+
+
+def fit_figiel_born_diameters(*, models: tuple[object, ...]) -> BornDiameterFitResult:
+    specification = FIGIEL_BORN_DIAMETER_TRACER_V1
+    if type(models) is not tuple or len(models) != 5:
+        raise TypeError("models must be the exact ordered five-model tuple")
+    for model, target in zip(models, specification.targets, strict=True):
+        component_ids = getattr(model, "component_ids", None)
+        if tuple(component_ids or ()) != target.component_order:
+            raise ValueError("model component order does not match the immutable Born target")
+        fingerprint = getattr(model, "parameter_fingerprint", None)
+        if fingerprint != target.expected_provider_fingerprint:
+            raise ValueError("model fingerprint does not match the immutable Born target")
+    capsules = tuple(native_sdk(model) for model in models)
+    payload = _born_native_payload(specification)
+    starts_native, compiled_identity_native = _native.solve_born(capsules, payload)
+    if tuple(compiled_identity_native) != payload[0]:
+        raise RuntimeError("compiled Born problem identity did not round-trip")
+    starts = tuple(
+        _born_start_diagnostic(tuple(native_start), specification)
+        for native_start in starts_native
+    )
+    if tuple(start.name for start in starts) != ("primary", "lower", "upper"):
+        raise RuntimeError("native Born starts did not match the frozen schedule")
+    primary = starts[0]
+    parameters = tuple(
+        BornParameterDiagnostic(
+            ion_label=target.ion_label,
+            active_component_id=target.active_component_id,
+            final_diameter_angstrom=diameter,
+            published_diameter_angstrom=target.published_diameter_angstrom,
+            published_delta_angstrom=diameter - target.published_diameter_angstrom,
+            lower_bound_angstrom=specification.diameter_bounds_angstrom[0],
+            upper_bound_angstrom=specification.diameter_bounds_angstrom[1],
+            scaled_lower_bound_distance=transformed - specification.scaled_bounds[0],
+            scaled_upper_bound_distance=specification.scaled_bounds[1] - transformed,
+            active_bound=not (
+                min(
+                    transformed - specification.scaled_bounds[0],
+                    specification.scaled_bounds[1] - transformed,
+                )
+                > math.sqrt(math.ulp(1.0))
+                * max(1.0, *(abs(value) for value in specification.scaled_bounds))
+            ),
+        )
+        for target, diameter, transformed in zip(
+            specification.targets,
+            primary.final_diameters_angstrom,
+            primary.transformed_parameters,
+            strict=True,
+        )
+    )
+    confirmation_deltas = tuple(
+        max(
+            abs(value - reference)
+            for value, reference in zip(
+                confirmation.transformed_parameters,
+                primary.transformed_parameters,
+                strict=True,
+            )
+        )
+        for confirmation in starts[1:]
+    )
+    solver_converged = primary.solver_converged
+    numerical_converged = (
+        solver_converged
+        and all(start.solver_converged for start in starts)
+        and all(
+            max(abs(row.scaled_residual) for row in start.observations)
+            <= specification.scaled_residual_max
+            for start in starts
+        )
+        and all(
+            delta <= specification.confirmation_parameter_scaled_max_delta
+            for delta in confirmation_deltas
+        )
+    )
+    expected_fingerprints = tuple(
+        target.expected_provider_fingerprint for target in specification.targets
+    )
+    observed_fingerprints = tuple(row.provider_fingerprint for row in primary.observations)
+    workflow_valid = (
+        numerical_converged
+        and observed_fingerprints == expected_fingerprints
+        and all(
+            row.reference_molality_mol_per_kg
+            == specification.reference_molality_mol_per_kg
+            and row.reference_convergence_error
+            <= specification.reference_convergence_error_max
+            and abs(row.raw_error_j_per_mol)
+            <= specification.observable_round_trip_j_per_mol
+            for start in starts
+            for row in start.observations
+        )
+    )
+    scientifically_valid = workflow_valid and all(
+        abs(parameter.published_delta_angstrom)
+        <= specification.published_diameter_round_trip_angstrom
+        for parameter in parameters
+    )
+    failure_reasons = [
+        f"{start.name}: {reason}"
+        for start in starts
+        for reason in start.failure_reasons
+    ]
+    if not numerical_converged:
+        failure_reasons.append("three-start numerical confirmation gate failed")
+    if not workflow_valid:
+        failure_reasons.append("source-bound observable workflow gate failed")
+    if not scientifically_valid:
+        failure_reasons.append("published-diameter recovery gate failed")
+    return BornDiameterFitResult(
+        specification_id=specification.specification_id,
+        compiled_problem_identity=tuple(str(value) for value in compiled_identity_native),
+        provider_fingerprints=observed_fingerprints,
+        solver_converged=solver_converged,
+        numerically_converged=numerical_converged,
+        workflow_valid=workflow_valid,
+        scientifically_valid=scientifically_valid,
+        predictive_status=PREDICTIVE_STATUS,
+        parameters=parameters,
+        starts=starts,
+        confirmation_parameter_scaled_max_deltas=(
+            float(confirmation_deltas[0]),
+            float(confirmation_deltas[1]),
+        ),
         failure_reasons=tuple(failure_reasons),
     )

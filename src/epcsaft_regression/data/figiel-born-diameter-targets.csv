@@ -1,0 +1,6 @@
+target_id,ion_label,active_component_id,counterion_component_id,target_kj_per_mol,target_j_per_mol,published_born_diameter_angstrom,expected_provider_fingerprint
+figiel2025-s5-Lip-reported-average,Li+,lithium-cation,chloride-anion,-486.2,-486200,2.784,sha256:1bb528ebe8f5612757e148608fc55821f9fb03737dbcec6d0bc4fffd0f4cbc4c
+figiel2025-s5-Nap-reported-average,Na+,sodium-cation,chloride-anion,-381.1,-381100,3.445,sha256:7c637771bc9f717b8f47b44bb2a61044c3fe83084dca7c3c16102fba0989912d
+figiel2025-s5-Kp-reported-average,K+,potassium-cation,chloride-anion,-309.1,-309100,4.150,sha256:d29cef0c0f63034436d547d0aafa57934effe06783c8dffd89c94fa85e6940f4
+figiel2025-s5-Clm-reported-average,Cl-,chloride-anion,sodium-cation,-314.9,-314900,4.100,sha256:7551f1eee5903b66061cf7520f3bb59b169896ce372f3df3d48aa7ec778c39d4
+figiel2025-s5-Brm-reported-average,Br-,bromide-anion,sodium-cation,-290.9,-290900,4.480,sha256:70ae04599dfa8338175e793bac6b9e4dfad37a9b96a568b5484dc87f104ef1a9
