@@ -912,16 +912,15 @@ def fit_figiel_born_diameters(*, models: tuple[object, ...]) -> BornDiameterFitR
             == specification.reference_molality_mol_per_kg
             and row.reference_convergence_error
             <= specification.reference_convergence_error_max
-            and abs(row.raw_error_j_per_mol)
-            <= specification.observable_round_trip_j_per_mol
             for start in starts
             for row in start.observations
         )
     )
     scientifically_valid = workflow_valid and all(
-        abs(parameter.published_delta_angstrom)
-        <= specification.published_diameter_round_trip_angstrom
-        for parameter in parameters
+        abs(row.raw_error_j_per_mol)
+        <= specification.observable_round_trip_j_per_mol
+        for start in starts
+        for row in start.observations
     )
     failure_reasons = [
         f"{start.name}: {reason}"
@@ -931,9 +930,9 @@ def fit_figiel_born_diameters(*, models: tuple[object, ...]) -> BornDiameterFitR
     if not numerical_converged:
         failure_reasons.append("three-start numerical confirmation gate failed")
     if not workflow_valid:
-        failure_reasons.append("source-bound observable workflow gate failed")
+        failure_reasons.append("source-bound workflow identity or reference gate failed")
     if not scientifically_valid:
-        failure_reasons.append("published-diameter recovery gate failed")
+        failure_reasons.append("source-observable reproduction gate failed")
     return BornDiameterFitResult(
         specification_id=specification.specification_id,
         compiled_problem_identity=tuple(str(value) for value in compiled_identity_native),

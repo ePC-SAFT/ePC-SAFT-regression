@@ -105,7 +105,7 @@ def main() -> int:
     conclusion = (
         "FIGIEL_BORN_TRACER_CANDIDATE_PASSED"
         if result.scientifically_valid
-        else "BLOCKED_PUBLISHED_DIAMETER_RECOVERY"
+        else "BLOCKED_STRICT_LOCAL_GATES"
     )
     subject = {
         "capability": "figiel-2025-five-ion-born-diameter-tracer-v1",

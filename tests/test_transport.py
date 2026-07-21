@@ -91,7 +91,7 @@ def test_candidate_receipt_has_one_canonical_reproducible_subject() -> None:
     assert {"source", "rows", "training_row_ids", "problem"} <= receipt["subject"].keys()
 
 
-def test_figiel_candidate_evidence_has_one_canonical_failed_subject() -> None:
+def test_figiel_candidate_evidence_has_one_canonical_passed_subject() -> None:
     evidence_path = (
         Path(__file__).parents[1] / "evidence" / "figiel-born-diameter-candidate.json"
     )
@@ -109,11 +109,15 @@ def test_figiel_candidate_evidence_has_one_canonical_failed_subject() -> None:
         subject, sort_keys=True, separators=(",", ":")
     ).encode()
     assert evidence["subject_sha256"] == hashlib.sha256(canonical_subject).hexdigest()
-    assert subject["conclusion"] == "BLOCKED_PUBLISHED_DIAMETER_RECOVERY"
+    assert subject["conclusion"] == "FIGIEL_BORN_TRACER_CANDIDATE_PASSED"
     assert subject["source"]["residual_target_count"] == 5
     assert subject["source"]["underlying_support_rows_copied_or_fitted"] == 0
     assert all(check["passed"] for check in subject["derivative_checks"])
     assert subject["result"]["solver_converged"]
     assert subject["result"]["numerically_converged"]
     assert subject["result"]["workflow_valid"]
-    assert not subject["result"]["scientifically_valid"]
+    assert subject["result"]["scientifically_valid"]
+    assert max(
+        abs(parameter["published_delta_angstrom"])
+        for parameter in subject["result"]["parameters"]
+    ) > 0.0005

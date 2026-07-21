@@ -50,10 +50,14 @@ Born diameters. Provider design `da966048` and Validation source packet
 `docs/science/figiel-born-diameter-tracer.md`. Migration D-027 bound Provider
 implementation `907b077` and authorized the bounded Regression package
 implementation. Current status is
-`FIGIEL_BORN_TRACER_PACKAGE_CANDIDATE_BLOCKED_PUBLISHED_DIAMETER_RECOVERY`:
-the exact five-target fit is solver- and numerically converged with full local
-rank, but the frozen published-diameter round-trip gate fails. It is not
-downstream readiness or production authority. Validation writing remains
-closed until Migration serializes the exact package artifact subject.
+`FIGIEL_BORN_TRACER_PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED`.
+The user-approved 2026-07-21 contract correction keeps the Table 3 diameters
+and their `0.0005 angstrom` reporting half-increment as descriptive comparison
+evidence, not a second acceptance target. The exact five-target fit reproduces
+the Table S5 observables, is solver- and numerically converged, has full local
+rank, and passes its local scientific gates. It is not downstream readiness,
+predictive evidence, Provider-catalog authority, or production authority.
+Validation writing remains closed until Migration serializes the exact package
+artifact subject.
 Do not broaden this sequence to a generic registry or full electrolyte,
 reactive, uncertainty, or global-identifiability surface.

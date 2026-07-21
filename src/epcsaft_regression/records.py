@@ -217,7 +217,7 @@ class BornDiameterTracerSpecification:
     scaled_residual_max: float
     confirmation_parameter_scaled_max_delta: float
     observable_round_trip_j_per_mol: float
-    published_diameter_round_trip_angstrom: float
+    published_diameter_reporting_half_increment_angstrom: float
     rank_threshold_multiplier: float
     ceres_linear_solver: str
     ceres_num_threads: int
@@ -314,7 +314,7 @@ class BornDiameterTracerSpecification:
             self.scaled_residual_max,
             self.confirmation_parameter_scaled_max_delta,
             self.observable_round_trip_j_per_mol,
-            self.published_diameter_round_trip_angstrom,
+            self.published_diameter_reporting_half_increment_angstrom,
             self.rank_threshold_multiplier,
             self.ceres_linear_solver,
             self.ceres_num_threads,
@@ -407,7 +407,7 @@ FIGIEL_BORN_DIAMETER_TRACER_V1 = BornDiameterTracerSpecification(
     scaled_residual_max=1.0e-8,
     confirmation_parameter_scaled_max_delta=1.0e-5,
     observable_round_trip_j_per_mol=50.0,
-    published_diameter_round_trip_angstrom=0.0005,
+    published_diameter_reporting_half_increment_angstrom=0.0005,
     rank_threshold_multiplier=100.0,
     ceres_linear_solver="DENSE_QR",
     ceres_num_threads=1,

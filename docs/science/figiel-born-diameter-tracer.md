@@ -1,8 +1,9 @@
 # Figiel Current-Catalog Born-Diameter Tracer Design
 
-Status: authority-neutral package candidate implemented under D-027; the
-frozen published-diameter recovery gate fails, Validation has not started, and
-no production, catalog, predictive, or promotion authority follows.
+Status: authority-neutral package candidate implemented under D-027; local
+solver, numerical, workflow, and source-observable gates pass after the
+user-approved descriptive-comparison correction, Validation has not started,
+and no production, catalog, predictive, or promotion authority follows.
 
 Migration decision D-023 authorized this documentation-only design, published
 at Regression commit `8191dcc9fc038caac1f52cd22303c600e2b61241`, tree
@@ -273,27 +274,33 @@ The immutable result keeps five meanings separate:
    `1e-8` scaled-residual gates pass. The `1e-8` value is the repository's
    existing dimensionless numerical-closure policy, not source uncertainty.
 3. `workflow_valid`: numerical convergence plus exact source/model/state/
-   x-process identities, Provider reference convergence, and the observable
-   comparison below pass.
-4. `scientifically_valid`: workflow validity plus the published-diameter
-   comparison below passes. This is source-bound parameter recovery, not a
-   claim of general physical validity or global uniqueness.
+   x-process identities and Provider reference convergence pass.
+4. `scientifically_valid`: workflow validity plus the Table S5 observable
+   comparison below passes. This is source-bound observable reproduction, not
+   a claim of general physical validity or global uniqueness.
 5. `predictive_status` remains
    `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`. All five targets are training
    equations; no held-out observable or predictive cutoff exists.
 
 The source reports targets to `0.1 kJ/mol` and diameters to
-`0.001 angstrom`. Therefore the two recovery comparisons are fixed before any
-fit as decimal-reporting round-trip gates:
+`0.001 angstrom`. The observable-reproduction gate remains the pre-fit
+decimal-reporting round-trip comparison:
 
 ```text
 abs(G_i^fit - G_i^target) <= 50 J mol^-1
-abs(d_i^fit - d_i^published) <= 0.0005 angstrom.
 ```
 
-These half-last-digit values express source resolution only. They are neither
-experimental uncertainty nor statistical confidence intervals. No tolerance
-may be changed after observing a fit; failure returns a failed recovery claim.
+The target half-last-digit expresses source resolution only. It is neither
+experimental uncertainty nor a statistical confidence interval. No tolerance
+may be changed after observing a fit; failure returns a failed observable-
+reproduction claim.
+
+The Table 3 published diameters remain comparison anchors and are reported with
+their `0.0005 angstrom` half-last-digit scale. They are not the five Table S5
+residual targets, so their rounding scale is descriptive and does not veto an
+otherwise source-faithful fit. This is the user-approved 2026-07-21 contract
+correction; it changes no fitted value, residual, derivative, bound, scale,
+start, rank rule, or numerical gate.
 
 ## Singular ownership and result
 
@@ -371,20 +378,20 @@ Their differences from the published Table 3 anchors are
  -0.003001472493401991) angstrom.
 ```
 
-All five exceed the frozen `0.0005 angstrom` gate. Consequently
-`solver_converged`, `numerically_converged`, and `workflow_valid` are true,
-while `scientifically_valid` is false. This is a source-faithful failed
-recovery comparison, not permission to tune the gate and not evidence of a
-Provider defect or global non-identifiability.
+All five exceed the published values' `0.0005 angstrom` reporting
+half-increment, which is retained as descriptive evidence. Because the Table S5
+observables are the actual residual targets and reproduce within their frozen
+`50 J/mol` comparison, `solver_converged`, `numerically_converged`,
+`workflow_valid`, and `scientifically_valid` are true. This is a local,
+source-faithful observable-reproduction result, not evidence of predictive
+validity, Provider catalog authority, global uniqueness, or uncertainty.
 
-The exact implementation subject is Regression commit
+The original implementation subject is Regression commit
 `51c8d2235b184741461a2f82ef3309fa33ed51a8`, tree
-`e4527ebfa3452d5ce1c711a6dfec30dbd0e16942`. Its single retained wheel has
-SHA-256 `b9da5af59f4e4c2e2ce392cf1dd6af9cd20d89a4e0dd0ae6bcec17e24d862feb`.
-Canonical evidence at `evidence/figiel-born-diameter-candidate.json` has file
-SHA-256 `bc597820408334877482947dd8fbf1d0f9932bc6d17e7bfefb2b0e69645d2ae5`
-and subject SHA-256
-`8d3cc89ecd5b2ed57be14c63f7bf948ee0d0b5d5dbe043dcf7f447244e3335e5`.
+`e4527ebfa3452d5ce1c711a6dfec30dbd0e16942`. The superseded blocked-gate
+evidence remains immutable at Regression `2df4a305`. The corrected exact
+implementation, wheel, and canonical evidence identities are recorded in the
+architecture and context owners after regeneration.
 All five step-halved derivative checks pass. The commit-bound Regression wheel
 also passes the 48 legacy tests against the retained accepted Provider runtime.
 With assigned Provider `907b077`, the six Born tests pass while three legacy
