@@ -377,6 +377,20 @@ while `scientifically_valid` is false. This is a source-faithful failed
 recovery comparison, not permission to tune the gate and not evidence of a
 Provider defect or global non-identifiability.
 
+The exact implementation subject is Regression commit
+`51c8d2235b184741461a2f82ef3309fa33ed51a8`, tree
+`e4527ebfa3452d5ce1c711a6dfec30dbd0e16942`. Its single retained wheel has
+SHA-256 `b9da5af59f4e4c2e2ce392cf1dd6af9cd20d89a4e0dd0ae6bcec17e24d862feb`.
+Canonical evidence at `evidence/figiel-born-diameter-candidate.json` has file
+SHA-256 `bc597820408334877482947dd8fbf1d0f9932bc6d17e7bfefb2b0e69645d2ae5`
+and subject SHA-256
+`8d3cc89ecd5b2ed57be14c63f7bf948ee0d0b5d5dbe043dcf7f447244e3335e5`.
+All five step-halved derivative checks pass. The commit-bound Regression wheel
+also passes the 48 legacy tests against the retained accepted Provider runtime.
+With assigned Provider `907b077`, the six Born tests pass while three legacy
+numerical anchors differ; their accepted expected values are unchanged and the
+compatibility finding is part of the handoff.
+
 Validation later installs the exact Provider and Regression wheels in an
 isolated environment. Its one bounded campaign independently binds the five
 ledger targets and published diameters, checks sign/unit/x-process/state and

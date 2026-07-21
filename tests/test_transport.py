@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -88,3 +89,31 @@ def test_candidate_receipt_has_one_canonical_reproducible_subject() -> None:
         receipt.keys()
     )
     assert {"source", "rows", "training_row_ids", "problem"} <= receipt["subject"].keys()
+
+
+def test_figiel_candidate_evidence_has_one_canonical_failed_subject() -> None:
+    evidence_path = (
+        Path(__file__).parents[1] / "evidence" / "figiel-born-diameter-candidate.json"
+    )
+    evidence_bytes = evidence_path.read_bytes()
+    evidence = json.loads(evidence_bytes)
+    payload = dict(evidence)
+    payload.pop("evidence_payload_sha256")
+    canonical_payload = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    expected_bytes = dict(payload)
+    expected_bytes["evidence_payload_sha256"] = hashlib.sha256(canonical_payload).hexdigest()
+
+    assert (json.dumps(expected_bytes, indent=2, sort_keys=True) + "\n").encode() == evidence_bytes
+    subject = evidence["subject"]
+    canonical_subject = json.dumps(
+        subject, sort_keys=True, separators=(",", ":")
+    ).encode()
+    assert evidence["subject_sha256"] == hashlib.sha256(canonical_subject).hexdigest()
+    assert subject["conclusion"] == "BLOCKED_PUBLISHED_DIAMETER_RECOVERY"
+    assert subject["source"]["residual_target_count"] == 5
+    assert subject["source"]["underlying_support_rows_copied_or_fitted"] == 0
+    assert all(check["passed"] for check in subject["derivative_checks"])
+    assert subject["result"]["solver_converged"]
+    assert subject["result"]["numerically_converged"]
+    assert subject["result"]["workflow_valid"]
+    assert not subject["result"]["scientifically_valid"]

@@ -136,7 +136,7 @@ parallel_regression_track:
     exact_residual_jacobian_from_approved_provider_seam: frozen
     rank_and_conditioning_gates: frozen
     declared_start_and_perturbed_start_confirmation: frozen
-    separate_solver_numerical_physical_predictive_statuses: frozen
+    separate_solver_numerical_workflow_scientific_predictive_statuses: frozen
     installed_artifact_validation_plan: regression-candidate-executed-validation-not-started
   design_owner: docs/science/figiel-born-diameter-tracer.md
   problem_shape: five-parameters-five-residuals-diagonal-jacobian
@@ -156,6 +156,26 @@ parallel_regression_track:
     published_diameter_gate_angstrom: 0.0005
     predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
   public_surface_effect: three-closed-family-exports
+  authority_effect: none
+
+figiel_born_candidate_artifact:
+  implementation_commit: 51c8d2235b184741461a2f82ef3309fa33ed51a8
+  implementation_tree: e4527ebfa3452d5ce1c711a6dfec30dbd0e16942
+  source_date_epoch: 1784673660
+  local_wheel: ../artifacts/regression-figiel-born-tracer-v1/51c8d22/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl
+  wheel_sha256: b9da5af59f4e4c2e2ce392cf1dd6af9cd20d89a4e0dd0ae6bcec17e24d862feb
+  archive_byte_reproducibility: not-claimed-single-build
+  wheel_members: 12
+  installed_non_record_members_verified: 11
+  canonical_evidence: evidence/figiel-born-diameter-candidate.json
+  evidence_file_sha256: bc597820408334877482947dd8fbf1d0f9932bc6d17e7bfefb2b0e69645d2ae5
+  evidence_subject_sha256: 8d3cc89ecd5b2ed57be14c63f7bf948ee0d0b5d5dbe043dcf7f447244e3335e5
+  evidence_payload_sha256: 7eb5fe2082aac3aaa589a6d5d385190ee02d87df73937c288466042cc1a5fc27
+  derivative_checks: 5-passed
+  accepted_provider_legacy_replay: 48-passed
+  assigned_provider_suite: 51-passed-3-failed-legacy-numerical-compatibility
+  package_validation_subset: 38-passed
+  validation_campaign: not-started-waiting-migration-serialization
   authority_effect: none
 
 public_surface:
@@ -317,7 +337,7 @@ propane_candidate_artifact:
     test_receipt_sha256: 07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480
 
 manifest:
-  tracked_files_after_figiel_born_package_implementation: 50
+  tracked_files_after_figiel_born_candidate_evidence: 51
   production_python_files: 3
   native_source_files: 7
   installed_data_files: 4
@@ -326,8 +346,8 @@ manifest:
   retained_binary_result_evidence_files: 1
   ide_project_files: 7
   physical_production_lines: 4464
-  physical_package_test_lines: 1050
-  tracked_generated_evidence_files_after_checkpoint_a: 4
+  physical_package_test_lines: 1079
+  tracked_generated_evidence_files_after_figiel_candidate: 5
   generated_file_policy: >-
     The accepted methane and ethane fit receipts bind deterministic
     evidence to explicit artifacts. The compact blocked binary receipt retains
@@ -343,7 +363,7 @@ manifest:
     - path: src/epcsaft_regression/workflow.py
       physical_lines: 953
     - path: src/epcsaft_regression/native/born_diameter_fit.cpp
-      physical_lines: 714
+      physical_lines: 710
   oversized_file_policy: >-
     The frozen Figiel design requires records.py and workflow.py to remain the
     single source/specification and result/status owners. The family-specific

@@ -138,6 +138,19 @@ source observables round-trip, but fitted-minus-published diameters range from
 `-0.003001472493401991` to `+0.007461646407642686 angstrom`, exceeding the
 frozen `0.0005 angstrom` comparison. The candidate is therefore scientifically
 non-admitted without changing any gate. Validation writing has not started.
+Implementation commit `51c8d2235b184741461a2f82ef3309fa33ed51a8`,
+tree `e4527ebfa3452d5ce1c711a6dfec30dbd0e16942`, retains the exact Regression
+wheel under the shared artifact parent with SHA-256
+`b9da5af59f4e4c2e2ce392cf1dd6af9cd20d89a4e0dd0ae6bcec17e24d862feb`.
+Canonical package evidence is
+`evidence/figiel-born-diameter-candidate.json`, file SHA-256
+`bc597820408334877482947dd8fbf1d0f9932bc6d17e7bfefb2b0e69645d2ae5`,
+subject SHA-256
+`8d3cc89ecd5b2ed57be14c63f7bf948ee0d0b5d5dbe043dcf7f447244e3335e5`.
+The commit-bound wheel passes the 48 legacy tests against the retained accepted
+Provider runtime. Against assigned Provider `907b077`, all six Born tests pass
+but three legacy numerical anchors do not; that compatibility result is
+reported without moving their accepted expected values.
 
 `electrolyte_born_parameters` remains `NOT_READY`: this package candidate must
 not be interpreted as downstream readiness, predictive evidence, or Provider
