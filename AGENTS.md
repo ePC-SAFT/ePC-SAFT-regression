@@ -59,17 +59,18 @@ rank, and passes its local scientific gates. It is not downstream readiness,
 predictive evidence, Provider-catalog authority, or production authority.
 Validation writing remains closed until Migration serializes the exact package
 artifact subject.
-The user-approved next family design is the exact 11-parameter aqueous
-current-catalog Table 4/5 `k_ij` recovery against all 164 Hamer--Wu rows. Its
-sole design owner is `docs/science/figiel-aqueous-kij-regression.md`; status is
-`BLOCKED_FROZEN_PARAMETER_RECOVERY_GATE`. Provider artifact `06d21af` supplies
-the corrected three-active-interaction fixed-pressure callback. All 492
-installed row/active-column directional checks pass the unchanged frozen
-criterion, and the installed preflight establishes rank 11 and reproducible
-three-start convergence. The bounded solution still misses the `0.05`
-published-value gate by as much as `1.8` and places five parameters on bounds.
-Do not create a runtime fit or tune weights, bounds, starts, or tolerances to
-the answer.
+The user-approved next family is the staged Figiel aqueous current-catalog
+recovery: the existing five-target Born fit (`5x5`, rank 5), one water
+solvation factor against all 21 audited NaBr rows (`21x1`, rank 1), then the 11
+Table 4/5 interactions against all 164 Hamer--Wu rows (`164x11`, rank 11),
+with at most three confirmation cycles and a `1e-5` scaled cycle threshold.
+Its sole design owner is `docs/science/figiel-aqueous-kij-regression.md`; status
+is `READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_SOLVATION_FACTOR_DERIVATIVE`.
+Provider artifact `06d21af` already supplies the corrected Stage-C callback.
+The retained exact isolated log and relative fits are falsification evidence,
+not proof that the staged route is impossible. Keep the user-approved Table
+4/5 maximum parameter difference at `0.05`; do not tune rows, weights, bounds,
+starts, cycles, or tolerances to the answer.
 Independent subagent review replaces any permanent-lab approval gate. Do not
 broaden this sequence to a generic registry or full electrolyte, reactive,
 uncertainty, organic-solvent, expanded-ion, or global-identifiability surface.
