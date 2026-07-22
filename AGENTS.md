@@ -46,7 +46,7 @@ propane subject and frozen methane/ethane binary preflight are retained only as
 authority-neutral, non-production provenance and are not active blockers.
 Migration D-023 preserves a source-bound Ceres tracer for current-catalog ion
 Born diameters. Provider design `da966048` and Validation source packet
-`8944d34f` are permanent-lab approved; the sole Regression design owner is
+`8944d34f` are immutable reviewed inputs; the sole Regression design owner is
 `docs/science/figiel-born-diameter-tracer.md`. Migration D-027 bound Provider
 implementation `907b077` and authorized the bounded Regression package
 implementation. Current status is
@@ -62,9 +62,14 @@ artifact subject.
 The user-approved next family design is the exact 11-parameter aqueous
 current-catalog Table 4/5 `k_ij` recovery against all 164 Hamer--Wu rows. Its
 sole design owner is `docs/science/figiel-aqueous-kij-regression.md`; status is
-`READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_KIJ_DERIVATIVE_DESIGN`. No runtime fit
-is authorized until an exact reviewed Provider artifact supplies that design's
-three-active-interaction total fixed-pressure derivative callback and the
-installed preflight establishes rank 11. Do not broaden this sequence to a
-generic registry or full electrolyte, reactive, uncertainty, organic-solvent,
-expanded-ion, or global-identifiability surface.
+`BLOCKED_FROZEN_PARAMETER_RECOVERY_GATE`. Provider artifact `06d21af` supplies
+the corrected three-active-interaction fixed-pressure callback. All 492
+installed row/active-column directional checks pass the unchanged frozen
+criterion, and the installed preflight establishes rank 11 and reproducible
+three-start convergence. The bounded solution still misses the `0.05`
+published-value gate by as much as `1.8` and places five parameters on bounds.
+Do not create a runtime fit or tune weights, bounds, starts, or tolerances to
+the answer.
+Independent subagent review replaces any permanent-lab approval gate. Do not
+broaden this sequence to a generic registry or full electrolyte, reactive,
+uncertainty, organic-solvent, expanded-ion, or global-identifiability surface.

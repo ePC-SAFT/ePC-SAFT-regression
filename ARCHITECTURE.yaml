@@ -119,7 +119,7 @@ parallel_regression_track:
   downstream_readiness_effect: none
   upstream_prerequisites:
     validation:
-      status: permanent-lab-approved-source-packet
+      status: immutable-reviewed-source-packet
       commit: 8944d34f7002cda1bb8760e606cc1f11696f58cd
       tree: 6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd
       target_ledger_sha256: f405a3e48d21cd979a8dd480d5f8cb3be40754f5d6babf368b505b5f305607f0
@@ -161,7 +161,7 @@ parallel_regression_track:
   authority_effect: none
 
 figiel_aqueous_kij_design:
-  status: READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_KIJ_DERIVATIVE_DESIGN
+  status: BLOCKED_FROZEN_PARAMETER_RECOVERY_GATE
   migration_decision: D-023
   design_owner: docs/science/figiel-aqueous-kij-regression.md
   source_scope: 164-hamer-wu-aqueous-alkali-halide-miac-rows
@@ -185,11 +185,34 @@ figiel_aqueous_kij_design:
     multistart_max_delta: 1.0e-5
     published_parameter_max_abs_delta: 0.05
     predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
-  current_provider_status: insufficient-neutral-active-kij-only
+  current_provider_status: exact-installed-aqueous-active-kij-callback-retained
+  provider_artifact:
+    implementation_commit: 06d21af0334a22bafd31d617f3c8535b53711140
+    merged_commit: 39b39d9d7831a8da943372df019f5a9d7d388b44
+    wheel_sha256: 3bacac6818708091629a79ce9a7a320a07f87093f0697508060aa1aee7368cb6
+    installed_header_sha256: 01568808f48c8cf0cd5fd0eb0b3d038349a319251eb8a9f9053b028ed35e5a36
+  installed_preflight:
+    evidence: evidence/figiel-aqueous-kij-published-tuple-preflight.json
+    evidence_sha256: 5bd86e332b94781112eeee0ca06765a0f084020a30af76169861bbc610d5743d
+    nonpublished_trial: all-0.2
+    exact_jacobian_rank: 11
+    condition_number: 198577.92559465414
+    directional_check_count: 492
+    directional_check_passed_columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    directional_check_failed_columns: []
+    directional_check_worst_error_over_tolerance: 0.06812026498437262
+    published_tuple_cost: 0.4200114112320464
+    published_tuple_stationary: false
+    fitted_primary_cost: 0.25101017331848846
+    multistart_max_parameter_delta: 6.740175084729572e-11
+    fitted_max_abs_published_delta: 1.7999999999999998
+    fitted_active_bound_columns: [3, 5, 6, 7, 8]
+    runtime_unblocker: source-backed-objective-or-parameter-provenance-resolution
+    review_owner: bounded-independent-subagent
   required_provider_result: >-
     Model-bound aqueous salt ln(gamma_pm^m) plus three exact total fixed-T,P
     derivatives for active water-cation, water-anion, and cation-anion k_ij.
-  runtime_effect: none-design-only
+  runtime_effect: none-preflight-evidence-only
   validation_campaign: not-started
   authority_effect: none
 
@@ -298,7 +321,7 @@ parameter_family_readiness:
   polar_parameters: NOT_READY
   electrolyte_born_parameters: NOT_READY_NO_CATALOG_ADMISSION
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
-  figiel_current_catalog_aqueous_kij: DESIGN_COMPLETE_WAITING_PROVIDER_EXACT_DERIVATIVES
+  figiel_current_catalog_aqueous_kij: BLOCKED_FROZEN_PARAMETER_RECOVERY_GATE
   reactive_or_temperature_dependent_parameters: NOT_READY
   full_breadth_regression: NOT_READY_NO_GENERIC_REGISTRY_OR_UNIVERSAL_SURFACE
 
@@ -373,7 +396,7 @@ propane_candidate_artifact:
     test_receipt_sha256: 07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480
 
 manifest:
-  tracked_files_after_project_truss_shaping: 48
+  tracked_files_after_project_truss_shaping: 49
   production_python_files: 3
   native_source_files: 7
   installed_data_files: 4
@@ -383,14 +406,15 @@ manifest:
   ide_project_files: 7
   physical_production_lines: 4464
   physical_package_test_lines: 1079
-  tracked_generated_evidence_files_after_figiel_candidate: 5
+  tracked_generated_evidence_files_after_figiel_candidate: 6
   generated_file_policy: >-
     The accepted methane and ethane fit receipts bind deterministic
     evidence to explicit artifacts. The compact blocked binary receipt retains
     the exact rejected result and its immutable Regression/Migration provenance;
-    its removed executable owners remain available only from Git history. Build
-    trees, caches, temporary replay receipts, and wheels remain outside the
-    repository.
+    its removed executable owners remain available only from Git history. The
+    compact aqueous-kij preflight retains the exact installed derivative,
+    rank, and bounded-multistart failures without a runtime fit owner. Build trees,
+    caches, temporary replay receipts, and wheels remain outside the repository.
   oversized_files:
     - path: src/epcsaft_regression/native/pure_saturation_fit.cpp
       physical_lines: 920

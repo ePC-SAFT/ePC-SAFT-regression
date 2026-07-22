@@ -50,7 +50,7 @@ with no added runtime test seam.
 
 `runtime_status: AUTHORITY_NEUTRAL_PACKAGE_IMPLEMENTED_VALIDATION_NOT_STARTED`
 
-`next_figiel_family_status: READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_KIJ_DERIVATIVE_DESIGN`
+`next_figiel_family_status: BLOCKED_FROZEN_PARAMETER_RECOVERY_GATE`
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint
@@ -88,7 +88,7 @@ and file SHA-256
 No source uncertainty is treated as an acceptance cutoff, and predictive
 status remains `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
-Permanent-lab verdict `CORRECTION_DESIGN_JUSTIFIED` produced a design and
+Historical review verdict `CORRECTION_DESIGN_JUSTIFIED` produced a design and
 evidence protocol for
 `abs(P_phase - P_report) <= atol_resolution + 1e-8*abs(P_observed)`.
 The relative term is unchanged, observed pressure remains only a magnitude
@@ -98,6 +98,9 @@ protocol is frozen in the two existing science owners at documentation commit
 `e60cb9262eaef886479beef842549650d61cdf10`. Under D-023 it is provenance only:
 no numeric selection, runtime correction, re-adjudication, or active blocker
 follows from it.
+
+Future Regression checkpoints use exact-subject independent subagent review;
+permanent-lab approval is no longer an execution or authority gate.
 
 For binary `kij`, provider derivatives, the `68 x 35` Jacobian, rank 35,
 projected parameter rank 1, a finite non-bound result, and both perturbed starts
@@ -122,7 +125,7 @@ HELD2 critical path. Provider design
 `da9660481f08bb5557cc03da528edec15cc15e1f`, tree
 `e34575ae646c40f3fb63b5994c957e30bb035f69`, and Validation source packet
 `8944d34f7002cda1bb8760e606cc1f11696f58cd`, tree
-`6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd`, are permanent-lab approved.
+`6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd`, are immutable reviewed inputs.
 The complete source-bound Ceres contract is singularly owned by
 `docs/science/figiel-born-diameter-tracer.md`. It fixes exactly five Table S5
 reported-average targets, five active Born diameters, the diagonal exact
@@ -169,11 +172,20 @@ Table 4/5 interaction fit. The canonical design is
 164 audited Hamer--Wu MIAC rows, a sparse `164 x 11` exact Jacobian, and a
 user-approved maximum published-parameter delta of `0.05`. Existing forward
 MIAC evidence proves only that the published tuple reproduces the bounded
-aqueous campaign; it does not prove Regression recovery. Runtime is waiting on
-one Provider model-bound callback returning aqueous `ln(gamma_pm^m)` and its
-three exact total fixed-pressure derivatives for water--cation, water--anion,
-and cation--anion trial interactions. The current neutral active-`k_ij` callback
-does not support ions, association, or this reference-property path.
+aqueous campaign; it does not prove Regression recovery. Corrected Provider
+artifact `06d21af` supplies the three-active-interaction callback. At the
+all-`0.2` nonpublished trial, the installed `164 x 11` Jacobian is full rank
+and all 492 row/active-column checks pass the unchanged frozen directional
+criterion. The complete bounded preflight converges from all three declared
+starts within
+`6.740175084729572e-11` and lowers cost from the published tuple's
+`0.4200114112320464` to `0.25101017331848846`; nevertheless, it differs from
+the table by as much as `1.8` and puts five parameters on bounds. Because
+Figiel does not disclose its objective, weights, bounds, starts, or fitting
+sequence, runtime implementation remains blocked on the parameter-recovery and
+non-bound gates rather than tuning the contract to reproduce the answer.
+Compact evidence is retained at
+`evidence/figiel-aqueous-kij-published-tuple-preflight.json`.
 This is a conditional family test: all non-`k_ij` values remain fixed to the
 published Figiel Provider catalog. It does not replace the separately staged
 solvent-factor recovery or final cross-family tuple replay.
