@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "status": "BLOCKED_SOURCE_OBJECTIVE_NOT_REPRODUCIBLE",
+  "claim": "Installed-artifact derivative and local-rank feasibility at the published Figiel Table 4/5 tuple",
+  "source": {
+    "validation_commit": "8944d34f7002cda1bb8760e606cc1f11696f58cd",
+    "validation_tree": "6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd",
+    "csv_sha256": "2f63e13f06a5b0f4e8bca2980b6a8d9d7fb0f839153c43e3a71952daf9796595",
+    "rows": 164,
+    "salt_counts": {"LiCl": 29, "NaCl": 29, "KCl": 28, "LiBr": 29, "NaBr": 21, "KBr": 28}
+  },
+  "provider": {
+    "implementation_commit": "8ae37dbc4dc61a4ee1109bb1cf8e26470e457975",
+    "merged_commit": "37bcece2b608421434df044be4c5e2b0c67b946d",
+    "wheel_sha256": "d984d5b68d97d5a40b8d4d729d8ceff5aa0e274222ca548d6fdf82162869537f",
+    "installed_header_sha256": "01568808f48c8cf0cd5fd0eb0b3d038349a319251eb8a9f9053b028ed35e5a36",
+    "callback": "evaluate_aqueous_miac_kij",
+    "callback_coordinates": ["water-cation", "water-anion", "cation-anion"],
+    "callback_threading_observed": "serial-only; no thread-safety contract"
+  },
+  "problem": {
+    "residual": "ln(gamma_model/gamma_observed)",
+    "weighting": "equal",
+    "parameters": 11,
+    "residuals": 164,
+    "published_tuple": [-0.4, -0.3, -0.1, -0.3, -0.3, 0.8, 0.8, 0.0, 0.5, 0.65, -0.35]
+  },
+  "published_tuple_evaluation": {
+    "cost": 0.4200114112124652,
+    "log_rmse": 0.07156878076815212,
+    "gradient": [1.562302277553142, -1.4391078663987367, -0.10559316275095543, -0.3172979005066256, 0.07210581898042012, -0.20658585754656697, 0.21043159725765762, 0.11786388310140758, -0.5667613511293417, 0.4918663747261179, -0.08647859917383814],
+    "jacobian_rank": 11,
+    "rank_threshold": 3.0211337256460086e-11,
+    "condition_number": 47788.50024950208,
+    "singular_values": [8.296327268936464, 6.165846122788197, 5.331205508308083, 4.962792762361359, 1.8438142119864809, 1.5292255680578744, 0.022637020360721016, 0.014881872260478496, 0.012955864395330103, 0.008624600568276419, 0.0001736050979968325],
+    "unconstrained_gauss_newton_max_abs_step_approx": 38.41
+  },
+  "interpretation": {
+    "provider_derivative_contract_sufficient": true,
+    "local_rank_gate_passed": true,
+    "published_tuple_stationary_for_declared_objective": false,
+    "published_parameter_proximity_supported": false,
+    "reason": "Figiel does not disclose the fitted objective, weights, bounds, starts, or fitting sequence. The newly selected equal-weight log objective cannot be claimed to recover the printed tuple from this evidence.",
+    "smallest_unblocker": "Obtain a source-backed fitting objective and weighting/sequence, or explicitly approve a different scientific claim that does not require recovering every printed parameter within 0.05."
+  },
+  "limits": [
+    "This is a serial installed-artifact residual/Jacobian sweep at the published tuple, not a completed nonlinear fit.",
+    "All 164 rows are training observations; no predictive claim is supported.",
+    "The preflight does not admit fitted values to the Provider catalog or change runtime authority.",
+    "No numerical-derivative production backend, copied EOS, or copied electrolyte reference sequence was used."
+  ]
+}

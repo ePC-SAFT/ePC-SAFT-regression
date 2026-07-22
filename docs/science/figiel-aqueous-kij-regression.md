@@ -1,8 +1,10 @@
 # Figiel Aqueous Current-Catalog Interaction Regression
 
-Status: design complete; runtime blocked on one exact Provider active-electrolyte
-interaction derivative callback. No fit, Regression wheel, Validation campaign,
-parameter admission, prediction, or authority transfer exists for this slice.
+Status: installed derivative/rank preflight complete; runtime blocked because
+the published tuple is materially nonstationary for the declared equal-weight
+log objective and the source does not disclose its fitting objective. No fit,
+Regression wheel, Validation campaign, parameter admission, prediction, or
+authority transfer exists for this slice.
 
 This document is the sole Regression design owner for the next Figiel parameter
 family after the five-ion Born-diameter tracer. It implements the staged intent
@@ -119,10 +121,12 @@ function, gradient, and parameter tolerances of `1e-10`.
 
 ## Exact Provider contract
 
-The current Provider is not sufficient. Its active-`k_ij` callback accepts only
-two neutral nonassociating components. Its full-electrolyte phase callback has
-state derivatives but no active interaction coordinate. Neither callback can
-produce the exact Jacobian required here.
+Provider implementation `8ae37dbc4dc61a4ee1109bb1cf8e26470e457975`,
+merged as `37bcece2b608421434df044be4c5e2b0c67b946d`, supplies the required
+installed callback. The retained wheel SHA-256 is
+`d984d5b68d97d5a40b8d4d729d8ceff5aa0e274222ca548d6fdf82162869537f` and
+the installed public-header SHA-256 is
+`01568808f48c8cf0cd5fd0eb0b3d038349a319251eb8a9f9053b028ed35e5a36`.
 
 The minimum new Provider contract is one model-bound aqueous-alkali-halide
 evaluation. For the selected ordered model `(water, cation, anion)`, fixed
@@ -183,6 +187,20 @@ correlations, and the least-sensitive right singular vector. These are local
 sensitivity diagnostics, not a covariance or uncertainty estimate. If rank is
 below 11, this exact joint fit stops. Regression does not add regularization,
 priors, parameter tying, or fixed published values to manufacture rank.
+
+The serial installed-artifact published-tuple preflight passes rank 11 with
+threshold `3.0211337256460086e-11`, condition number
+`47788.50024950208`, cost `0.4200114112124652`, and log-RMSE
+`0.07156878076815212`. However, its gradient is materially nonzero and the
+unconstrained Gauss--Newton step has maximum absolute movement approximately
+`38.41`. The
+published tuple is therefore not stationary for the declared equal-weight log
+objective. Figiel does not disclose the objective, weights, bounds, starts, or
+fitting sequence used to obtain the printed values. This blocks the promised
+`0.05` recovery claim: Regression must not tune weights, seed from the printed
+tuple, or add a prior merely to reproduce the answer. Exact compact evidence is
+retained in `evidence/figiel-aqueous-kij-published-tuple-preflight.json`,
+SHA-256 `00fa5eaeb2016dc41d7fb77a46dcbff90be9c44dba92c25b19fcc7093253da15`.
 
 ## Result and acceptance semantics
 
@@ -246,15 +264,16 @@ Equilibrium dependency.
 
 The executable order is:
 
-1. Migration assigns Provider the callback design and implementation above.
-2. Permanent review retains an exact Provider wheel and header.
-3. Regression runs only the derivative/rank preflight.
-4. If and only if rank 11 passes, Regression implements the closed fit and
-   retains one commit-bound wheel and candidate evidence.
+1. Preserve the exact Provider wheel/header and the rank-11 preflight.
+2. Obtain the source-backed objective/weighting/fitting sequence, or have the
+   user explicitly replace the printed-parameter recovery claim with a
+   different scientifically testable claim.
+3. Use bounded independent subagent review on the exact revised contract.
+4. Only then implement the closed Ceres fit and retain one commit-bound wheel
+   plus candidate evidence.
 5. Regression then authors the bounded public-installed-artifact campaign in
    Validation under Migration's serialized writer protocol.
 6. A distinct review decides admission. No package-authored result
    self-promotes or writes fitted values into the Provider catalog.
 
-The present state is
-`READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_KIJ_DERIVATIVE_DESIGN`.
+The present state is `BLOCKED_SOURCE_OBJECTIVE_NOT_REPRODUCIBLE`.

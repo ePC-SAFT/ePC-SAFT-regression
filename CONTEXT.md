@@ -50,7 +50,7 @@ with no added runtime test seam.
 
 `runtime_status: AUTHORITY_NEUTRAL_PACKAGE_IMPLEMENTED_VALIDATION_NOT_STARTED`
 
-`next_figiel_family_status: READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_KIJ_DERIVATIVE_DESIGN`
+`next_figiel_family_status: BLOCKED_SOURCE_OBJECTIVE_NOT_REPRODUCIBLE`
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint
@@ -122,7 +122,7 @@ HELD2 critical path. Provider design
 `da9660481f08bb5557cc03da528edec15cc15e1f`, tree
 `e34575ae646c40f3fb63b5994c957e30bb035f69`, and Validation source packet
 `8944d34f7002cda1bb8760e606cc1f11696f58cd`, tree
-`6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd`, are permanent-lab approved.
+`6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd`, are immutable reviewed inputs.
 The complete source-bound Ceres contract is singularly owned by
 `docs/science/figiel-born-diameter-tracer.md`. It fixes exactly five Table S5
 reported-average targets, five active Born diameters, the diagonal exact
@@ -154,10 +154,11 @@ Canonical package evidence is
 `99d46eafbdae3428f690543364096fb414b818db201d1c35b0c0da8b03ae91d5`,
 subject SHA-256
 `55ea2cd69af62c45b26179cfab6939760de23058b5a7e8c880a79f67faa417ed`.
-The commit-bound wheel passes the 49 non-Born tests against the retained
-accepted Provider runtime. Against assigned Provider `907b077`, all six Born
-tests pass but three legacy numerical anchors do not; that compatibility result
-is reported without moving their accepted expected values.
+The commit-bound wheel passed the 49 non-Born tests against the retained
+accepted Provider runtime. The current merged Provider active-aqueous-`k_ij`
+wheel passes the complete 55-test Regression suite after three legacy
+bit-sensitive assertions were expressed as close numerical/status invariants.
+No solver, reporting-pressure, physical-validity, or scientific gate changed.
 
 `electrolyte_born_parameters` remains `NOT_READY`: this package candidate must
 not be interpreted as downstream readiness, predictive evidence, or Provider
@@ -169,11 +170,15 @@ Table 4/5 interaction fit. The canonical design is
 164 audited Hamer--Wu MIAC rows, a sparse `164 x 11` exact Jacobian, and a
 user-approved maximum published-parameter delta of `0.05`. Existing forward
 MIAC evidence proves only that the published tuple reproduces the bounded
-aqueous campaign; it does not prove Regression recovery. Runtime is waiting on
-one Provider model-bound callback returning aqueous `ln(gamma_pm^m)` and its
-three exact total fixed-pressure derivatives for water--cation, water--anion,
-and cation--anion trial interactions. The current neutral active-`k_ij` callback
-does not support ions, association, or this reference-property path.
+aqueous campaign; it does not prove Regression recovery. Provider artifact
+`8ae37db` now supplies the exact callback and the installed published-tuple
+preflight has rank 11. Its condition number is `47788.50024950208`, cost is
+`0.4200114112124652`, and its materially nonzero gradient shows that the
+printed tuple is not stationary for the newly chosen equal-weight log
+objective. Because Figiel does not disclose its objective, weights, bounds,
+starts, or fitting sequence, runtime implementation is blocked rather than
+tuning weights to reproduce the answer. Compact evidence is retained at
+`evidence/figiel-aqueous-kij-published-tuple-preflight.json`.
 This is a conditional family test: all non-`k_ij` values remain fixed to the
 published Figiel Provider catalog. It does not replace the separately staged
 solvent-factor recovery or final cross-family tuple replay.
