@@ -5,7 +5,7 @@ and ethane are accepted. The propane Checkpoint A and constant methane/ethane
 `kij` subjects are retained authority-neutral, non-production provenance; D-023
 removes both from the active migration sequence.
 
-`governance_doctrine_revision: 3`
+`governance_doctrine_revision: 4`
 
 Canonical local doctrine: `../ePC-SAFT-organization/GOVERNANCE.md`.
 

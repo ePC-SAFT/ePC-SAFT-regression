@@ -6,7 +6,7 @@ Accepted workflows: pure methane under promotion 0020 and pure ethane under
 promotion 0023/state 0025. No local candidate has production or active-
 migration status.
 
-Before work, read doctrine revision 3 at
+Before work, read doctrine revision 4 at
 `../ePC-SAFT-organization/GOVERNANCE.md`. Its future published home is
 `https://github.com/ePC-SAFT/.github/blob/main/GOVERNANCE.md`. Local policy may
 narrow that doctrine but must not contradict it.
