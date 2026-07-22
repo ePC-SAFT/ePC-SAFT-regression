@@ -197,7 +197,7 @@ receipt, artifact, gate, or authority. The current accepted criterion remains
 abs(P_phase - P_report) <= 1e-8 * abs(P_observed).
 ```
 
-Permanent-lab verdict `CORRECTION_DESIGN_JUSTIFIED` permits one candidate
+Historical review verdict `CORRECTION_DESIGN_JUSTIFIED` permits one candidate
 correction to be evaluated:
 
 ```text

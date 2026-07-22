@@ -62,11 +62,13 @@ artifact subject.
 The user-approved next family design is the exact 11-parameter aqueous
 current-catalog Table 4/5 `k_ij` recovery against all 164 Hamer--Wu rows. Its
 sole design owner is `docs/science/figiel-aqueous-kij-regression.md`; status is
-`BLOCKED_SOURCE_OBJECTIVE_NOT_REPRODUCIBLE`. Provider artifact `8ae37db`
-supplies the exact three-active-interaction fixed-pressure callback and the
-installed preflight establishes rank 11, but the printed tuple is materially
-nonstationary for the declared equal-weight log objective. Do not create a
-runtime fit or tune weights to the answer until a source-backed objective is
-available or the user explicitly changes the recovery claim. Do not broaden
+`BLOCKED_FROZEN_DERIVATIVE_AND_PARAMETER_RECOVERY_GATES`. Provider artifact
+`8ae37db` supplies the three-active-interaction fixed-pressure callback. The
+installed preflight establishes rank 11 and reproducible three-start
+convergence, but exact derivative columns 1, 3, 4, and 5 fail the frozen
+directional check; the bounded solution also misses the `0.05` published-value
+gate by as much as `1.8` and places five parameters on bounds. Do not create a
+runtime fit or tune weights, bounds, starts, or tolerances to the answer.
+Independent subagent review replaces any permanent-lab approval gate. Do not broaden
 this sequence to a generic registry or full electrolyte, reactive, uncertainty,
 organic-solvent, expanded-ion, or global-identifiability surface.

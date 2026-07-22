@@ -50,7 +50,7 @@ with no added runtime test seam.
 
 `runtime_status: AUTHORITY_NEUTRAL_PACKAGE_IMPLEMENTED_VALIDATION_NOT_STARTED`
 
-`next_figiel_family_status: BLOCKED_SOURCE_OBJECTIVE_NOT_REPRODUCIBLE`
+`next_figiel_family_status: BLOCKED_FROZEN_DERIVATIVE_AND_PARAMETER_RECOVERY_GATES`
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint
@@ -88,7 +88,7 @@ and file SHA-256
 No source uncertainty is treated as an acceptance cutoff, and predictive
 status remains `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
-Permanent-lab verdict `CORRECTION_DESIGN_JUSTIFIED` produced a design and
+Historical review verdict `CORRECTION_DESIGN_JUSTIFIED` produced a design and
 evidence protocol for
 `abs(P_phase - P_report) <= atol_resolution + 1e-8*abs(P_observed)`.
 The relative term is unchanged, observed pressure remains only a magnitude
@@ -98,6 +98,9 @@ protocol is frozen in the two existing science owners at documentation commit
 `e60cb9262eaef886479beef842549650d61cdf10`. Under D-023 it is provenance only:
 no numeric selection, runtime correction, re-adjudication, or active blocker
 follows from it.
+
+Future Regression checkpoints use exact-subject independent subagent review;
+permanent-lab approval is no longer an execution or authority gate.
 
 For binary `kij`, provider derivatives, the `68 x 35` Jacobian, rank 35,
 projected parameter rank 1, a finite non-bound result, and both perturbed starts
@@ -154,11 +157,10 @@ Canonical package evidence is
 `99d46eafbdae3428f690543364096fb414b818db201d1c35b0c0da8b03ae91d5`,
 subject SHA-256
 `55ea2cd69af62c45b26179cfab6939760de23058b5a7e8c880a79f67faa417ed`.
-The commit-bound wheel passed the 49 non-Born tests against the retained
-accepted Provider runtime. The current merged Provider active-aqueous-`k_ij`
-wheel passes the complete 55-test Regression suite after three legacy
-bit-sensitive assertions were expressed as close numerical/status invariants.
-No solver, reporting-pressure, physical-validity, or scientific gate changed.
+The commit-bound wheel passes the 49 non-Born tests against the retained
+accepted Provider runtime. Against assigned Provider `907b077`, all six Born
+tests pass but three legacy numerical anchors do not; that compatibility result
+is reported without moving their accepted expected values.
 
 `electrolyte_born_parameters` remains `NOT_READY`: this package candidate must
 not be interpreted as downstream readiness, predictive evidence, or Provider
@@ -171,13 +173,16 @@ Table 4/5 interaction fit. The canonical design is
 user-approved maximum published-parameter delta of `0.05`. Existing forward
 MIAC evidence proves only that the published tuple reproduces the bounded
 aqueous campaign; it does not prove Regression recovery. Provider artifact
-`8ae37db` now supplies the exact callback and the installed published-tuple
-preflight has rank 11. Its condition number is `47788.50024950208`, cost is
-`0.4200114112124652`, and its materially nonzero gradient shows that the
-printed tuple is not stationary for the newly chosen equal-weight log
-objective. Because Figiel does not disclose its objective, weights, bounds,
-starts, or fitting sequence, runtime implementation is blocked rather than
-tuning weights to reproduce the answer. Compact evidence is retained at
+`8ae37db` supplies the three-active-interaction callback. At the all-`0.2`
+nonpublished trial, the installed `164 x 11` Jacobian is full rank, but exact
+columns 1, 3, 4, and 5 fail the frozen two-step directional check. The complete
+bounded preflight converges from all three declared starts within
+`1.0952261320085199e-10` and lowers cost from the published tuple's
+`0.4200114112124652` to `0.25101017330977715`; nevertheless, it differs from
+the table by as much as `1.8` and puts five parameters on bounds. Because
+Figiel does not disclose its objective, weights, bounds, starts, or fitting
+sequence, runtime implementation is blocked rather than tuning the contract to
+reproduce the answer. Compact evidence is retained at
 `evidence/figiel-aqueous-kij-published-tuple-preflight.json`.
 This is a conditional family test: all non-`k_ij` values remain fixed to the
 published Figiel Provider catalog. It does not replace the separately staged

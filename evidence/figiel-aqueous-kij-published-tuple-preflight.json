@@ -1,7 +1,7 @@
 {
-  "schema_version": 1,
-  "status": "BLOCKED_SOURCE_OBJECTIVE_NOT_REPRODUCIBLE",
-  "claim": "Installed-artifact derivative and local-rank feasibility at the published Figiel Table 4/5 tuple",
+  "schema_version": 2,
+  "status": "BLOCKED_FROZEN_DERIVATIVE_AND_PARAMETER_RECOVERY_GATES",
+  "claim": "Installed-artifact derivative, rank, and bounded multistart feasibility for the frozen Figiel Table 4/5 recovery contract",
   "source": {
     "validation_commit": "8944d34f7002cda1bb8760e606cc1f11696f58cd",
     "validation_tree": "6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd",
@@ -16,14 +16,17 @@
     "installed_header_sha256": "01568808f48c8cf0cd5fd0eb0b3d038349a319251eb8a9f9053b028ed35e5a36",
     "callback": "evaluate_aqueous_miac_kij",
     "callback_coordinates": ["water-cation", "water-anion", "cation-anion"],
-    "callback_threading_observed": "serial-only; no thread-safety contract"
+    "callback_threading_observed": "serial per model; no public thread-safety contract"
   },
   "problem": {
     "residual": "ln(gamma_model/gamma_observed)",
     "weighting": "equal",
     "parameters": 11,
     "residuals": 164,
-    "published_tuple": [-0.4, -0.3, -0.1, -0.3, -0.3, 0.8, 0.8, 0.0, 0.5, 0.65, -0.35]
+    "bounds": [-1.0, 1.0],
+    "starts": {"primary": 0.0, "negative": -0.5, "positive": 0.5},
+    "published_tuple": [-0.4, -0.3, -0.1, -0.3, -0.3, 0.8, 0.8, 0.0, 0.5, 0.65, -0.35],
+    "parameter_proximity_max_abs": 0.05
   },
   "published_tuple_evaluation": {
     "cost": 0.4200114112124652,
@@ -35,18 +38,82 @@
     "singular_values": [8.296327268936464, 6.165846122788197, 5.331205508308083, 4.962792762361359, 1.8438142119864809, 1.5292255680578744, 0.022637020360721016, 0.014881872260478496, 0.012955864395330103, 0.008624600568276419, 0.0001736050979968325],
     "unconstrained_gauss_newton_max_abs_step_approx": 38.41
   },
+  "nonpublished_trial_preflight": {
+    "parameters": [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2],
+    "cost": 46.999424973333625,
+    "complete_nonzero_columns": true,
+    "jacobian_rank": 11,
+    "rank_threshold": 3.396827102277414e-11,
+    "condition_number": 198577.925594654,
+    "singular_values": [9.328017848816197, 6.936665933239162, 6.0323059760576125, 5.621928295897977, 1.8018269472320785, 1.497908963269643, 0.016726727516712416, 0.012549489370301502, 0.01130349596793256, 0.010811619551957604, 0.00004697409251749843],
+    "least_sensitive_right_singular_vector": [0.3606557817020148, 0.46083799237313017, 0.3804360538922135, -0.5591512139078273, -0.44725140892667015, -0.00798205336097968, -0.00509555139417979, -0.0025969940987835075, -0.00600296173024481, -0.0027606020872461903, -0.0004234810592256],
+    "normalized_column_correlations": [
+      [1.0, 0.0, 0.0, 0.3584008896127834, 0.41811934662651434, -0.6603243483415613, 0.0, 0.0, -0.7509564799878433, 0.0, 0.0],
+      [0.0, 1.0, 0.0, 0.3838965448089803, 0.3933784306149236, 0.0, -0.6841870881819205, 0.0, 0.0, -0.7292622712237257, 0.0],
+      [0.0, 0.0, 1.0, 0.4161493879210085, 0.47130191890457984, 0.0, 0.0, -0.6658261334556332, 0.0, 0.0, -0.7460360504192265],
+      [0.3584008896127834, 0.3838965448089803, 0.4161493879210085, 1.0, 0.0, -0.5427479192729739, -0.5610601659577624, -0.6249567687984288, 0.0, 0.0, 0.0],
+      [0.41811934662651434, 0.3933784306149236, 0.47130191890457984, 0.0, 1.0, 0.0, 0.0, 0.0, -0.5567604969645726, -0.539387112697428, -0.6316661003231944],
+      [-0.6603243483415613, 0.0, 0.0, -0.5427479192729739, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+      [0.0, -0.6841870881819205, 0.0, -0.5610601659577624, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+      [0.0, 0.0, -0.6658261334556332, -0.6249567687984288, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+      [-0.7509564799878433, 0.0, 0.0, 0.0, -0.5567604969645726, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+      [0.0, -0.7292622712237257, 0.0, 0.0, -0.539387112697428, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+      [0.0, 0.0, -0.7460360504192265, 0.0, -0.6316661003231944, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+    ],
+    "directional_check": {
+      "steps": [0.0001, 0.00005],
+      "criterion": "abs(J_exact-J_h/2) <= max(1e-8,20*abs(J_h-J_h/2),2e-8*abs(J_exact))",
+      "passed_columns": [0, 2, 6, 7, 8, 9, 10],
+      "failed_columns": [1, 3, 4, 5],
+      "columns": [
+        {"column": 0, "max_abs_error": 4.76528160819889e-7, "max_tolerance": 1.0093970104207983e-5, "passed": true},
+        {"column": 1, "max_abs_error": 5.365654845079434e-7, "max_tolerance": 1.0113865300809266e-5, "passed": false, "worst_row": {"index": 122, "salt": "NaBr", "molality_mol_per_kg": 0.6, "exact": -0.20454037714660875, "coarse_difference": -0.2045404621497937, "fine_difference": -0.20454046449458474, "abs_error": 8.734797599108113e-8, "tolerance": 4.689582056016661e-8, "error_over_tolerance": 1.8625961748342803}},
+        {"column": 2, "max_abs_error": 5.949725238788397e-7, "max_tolerance": 1.17765353024879e-5, "passed": true},
+        {"column": 3, "max_abs_error": 7.526484342434969e-7, "max_tolerance": 1.6127899016282754e-5, "passed": false, "worst_row": {"index": 80, "salt": "KCl", "molality_mol_per_kg": 3.0, "exact": -0.8678375926174464, "coarse_difference": -0.8678377244564217, "fine_difference": -0.8678377218984679, "abs_error": 1.2928102144371678e-7, "tolerance": 5.1159076974727213e-8, "error_over_tolerance": 2.5270397569444443}},
+        {"column": 4, "max_abs_error": 7.201190745931285e-7, "max_tolerance": 1.2497736179284402e-5, "passed": false, "worst_row": {"index": 139, "salt": "KBr", "molality_mol_per_kg": 0.01, "exact": -0.004570684284156634, "coarse_difference": -0.004570865002051505, "fine_difference": -0.004570863296748939, "abs_error": 1.7901259230512778e-7, "tolerance": 3.410605131648481e-8, "error_over_tolerance": 5.248704713541667}},
+        {"column": 5, "max_abs_error": 4.977770144964921e-7, "max_tolerance": 1.226396761921933e-5, "passed": false, "worst_row": {"index": 4, "salt": "LiCl", "molality_mol_per_kg": 0.02, "exact": 0.003092046257755259, "coarse_difference": 0.003091981852776371, "fine_difference": 0.0030919835580789368, "abs_error": 6.269967632241413e-8, "tolerance": 3.410605131648481e-8, "error_over_tolerance": 1.8383739513142903}},
+        {"column": 6, "max_abs_error": 6.627829605143631e-7, "max_tolerance": 1.6112267076096032e-5, "passed": true},
+        {"column": 7, "max_abs_error": 4.142170182451846e-7, "max_tolerance": 8.58761950439657e-6, "passed": true},
+        {"column": 8, "max_abs_error": 4.973622580450865e-7, "max_tolerance": 1.2630607670871541e-5, "passed": true},
+        {"column": 9, "max_abs_error": 4.0515108340466455e-7, "max_tolerance": 1.1041834113711957e-5, "passed": true},
+        {"column": 10, "max_abs_error": 5.161301146472397e-7, "max_tolerance": 1.1399947652535047e-5, "passed": true}
+      ]
+    },
+    "reference_molality_min": 1e-12,
+    "reference_molality_max": 1e-12,
+    "reference_convergence_error_max": 1.0628418010583118e-5,
+    "reference_derivative_convergence_error_max": 8.281553220967908e-11
+  },
+  "bounded_multistart_preflight": {
+    "backend": "disposable scipy least_squares evidence runner; not package runtime or production derivative backend",
+    "all_starts_converged": true,
+    "all_starts_full_rank": true,
+    "max_confirmation_parameter_delta": 1.0952261320085199e-10,
+    "parameter_proximity_gate_passed": false,
+    "non_bound_gate_passed": false,
+    "starts": [
+      {"label": "primary", "initial_value": 0.0, "success": true, "termination_status": 3, "termination_message": "xtol satisfied", "evaluations": 26, "jacobian_evaluations": 26, "cost": 0.25101017330977715, "optimality": 3.2076170034455987e-10, "parameters": [-0.9653939940143408, -0.5864883567391564, 0.04512008994447651, -1.0, -0.7390065209417567, -1.0, -1.0, -1.0, -1.0, -0.9258808814846049, -0.9194313237217414], "active_bound_columns": [3, 5, 6, 7, 8], "max_abs_published_delta": 1.8, "jacobian_rank": 11, "condition_number": 45473.43674270877},
+      {"label": "negative", "initial_value": -0.5, "success": true, "termination_status": 1, "termination_message": "gtol satisfied", "evaluations": 21, "jacobian_evaluations": 21, "cost": 0.25101017334839215, "optimality": 8.011773528003243e-11, "parameters": [-0.9653939940051006, -0.5864883567341487, 0.04512008995507763, -1.0, -0.7390065209595482, -1.0, -1.0, -1.0, -1.0, -0.9258808815283647, -0.9194313237346353], "active_bound_columns": [3, 5, 6, 7, 8], "max_abs_primary_delta": 4.375977358250793e-11, "max_abs_published_delta": 1.8, "jacobian_rank": 11, "condition_number": 45473.43676567377},
+      {"label": "positive", "initial_value": 0.5, "success": true, "termination_status": 3, "termination_message": "xtol satisfied", "evaluations": 29, "jacobian_evaluations": 27, "cost": 0.2510101733353124, "optimality": 5.594804793250881e-10, "parameters": [-0.9653939940161279, -0.5864883567932875, 0.04512008995389834, -1.0, -0.7390065209484276, -0.9999999999948322, -1.0, -0.9999999999999686, -1.0, -0.9258808815941275, -0.9194313237031652], "active_bound_columns": [3, 5, 6, 7, 8], "max_abs_primary_delta": 1.0952261320085199e-10, "max_abs_published_delta": 1.8, "jacobian_rank": 11, "condition_number": 45473.43676326894}
+    ]
+  },
   "interpretation": {
-    "provider_derivative_contract_sufficient": true,
+    "provider_callback_shape_sufficient": true,
     "local_rank_gate_passed": true,
-    "published_tuple_stationary_for_declared_objective": false,
-    "published_parameter_proximity_supported": false,
-    "reason": "Figiel does not disclose the fitted objective, weights, bounds, starts, or fitting sequence. The newly selected equal-weight log objective cannot be claimed to recover the printed tuple from this evidence.",
-    "smallest_unblocker": "Obtain a source-backed fitting objective and weighting/sequence, or explicitly approve a different scientific claim that does not require recovering every printed parameter within 0.05."
+    "directional_derivative_gate_passed": false,
+    "bounded_multistart_agreement_passed": true,
+    "published_parameter_proximity_passed": false,
+    "all_parameters_interior_passed": false,
+    "supported_claim": "The exact frozen installed-artifact preflight is rank sufficient and converges reproducibly, but four derivative columns fail the predeclared directional check and the three converged equal-weight starts miss the 0.05 recovery gate with five active bounds.",
+    "smallest_unblockers": [
+      "Provider diagnoses exact derivative columns 1, 3, 4, and 5 at the retained all-0.2 trial without changing the Regression criterion.",
+      "After derivative correction or confirmation, the source/Regression contract must resolve whether equal-weight log recovery is the intended claim; weights, bounds, starts, and tolerances must not be tuned post hoc to the printed tuple."
+    ]
   },
   "limits": [
-    "This is a serial installed-artifact residual/Jacobian sweep at the published tuple, not a completed nonlinear fit.",
-    "All 164 rows are training observations; no predictive claim is supported.",
-    "The preflight does not admit fitted values to the Provider catalog or change runtime authority.",
-    "No numerical-derivative production backend, copied EOS, or copied electrolyte reference sequence was used."
+    "This evidence used the exact installed Provider wheel/header and immutable 164-row source packet, with no sibling Provider source import or copied EOS/reference sequence.",
+    "The nonlinear runner was disposable preflight evidence and is not retained as package runtime, a Ceres substitute, or a numerical-derivative production backend.",
+    "All 164 rows are training observations; no predictive, uncertainty, global-identifiability, or Provider-catalog claim is supported.",
+    "The result does not prove global impossibility of another source-backed objective reproducing the published tuple."
   ]
 }

@@ -1,10 +1,12 @@
 # Figiel Aqueous Current-Catalog Interaction Regression
 
-Status: installed derivative/rank preflight complete; runtime blocked because
-the published tuple is materially nonstationary for the declared equal-weight
-log objective and the source does not disclose its fitting objective. No fit,
-Regression wheel, Validation campaign, parameter admission, prediction, or
-authority transfer exists for this slice.
+Status: installed derivative/rank/multistart preflight complete; runtime is
+blocked by two frozen gates. Exact callback columns 1, 3, 4, and 5 fail the
+predeclared directional check. The rank-11 bounded solve converges consistently
+from all three starts, but its largest published-parameter difference is `1.8`
+and five parameters are on bounds. No production Ceres fit, Regression wheel,
+Validation campaign, parameter admission, prediction, or authority transfer
+exists for this slice.
 
 This document is the sole Regression design owner for the next Figiel parameter
 family after the five-ion Born-diameter tracer. It implements the staged intent
@@ -188,19 +190,33 @@ sensitivity diagnostics, not a covariance or uncertainty estimate. If rank is
 below 11, this exact joint fit stops. Regression does not add regularization,
 priors, parameter tying, or fixed published values to manufacture rank.
 
-The serial installed-artifact published-tuple preflight passes rank 11 with
-threshold `3.0211337256460086e-11`, condition number
-`47788.50024950208`, cost `0.4200114112124652`, and log-RMSE
-`0.07156878076815212`. However, its gradient is materially nonzero and the
-unconstrained Gauss--Newton step has maximum absolute movement approximately
-`38.41`. The
-published tuple is therefore not stationary for the declared equal-weight log
-objective. Figiel does not disclose the objective, weights, bounds, starts, or
-fitting sequence used to obtain the printed values. This blocks the promised
-`0.05` recovery claim: Regression must not tune weights, seed from the printed
-tuple, or add a prior merely to reproduce the answer. Exact compact evidence is
-retained in `evidence/figiel-aqueous-kij-published-tuple-preflight.json`,
-SHA-256 `00fa5eaeb2016dc41d7fb77a46dcbff90be9c44dba92c25b19fcc7093253da15`.
+The installed-artifact preflight uses the nonpublished all-`0.2` trial. It has
+11 complete nonzero columns, rank 11 at threshold
+`3.396827102277414e-11`, condition number `198577.925594654`, terminal
+reference molality `1e-12`, maximum reference convergence diagnostic
+`1.0628418010583118e-5`, and maximum derivative convergence diagnostic
+`8.281553220967908e-11`. Columns 0, 2, and 6--10 pass the two-step directional
+check; columns 1, 3, 4, and 5 fail it. This is an exact-derivative evidence
+failure, even though every column is finite, nonzero, and the global matrix is
+full rank.
+
+The bounded nonlinear preflight then exercises the complete frozen objective
+without creating package runtime. All-zero, all-`-0.5`, and all-`+0.5` starts
+converge to the same rank-11 vector within
+`1.0952261320085199e-10`. The primary cost is
+`0.25101017330977715`, below the published tuple's
+`0.4200114112124652`, but the fitted vector differs from the printed tuple by
+as much as `1.8`; columns 3, 5, 6, 7, and 8 are on the lower bound. It therefore
+fails both the `0.05` recovery gate and the non-bound gate. This is stronger
+than the earlier published-point gradient observation, but it does not prove
+that every possible source-backed objective would miss the table.
+
+Figiel does not disclose the objective, weights, bounds, starts, or fitting
+sequence used to obtain the printed values. Regression must not tune those
+choices post hoc, seed from the printed tuple, or add a prior merely to
+reproduce the answer. Exact compact evidence is retained in
+`evidence/figiel-aqueous-kij-published-tuple-preflight.json`, SHA-256
+`12cb7205e988316f9c61560bc82e012b48d681fa9107e6da538b142fe695078c`.
 
 ## Result and acceptance semantics
 
@@ -264,16 +280,20 @@ Equilibrium dependency.
 
 The executable order is:
 
-1. Preserve the exact Provider wheel/header and the rank-11 preflight.
-2. Obtain the source-backed objective/weighting/fitting sequence, or have the
-   user explicitly replace the printed-parameter recovery claim with a
-   different scientifically testable claim.
-3. Use bounded independent subagent review on the exact revised contract.
-4. Only then implement the closed Ceres fit and retain one commit-bound wheel
+1. Preserve the exact Provider wheel/header and complete blocked preflight.
+2. Provider diagnoses exact derivative columns 1, 3, 4, and 5 at the retained
+   all-`0.2` trial without changing Regression's evidence criterion.
+3. After derivative correction or confirmation, resolve the scientific claim:
+   keep the equal-weight objective and report failed table recovery, or supply
+   a source-backed alternative. Do not tune weights, bounds, starts, or
+   tolerances to the printed answer.
+4. Use bounded independent subagent review on the exact revised contract.
+5. Only if every frozen gate passes, implement the closed Ceres fit and retain one commit-bound wheel
    plus candidate evidence.
-5. Regression then authors the bounded public-installed-artifact campaign in
+6. Regression then authors the bounded public-installed-artifact campaign in
    Validation under Migration's serialized writer protocol.
-6. A distinct review decides admission. No package-authored result
+7. A distinct independent review decides admission. No package-authored result
    self-promotes or writes fitted values into the Provider catalog.
 
-The present state is `BLOCKED_SOURCE_OBJECTIVE_NOT_REPRODUCIBLE`.
+The present state is
+`BLOCKED_FROZEN_DERIVATIVE_AND_PARAMETER_RECOVERY_GATES`.

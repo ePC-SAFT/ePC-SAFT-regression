@@ -90,7 +90,7 @@ inferred here.
 
 ## Approved Provider boundary
 
-The Provider contract originated in the permanent-lab-approved design at commit
+The Provider contract originated in the independently reviewed design at commit
 `da9660481f08bb5557cc03da528edec15cc15e1f`, tree
 `e34575ae646c40f3fb63b5994c957e30bb035f69`. Migration D-027 bound Provider
 implementation `907b077ec6f841a8a028fc759df14f899c79339c`, tree
