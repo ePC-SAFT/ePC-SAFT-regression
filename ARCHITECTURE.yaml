@@ -373,7 +373,7 @@ propane_candidate_artifact:
     test_receipt_sha256: 07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480
 
 manifest:
-  tracked_files_after_figiel_born_candidate_evidence: 51
+  tracked_files_after_project_truss_shaping: 48
   production_python_files: 3
   native_source_files: 7
   installed_data_files: 4
