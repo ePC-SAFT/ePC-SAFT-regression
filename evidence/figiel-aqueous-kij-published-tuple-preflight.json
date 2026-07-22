@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "status": "BLOCKED_FROZEN_DERIVATIVE_AND_PARAMETER_RECOVERY_GATES",
+  "schema_version": 3,
+  "status": "BLOCKED_FROZEN_PARAMETER_RECOVERY_GATE",
   "claim": "Installed-artifact derivative, rank, and bounded multistart feasibility for the frozen Figiel Table 4/5 recovery contract",
   "source": {
     "validation_commit": "8944d34f7002cda1bb8760e606cc1f11696f58cd",
@@ -10,9 +10,9 @@
     "salt_counts": {"LiCl": 29, "NaCl": 29, "KCl": 28, "LiBr": 29, "NaBr": 21, "KBr": 28}
   },
   "provider": {
-    "implementation_commit": "8ae37dbc4dc61a4ee1109bb1cf8e26470e457975",
-    "merged_commit": "37bcece2b608421434df044be4c5e2b0c67b946d",
-    "wheel_sha256": "d984d5b68d97d5a40b8d4d729d8ceff5aa0e274222ca548d6fdf82162869537f",
+    "implementation_commit": "06d21af0334a22bafd31d617f3c8535b53711140",
+    "merged_commit": "39b39d9d7831a8da943372df019f5a9d7d388b44",
+    "wheel_sha256": "3bacac6818708091629a79ce9a7a320a07f87093f0697508060aa1aee7368cb6",
     "installed_header_sha256": "01568808f48c8cf0cd5fd0eb0b3d038349a319251eb8a9f9053b028ed35e5a36",
     "callback": "evaluate_aqueous_miac_kij",
     "callback_coordinates": ["water-cation", "water-anion", "cation-anion"],
@@ -29,9 +29,9 @@
     "parameter_proximity_max_abs": 0.05
   },
   "published_tuple_evaluation": {
-    "cost": 0.4200114112124652,
-    "log_rmse": 0.07156878076815212,
-    "gradient": [1.562302277553142, -1.4391078663987367, -0.10559316275095543, -0.3172979005066256, 0.07210581898042012, -0.20658585754656697, 0.21043159725765762, 0.11786388310140758, -0.5667613511293417, 0.4918663747261179, -0.08647859917383814],
+    "cost": 0.4200114112320464,
+    "log_rmse": 0.0715687807698204,
+    "gradient": [1.5623022773006192, -1.4391078664650414, -0.10559316314644929, -0.31729790078527, 0.07210581872191069, -0.20658585742807284, 0.21043159729654437, 0.11786388312944486, -0.5667613511240471, 0.4918663747175617, -0.08647859905393707],
     "jacobian_rank": 11,
     "rank_threshold": 3.0211337256460086e-11,
     "condition_number": 47788.50024950208,
@@ -40,12 +40,12 @@
   },
   "nonpublished_trial_preflight": {
     "parameters": [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2],
-    "cost": 46.999424973333625,
+    "cost": 46.99942497325529,
     "complete_nonzero_columns": true,
     "jacobian_rank": 11,
     "rank_threshold": 3.396827102277414e-11,
-    "condition_number": 198577.925594654,
-    "singular_values": [9.328017848816197, 6.936665933239162, 6.0323059760576125, 5.621928295897977, 1.8018269472320785, 1.497908963269643, 0.016726727516712416, 0.012549489370301502, 0.01130349596793256, 0.010811619551957604, 0.00004697409251749843],
+    "condition_number": 198577.92559465414,
+    "singular_values": [9.3280178488162, 6.936665933239163, 6.032305976057615, 5.621928295897976, 1.8018269472320798, 1.4979089632696425, 0.016726727516712416, 0.012549489370301503, 0.011303495967932562, 0.010811619551957603, 0.00004697409251749842],
     "least_sensitive_right_singular_vector": [0.3606557817020148, 0.46083799237313017, 0.3804360538922135, -0.5591512139078273, -0.44725140892667015, -0.00798205336097968, -0.00509555139417979, -0.0025969940987835075, -0.00600296173024481, -0.0027606020872461903, -0.0004234810592256],
     "normalized_column_correlations": [
       [1.0, 0.0, 0.0, 0.3584008896127834, 0.41811934662651434, -0.6603243483415613, 0.0, 0.0, -0.7509564799878433, 0.0, 0.0],
@@ -63,51 +63,52 @@
     "directional_check": {
       "steps": [0.0001, 0.00005],
       "criterion": "abs(J_exact-J_h/2) <= max(1e-8,20*abs(J_h-J_h/2),2e-8*abs(J_exact))",
-      "passed_columns": [0, 2, 6, 7, 8, 9, 10],
-      "failed_columns": [1, 3, 4, 5],
+      "checks": 492,
+      "passed_columns": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      "failed_columns": [],
       "columns": [
-        {"column": 0, "max_abs_error": 4.76528160819889e-7, "max_tolerance": 1.0093970104207983e-5, "passed": true},
-        {"column": 1, "max_abs_error": 5.365654845079434e-7, "max_tolerance": 1.0113865300809266e-5, "passed": false, "worst_row": {"index": 122, "salt": "NaBr", "molality_mol_per_kg": 0.6, "exact": -0.20454037714660875, "coarse_difference": -0.2045404621497937, "fine_difference": -0.20454046449458474, "abs_error": 8.734797599108113e-8, "tolerance": 4.689582056016661e-8, "error_over_tolerance": 1.8625961748342803}},
-        {"column": 2, "max_abs_error": 5.949725238788397e-7, "max_tolerance": 1.17765353024879e-5, "passed": true},
-        {"column": 3, "max_abs_error": 7.526484342434969e-7, "max_tolerance": 1.6127899016282754e-5, "passed": false, "worst_row": {"index": 80, "salt": "KCl", "molality_mol_per_kg": 3.0, "exact": -0.8678375926174464, "coarse_difference": -0.8678377244564217, "fine_difference": -0.8678377218984679, "abs_error": 1.2928102144371678e-7, "tolerance": 5.1159076974727213e-8, "error_over_tolerance": 2.5270397569444443}},
-        {"column": 4, "max_abs_error": 7.201190745931285e-7, "max_tolerance": 1.2497736179284402e-5, "passed": false, "worst_row": {"index": 139, "salt": "KBr", "molality_mol_per_kg": 0.01, "exact": -0.004570684284156634, "coarse_difference": -0.004570865002051505, "fine_difference": -0.004570863296748939, "abs_error": 1.7901259230512778e-7, "tolerance": 3.410605131648481e-8, "error_over_tolerance": 5.248704713541667}},
-        {"column": 5, "max_abs_error": 4.977770144964921e-7, "max_tolerance": 1.226396761921933e-5, "passed": false, "worst_row": {"index": 4, "salt": "LiCl", "molality_mol_per_kg": 0.02, "exact": 0.003092046257755259, "coarse_difference": 0.003091981852776371, "fine_difference": 0.0030919835580789368, "abs_error": 6.269967632241413e-8, "tolerance": 3.410605131648481e-8, "error_over_tolerance": 1.8383739513142903}},
-        {"column": 6, "max_abs_error": 6.627829605143631e-7, "max_tolerance": 1.6112267076096032e-5, "passed": true},
-        {"column": 7, "max_abs_error": 4.142170182451846e-7, "max_tolerance": 8.58761950439657e-6, "passed": true},
-        {"column": 8, "max_abs_error": 4.973622580450865e-7, "max_tolerance": 1.2630607670871541e-5, "passed": true},
-        {"column": 9, "max_abs_error": 4.0515108340466455e-7, "max_tolerance": 1.1041834113711957e-5, "passed": true},
-        {"column": 10, "max_abs_error": 5.161301146472397e-7, "max_tolerance": 1.1399947652535047e-5, "passed": true}
-      ]
+        {"column": 0, "checks": 58, "max_abs_error": 6.067999436254468e-10, "max_tolerance": 4.195716586383121e-8, "passed": true},
+        {"column": 1, "checks": 50, "max_abs_error": 7.181970773303958e-10, "max_tolerance": 3.3968035783145644e-8, "passed": true},
+        {"column": 2, "checks": 56, "max_abs_error": 6.483495962328334e-10, "max_tolerance": 4.646212377219863e-8, "passed": true},
+        {"column": 3, "checks": 86, "max_abs_error": 6.964437915257804e-10, "max_tolerance": 2.6871390599775654e-8, "passed": true},
+        {"column": 4, "checks": 78, "max_abs_error": 6.345244329963862e-10, "max_tolerance": 3.953538701295836e-8, "passed": true},
+        {"column": 5, "checks": 29, "max_abs_error": 6.054467474245206e-10, "max_tolerance": 1.5129272984020363e-8, "passed": true},
+        {"column": 6, "checks": 29, "max_abs_error": 8.966347664340901e-10, "max_tolerance": 1.9895196601282805e-8, "passed": true},
+        {"column": 7, "checks": 28, "max_abs_error": 5.889214671483955e-10, "max_tolerance": 1.4210854715202004e-8, "passed": true},
+        {"column": 8, "checks": 29, "max_abs_error": 6.485654235888205e-10, "max_tolerance": 1.830378894463974e-8, "passed": true},
+        {"column": 9, "checks": 21, "max_abs_error": 5.396917912570132e-10, "max_tolerance": 1.4279873748616385e-8, "passed": true},
+        {"column": 10, "checks": 28, "max_abs_error": 5.947047299059705e-10, "max_tolerance": 1.513147508755102e-8, "passed": true}
+      ],
+      "worst_row": {"column": 3, "index": 7, "salt": "LiCl", "molality_mol_per_kg": 0.2, "exact": -0.04818659181274576, "coarse_difference": -0.04818659206762277, "fine_difference": -0.04818659249394841, "abs_error": 6.812026498437262e-10, "tolerance": 1e-8, "error_over_tolerance": 0.06812026498437262}
     },
     "reference_molality_min": 1e-12,
     "reference_molality_max": 1e-12,
-    "reference_convergence_error_max": 1.0628418010583118e-5,
+    "reference_convergence_error_max": 1.0628388139366507e-5,
     "reference_derivative_convergence_error_max": 8.281553220967908e-11
   },
   "bounded_multistart_preflight": {
     "backend": "disposable scipy least_squares evidence runner; not package runtime or production derivative backend",
     "all_starts_converged": true,
     "all_starts_full_rank": true,
-    "max_confirmation_parameter_delta": 1.0952261320085199e-10,
+    "max_confirmation_parameter_delta": 6.740175084729572e-11,
     "parameter_proximity_gate_passed": false,
     "non_bound_gate_passed": false,
     "starts": [
-      {"label": "primary", "initial_value": 0.0, "success": true, "termination_status": 3, "termination_message": "xtol satisfied", "evaluations": 26, "jacobian_evaluations": 26, "cost": 0.25101017330977715, "optimality": 3.2076170034455987e-10, "parameters": [-0.9653939940143408, -0.5864883567391564, 0.04512008994447651, -1.0, -0.7390065209417567, -1.0, -1.0, -1.0, -1.0, -0.9258808814846049, -0.9194313237217414], "active_bound_columns": [3, 5, 6, 7, 8], "max_abs_published_delta": 1.8, "jacobian_rank": 11, "condition_number": 45473.43674270877},
-      {"label": "negative", "initial_value": -0.5, "success": true, "termination_status": 1, "termination_message": "gtol satisfied", "evaluations": 21, "jacobian_evaluations": 21, "cost": 0.25101017334839215, "optimality": 8.011773528003243e-11, "parameters": [-0.9653939940051006, -0.5864883567341487, 0.04512008995507763, -1.0, -0.7390065209595482, -1.0, -1.0, -1.0, -1.0, -0.9258808815283647, -0.9194313237346353], "active_bound_columns": [3, 5, 6, 7, 8], "max_abs_primary_delta": 4.375977358250793e-11, "max_abs_published_delta": 1.8, "jacobian_rank": 11, "condition_number": 45473.43676567377},
-      {"label": "positive", "initial_value": 0.5, "success": true, "termination_status": 3, "termination_message": "xtol satisfied", "evaluations": 29, "jacobian_evaluations": 27, "cost": 0.2510101733353124, "optimality": 5.594804793250881e-10, "parameters": [-0.9653939940161279, -0.5864883567932875, 0.04512008995389834, -1.0, -0.7390065209484276, -0.9999999999948322, -1.0, -0.9999999999999686, -1.0, -0.9258808815941275, -0.9194313237031652], "active_bound_columns": [3, 5, 6, 7, 8], "max_abs_primary_delta": 1.0952261320085199e-10, "max_abs_published_delta": 1.8, "jacobian_rank": 11, "condition_number": 45473.43676326894}
+      {"label": "primary", "initial_value": 0.0, "success": true, "termination_status": 1, "termination_message": "gtol satisfied", "evaluations": 26, "jacobian_evaluations": 26, "cost": 0.25101017331848846, "optimality": 1.1002309641561244e-12, "parameters": [-0.9653939940475286, -0.5864883567421767, 0.04512008992786286, -0.9999999999999999, -0.7390065208751735, -0.9999999999999999, -0.9999999999999999, -0.9999999999999999, -0.9999999999999999, -0.9258808813758226, -0.9194313236210534], "active_bound_columns": [3, 5, 6, 7, 8], "max_abs_published_delta": 1.7999999999999998, "jacobian_rank": 11, "condition_number": 45473.43671967281},
+      {"label": "negative", "initial_value": -0.5, "success": true, "termination_status": 1, "termination_message": "gtol satisfied", "evaluations": 21, "jacobian_evaluations": 21, "cost": 0.25101017331846276, "optimality": 5.792055238346346e-13, "parameters": [-0.9653939940476017, -0.5864883567421099, 0.045120089927869145, -0.9999999999999999, -0.7390065208750624, -0.9999999999999999, -0.9999999999999999, -0.9999999999999999, -0.9999999999999999, -0.925880881375509, -0.9194313236207489], "active_bound_columns": [3, 5, 6, 7, 8], "max_abs_primary_delta": 3.136380044566067e-13, "max_abs_published_delta": 1.7999999999999998, "jacobian_rank": 11, "condition_number": 45473.436750062385},
+      {"label": "positive", "initial_value": 0.5, "success": true, "termination_status": 3, "termination_message": "xtol satisfied", "evaluations": 29, "jacobian_evaluations": 27, "cost": 0.25101017331846953, "optimality": 5.485353697129861e-10, "parameters": [-0.9653939940494869, -0.5864883567843097, 0.045120089929862384, -0.9999999999999999, -0.739006520878105, -0.9999999999948296, -0.9999999999999999, -0.9999999999999686, -0.9999999999999999, -0.9258808814432243, -0.9194313236170575], "active_bound_columns": [3, 5, 6, 7, 8], "max_abs_primary_delta": 6.740175084729572e-11, "max_abs_published_delta": 1.7999999999999998, "jacobian_rank": 11, "condition_number": 45473.43675576683}
     ]
   },
   "interpretation": {
     "provider_callback_shape_sufficient": true,
     "local_rank_gate_passed": true,
-    "directional_derivative_gate_passed": false,
+    "directional_derivative_gate_passed": true,
     "bounded_multistart_agreement_passed": true,
     "published_parameter_proximity_passed": false,
     "all_parameters_interior_passed": false,
-    "supported_claim": "The exact frozen installed-artifact preflight is rank sufficient and converges reproducibly, but four derivative columns fail the predeclared directional check and the three converged equal-weight starts miss the 0.05 recovery gate with five active bounds.",
+    "supported_claim": "The corrected exact installed-artifact callback passes all 492 frozen directional checks; the preflight is rank sufficient and converges reproducibly, but the three converged equal-weight starts miss the 0.05 recovery gate with five active bounds.",
     "smallest_unblockers": [
-      "Provider diagnoses exact derivative columns 1, 3, 4, and 5 at the retained all-0.2 trial without changing the Regression criterion.",
-      "After derivative correction or confirmation, the source/Regression contract must resolve whether equal-weight log recovery is the intended claim; weights, bounds, starts, and tolerances must not be tuned post hoc to the printed tuple."
+      "The source/Regression contract must resolve whether equal-weight log recovery is the intended claim or supply a reproducible source-backed alternative; weights, bounds, starts, and tolerances must not be tuned post hoc to the printed tuple."
     ]
   },
   "limits": [

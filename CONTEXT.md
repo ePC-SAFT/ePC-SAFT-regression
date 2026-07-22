@@ -50,7 +50,7 @@ with no added runtime test seam.
 
 `runtime_status: AUTHORITY_NEUTRAL_PACKAGE_IMPLEMENTED_VALIDATION_NOT_STARTED`
 
-`next_figiel_family_status: BLOCKED_FROZEN_DERIVATIVE_AND_PARAMETER_RECOVERY_GATES`
+`next_figiel_family_status: BLOCKED_FROZEN_PARAMETER_RECOVERY_GATE`
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint
@@ -172,17 +172,19 @@ Table 4/5 interaction fit. The canonical design is
 164 audited Hamer--Wu MIAC rows, a sparse `164 x 11` exact Jacobian, and a
 user-approved maximum published-parameter delta of `0.05`. Existing forward
 MIAC evidence proves only that the published tuple reproduces the bounded
-aqueous campaign; it does not prove Regression recovery. Provider artifact
-`8ae37db` supplies the three-active-interaction callback. At the all-`0.2`
-nonpublished trial, the installed `164 x 11` Jacobian is full rank, but exact
-columns 1, 3, 4, and 5 fail the frozen two-step directional check. The complete
-bounded preflight converges from all three declared starts within
-`1.0952261320085199e-10` and lowers cost from the published tuple's
-`0.4200114112124652` to `0.25101017330977715`; nevertheless, it differs from
+aqueous campaign; it does not prove Regression recovery. Corrected Provider
+artifact `06d21af` supplies the three-active-interaction callback. At the
+all-`0.2` nonpublished trial, the installed `164 x 11` Jacobian is full rank
+and all 492 row/active-column checks pass the unchanged frozen directional
+criterion. The complete bounded preflight converges from all three declared
+starts within
+`6.740175084729572e-11` and lowers cost from the published tuple's
+`0.4200114112320464` to `0.25101017331848846`; nevertheless, it differs from
 the table by as much as `1.8` and puts five parameters on bounds. Because
 Figiel does not disclose its objective, weights, bounds, starts, or fitting
-sequence, runtime implementation is blocked rather than tuning the contract to
-reproduce the answer. Compact evidence is retained at
+sequence, runtime implementation remains blocked on the parameter-recovery and
+non-bound gates rather than tuning the contract to reproduce the answer.
+Compact evidence is retained at
 `evidence/figiel-aqueous-kij-published-tuple-preflight.json`.
 This is a conditional family test: all non-`k_ij` values remain fixed to the
 published Figiel Provider catalog. It does not replace the separately staged

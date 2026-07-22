@@ -161,7 +161,7 @@ parallel_regression_track:
   authority_effect: none
 
 figiel_aqueous_kij_design:
-  status: BLOCKED_FROZEN_DERIVATIVE_AND_PARAMETER_RECOVERY_GATES
+  status: BLOCKED_FROZEN_PARAMETER_RECOVERY_GATE
   migration_decision: D-023
   design_owner: docs/science/figiel-aqueous-kij-regression.md
   source_scope: 164-hamer-wu-aqueous-alkali-halide-miac-rows
@@ -187,25 +187,27 @@ figiel_aqueous_kij_design:
     predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
   current_provider_status: exact-installed-aqueous-active-kij-callback-retained
   provider_artifact:
-    implementation_commit: 8ae37dbc4dc61a4ee1109bb1cf8e26470e457975
-    merged_commit: 37bcece2b608421434df044be4c5e2b0c67b946d
-    wheel_sha256: d984d5b68d97d5a40b8d4d729d8ceff5aa0e274222ca548d6fdf82162869537f
+    implementation_commit: 06d21af0334a22bafd31d617f3c8535b53711140
+    merged_commit: 39b39d9d7831a8da943372df019f5a9d7d388b44
+    wheel_sha256: 3bacac6818708091629a79ce9a7a320a07f87093f0697508060aa1aee7368cb6
     installed_header_sha256: 01568808f48c8cf0cd5fd0eb0b3d038349a319251eb8a9f9053b028ed35e5a36
   installed_preflight:
     evidence: evidence/figiel-aqueous-kij-published-tuple-preflight.json
-    evidence_sha256: 12cb7205e988316f9c61560bc82e012b48d681fa9107e6da538b142fe695078c
+    evidence_sha256: 5bd86e332b94781112eeee0ca06765a0f084020a30af76169861bbc610d5743d
     nonpublished_trial: all-0.2
     exact_jacobian_rank: 11
-    condition_number: 198577.925594654
-    directional_check_passed_columns: [0, 2, 6, 7, 8, 9, 10]
-    directional_check_failed_columns: [1, 3, 4, 5]
-    published_tuple_cost: 0.4200114112124652
+    condition_number: 198577.92559465414
+    directional_check_count: 492
+    directional_check_passed_columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    directional_check_failed_columns: []
+    directional_check_worst_error_over_tolerance: 0.06812026498437262
+    published_tuple_cost: 0.4200114112320464
     published_tuple_stationary: false
-    fitted_primary_cost: 0.25101017330977715
-    multistart_max_parameter_delta: 1.0952261320085199e-10
-    fitted_max_abs_published_delta: 1.8
+    fitted_primary_cost: 0.25101017331848846
+    multistart_max_parameter_delta: 6.740175084729572e-11
+    fitted_max_abs_published_delta: 1.7999999999999998
     fitted_active_bound_columns: [3, 5, 6, 7, 8]
-    runtime_unblocker: provider-derivative-diagnosis-then-source-claim-resolution
+    runtime_unblocker: source-backed-objective-or-parameter-provenance-resolution
     review_owner: bounded-independent-subagent
   required_provider_result: >-
     Model-bound aqueous salt ln(gamma_pm^m) plus three exact total fixed-T,P
@@ -319,7 +321,7 @@ parameter_family_readiness:
   polar_parameters: NOT_READY
   electrolyte_born_parameters: NOT_READY_NO_CATALOG_ADMISSION
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
-  figiel_current_catalog_aqueous_kij: BLOCKED_FROZEN_DERIVATIVE_AND_PARAMETER_RECOVERY_GATES
+  figiel_current_catalog_aqueous_kij: BLOCKED_FROZEN_PARAMETER_RECOVERY_GATE
   reactive_or_temperature_dependent_parameters: NOT_READY
   full_breadth_regression: NOT_READY_NO_GENERIC_REGISTRY_OR_UNIVERSAL_SURFACE
 
