@@ -50,6 +50,8 @@ with no added runtime test seam.
 
 `runtime_status: AUTHORITY_NEUTRAL_PACKAGE_IMPLEMENTED_VALIDATION_NOT_STARTED`
 
+`next_figiel_family_status: READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_KIJ_DERIVATIVE_DESIGN`
+
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint
 `3a4ef0a0c6b98c43405d3cafc1ac4f5f87afa68d`, tree
@@ -160,6 +162,21 @@ is reported without moving their accepted expected values.
 `electrolyte_born_parameters` remains `NOT_READY`: this package candidate must
 not be interpreted as downstream readiness, predictive evidence, or Provider
 catalog authority.
+
+The user-approved next source-bound family is the current-catalog aqueous
+Table 4/5 interaction fit. The canonical design is
+`docs/science/figiel-aqueous-kij-regression.md`: 11 active interactions, all
+164 audited Hamer--Wu MIAC rows, a sparse `164 x 11` exact Jacobian, and a
+user-approved maximum published-parameter delta of `0.05`. Existing forward
+MIAC evidence proves only that the published tuple reproduces the bounded
+aqueous campaign; it does not prove Regression recovery. Runtime is waiting on
+one Provider model-bound callback returning aqueous `ln(gamma_pm^m)` and its
+three exact total fixed-pressure derivatives for water--cation, water--anion,
+and cation--anion trial interactions. The current neutral active-`k_ij` callback
+does not support ions, association, or this reference-property path.
+This is a conditional family test: all non-`k_ij` values remain fixed to the
+published Figiel Provider catalog. It does not replace the separately staged
+solvent-factor recovery or final cross-family tuple replay.
 
 The eventual direction is a staged, family-by-family recovery campaign for
 Figiel Tables 2–5. That later intent does not broaden the first Born-diameter

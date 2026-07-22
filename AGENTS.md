@@ -59,5 +59,12 @@ rank, and passes its local scientific gates. It is not downstream readiness,
 predictive evidence, Provider-catalog authority, or production authority.
 Validation writing remains closed until Migration serializes the exact package
 artifact subject.
-Do not broaden this sequence to a generic registry or full electrolyte,
-reactive, uncertainty, or global-identifiability surface.
+The user-approved next family design is the exact 11-parameter aqueous
+current-catalog Table 4/5 `k_ij` recovery against all 164 Hamer--Wu rows. Its
+sole design owner is `docs/science/figiel-aqueous-kij-regression.md`; status is
+`READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_KIJ_DERIVATIVE_DESIGN`. No runtime fit
+is authorized until an exact reviewed Provider artifact supplies that design's
+three-active-interaction total fixed-pressure derivative callback and the
+installed preflight establishes rank 11. Do not broaden this sequence to a
+generic registry or full electrolyte, reactive, uncertainty, organic-solvent,
+expanded-ion, or global-identifiability surface.

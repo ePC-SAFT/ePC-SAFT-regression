@@ -160,6 +160,39 @@ parallel_regression_track:
   public_surface_effect: three-closed-family-exports
   authority_effect: none
 
+figiel_aqueous_kij_design:
+  status: READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_KIJ_DERIVATIVE_DESIGN
+  migration_decision: D-023
+  design_owner: docs/science/figiel-aqueous-kij-regression.md
+  source_scope: 164-hamer-wu-aqueous-alkali-halide-miac-rows
+  fixed_non_kij_basis: published-figiel-provider-catalog-no-overlay
+  parameter_scope:
+    count: 11
+    table_4_cation_anion: 6
+    table_5_ion_water: 5
+    explicit_fitted_zeros: [K+-Cl-]
+    blanks_inferred_as_zero: 0
+  problem_shape:
+    variables: 11
+    residuals: 164
+    jacobian: 164x11-three-structural-columns-per-row
+    residual: ln-gamma-model-over-gamma-observed
+    bounds: [-1.0, 1.0]
+    starts: [all-zero, all-negative-0.5, all-positive-0.5]
+  acceptance:
+    exact_jacobian: required
+    full_rank: 11
+    multistart_max_delta: 1.0e-5
+    published_parameter_max_abs_delta: 0.05
+    predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
+  current_provider_status: insufficient-neutral-active-kij-only
+  required_provider_result: >-
+    Model-bound aqueous salt ln(gamma_pm^m) plus three exact total fixed-T,P
+    derivatives for active water-cation, water-anion, and cation-anion k_ij.
+  runtime_effect: none-design-only
+  validation_campaign: not-started
+  authority_effect: none
+
 figiel_born_candidate_artifact:
   implementation_commit: 4eb122d4e40e08fb5e9cea94bfb2fe25ccfcab79
   implementation_tree: 85d1f980ce986e1ab48ed417704fd74c95c68b66
@@ -265,6 +298,7 @@ parameter_family_readiness:
   polar_parameters: NOT_READY
   electrolyte_born_parameters: NOT_READY_NO_CATALOG_ADMISSION
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
+  figiel_current_catalog_aqueous_kij: DESIGN_COMPLETE_WAITING_PROVIDER_EXACT_DERIVATIVES
   reactive_or_temperature_dependent_parameters: NOT_READY
   full_breadth_regression: NOT_READY_NO_GENERIC_REGISTRY_OR_UNIVERSAL_SURFACE
 
