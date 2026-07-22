@@ -161,31 +161,61 @@ parallel_regression_track:
   authority_effect: none
 
 figiel_aqueous_kij_design:
-  status: BLOCKED_FROZEN_PARAMETER_RECOVERY_GATE
+  status: READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_SOLVATION_FACTOR_DERIVATIVE
   migration_decision: D-023
   design_owner: docs/science/figiel-aqueous-kij-regression.md
-  source_scope: 164-hamer-wu-aqueous-alkali-halide-miac-rows
-  fixed_non_kij_basis: published-figiel-provider-catalog-no-overlay
+  source_scope: five-table-s5-averages-plus-21-nabr-plus-164-hamer-wu-rows
+  sequence: [born-diameters, water-solvation-factor, aqueous-kij, confirmation]
   parameter_scope:
-    count: 11
+    total_count: 17
+    born_diameters: 5
+    water_solvation_factors: 1
+    aqueous_kij: 11
     table_4_cation_anion: 6
     table_5_ion_water: 5
     explicit_fitted_zeros: [K+-Cl-]
     blanks_inferred_as_zero: 0
-  problem_shape:
-    variables: 11
-    residuals: 164
-    jacobian: 164x11-three-structural-columns-per-row
-    residual: ln-gamma-model-over-gamma-observed
-    bounds: [-1.0, 1.0]
-    starts: [all-zero, all-negative-0.5, all-positive-0.5]
+  problem_shapes:
+    stage_a_born:
+      variables: 5
+      residuals: 5
+      jacobian: 5x5
+      required_rank: 5
+      contract: docs/science/figiel-born-diameter-tracer.md
+    stage_b_water_solvation_factor:
+      variables: 1
+      residuals: 21
+      jacobian: 21x1
+      required_rank: 1
+      residual: one-minus-gamma-model-over-gamma-observed
+      bounds: [1.0, 2.0]
+      scale: 1.0
+      starts: [1.2, 1.8]
+      published_comparison_only: 1.5
+    stage_c_aqueous_kij:
+      variables: 11
+      residuals: 164
+      jacobian: 164x11-three-structural-columns-per-row
+      required_rank: 11
+      residual: one-minus-gamma-model-over-gamma-observed
+      bounds: [-1.0, 1.0]
+      scales: all-1.0
+      starts: [all-zero, all-negative-0.5, all-positive-0.5]
+  confirmation:
+    order: [stage-a, stage-b, stage-c]
+    maximum_cycles: 3
+    scaled_max_coordinate_delta: 1.0e-5
   acceptance:
     exact_jacobian: required
-    full_rank: 11
+    required_ranks: [5, 1, 11]
     multistart_max_delta: 1.0e-5
     published_parameter_max_abs_delta: 0.05
+    failed_recovery_status: SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE
     predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
-  current_provider_status: exact-installed-aqueous-active-kij-callback-retained
+  current_provider_status: stage-a-and-stage-c-seams-retained-stage-b-seam-missing
+  required_provider_addition: >-
+    Model-bound NaBr aqueous ln(gamma_pm^m) plus exact total fixed-T,P first
+    derivative with respect to one active water solvation factor.
   provider_artifact:
     implementation_commit: 06d21af0334a22bafd31d617f3c8535b53711140
     merged_commit: 39b39d9d7831a8da943372df019f5a9d7d388b44
@@ -207,11 +237,13 @@ figiel_aqueous_kij_design:
     multistart_max_parameter_delta: 6.740175084729572e-11
     fitted_max_abs_published_delta: 1.7999999999999998
     fitted_active_bound_columns: [3, 5, 6, 7, 8]
-    runtime_unblocker: source-backed-objective-or-parameter-provenance-resolution
+    interpretation: rejected-isolated-fixed-family-alternative
+    runtime_unblocker: installed-active-water-solvation-factor-derivative
     review_owner: bounded-independent-subagent
   required_provider_result: >-
-    Model-bound aqueous salt ln(gamma_pm^m) plus three exact total fixed-T,P
-    derivatives for active water-cation, water-anion, and cation-anion k_ij.
+    Existing Stage-C model-bound aqueous salt ln(gamma_pm^m) plus three exact
+    total fixed-T,P k_ij derivatives, and one new Stage-B NaBr value plus exact
+    total fixed-T,P water-solvation-factor derivative.
   runtime_effect: none-preflight-evidence-only
   validation_campaign: not-started
   authority_effect: none
@@ -321,7 +353,7 @@ parameter_family_readiness:
   polar_parameters: NOT_READY
   electrolyte_born_parameters: NOT_READY_NO_CATALOG_ADMISSION
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
-  figiel_current_catalog_aqueous_kij: BLOCKED_FROZEN_PARAMETER_RECOVERY_GATE
+  figiel_current_catalog_aqueous_kij: READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_SOLVATION_FACTOR_DERIVATIVE
   reactive_or_temperature_dependent_parameters: NOT_READY
   full_breadth_regression: NOT_READY_NO_GENERIC_REGISTRY_OR_UNIVERSAL_SURFACE
 

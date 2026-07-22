@@ -50,7 +50,7 @@ with no added runtime test seam.
 
 `runtime_status: AUTHORITY_NEUTRAL_PACKAGE_IMPLEMENTED_VALIDATION_NOT_STARTED`
 
-`next_figiel_family_status: BLOCKED_FROZEN_PARAMETER_RECOVERY_GATE`
+`next_figiel_family_status: READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_SOLVATION_FACTOR_DERIVATIVE`
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint
@@ -166,29 +166,27 @@ is reported without moving their accepted expected values.
 not be interpreted as downstream readiness, predictive evidence, or Provider
 catalog authority.
 
-The user-approved next source-bound family is the current-catalog aqueous
-Table 4/5 interaction fit. The canonical design is
-`docs/science/figiel-aqueous-kij-regression.md`: 11 active interactions, all
-164 audited Hamer--Wu MIAC rows, a sparse `164 x 11` exact Jacobian, and a
-user-approved maximum published-parameter delta of `0.05`. Existing forward
-MIAC evidence proves only that the published tuple reproduces the bounded
-aqueous campaign; it does not prove Regression recovery. Corrected Provider
-artifact `06d21af` supplies the three-active-interaction callback. At the
-all-`0.2` nonpublished trial, the installed `164 x 11` Jacobian is full rank
-and all 492 row/active-column checks pass the unchanged frozen directional
-criterion. The complete bounded preflight converges from all three declared
-starts within
-`6.740175084729572e-11` and lowers cost from the published tuple's
-`0.4200114112320464` to `0.25101017331848846`; nevertheless, it differs from
-the table by as much as `1.8` and puts five parameters on bounds. Because
-Figiel does not disclose its objective, weights, bounds, starts, or fitting
-sequence, runtime implementation remains blocked on the parameter-recovery and
-non-bound gates rather than tuning the contract to reproduce the answer.
-Compact evidence is retained at
-`evidence/figiel-aqueous-kij-published-tuple-preflight.json`.
-This is a conditional family test: all non-`k_ij` values remain fixed to the
-published Figiel Provider catalog. It does not replace the separately staged
-solvent-factor recovery or final cross-family tuple replay.
+The active source-bound family is now the staged Figiel aqueous recovery in
+`docs/science/figiel-aqueous-kij-regression.md`: reuse the five-target Born fit
+(`5x5`, rank 5), fit one water solvation factor to all 21 audited NaBr MIAC
+rows (`21x1`, rank 1), fit eleven Table 4/5 interactions to all 164 audited
+Hamer--Wu rows (`164x11`, rank 11), then run at most three confirmation A-B-C
+cycles with maximum scaled coordinate change `1e-5`. Stages B and C use the
+predeclared equal-weight relative residual `1-gamma_model/gamma_observed`.
+The Table 4/5 recovery gate remains the user-approved maximum parameter delta
+`0.05`; every row is training evidence and predictive status remains
+`NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
+
+Corrected Provider artifact `06d21af` supplies the Stage-C three-active-
+interaction callback. At the all-`0.2` trial, its `164x11` Jacobian is full
+rank and all 492 derivative checks pass. The isolated logarithmic fit and a
+read-only relative-residual discriminator both select an incompatible boundary
+optimum with maximum published-parameter delta `1.8`. These are retained
+falsification evidence, not proof that the source-described sequence is
+impossible. Runtime is waiting only for an exact installed Provider callback
+returning the active water-solvation-factor value and total fixed-pressure
+first derivative. No rows, weights, bounds, starts, cycle limits, or tolerances
+may be changed after the staged result is seen.
 
 The eventual direction is a staged, family-by-family recovery campaign for
 Figiel Tables 2–5. That later intent does not broaden the first Born-diameter

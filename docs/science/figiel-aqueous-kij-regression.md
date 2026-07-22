@@ -1,26 +1,41 @@
-# Figiel Aqueous Current-Catalog Interaction Regression
+# Figiel Staged Aqueous Current-Catalog Recovery
 
-Status: installed derivative/rank/multistart preflight complete; runtime is
-blocked by the frozen parameter-recovery and non-bound gates. All 492
-row/active-column callback checks pass the predeclared directional criterion.
-The rank-11 bounded solve converges consistently from all three starts, but its
-largest published-parameter difference is `1.8` and five parameters are on
-bounds. No production Ceres fit, Regression wheel, Validation campaign,
-parameter admission, prediction, or authority transfer exists for this slice.
+Status: `READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_SOLVATION_FACTOR_DERIVATIVE`.
+The source and Regression contract are frozen. The existing active-Born and
+aqueous-active-`k_ij` Provider seams are sufficient for stages A and C, but no
+installed Provider artifact yet exposes the exact active water-solvation-factor
+derivative required by stage B. No staged runtime, wheel, Validation campaign,
+catalog admission, prediction, or authority transfer exists.
 
-This document is the sole Regression design owner for the next Figiel parameter
-family after the five-ion Born-diameter tracer. It implements the staged intent
-of Migration D-023 without creating a generic parameter registry or combining
-later organic-solvent and expanded-ion work.
+This document is the sole design and science owner for the staged Figiel
+current-catalog recovery. It replaces the falsified assumption that one
+fixed-family `164 x 11` fit should recover every printed Table 4/5 interaction.
+The rejected fit remains immutable evidence; it is not proof that the
+source-described staged procedure is impossible.
 
-## Claim and scope
+## Bounded claim and sequence
 
-The bounded claim is that one source-bound Ceres fit can recover the 11
-current-catalog aqueous interaction parameters printed as fitted in Figiel,
-Yu, and Held (2025) Tables 4 and 5 while reproducing the same 164 aqueous
-mean-ionic-activity-coefficient observations used as training evidence.
+The smallest source-backed sequence is:
 
-The active vector, in immutable order, is
+1. **Stage A — Born diameters (`5 x 5`, rank 5).** Reuse the existing first
+   tracer: five active Born diameters for Li+, Na+, K+, Cl-, and Br- against
+   the five SI Table S5 reported-average water-solvation targets.
+2. **Stage B — water solvation factor (`21 x 1`, rank 1).** Fit one
+   ion-independent `f_water` to all 21 audited Hamer--Wu NaBr MIAC rows.
+3. **Stage C — aqueous interactions (`164 x 11`, rank 11).** Fit the eleven
+   Table 4/5 interactions to all 164 audited Hamer--Wu rows.
+4. **Confirmation.** Replay A-B-C with the preceding stage outputs fixed. Run
+   at most three confirmation cycles and require the maximum scaled coordinate
+   change between consecutive cycles to be at most `1e-5`.
+
+The final candidate either reproduces the printed Table 4/5 tuple within the
+frozen `0.05` maximum parameter difference and passes the in-sample observable
+gates, or retains
+`SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE`. Failure
+does not authorize changing rows, weights, bounds, starts, cycle limits, or
+tolerances.
+
+The eleven immutable Stage-C coordinates are:
 
 | Column | Interaction | Published `k_ij` | Source cell |
 | ---: | --- | ---: | --- |
@@ -36,265 +51,220 @@ The active vector, in immutable order, is
 | 9 | Na+--Br- | 0.65 | Table 4, Br- row, Na+ column |
 | 10 | K+--Br- | -0.35 | Table 4, Br- row, K+ column |
 
-The explicit fitted zero is a parameter target. Blank Table 4 or 5 cells are
-not zeros and are excluded. Water--methanol and water--ethanol interactions are
-inherited rather than fitted in Figiel and are excluded.
+The explicit fitted zero is a target. Blank Table 4/5 cells are not zeros.
+Inherited water--methanol and water--ethanol interactions are excluded.
 
-The slice does not include H+, I-, sulfate, vanadium ions, methanol, ethanol,
-solvent solvation factors, dielectric suppression, Born diameters, neutral-
-solvent parameters, density or osmotic targets, uncertainty, prediction,
-catalog persistence, or a simultaneous Tables 2--5 solve.
-
-This is a conditional `k_ij` family recovery. Every non-`k_ij` model input is
-fixed to the immutable published Figiel Provider catalog: Table 2 water
-parameters including `f_water = 1.5`, Table 3 ion parameters and Born
-diameters, and the equation-11 dielectric coefficient `7.01`. The locally
-recovered Born-diameter candidate is not a Provider-catalog artifact and is not
-substituted through an overlay. This checkpoint therefore proves the active
-aqueous interaction family only; later stage-C recovery and the final joint
-tuple replay must test cross-family coupling separately.
-
-## Sources and existing forward evidence
+## Source statements and Regression choices
 
 The primary paper is Figiel, Yu, and Held, *Industrial & Engineering Chemistry
 Research* 64 (2025) 9406--9418, DOI `10.1021/acs.iecr.5c00475`. The retained
-read-only Markdown is 71,826 bytes with SHA-256
+71,826-byte Markdown has SHA-256
 `ce80533925a91bc59d8d0d8056113c40611ca26c2edf04aced76986d50bd4bae`.
-Its Model Parameters section states that aqueous ion--water and ion--ion
-interactions were adjusted to experimental MIAC data at 298.15 K; Tables 4 and
-5 provide the values above.
+Durable line locators are 277, 279, and 281:
+
+- line 277 says Born diameters were adjusted to water solvation Gibbs energies
+  and solvent-specific, ion-independent `f_k` values to NaBr MIAC data;
+- line 279 says aqueous ion--water and ion--ion `k_ij` values were adjusted to
+  experimental aqueous-salt MIAC literature data; and
+- line 281 declares the order Born diameter, `f_k`, then `k_ij`, followed by an
+  iteration whose parameter changes were small.
+
+The paper does **not** disclose an exact MIAC objective, weights, row subset,
+bounds, starts, or cycle termination. Those are Regression-owned choices below,
+not reconstructed author choices.
+
+Held et al. (2014), retained Markdown SHA-256
+`b8b1e46bf870224de5de68b5989f9cb377d17445d87109a5462a94f1efaafbda`,
+provides lineage evidence rather than a Figiel-specific prescription. Lines
+255--268 define a squared relative-deviation objective for osmotic coefficients,
+including Eq. 20, `sum(1 - phi_calc/phi_exp)^2`, and describe sequential
+parameter fitting. Regression therefore uses the analogous relative MIAC
+residual, while explicitly labeling that choice.
 
 The approved Validation packet is commit
 `8944d34f7002cda1bb8760e606cc1f11696f58cd`, tree
-`6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd`. Its relevant identities are:
+`6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd`, with:
 
-- target ledger SHA-256
+- target-ledger SHA-256
   `f405a3e48d21cd979a8dd480d5f8cb3be40754f5d6babf368b505b5f305607f0`;
-- parameter-provenance SHA-256
+- parameter-packet SHA-256
   `932e8baa90fcefbaa8c3a8730cdeadd83a4c01f0a3b109f4e4cd0319aee9312b`;
 - metadata SHA-256
   `8ea06c6ca5452d01448a03f9a76cf7d0c35bb99c9abe23ccb1729d56c71d468f`;
+- SI extraction SHA-256
+  `85bd39f727158d5a9d6eea6828c1673f73850e783a655b09660cc9b66d84321a`;
   and
-- Hamer--Wu 1972 aqueous alkali-halide CSV SHA-256
+- Hamer--Wu CSV SHA-256
   `2f63e13f06a5b0f4e8bca2980b6a8d9d7fb0f839153c43e3a71952daf9796595`.
 
-The Hamer--Wu packet contains 164 positive molality-scale MIAC rows for LiCl,
-NaCl, KCl, LiBr, NaBr, and KBr at 298.15 K and 1 bar. All rows are training
-observations. The paper reports no rowwise uncertainty and does not disclose a
-reproducible objective, weights, parameter bounds, or starts; this design makes
-those Regression choices explicit and does not attribute them to the paper.
+All states are aqueous molality-scale observations at `298.15 K` and
+`100000 Pa`. Stage A uses exactly the five SI Table S5 reported averages
+already frozen by the Born-tracer contract. Stage B uses every one of the 21
+audited NaBr rows in the source packet (`0.001` through `6 mol/kg`). Stage C
+uses every one of the 164 LiCl, NaCl, KCl, LiBr, NaBr, and KBr rows. Each row
+appears once. The `<=5 mol/kg` subset is sensitivity evidence only. All rows are
+training data; there is no pointwise uncertainty or approved held-out cutoff.
 
-Validation's existing published-tuple forward campaign is useful baseline
-evidence, not parameter-recovery evidence. Its JSON SHA-256 is
-`411d404a4f4f7cec28be065af69d7e62d2e9014fc4d3ab545519f1bb63d1aa44`.
-With the published tuple it reports pooled MIAC RMSE `0.13407022131157917` and
-passes its bounded physical-reproduction campaign. It contains no active
-parameter derivatives, Ceres solve, rank result, multistart result, or recovered
-parameter vector.
+## Frozen residuals, variables, and solver
 
-## Residual and variables
+Stage A retains its existing residual, units, bounds, scales, starts, exact
+Provider Jacobian, and closed result contract without reinterpretation.
 
-For observation `q`, with positive observed molality-scale mean ionic activity
-coefficient `gamma_q_obs`, Regression owns the dimensionless residual
+For Stages B and C, positive observed molality-scale MIAC
+`gamma_q_observed` defines the dimensionless equal-weight residual
 
 ```text
-r_q(k) = ln(gamma_q_model(k) / gamma_q_obs).
+r_q(theta) = 1 - gamma_q_model(theta) / gamma_q_observed.
 ```
 
-All 164 residuals have equal weight because the source packet has no pointwise
-uncertainty. The logarithmic ratio treats equal multiplicative deviations
-symmetrically and does not require a dimensional scale.
+No observed value is treated as uncertainty. Equal weights are a predeclared
+Regression choice because the packet has no rowwise uncertainty.
 
-The Ceres problem has 11 variables and 164 residuals. Each parameter is
-dimensionless with transform `k_j = z_j`, scale 1, and bounds `[-1, 1]`. The
-bound is a source-enclosing engineering interval for all Figiel fitted
-interactions and keeps the dispersion combining factor `1-k_ij` nonnegative.
-The current 11 published targets occupy `[-0.4, 0.8]` and are interior.
+Stage B has one dimensionless variable `f_water = z`, scale `1`, bounds
+`[1,2]`, and starts `1.2` and `1.8`. Published `1.5` is comparison-only and is
+not a seed. Stage C has eleven dimensionless variables `k_j = z_j`, each scale
+`1`, bounds `[-1,1]`, and starts all `0`, all `-0.5`, and all `+0.5`. The
+published tuple is comparison-only and is not a seed, prior, or regularizer.
 
-The deterministic starts are:
+Every stage uses the existing Ceres owner with `DENSE_QR`, one thread, silent
+logging, at most 500 iterations, and function, gradient, and parameter
+tolerances `1e-10`. No second Ceres engine, result family, native module, or
+CMake target is admitted.
 
-1. all `0` (primary);
-2. all `-0.5`; and
-3. all `+0.5`.
+## Exact Provider derivative contracts
 
-The published tuple is comparison evidence only and is not a solver seed.
-Ceres uses `DENSE_QR`, one thread, silent logging, at most 500 iterations, and
-function, gradient, and parameter tolerances of `1e-10`.
+Stage A consumes the existing model-bound active-Born value/first-total-
+derivative callback.
 
-## Exact Provider contract
+Stage B requires one appended model-bound callback for an ordered aqueous
+`(water, Na+, Br-)` model. At fixed `T`, fixed `P`, and formula-unit molality,
+it accepts one finite trial `f_water` and returns
+`ln(gamma_pm^m)`, exact total fixed-pressure
+`d ln(gamma_pm^m)/d f_water`, reference convergence diagnostics, parameter
+fingerprint, component order, and structured status. Provider retains EOS,
+Born/association/electrolyte reference sequence, density closure, and CppAD
+ownership. Regression derives
 
-Provider correction `06d21af0334a22bafd31d617f3c8535b53711140`,
-merged as `39b39d9d7831a8da943372df019f5a9d7d388b44`, supplies the required
-installed callback. The retained wheel SHA-256 is
+```text
+gamma_model = exp(log_gamma_model)
+dr/df_water = -(gamma_model/gamma_observed) * dlog_gamma_model/df_water.
+```
+
+Stage C consumes the existing Provider callback from correction
+`06d21af0334a22bafd31d617f3c8535b53711140` (merged as
+`39b39d9d7831a8da943372df019f5a9d7d388b44`). Its retained wheel SHA-256 is
 `3bacac6818708091629a79ce9a7a320a07f87093f0697508060aa1aee7368cb6` and
-the installed public-header SHA-256 is
+installed-header SHA-256 is
 `01568808f48c8cf0cd5fd0eb0b3d038349a319251eb8a9f9053b028ed35e5a36`.
-
-The minimum new Provider contract is one model-bound aqueous-alkali-halide
-evaluation. For the selected ordered model `(water, cation, anion)`, fixed
-`T`, fixed `P`, and one formula-unit molality, it accepts exactly three finite
-trial interactions in this order:
+For each ordered `(water,cation,anion)` row it returns `ln(gamma_pm^m)` and
+exact total fixed-pressure derivatives with respect to
+`(k_water_cation,k_water_anion,k_cation_anion)`. Regression maps those three
+entries into the global eleven-column Jacobian and computes
 
 ```text
-(k_water_cation, k_water_anion, k_cation_anion).
+dr/dk_j = -(gamma_model/gamma_observed) * dlog_gamma_model/dk_j.
 ```
 
-It returns:
+All other row entries are structural zero. Production numerical derivatives,
+copied EOS/reference equations, independent density closure, and Equilibrium
+dependencies are forbidden.
 
-- `ln(gamma_pm^m)`;
-- its three exact total fixed-`T,P` derivatives with respect to those active
-  interactions;
-- the terminal reference molality and convergence diagnostic;
-- the parameter fingerprint and component order; and
-- structured unsupported-model, domain, numerical, and callback status.
+## Derivative, rank, and confirmation gates
 
-Provider retains the reference sequence, density closure, EOS, combining rule,
-and CppAD ownership. The total first parameter derivative requires mixed
-state/parameter second derivatives of the Provider Helmholtz owner and the
-first implicit density sensitivity. It requires no third derivatives. Ceres
-consumes only the returned first total derivatives. Regression must not copy
-the reference sequence, solve density independently, modify parameter records,
-or use production finite differences.
-
-For a row belonging to salt `(c,a)`, Regression maps the three returned
-derivatives into the global water--cation, water--anion, and cation--anion
-columns. Every other entry in that row is exactly zero. The assembled Jacobian
-therefore has shape `164 x 11` with exactly three structurally active columns
-per row.
-
-## Preflight and identifiability
-
-Before runtime implementation, an installed-artifact preflight evaluates the
-complete residual and Jacobian at one nonpublished interior trial vector. It
-checks every global column against centered callback-value differences at
-steps `1e-4` and `5e-5`. For each column the infinity-norm difference must meet
+Installed-artifact derivative checks use centered callback-value differences at
+steps `1e-4` and `5e-5`. Each active column must meet
 
 ```text
 abs(J_exact - J_h/2)
   <= max(1e-8, 20*abs(J_h - J_h/2), 2e-8*abs(J_exact)).
 ```
 
-Finite differences are preflight evidence only. They are not a production
-backend.
+Finite differences are evidence only. They are not a runtime backend.
 
-SVD uses rank threshold
+For each stage, SVD rank uses
 
 ```text
-s_max * max(164, 11) * epsilon_binary64 * 100.
+s_max * max(residual_count, parameter_count) * epsilon_binary64 * 100.
 ```
 
-The preflight must show 11 complete nonzero columns and rank 11. It retains all
-singular values, the condition number, normalized sensitivity-column `J^T J`
-correlations, and the least-sensitive right singular vector. These are local
-sensitivity diagnostics, not a covariance or uncertainty estimate. If rank is
-below 11, this exact joint fit stops. Regression does not add regularization,
-priors, parameter tying, or fixed published values to manufacture rank.
+Required ranks are exactly `5`, `1`, and `11`. Results retain singular values,
+condition number, complete/nonzero columns, active bounds, and the
+least-sensitive direction. Rank failure stops; Regression does not add priors,
+regularization, parameter tying, or fixed published values to manufacture
+rank.
 
-The installed-artifact preflight uses the nonpublished all-`0.2` trial. It has
-11 complete nonzero columns, rank 11 at threshold
-`3.396827102277414e-11`, condition number `198577.92559465414`, terminal
-reference molality `1e-12`, maximum reference convergence diagnostic
-`1.0628388139366507e-5`, and maximum derivative convergence diagnostic
-`8.281553220967908e-11`. All 492 checks across the 164 rows and their three
-active local columns pass the two-step directional criterion. The worst case
-is LiCl at `0.2 mol/kg`, global water--Cl- column 3: absolute error
-`6.812026498437262e-10` against tolerance `1e-8`, or
-`0.06812026498437262` of the gate. Every column is finite and nonzero, and the
-global matrix is full rank. No derivative tolerance was changed.
+Each declared start must converge to the same stage solution within `1e-5` in
+scaled infinity norm. A primary A-B-C pass is followed by at most three
+confirmation A-B-C cycles. Each stage starts from the preceding cycle's value,
+not a published seed. The campaign is numerically cycle-converged only when the
+largest scaled change across all 17 coordinates is at most `1e-5`. Failure
+after three cycles is retained without tuning.
 
-The bounded nonlinear preflight then exercises the complete frozen objective
-without creating package runtime. All-zero, all-`-0.5`, and all-`+0.5` starts
-converge to the same rank-11 vector within
-`6.740175084729572e-11`. The primary cost is
-`0.25101017331848846`, below the published tuple's
-`0.4200114112320464`, but the fitted vector differs from the printed tuple by
-as much as `1.8`; columns 3, 5, 6, 7, and 8 are on the lower bound. It therefore
-fails both the `0.05` recovery gate and the non-bound gate. This is stronger
-than the earlier published-point gradient observation, but it does not prove
-that every possible source-backed objective would miss the table.
+## Retained rejected alternatives
 
-Figiel does not disclose the objective, weights, bounds, starts, or fitting
-sequence used to obtain the printed values. Regression must not tune those
-choices post hoc, seed from the printed tuple, or add a prior merely to
-reproduce the answer. Exact compact evidence is retained in
 `evidence/figiel-aqueous-kij-published-tuple-preflight.json`, SHA-256
-`5bd86e332b94781112eeee0ca06765a0f084020a30af76169861bbc610d5743d`.
+`5bd86e332b94781112eeee0ca06765a0f084020a30af76169861bbc610d5743d`,
+retains the exact isolated logarithmic-residual result. Its installed
+`164 x 11` Jacobian has rank 11; all 492 declared derivative checks pass; the
+three starts agree within `6.740175084729572e-11`; fitted cost is
+`0.25101017331848846` versus published cost `0.4200114112320464`; and the
+maximum published-parameter difference is `1.8` with five lower bounds active.
 
-## Result and acceptance semantics
+A read-only discriminator using the frozen relative residual also selected an
+incompatible boundary optimum: all-164 published AARD `5.13246%` versus fitted
+`4.19795%`; `<=5 mol/kg` published AARD `4.68197%` versus fitted `3.46284%`;
+maximum parameter difference `1.8`. These results justify the staged source
+contract. Neither establishes global impossibility or author error.
 
-One closed result retains the source and artifact identities, all 11 fitted
-parameters and published differences, 164 row diagnostics, three starts,
-objective values, gradients, rank/conditioning/sensitivity diagnostics,
-active-bound status, Provider diagnostics, and ordered failure reasons.
+## Result and status semantics
 
-The statuses remain separate:
+One closed staged result retains source/artifact identities, input and
+evaluated row IDs, each stage/cycle/start, all 17 fitted coordinates, published
+comparisons, row residuals, objectives, gradients, rank/conditioning,
+sensitivity, active bounds, Provider diagnostics, and ordered failure reasons.
 
-1. `solver_converged`: primary Ceres termination, usability, finiteness, cost
-   reduction, callback, and bound conditions pass.
-2. `numerically_converged`: all three starts satisfy the solver gates, rank is
-   11, and their fitted vectors agree within `1e-5` in infinity norm.
-3. `physically_valid`: every fixed-pressure reference and target state is
-   Provider-usable, every returned `ln(gamma_pm^m)` is finite, and its implied
-   activity coefficient is positive.
-4. `workflow_valid`: physical validity plus source hashes, exact 164-row
-   membership, units, salt and component order, state, fixed non-`k_ij`
-   catalog basis, Provider artifact, fingerprints, and reference diagnostics
-   match the frozen contract.
-5. `scientifically_valid`: workflow validity plus the parameter-proximity and
-   observable-reproduction gates below pass.
-6. `predictive_status` is
-   `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF` because every row is training
-   evidence.
+Statuses remain independent:
 
-The user-approved parameter-recovery gate is
+1. `solver_converged` is reported per Ceres stage/start.
+2. `numerically_converged` requires exact derivatives, required local rank,
+   declared-start agreement, finite diagnostics, and confirmation-cycle
+   agreement within `1e-5`.
+3. `physically_valid` requires every fixed-pressure state to be Provider-usable
+   with positive finite MIAC and all existing Born-tracer physical gates.
+4. `workflow_valid` additionally requires exact source hashes, row membership,
+   units/basis, state, salt/component order, Provider artifacts/fingerprints,
+   fixed-family inputs, and complete input/evaluated/failed accounting.
+5. `scientifically_valid` additionally requires every frozen in-sample
+   observable gate and
+   `max_j abs(k_j_fit-k_j_published) <= 0.05`.
+6. `predictive_status` remains
+   `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
-```text
-max_j abs(k_j_fit - k_j_published) <= 0.05.
-```
+The `0.05` comparison is a user-approved engineering recovery criterion, not
+source uncertainty or a uniqueness statement. Existing in-sample forward
+checks remain pooled MIAC RMSE `<=0.17`, per-salt RMSE `<=0.35`, per-salt
+maximum absolute MIAC error `<=1.25`, and first predicted MIAC for each salt
+`<0.98`. A failure remains a valid scientific result but not a valid recovered
+catalog candidate.
 
-For `u_ij = sqrt(u_i*u_j)*(1-k_ij)`, this limits the recovered change to five
-percent of the geometric-mean cross-dispersion energy scale. It is an
-engineering recovery criterion, not source uncertainty or a claim that the
-printed parameters are unique.
+## Ownership, next gate, and negative space
 
-The fitted log-residual cost must not exceed the cost of the published tuple,
-allowing only `C_fit <= C_published*(1 + 1e-10) + 1e-14` for binary64
-comparison. The installed-artifact Validation replay must also retain the
-existing forward-reproduction checks:
+Regression owns targets, residuals, Ceres execution, diagnostics, and the one
+staged result. Provider owns values, exact derivatives, model records,
+reference sequences, and density closure. After an exact Provider wheel/header
+implements and verifies the Stage-B seam, Regression may add only the compact
+164-row packet and focused staged cost/workflow owners to its existing package,
+native module, result family, and target.
 
-- pooled MIAC RMSE no greater than `0.17`;
-- each salt RMSE no greater than `0.35`;
-- each salt maximum absolute MIAC error no greater than `1.25`; and
-- the first predicted MIAC for each salt below `0.98`.
+The next gate is therefore one Provider artifact with the approved active
+water-solvation-factor callback and installed derivative proof. Runtime work
+must then prove ranks `5/1/11` before retaining a staged candidate. Regression
+may author the later installed-artifact Validation campaign under the standing
+serialized writer rule; its own evidence cannot self-promote.
 
-These are in-sample physical-reproduction checks, not experimental uncertainty
-or predictive cutoffs. A converged fit that fails rank, multistart, parameter
-proximity, or observable reproduction remains scientifically invalid.
-
-## Ownership and execution order
-
-The eventual implementation reuses the existing Python package, immutable
-record owner, workflow/result owner, native module, Ceres dependency, and one
-CMake target. It may add one family-specific native cost owner; it must not add
-a second module or target, generic target registry, parameter overlay, mutable
-catalog, compatibility layer, copied Provider equation/reference logic, or
-Equilibrium dependency.
-
-The executable order is:
-
-1. Preserve the exact corrected Provider wheel/header and complete blocked
-   preflight.
-2. Resolve the scientific claim:
-   keep the equal-weight objective and report failed table recovery, or supply
-   a source-backed alternative. Do not tune weights, bounds, starts, or
-   tolerances to the printed answer.
-3. Use bounded independent subagent review on the exact revised contract.
-4. Only if every frozen gate passes, implement the closed Ceres fit and retain one commit-bound wheel
-   plus candidate evidence.
-5. Regression then authors the bounded public-installed-artifact campaign in
-   Validation under Migration's serialized writer protocol.
-6. A distinct independent review decides admission. No package-authored result
-   self-promotes or writes fitted values into the Provider catalog.
-
-The present state is
-`BLOCKED_FROZEN_PARAMETER_RECOVERY_GATE`.
+Excluded: generic registries, mutable parameter overlays, Provider catalog
+writes, compatibility shims, simultaneous all-table solves, organic-solvent or
+expanded-ion scope, density/osmotic targets, association/polar/reactive/MEA
+scope, uncertainty, prediction, global identifiability, a second solver/result/
+module/target, and any runtime dependency on Zotero, Validation source trees,
+Migration, or lab code.
