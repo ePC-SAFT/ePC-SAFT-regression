@@ -50,7 +50,7 @@ with no added runtime test seam.
 
 `runtime_status: AUTHORITY_NEUTRAL_PACKAGE_IMPLEMENTED_VALIDATION_NOT_STARTED`
 
-`next_figiel_family_status: READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_SOLVATION_FACTOR_DERIVATIVE`
+`next_figiel_family_status: FIGIEL_STAGED_AQUEOUS_IMPLEMENTED_EXACT_ARTIFACT_EXECUTION_PENDING`
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint
@@ -177,16 +177,17 @@ The Table 4/5 recovery gate remains the user-approved maximum parameter delta
 `0.05`; every row is training evidence and predictive status remains
 `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
-Corrected Provider artifact `06d21af` supplies the Stage-C three-active-
-interaction callback. At the all-`0.2` trial, its `164x11` Jacobian is full
+Corrected Provider artifact `238ff2f59b105126da059558958ca8b28749ad96`
+supplies the active-Born, active water-solvation-factor, and three-active-
+interaction callbacks. At the all-`0.2` trial, the Stage-C `164x11` Jacobian is full
 rank and all 492 derivative checks pass. The isolated logarithmic fit and a
 read-only relative-residual discriminator both select an incompatible boundary
 optimum with maximum published-parameter delta `1.8`. These are retained
 falsification evidence, not proof that the source-described sequence is
-impossible. Runtime is waiting only for an exact installed Provider callback
-returning the active water-solvation-factor value and total fixed-pressure
-first derivative. No rows, weights, bounds, starts, cycle limits, or tolerances
-may be changed after the staged result is seen.
+impossible. The single staged package workflow is implemented and its exact
+installed-artifact candidate execution is pending. No rows, weights, bounds,
+starts, cycle limits, or tolerances may be changed after the staged result is
+seen.
 
 The eventual direction is a staged, family-by-family recovery campaign for
 Figiel Tables 2–5. That later intent does not broaden the first Born-diameter

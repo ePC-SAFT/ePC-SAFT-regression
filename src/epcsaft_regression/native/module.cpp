@@ -1,4 +1,5 @@
 #include "born_diameter_fit.hpp"
+#include "figiel_aqueous_fit.hpp"
 #include "pure_saturation_fit.hpp"
 
 #include <epcsaft/native_sdk_v1.h>
@@ -158,6 +159,33 @@ PyObject* py_solve_born(PyObject*, PyObject* args) {
     return epcsaft_regression::solve_born_python(capsules, payload);
 }
 
+PyObject* py_evaluate_figiel_aqueous(PyObject*, PyObject* args) {
+    PyObject* capsules = nullptr;
+    PyObject* payload = nullptr;
+    PyObject* parameters = nullptr;
+    if (!PyArg_ParseTuple(
+            args,
+            "OOO:evaluate_figiel_aqueous",
+            &capsules,
+            &payload,
+            &parameters
+        )) {
+        return nullptr;
+    }
+    return epcsaft_regression::evaluate_figiel_aqueous_python(
+        capsules, payload, parameters
+    );
+}
+
+PyObject* py_solve_figiel_aqueous(PyObject*, PyObject* args) {
+    PyObject* capsules = nullptr;
+    PyObject* payload = nullptr;
+    if (!PyArg_ParseTuple(args, "OO:solve_figiel_aqueous", &capsules, &payload)) {
+        return nullptr;
+    }
+    return epcsaft_regression::solve_figiel_aqueous_python(capsules, payload);
+}
+
 PyMethodDef methods[] = {
     {"transport_info", py_transport_info, METH_O, "Validate the installed provider capsule."},
     {
@@ -181,6 +209,18 @@ PyMethodDef methods[] = {
         "Evaluate exact Figiel Born residuals and Jacobian."
     },
     {"solve_born", py_solve_born, METH_VARARGS, "Fit the five Figiel Born diameters."},
+    {
+        "evaluate_figiel_aqueous",
+        py_evaluate_figiel_aqueous,
+        METH_VARARGS,
+        "Evaluate exact staged Figiel aqueous residuals and Jacobian."
+    },
+    {
+        "solve_figiel_aqueous",
+        py_solve_figiel_aqueous,
+        METH_VARARGS,
+        "Fit one staged Figiel aqueous parameter family."
+    },
     {nullptr, nullptr, 0, nullptr},
 };
 

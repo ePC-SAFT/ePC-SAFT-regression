@@ -65,8 +65,10 @@ solvation factor against all 21 audited NaBr rows (`21x1`, rank 1), then the 11
 Table 4/5 interactions against all 164 Hamer--Wu rows (`164x11`, rank 11),
 with at most three confirmation cycles and a `1e-5` scaled cycle threshold.
 Its sole design owner is `docs/science/figiel-aqueous-kij-regression.md`; status
-is `READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_SOLVATION_FACTOR_DERIVATIVE`.
-Provider artifact `06d21af` already supplies the corrected Stage-C callback.
+is `FIGIEL_STAGED_AQUEOUS_IMPLEMENTED_EXACT_ARTIFACT_EXECUTION_PENDING`.
+Provider artifact `238ff2f` supplies all three exact staged callbacks. The
+package implementation remains authority-neutral until its exact wheel and
+candidate evidence are retained and independently reviewed.
 The retained exact isolated log and relative fits are falsification evidence,
 not proof that the staged route is impossible. Keep the user-approved Table
 4/5 maximum parameter difference at `0.05`; do not tune rows, weights, bounds,

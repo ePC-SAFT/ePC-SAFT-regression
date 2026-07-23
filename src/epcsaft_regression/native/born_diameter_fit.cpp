@@ -242,15 +242,24 @@ Payload parse_payload(PyObject* object) {
         "sha256:7551f1eee5903b66061cf7520f3bb59b169896ce372f3df3d48aa7ec778c39d4",
         "sha256:70ae04599dfa8338175e793bac6b9e4dfad37a9b96a568b5484dc87f104ef1a9",
     };
+    const bool staged = std::find(
+        payload.identity.begin(),
+        payload.identity.end(),
+        "figiel-staged-aqueous-recovery"
+    ) != payload.identity.end();
     for (std::size_t index = 0; index < ion_count; ++index) {
         const Target& target = payload.targets[index];
+        const bool fingerprint_valid = staged
+            ? target.expected_fingerprint.size() == 71
+                && target.expected_fingerprint.rfind("sha256:", 0) == 0
+            : target.expected_fingerprint == expected_fingerprints[index];
         if (target.target_id != expected_target_ids[index]
             || target.ion_label != expected_ions[index]
             || target.active_component_id != expected_active[index]
             || target.counterion_component_id != expected_counter[index]
             || target.target_j_per_mol != expected_values[index]
             || target.published_diameter_angstrom != expected_published[index]
-            || target.expected_fingerprint != expected_fingerprints[index]) {
+            || !fingerprint_valid) {
             throw std::invalid_argument("Born targets do not match the compiled five-row contract");
         }
     }
@@ -260,13 +269,24 @@ Payload parse_payload(PyObject* object) {
         || payload.diameter_origin != 3.0 || payload.diameter_scale != 1.0
         || payload.diameter_bounds != std::array<double, 2>{1.0, 6.0}
         || payload.scaled_bounds != std::array<double, 2>{-2.0, 3.0}
-        || payload.starts[0] != std::array<double, ion_count>{3.0, 3.0, 3.0, 3.0, 3.0}
-        || payload.starts[1] != std::array<double, ion_count>{2.0, 2.0, 2.0, 2.0, 2.0}
-        || payload.starts[2] != std::array<double, ion_count>{5.0, 5.0, 5.0, 5.0, 5.0}
         || payload.max_iterations != 500 || payload.function_tolerance != 1.0e-10
         || payload.gradient_tolerance != 1.0e-10 || payload.parameter_tolerance != 1.0e-10
         || payload.rank_multiplier != 100.0) {
         throw std::invalid_argument("Born numerical contract does not match the frozen design");
+    }
+    const bool fixed_starts =
+        payload.starts[0] == std::array<double, ion_count>{3.0, 3.0, 3.0, 3.0, 3.0}
+        && payload.starts[1] == std::array<double, ion_count>{2.0, 2.0, 2.0, 2.0, 2.0}
+        && payload.starts[2] == std::array<double, ion_count>{5.0, 5.0, 5.0, 5.0, 5.0};
+    const bool staged_starts = staged && std::all_of(
+        payload.starts.begin(), payload.starts.end(), [](const auto& start) {
+            return std::all_of(start.begin(), start.end(), [](double value) {
+                return std::isfinite(value) && value >= 1.0 && value <= 6.0;
+            });
+        }
+    );
+    if ((!staged && !fixed_starts) || (staged && !staged_starts)) {
+        throw std::invalid_argument("Born starts do not match the frozen design");
     }
     return payload;
 }

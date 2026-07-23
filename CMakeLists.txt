@@ -15,6 +15,7 @@ endif()
 
 Python_add_library(_native MODULE WITH_SOABI
   src/epcsaft_regression/native/born_diameter_fit.cpp
+  src/epcsaft_regression/native/figiel_aqueous_fit.cpp
   src/epcsaft_regression/native/pure_saturation_contract.cpp
   src/epcsaft_regression/native/pure_saturation_fit.cpp
   src/epcsaft_regression/native/module.cpp

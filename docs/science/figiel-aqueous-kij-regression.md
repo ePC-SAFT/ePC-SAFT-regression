@@ -1,11 +1,12 @@
 # Figiel Staged Aqueous Current-Catalog Recovery
 
-Status: `READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_SOLVATION_FACTOR_DERIVATIVE`.
-The source and Regression contract are frozen. The existing active-Born and
-aqueous-active-`k_ij` Provider seams are sufficient for stages A and C, but no
-installed Provider artifact yet exposes the exact active water-solvation-factor
-derivative required by stage B. No staged runtime, wheel, Validation campaign,
-catalog admission, prediction, or authority transfer exists.
+Status: `FIGIEL_STAGED_AQUEOUS_IMPLEMENTED_EXACT_ARTIFACT_EXECUTION_PENDING`.
+The source and Regression contract are frozen. Exact installed Provider
+callbacks now cover active Born diameter, water solvation factor, and aqueous
+`k_ij`. One package workflow, result, native module, and CMake target implement
+the staged contract. Its commit-bound wheel/evidence and installed-artifact
+Validation campaign are not yet retained; no catalog admission, prediction,
+or authority transfer exists.
 
 This document is the sole design and science owner for the staged Figiel
 current-catalog recovery. It replaces the falsified assumption that one
@@ -136,7 +137,7 @@ CMake target is admitted.
 Stage A consumes the existing model-bound active-Born value/first-total-
 derivative callback.
 
-Stage B requires one appended model-bound callback for an ordered aqueous
+Stage B consumes the appended model-bound callback for an ordered aqueous
 `(water, Na+, Br-)` model. At fixed `T`, fixed `P`, and formula-unit molality,
 it accepts one finite trial `f_water` and returns
 `ln(gamma_pm^m)`, exact total fixed-pressure
@@ -150,12 +151,13 @@ gamma_model = exp(log_gamma_model)
 dr/df_water = -(gamma_model/gamma_observed) * dlog_gamma_model/df_water.
 ```
 
-Stage C consumes the existing Provider callback from correction
-`06d21af0334a22bafd31d617f3c8535b53711140` (merged as
-`39b39d9d7831a8da943372df019f5a9d7d388b44`). Its retained wheel SHA-256 is
-`3bacac6818708091629a79ce9a7a320a07f87093f0697508060aa1aee7368cb6` and
+Stages B and C consume Provider implementation
+`238ff2f59b105126da059558958ca8b28749ad96` (tree
+`989d68822d22f52ab02ffedd7f26bcab6c78a1a3`, merged as
+`3f39a6cd6087d69f5d6aadc4b799931011fbc8e7`). Its retained wheel SHA-256 is
+`88b1b0ebda2212499cb0e270f8ee57e336c3c6ea833292cbcb57ecf2045cd029` and
 installed-header SHA-256 is
-`01568808f48c8cf0cd5fd0eb0b3d038349a319251eb8a9f9053b028ed35e5a36`.
+`5765af9fb4d90f70070eeeec12a8ccb63745f961d2b9abefbd8405220d291e67`.
 For each ordered `(water,cation,anion)` row it returns `ln(gamma_pm^m)` and
 exact total fixed-pressure derivatives with respect to
 `(k_water_cation,k_water_anion,k_cation_anion)`. Regression maps those three
@@ -180,6 +182,12 @@ abs(J_exact - J_h/2)
 ```
 
 Finite differences are evidence only. They are not a runtime backend.
+
+Provider issue 22 checked the Stage-B callback on every NaBr row at both
+nonpublished trial values with these two centered-difference steps. Its
+corrected installed artifact passed 162 source and 162 installed-wheel tests.
+Regression separately verifies exact residual/Jacobian assembly for all 21
+Stage-B rows and all 164 Stage-C rows.
 
 For each stage, SVD rank uses
 
@@ -230,7 +238,10 @@ Statuses remain independent:
    declared-start agreement, finite diagnostics, and confirmation-cycle
    agreement within `1e-5`.
 3. `physically_valid` requires every fixed-pressure state to be Provider-usable
-   with positive finite MIAC and all existing Born-tracer physical gates.
+   with positive finite MIAC, finite reference diagnostics, an exact Provider
+   fingerprint, and all existing Born-tracer physical gates. The Provider
+   reports convergence diagnostics, but this source contract approves no
+   additional numeric cutoff for them.
 4. `workflow_valid` additionally requires exact source hashes, row membership,
    units/basis, state, salt/component order, Provider artifacts/fingerprints,
    fixed-family inputs, and complete input/evaluated/failed accounting.
@@ -239,6 +250,11 @@ Statuses remain independent:
    `max_j abs(k_j_fit-k_j_published) <= 0.05`.
 6. `predictive_status` remains
    `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
+
+An active bound is always retained and reported. It is not an independent
+rejection gate: the frozen source design admits closed bounds, while rank,
+start agreement, observable reproduction, and the printed-parameter comparison
+remain separate gates.
 
 The `0.05` comparison is a user-approved engineering recovery criterion, not
 source uncertainty or a uniqueness statement. Existing in-sample forward
@@ -251,16 +267,15 @@ catalog candidate.
 
 Regression owns targets, residuals, Ceres execution, diagnostics, and the one
 staged result. Provider owns values, exact derivatives, model records,
-reference sequences, and density closure. After an exact Provider wheel/header
-implements and verifies the Stage-B seam, Regression may add only the compact
-164-row packet and focused staged cost/workflow owners to its existing package,
-native module, result family, and target.
+reference sequences, and density closure. The exact Provider prerequisite is
+now present. An absent, ABI-short, unsupported, or failed callback aborts before
+a candidate result is created; Regression does not fabricate partial
+scientific row accounting from a failed Provider call.
 
-The next gate is therefore one Provider artifact with the approved active
-water-solvation-factor callback and installed derivative proof. Runtime work
-must then prove ranks `5/1/11` before retaining a staged candidate. Regression
-may author the later installed-artifact Validation campaign under the standing
-serialized writer rule; its own evidence cannot self-promote.
+The installed campaign must prove ranks `5/1/11` before retaining a staged
+candidate. Regression may author the later installed-artifact Validation
+campaign under the standing serialized writer rule; its own evidence cannot
+self-promote.
 
 Excluded: generic registries, mutable parameter overlays, Provider catalog
 writes, compatibility shims, simultaneous all-table solves, organic-solvent or
