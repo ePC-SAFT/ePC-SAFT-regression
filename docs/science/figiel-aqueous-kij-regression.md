@@ -129,17 +129,23 @@ published tuple is comparison-only and is not a seed, prior, or regularizer.
 
 Every stage uses the existing Ceres owner with `DENSE_QR`, one thread, silent
 logging, at most 500 iterations, and function, gradient, and parameter
-tolerances `1e-10`. No second Ceres engine, result family, native module, or
-CMake target is admitted.
+tolerances `1e-10`. Each Stage-B or Stage-C start also has an operational
+`180 s` Ceres solver-time maximum. Ceres checks this bound between iterations,
+so one in-progress Provider batch evaluation may finish after the threshold;
+on expiry, ordinary `NO_CONVERGENCE` and numerical-invalid reporting applies.
+The time maximum prevents an unbounded process, but it is not a residual,
+parameter, rank, cycle, or scientific-acceptance criterion. No second Ceres
+engine, result family, native module, or CMake target is admitted.
 
 ## Exact Provider derivative contracts
 
 Stage A consumes the existing model-bound active-Born value/first-total-
 derivative callback.
 
-Stage B consumes the appended model-bound callback for an ordered aqueous
+Stage B consumes the appended model-bound batch callback for an ordered aqueous
 `(water, Na+, Br-)` model. At fixed `T`, fixed `P`, and formula-unit molality,
-it accepts one finite trial `f_water` and returns
+it accepts one finite trial `f_water` and all 21 ordered NaBr molalities, then
+returns one result per molality in source-row order:
 `ln(gamma_pm^m)`, exact total fixed-pressure
 `d ln(gamma_pm^m)/d f_water`, reference convergence diagnostics, parameter
 fingerprint, component order, and structured status. Provider retains EOS,
@@ -152,14 +158,16 @@ dr/df_water = -(gamma_model/gamma_observed) * dlog_gamma_model/df_water.
 ```
 
 Stages B and C consume Provider implementation
-`238ff2f59b105126da059558958ca8b28749ad96` (tree
-`989d68822d22f52ab02ffedd7f26bcab6c78a1a3`, merged as
-`3f39a6cd6087d69f5d6aadc4b799931011fbc8e7`). Its retained wheel SHA-256 is
-`88b1b0ebda2212499cb0e270f8ee57e336c3c6ea833292cbcb57ecf2045cd029` and
+`fa766e5af86f70ae92870247b1801d7681255e98` (tree
+`962b00eac3fac18d98d9eea3c56eb137031d4b4f`, merged as
+`161f02cb13569c56fcd75d5bdfe1987d320d56a2`). Its retained wheel SHA-256 is
+`ee9842889a82251d5d7b501d30d235b63c727cfcd15419f3c5970730870e5286` and
 installed-header SHA-256 is
-`5765af9fb4d90f70070eeeec12a8ccb63745f961d2b9abefbd8405220d291e67`.
-For each ordered `(water,cation,anion)` row it returns `ln(gamma_pm^m)` and
-exact total fixed-pressure derivatives with respect to
+`7b08de2a57dfd9eb0ed0546a368f65b09d6fe7d921f2df086e70b8738e872914`.
+Stage C makes one batch call per ordered `(water,cation,anion)` salt, six calls
+per complete residual/Jacobian evaluation, and maps every returned row into its
+original 164-row position. Each row returns `ln(gamma_pm^m)` and exact total
+fixed-pressure derivatives with respect to
 `(k_water_cation,k_water_anion,k_cation_anion)`. Regression maps those three
 entries into the global eleven-column Jacobian and computes
 
@@ -167,9 +175,18 @@ entries into the global eleven-column Jacobian and computes
 dr/dk_j = -(gamma_model/gamma_observed) * dlog_gamma_model/dk_j.
 ```
 
-All other row entries are structural zero. Production numerical derivatives,
-copied EOS/reference equations, independent density closure, and Equilibrium
-dependencies are forbidden.
+All other row entries are structural zero. Regression rejects an ABI table that
+ends before the required batch callback and never falls back to either scalar
+callback. Production numerical derivatives, copied EOS/reference equations,
+independent density closure, and Equilibrium dependencies are forbidden.
+
+The retained Provider artifact's installed full-row benchmark, with exact
+scalar/batch value and derivative parity, measured Stage B at `11.499511 s`
+scalar versus `0.926034 s` batch (`12.418x`) and Stage C at `92.066785 s`
+scalar versus `6.651659 s` batch (`13.841x`). These timings justify the batch
+transport and are operational evidence, not a portable wall-clock acceptance
+test. Regression protects the behavior by proving exact residual/Jacobian
+assembly with both scalar callback pointers absent.
 
 ## Derivative, rank, and confirmation gates
 
@@ -267,10 +284,11 @@ catalog candidate.
 
 Regression owns targets, residuals, Ceres execution, diagnostics, and the one
 staged result. Provider owns values, exact derivatives, model records,
-reference sequences, and density closure. The exact Provider prerequisite is
-now present. An absent, ABI-short, unsupported, or failed callback aborts before
-a candidate result is created; Regression does not fabricate partial
-scientific row accounting from a failed Provider call.
+reference sequences, density closure, and its bounded row concurrency. The
+exact Provider batch prerequisite is now present. An absent, ABI-short,
+unsupported, or failed batch callback aborts before a candidate result is
+created; Regression does not fabricate partial scientific row accounting from
+a failed Provider call.
 
 The installed campaign must prove ranks `5/1/11` before retaining a staged
 candidate. Regression may author the later installed-artifact Validation

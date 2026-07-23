@@ -177,17 +177,21 @@ The Table 4/5 recovery gate remains the user-approved maximum parameter delta
 `0.05`; every row is training evidence and predictive status remains
 `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
-Corrected Provider artifact `238ff2f59b105126da059558958ca8b28749ad96`
-supplies the active-Born, active water-solvation-factor, and three-active-
-interaction callbacks. At the all-`0.2` trial, the Stage-C `164x11` Jacobian is full
-rank and all 492 derivative checks pass. The isolated logarithmic fit and a
-read-only relative-residual discriminator both select an incompatible boundary
-optimum with maximum published-parameter delta `1.8`. These are retained
-falsification evidence, not proof that the source-described sequence is
-impossible. The single staged package workflow is implemented and its exact
-installed-artifact candidate execution is pending. No rows, weights, bounds,
-starts, cycle limits, or tolerances may be changed after the staged result is
-seen.
+Provider batch artifact `fa766e5af86f70ae92870247b1801d7681255e98`
+(tree `962b00eac3fac18d98d9eea3c56eb137031d4b4f`, merged as
+`161f02cb13569c56fcd75d5bdfe1987d320d56a2`) supplies the active-Born,
+active water-solvation-factor, and three-active-interaction callbacks. The
+aqueous stages require the installed batch tail, have no scalar fallback, and
+bound every Ceres start to 180 seconds. This is an operational process bound,
+not a scientific acceptance tolerance. At the all-`0.2` trial, the Stage-C
+`164x11` Jacobian is full rank and all 492 derivative checks pass. The isolated
+logarithmic fit and a read-only relative-residual discriminator both select an
+incompatible boundary optimum with maximum published-parameter delta `1.8`.
+These are retained falsification evidence, not proof that the source-described
+sequence is impossible. The single staged package workflow is implemented and
+its exact installed-artifact candidate execution is pending. No rows, weights,
+bounds, starts, cycle limits, or tolerances may be changed after the staged
+result is seen.
 
 The eventual direction is a staged, family-by-family recovery campaign for
 Figiel Tables 2–5. That later intent does not broaden the first Born-diameter

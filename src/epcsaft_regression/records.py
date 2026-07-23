@@ -497,6 +497,7 @@ class FigielStagedAqueousRecoverySpecification:
     max_confirmation_cycles: int
     cycle_scaled_max_delta: float
     max_num_iterations: int
+    aqueous_start_wall_time_max_seconds: float
     function_tolerance: float
     gradient_tolerance: float
     parameter_tolerance: float
@@ -539,6 +540,7 @@ class FigielStagedAqueousRecoverySpecification:
             self.max_confirmation_cycles,
             self.cycle_scaled_max_delta,
             self.max_num_iterations,
+            self.aqueous_start_wall_time_max_seconds,
             self.function_tolerance,
             self.gradient_tolerance,
             self.parameter_tolerance,
@@ -569,6 +571,7 @@ class FigielStagedAqueousRecoverySpecification:
             3,
             1.0e-5,
             500,
+            180.0,
             1.0e-10,
             1.0e-10,
             1.0e-10,
@@ -646,6 +649,7 @@ FIGIEL_STAGED_AQUEOUS_RECOVERY_V1 = FigielStagedAqueousRecoverySpecification(
     max_confirmation_cycles=3,
     cycle_scaled_max_delta=1.0e-5,
     max_num_iterations=500,
+    aqueous_start_wall_time_max_seconds=180.0,
     function_tolerance=1.0e-10,
     gradient_tolerance=1.0e-10,
     parameter_tolerance=1.0e-10,

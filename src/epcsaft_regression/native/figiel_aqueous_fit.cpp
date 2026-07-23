@@ -49,6 +49,7 @@ struct Payload final {
     double temperature;
     double pressure;
     int max_iterations;
+    double max_solver_time_seconds;
     double function_tolerance;
     double gradient_tolerance;
     double parameter_tolerance;
@@ -140,7 +141,7 @@ std::vector<double> doubles(PyObject* object, std::size_t expected, const char* 
 
 Payload parse_payload(PyObject* object) {
     PyObject* sequence = PySequence_Fast(object, "aqueous payload must be a sequence");
-    if (sequence == nullptr || PySequence_Fast_GET_SIZE(sequence) != 14) {
+    if (sequence == nullptr || PySequence_Fast_GET_SIZE(sequence) != 15) {
         Py_XDECREF(sequence);
         throw std::invalid_argument("aqueous payload has the wrong length");
     }
@@ -278,22 +279,26 @@ Payload parse_payload(PyObject* object) {
     payload.max_iterations = static_cast<int>(index_value(
         PySequence_Fast_GET_ITEM(sequence, 9), "maximum iterations"
     ));
+    payload.max_solver_time_seconds = number(
+        PySequence_Fast_GET_ITEM(sequence, 10), "maximum solver time"
+    );
     payload.function_tolerance = number(
-        PySequence_Fast_GET_ITEM(sequence, 10), "function tolerance"
+        PySequence_Fast_GET_ITEM(sequence, 11), "function tolerance"
     );
     payload.gradient_tolerance = number(
-        PySequence_Fast_GET_ITEM(sequence, 11), "gradient tolerance"
+        PySequence_Fast_GET_ITEM(sequence, 12), "gradient tolerance"
     );
     payload.parameter_tolerance = number(
-        PySequence_Fast_GET_ITEM(sequence, 12), "parameter tolerance"
+        PySequence_Fast_GET_ITEM(sequence, 13), "parameter tolerance"
     );
-    payload.rank_multiplier = number(PySequence_Fast_GET_ITEM(sequence, 13), "rank multiplier");
+    payload.rank_multiplier = number(PySequence_Fast_GET_ITEM(sequence, 14), "rank multiplier");
     Py_DECREF(sequence);
     if (payload.temperature != 298.15 || payload.pressure != 100000.0
         || payload.bounds != (payload.stage == "solvation_factor"
             ? std::array<double, 2>{1.0, 2.0}
             : std::array<double, 2>{-1.0, 1.0})
-        || payload.max_iterations != 500 || payload.function_tolerance != 1.0e-10
+        || payload.max_iterations != 500 || payload.max_solver_time_seconds != 180.0
+        || payload.function_tolerance != 1.0e-10
         || payload.gradient_tolerance != 1.0e-10
         || payload.parameter_tolerance != 1.0e-10 || payload.rank_multiplier != 100.0) {
         throw std::invalid_argument("aqueous numerical contract does not match the frozen design");
@@ -312,10 +317,10 @@ const epcsaft_native_sdk_v1* checked_table(
     struct Prefix final { std::uint32_t abi_version; std::size_t table_size; } prefix{};
     std::memcpy(&prefix, pointer, sizeof(prefix));
     const std::size_t minimum_size = payload.stage == "solvation_factor"
-        ? offsetof(epcsaft_native_sdk_v1, evaluate_aqueous_miac_solvation_factor)
-            + sizeof(epcsaft_evaluate_aqueous_miac_solvation_factor_v1)
-        : offsetof(epcsaft_native_sdk_v1, evaluate_aqueous_miac_kij)
-            + sizeof(epcsaft_evaluate_aqueous_miac_kij_v1);
+        ? offsetof(epcsaft_native_sdk_v1, evaluate_aqueous_miac_solvation_factor_batch)
+            + sizeof(epcsaft_evaluate_aqueous_miac_solvation_factor_batch_v1)
+        : offsetof(epcsaft_native_sdk_v1, evaluate_aqueous_miac_kij_batch)
+            + sizeof(epcsaft_evaluate_aqueous_miac_kij_batch_v1);
     if (prefix.abi_version != EPCSAFT_NATIVE_SDK_V1_ABI_VERSION
         || prefix.table_size < minimum_size) {
         throw std::runtime_error("provider capability unavailable");
@@ -342,12 +347,12 @@ const epcsaft_native_sdk_v1* checked_table(
     if (payload.stage == "solvation_factor") {
         if (table->aqueous_miac_solvation_factor_result_size
                 != sizeof(epcsaft_aqueous_miac_solvation_factor_result_v1)
-            || table->evaluate_aqueous_miac_solvation_factor == nullptr) {
+            || table->evaluate_aqueous_miac_solvation_factor_batch == nullptr) {
             throw std::runtime_error("provider capability unavailable");
         }
     } else if (table->aqueous_miac_kij_result_size
             != sizeof(epcsaft_aqueous_miac_kij_result_v1)
-        || table->evaluate_aqueous_miac_kij == nullptr) {
+        || table->evaluate_aqueous_miac_kij_batch == nullptr) {
         throw std::runtime_error("provider capability unavailable");
     }
     return table;
@@ -381,82 +386,30 @@ Evaluation evaluate(
     Evaluation evaluation{
         std::vector<double>(payload.observations.size()),
         std::vector<double>(payload.observations.size() * payload.parameter_count),
-        {},
+        std::vector<Row>(payload.observations.size()),
     };
-    evaluation.rows.reserve(payload.observations.size());
-    for (std::size_t row_index = 0; row_index < payload.observations.size(); ++row_index) {
+    const auto record_result = [&](
+        std::size_t row_index,
+        double log_modeled,
+        std::vector<double> local_derivative,
+        double reference_molality,
+        double reference_convergence,
+        double derivative_convergence,
+        const char* fingerprint_data
+    ) {
         const Observation& observed = payload.observations[row_index];
-        const auto* table = tables[observed.salt_index];
-        double log_modeled = 0.0;
-        double reference_molality = 0.0;
-        double reference_convergence = 0.0;
-        double derivative_convergence = 0.0;
-        std::string fingerprint;
-        std::vector<double> local_derivative(observed.columns.size());
-        if (payload.stage == "solvation_factor") {
-            epcsaft_aqueous_miac_solvation_factor_result_v1 result{};
-            result.struct_size = sizeof(result);
-            const int status = table->evaluate_aqueous_miac_solvation_factor(
-                table->model_context,
-                payload.expected_fingerprints[observed.salt_index].c_str(),
-                payload.temperature,
-                payload.pressure,
-                observed.molality,
-                parameters[0],
-                &result
-            );
-            if (status != EPCSAFT_NATIVE_STATUS_OK_V1 || result.status != status) {
-                throw std::runtime_error(
-                    std::string("provider solvent-factor evaluation failed: ")
-                    + result.error
-                );
-            }
-            log_modeled = result.log_mean_ionic_activity_coefficient_molality;
-            local_derivative[0] = result.derivative;
-            reference_molality = result.reference_molality_mol_per_kg;
-            reference_convergence = result.reference_convergence_error;
-            derivative_convergence = result.reference_derivative_convergence_error;
-            fingerprint.assign(
-                result.parameter_fingerprint,
-                strnlen(result.parameter_fingerprint, EPCSAFT_NATIVE_SDK_V1_FINGERPRINT_SIZE)
-            );
-        } else {
-            std::array<double, 3> local_parameters{};
-            for (std::size_t local = 0; local < 3; ++local) {
-                local_parameters[local] = parameters[observed.columns[local]];
-            }
-            epcsaft_aqueous_miac_kij_result_v1 result{};
-            result.struct_size = sizeof(result);
-            const int status = table->evaluate_aqueous_miac_kij(
-                table->model_context,
-                payload.expected_fingerprints[observed.salt_index].c_str(),
-                payload.temperature,
-                payload.pressure,
-                observed.molality,
-                local_parameters.data(),
-                local_parameters.size(),
-                &result
-            );
-            if (status != EPCSAFT_NATIVE_STATUS_OK_V1 || result.status != status) {
-                throw std::runtime_error(
-                    std::string("provider aqueous-kij evaluation failed: ")
-                    + result.error
-                );
-            }
-            log_modeled = result.log_mean_ionic_activity_coefficient_molality;
-            std::copy(result.derivative, result.derivative + 3, local_derivative.begin());
-            reference_molality = result.reference_molality_mol_per_kg;
-            reference_convergence = result.reference_convergence_error;
-            derivative_convergence = result.reference_derivative_convergence_error;
-            fingerprint.assign(
-                result.parameter_fingerprint,
-                strnlen(result.parameter_fingerprint, EPCSAFT_NATIVE_SDK_V1_FINGERPRINT_SIZE)
-            );
-        }
+        const std::string fingerprint(
+            fingerprint_data,
+            strnlen(fingerprint_data, EPCSAFT_NATIVE_SDK_V1_FINGERPRINT_SIZE)
+        );
         if (fingerprint != payload.expected_fingerprints[observed.salt_index]
             || !std::isfinite(log_modeled) || !std::isfinite(reference_molality)
             || !std::isfinite(reference_convergence)
-            || !std::isfinite(derivative_convergence)) {
+            || !std::isfinite(derivative_convergence)
+            || !std::all_of(
+                local_derivative.begin(), local_derivative.end(),
+                [](double value) { return std::isfinite(value); }
+            )) {
             throw std::runtime_error("provider aqueous diagnostics failed");
         }
         const double modeled = std::exp(log_modeled);
@@ -473,7 +426,7 @@ Evaluation evaluate(
             evaluation.jacobian[row_index * payload.parameter_count + column]
                 = -ratio * local_derivative[local];
         }
-        evaluation.rows.push_back(Row{
+        evaluation.rows[row_index] = Row{
             observed.row_id,
             observed.salt,
             observed.molality,
@@ -486,7 +439,120 @@ Evaluation evaluate(
             reference_convergence,
             derivative_convergence,
             fingerprint,
-        });
+        };
+    };
+    for (std::size_t salt_index = 0; salt_index < salt_count; ++salt_index) {
+        std::vector<std::size_t> row_indices;
+        for (std::size_t row_index = 0; row_index < payload.observations.size();
+             ++row_index) {
+            if (payload.observations[row_index].salt_index == salt_index) {
+                row_indices.push_back(row_index);
+            }
+        }
+        if (row_indices.empty()) continue;
+        std::vector<double> molalities;
+        molalities.reserve(row_indices.size());
+        for (const std::size_t row_index : row_indices) {
+            molalities.push_back(payload.observations[row_index].molality);
+        }
+        const auto* table = tables[salt_index];
+        if (payload.stage == "solvation_factor") {
+            std::vector<epcsaft_aqueous_miac_solvation_factor_result_v1> results(
+                row_indices.size()
+            );
+            for (auto& result : results) result.struct_size = sizeof(result);
+            const int status = table->evaluate_aqueous_miac_solvation_factor_batch(
+                table->model_context,
+                payload.expected_fingerprints[salt_index].c_str(),
+                payload.temperature,
+                payload.pressure,
+                molalities.data(),
+                molalities.size(),
+                parameters[0],
+                results.data(),
+                results.size()
+            );
+            if (status != EPCSAFT_NATIVE_STATUS_OK_V1) {
+                throw std::runtime_error(
+                    std::string("provider solvent-factor batch evaluation failed: ")
+                    + results.front().error
+                );
+            }
+            for (std::size_t local_row = 0; local_row < row_indices.size(); ++local_row) {
+                const auto& result = results[local_row];
+                if (result.status != status) {
+                    throw std::runtime_error(
+                        std::string("provider solvent-factor batch row failed: ")
+                        + result.error
+                    );
+                }
+                record_result(
+                    row_indices[local_row],
+                    result.log_mean_ionic_activity_coefficient_molality,
+                    {result.derivative},
+                    result.reference_molality_mol_per_kg,
+                    result.reference_convergence_error,
+                    result.reference_derivative_convergence_error,
+                    result.parameter_fingerprint
+                );
+            }
+        } else {
+            const auto& columns = payload.observations[row_indices.front()].columns;
+            for (const std::size_t row_index : row_indices) {
+                if (payload.observations[row_index].columns != columns) {
+                    throw std::invalid_argument(
+                        "aqueous salt rows do not share one parameter block"
+                    );
+                }
+            }
+            std::array<double, 3> local_parameters{};
+            for (std::size_t local = 0; local < local_parameters.size(); ++local) {
+                if (columns[local] >= payload.parameter_count) {
+                    throw std::invalid_argument(
+                        "aqueous observation column is outside the parameter block"
+                    );
+                }
+                local_parameters[local] = parameters[columns[local]];
+            }
+            std::vector<epcsaft_aqueous_miac_kij_result_v1> results(row_indices.size());
+            for (auto& result : results) result.struct_size = sizeof(result);
+            const int status = table->evaluate_aqueous_miac_kij_batch(
+                table->model_context,
+                payload.expected_fingerprints[salt_index].c_str(),
+                payload.temperature,
+                payload.pressure,
+                molalities.data(),
+                molalities.size(),
+                local_parameters.data(),
+                local_parameters.size(),
+                results.data(),
+                results.size()
+            );
+            if (status != EPCSAFT_NATIVE_STATUS_OK_V1) {
+                throw std::runtime_error(
+                    std::string("provider aqueous-kij batch evaluation failed: ")
+                    + results.front().error
+                );
+            }
+            for (std::size_t local_row = 0; local_row < row_indices.size(); ++local_row) {
+                const auto& result = results[local_row];
+                if (result.status != status) {
+                    throw std::runtime_error(
+                        std::string("provider aqueous-kij batch row failed: ")
+                        + result.error
+                    );
+                }
+                record_result(
+                    row_indices[local_row],
+                    result.log_mean_ionic_activity_coefficient_molality,
+                    std::vector<double>(result.derivative, result.derivative + 3),
+                    result.reference_molality_mol_per_kg,
+                    result.reference_convergence_error,
+                    result.reference_derivative_convergence_error,
+                    result.parameter_fingerprint
+                );
+            }
+        }
     }
     return evaluation;
 }
@@ -566,6 +632,7 @@ SolveOutcome solve_one(
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
     options.max_num_iterations = payload.max_iterations;
+    options.max_solver_time_in_seconds = payload.max_solver_time_seconds;
     options.function_tolerance = payload.function_tolerance;
     options.gradient_tolerance = payload.gradient_tolerance;
     options.parameter_tolerance = payload.parameter_tolerance;

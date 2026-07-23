@@ -1232,6 +1232,7 @@ def _aqueous_native_payload(
         "equal row weights; observations are not uncertainties",
         PROVIDER_CAPSULE,
         "DENSE_QR",
+        "per-aqueous-start wall-time maximum: 180 s",
     )
     return (
         identity,
@@ -1244,6 +1245,7 @@ def _aqueous_native_payload(
         specification.temperature_k,
         specification.pressure_pa,
         specification.max_num_iterations,
+        specification.aqueous_start_wall_time_max_seconds,
         specification.function_tolerance,
         specification.gradient_tolerance,
         specification.parameter_tolerance,
