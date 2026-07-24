@@ -1,0 +1,6 @@
+- Keep one Ceres engine/result/native target; extend closed family records rather than adding registries, overlays, compatibility shims, or duplicate solver owners.
+- Units, residuals, scaling, bounds, starts, tolerances, source hashes, row identities, and Provider fingerprints are frozen interfaces.
+- Separate solver convergence, numerical convergence/rank/conditioning, workflow validity, scientific/physical validity, and predictive status.
+- All training rows remain training unless an approved partition/cutoff says otherwise; fitted values are not Provider-catalog authority.
+- Consume only exact installed Provider public SDK callbacks and exact derivatives; never copy EOS/reference equations or use production finite differences.
+- Expensive full fits belong behind explicit runners and retained evidence, not default tests.

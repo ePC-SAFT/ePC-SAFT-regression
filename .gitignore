@@ -1,5 +1,9 @@
 .venv/
-.serena/
+.serena/*
+!.serena/.gitignore
+!.serena/project.yml
+!.serena/memories/
+!.serena/memories/**
 __pycache__/
 *.py[cod]
 *.so

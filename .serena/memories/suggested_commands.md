@@ -1,0 +1,5 @@
+- Inspect: `rg <pattern>`, `rg --files`, `git status --short --branch`, `git diff --check`.
+- Configure/build native package using the repository's CMake/wheel commands recorded in README or current issue evidence; bind tests to exact installed Provider artifacts rather than sibling source imports.
+- Focused tests: `pytest -q tests/<focused_test>.py` in an isolated environment containing the exact Provider and Regression wheels.
+- YAML sanity: parse `ARCHITECTURE.yaml` with the environment's YAML parser.
+- Cleanup after task-owned files/processes: `bash "$HOME/.codex/hooks/codex-cleanup.sh" --repo-root .`; add `--remove` only for task-owned reported paths.
