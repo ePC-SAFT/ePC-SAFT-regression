@@ -1,5 +1,5 @@
 #include "born_diameter_fit.hpp"
-#include "figiel_aqueous_fit.hpp"
+#include "figiel_water_factor_fit.hpp"
 #include "pure_saturation_fit.hpp"
 
 #include <epcsaft/native_sdk_v1.h>
@@ -159,31 +159,38 @@ PyObject* py_solve_born(PyObject*, PyObject* args) {
     return epcsaft_regression::solve_born_python(capsules, payload);
 }
 
-PyObject* py_evaluate_figiel_aqueous(PyObject*, PyObject* args) {
-    PyObject* capsules = nullptr;
+PyObject* py_solve_figiel_water_factor(PyObject*, PyObject* args) {
+    PyObject* capsule = nullptr;
     PyObject* payload = nullptr;
-    PyObject* parameters = nullptr;
     if (!PyArg_ParseTuple(
             args,
-            "OOO:evaluate_figiel_aqueous",
-            &capsules,
-            &payload,
-            &parameters
+            "OO:solve_figiel_water_factor",
+            &capsule,
+            &payload
         )) {
         return nullptr;
     }
-    return epcsaft_regression::evaluate_figiel_aqueous_python(
-        capsules, payload, parameters
+    return epcsaft_regression::solve_figiel_water_factor_python(
+        capsule, payload
     );
 }
 
-PyObject* py_solve_figiel_aqueous(PyObject*, PyObject* args) {
-    PyObject* capsules = nullptr;
+PyObject* py_evaluate_figiel_water_factor(PyObject*, PyObject* args) {
+    PyObject* capsule = nullptr;
     PyObject* payload = nullptr;
-    if (!PyArg_ParseTuple(args, "OO:solve_figiel_aqueous", &capsules, &payload)) {
+    double parameter = 0.0;
+    if (!PyArg_ParseTuple(
+            args,
+            "OOd:evaluate_figiel_water_factor",
+            &capsule,
+            &payload,
+            &parameter
+        )) {
         return nullptr;
     }
-    return epcsaft_regression::solve_figiel_aqueous_python(capsules, payload);
+    return epcsaft_regression::evaluate_figiel_water_factor_python(
+        capsule, payload, parameter
+    );
 }
 
 PyMethodDef methods[] = {
@@ -210,16 +217,16 @@ PyMethodDef methods[] = {
     },
     {"solve_born", py_solve_born, METH_VARARGS, "Fit the five Figiel Born diameters."},
     {
-        "evaluate_figiel_aqueous",
-        py_evaluate_figiel_aqueous,
+        "solve_figiel_water_factor",
+        py_solve_figiel_water_factor,
         METH_VARARGS,
-        "Evaluate exact staged Figiel aqueous residuals and Jacobian."
+        "Fit the Figiel NaBr water solvation factor."
     },
     {
-        "solve_figiel_aqueous",
-        py_solve_figiel_aqueous,
+        "evaluate_figiel_water_factor",
+        py_evaluate_figiel_water_factor,
         METH_VARARGS,
-        "Fit one staged Figiel aqueous parameter family."
+        "Evaluate Figiel NaBr water-factor residuals and Jacobian."
     },
     {nullptr, nullptr, 0, nullptr},
 };

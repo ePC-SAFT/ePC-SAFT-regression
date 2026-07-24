@@ -414,21 +414,17 @@ FIGIEL_BORN_DIAMETER_TRACER_V1 = BornDiameterTracerSpecification(
     ceres_logging="SILENT",
 )
 
-
-FIGIEL_AQUEOUS_MIAC_PACKAGED_SHA256 = (
-    "2f63e13f06a5b0f4e8bca2980b6a8d9d7fb0f839153c43e3a71952daf9796595"
+FIGIEL_NABR_MIAC_PACKAGED_SHA256 = (
+    "0591d90f4775d672eb830229cf99a925523b101dcf3f4881a8425318da25d97d"
 )
-FIGIEL_AQUEOUS_MIAC_HEADER = ("salt", "molality_mol_kg", "gamma_pm_m")
-FIGIEL_AQUEOUS_SALTS = ("LiCl", "NaCl", "KCl", "LiBr", "NaBr", "KBr")
-FIGIEL_AQUEOUS_SALT_COUNTS = (29, 29, 28, 29, 21, 28)
-FIGIEL_AQUEOUS_COMPONENTS = {
-    "LiCl": ("lithium-cation", "chloride-anion"),
-    "NaCl": ("sodium-cation", "chloride-anion"),
-    "KCl": ("potassium-cation", "chloride-anion"),
-    "LiBr": ("lithium-cation", "bromide-anion"),
-    "NaBr": ("sodium-cation", "bromide-anion"),
-    "KBr": ("potassium-cation", "bromide-anion"),
-}
+FIGIEL_NABR_MIAC_HEADER = ("salt", "molality_mol_kg", "gamma_pm_m")
+FIGIEL_FIXED_BORN_DIAMETERS_ANGSTROM = (
+    2.7888130173797934,
+    3.4524616464076425,
+    4.147266741279482,
+    4.101505615791675,
+    4.476998527506598,
+)
 FIGIEL_AQUEOUS_KIJ_COORDINATES = (
     ("water", "lithium-cation"),
     ("water", "sodium-cation"),
@@ -443,7 +439,17 @@ FIGIEL_AQUEOUS_KIJ_COORDINATES = (
     ("potassium-cation", "bromide-anion"),
 )
 FIGIEL_AQUEOUS_PUBLISHED_KIJ = (
-    -0.4, -0.3, -0.1, -0.3, -0.3, 0.8, 0.8, 0.0, 0.5, 0.65, -0.35,
+    -0.4,
+    -0.3,
+    -0.1,
+    -0.3,
+    -0.3,
+    0.8,
+    0.8,
+    0.0,
+    0.5,
+    0.65,
+    -0.35,
 )
 
 
@@ -457,26 +463,21 @@ class AqueousMiacObservation:
     gamma_pm_m: float
 
     def __post_init__(self) -> None:
-        if not self.row_id.strip():
-            raise ValueError("aqueous MIAC row_id must be nonblank")
-        if self.salt not in FIGIEL_AQUEOUS_COMPONENTS:
-            raise ValueError("aqueous MIAC salt is outside the frozen six-salt set")
-        if (self.cation_component_id, self.anion_component_id) != (
-            FIGIEL_AQUEOUS_COMPONENTS[self.salt]
+        if (
+            not self.row_id.strip()
+            or self.salt != "NaBr"
+            or self.cation_component_id != "sodium-cation"
+            or self.anion_component_id != "bromide-anion"
         ):
-            raise ValueError("aqueous MIAC component identities do not match the salt")
+            raise ValueError("water-factor observation must identify one NaBr row")
         if not math.isfinite(self.molality_mol_per_kg) or self.molality_mol_per_kg <= 0.0:
-            raise ValueError("aqueous MIAC molality must be positive and finite")
+            raise ValueError("water-factor molality must be positive and finite")
         if not math.isfinite(self.gamma_pm_m) or self.gamma_pm_m <= 0.0:
-            raise ValueError("aqueous MIAC observation must be positive and finite")
-
-    @property
-    def component_order(self) -> tuple[str, str, str]:
-        return ("water", self.cation_component_id, self.anion_component_id)
+            raise ValueError("water-factor MIAC must be positive and finite")
 
 
 @dataclass(frozen=True, slots=True)
-class FigielStagedAqueousRecoverySpecification:
+class FigielWaterSolvationFactorSpecification:
     specification_id: str
     observations: tuple[AqueousMiacObservation, ...]
     source_validation_commit: str
@@ -485,42 +486,37 @@ class FigielStagedAqueousRecoverySpecification:
     source_parameter_packet_sha256: str
     source_metadata_sha256: str
     source_si_extraction_sha256: str
-    source_csv_sha256: str
+    source_hamer_wu_csv_sha256: str
+    packaged_nabr_sha256: str
+    fixed_born_evidence_file_sha256: str
+    fixed_born_evidence_subject_sha256: str
+    fixed_born_diameters_angstrom: tuple[float, ...]
+    fixed_aqueous_kij_coordinate_order: tuple[tuple[str, str], ...]
+    fixed_aqueous_kij: tuple[float, ...]
+    expected_provider_fingerprint: str
     temperature_k: float
     pressure_pa: float
-    solvent_factor_bounds: tuple[float, float]
-    solvent_factor_starts: tuple[float, float]
-    kij_coordinate_order: tuple[tuple[str, str], ...]
-    published_kij: tuple[float, ...]
-    kij_bounds: tuple[float, float]
-    kij_starts: tuple[tuple[float, ...], ...]
-    max_confirmation_cycles: int
-    cycle_scaled_max_delta: float
+    parameter_name: str
+    parameter_bounds: tuple[float, float]
+    starts: tuple[float, float]
     max_num_iterations: int
-    aqueous_start_wall_time_max_seconds: float
+    start_wall_time_max_seconds: float
     function_tolerance: float
     gradient_tolerance: float
     parameter_tolerance: float
     rank_threshold_multiplier: float
-    parameter_comparison_max_abs: float
-    pooled_miac_rmse_max: float
-    per_salt_miac_rmse_max: float
-    per_salt_miac_max_abs_error: float
-    first_predicted_miac_max: float
+    start_agreement_max_abs: float
+    residual_definition: str
+    ceres_linear_solver: str
+    ceres_num_threads: int
+    ceres_logging: str
 
     def __post_init__(self) -> None:
-        row_ids = tuple(row.row_id for row in self.observations)
-        if len(self.observations) != 164 or len(set(row_ids)) != 164:
-            raise ValueError("staged aqueous contract requires 164 unique rows")
-        counts = tuple(
-            sum(row.salt == salt for row in self.observations)
-            for salt in FIGIEL_AQUEOUS_SALTS
-        )
-        if counts != FIGIEL_AQUEOUS_SALT_COUNTS:
-            raise ValueError("staged aqueous salt counts do not match the audited packet")
-        if sum(row.salt == "NaBr" for row in self.observations) != 21:
-            raise ValueError("Stage B requires all 21 NaBr rows")
-        identity = (
+        if len(self.observations) != 21 or len(
+            {row.row_id for row in self.observations}
+        ) != 21:
+            raise ValueError("water-factor contract requires 21 unique NaBr rows")
+        exact_contract = (
             self.specification_id,
             self.source_validation_commit,
             self.source_validation_tree,
@@ -528,137 +524,157 @@ class FigielStagedAqueousRecoverySpecification:
             self.source_parameter_packet_sha256,
             self.source_metadata_sha256,
             self.source_si_extraction_sha256,
-            self.source_csv_sha256,
+            self.source_hamer_wu_csv_sha256,
+            self.packaged_nabr_sha256,
+            self.fixed_born_evidence_file_sha256,
+            self.fixed_born_evidence_subject_sha256,
+            self.fixed_born_diameters_angstrom,
+            self.fixed_aqueous_kij_coordinate_order,
+            self.fixed_aqueous_kij,
+            self.expected_provider_fingerprint,
+            tuple(row.molality_mol_per_kg for row in self.observations),
             self.temperature_k,
             self.pressure_pa,
-            self.solvent_factor_bounds,
-            self.solvent_factor_starts,
-            self.kij_coordinate_order,
-            self.published_kij,
-            self.kij_bounds,
-            self.kij_starts,
-            self.max_confirmation_cycles,
-            self.cycle_scaled_max_delta,
+            self.parameter_name,
+            self.parameter_bounds,
+            self.starts,
             self.max_num_iterations,
-            self.aqueous_start_wall_time_max_seconds,
+            self.start_wall_time_max_seconds,
             self.function_tolerance,
             self.gradient_tolerance,
             self.parameter_tolerance,
             self.rank_threshold_multiplier,
-            self.parameter_comparison_max_abs,
-            self.pooled_miac_rmse_max,
-            self.per_salt_miac_rmse_max,
-            self.per_salt_miac_max_abs_error,
-            self.first_predicted_miac_max,
+            self.start_agreement_max_abs,
+            self.residual_definition,
+            self.ceres_linear_solver,
+            self.ceres_num_threads,
+            self.ceres_logging,
         )
-        expected = (
-            "figiel-2025-staged-aqueous-current-catalog-recovery-v1",
+        expected_contract = (
+            "figiel-2025-water-solvation-factor-nabr-v1",
             "8944d34f7002cda1bb8760e606cc1f11696f58cd",
             "6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd",
-            "f405a3e48d21cd979a8dd480d5f8cb3be40754f5d6babf368b505b5f305607f0",
-            "932e8baa90fcefbaa8c3a8730cdeadd83a4c01f0a3b109f4e4cd0319aee9312b",
-            "8ea06c6ca5452d01448a03f9a76cf7d0c35bb99c9abe23ccb1729d56c71d468f",
+            FIGIEL_VALIDATION_LEDGER_SHA256,
+            FIGIEL_VALIDATION_PARAMETER_PACKET_SHA256,
+            FIGIEL_VALIDATION_METADATA_SHA256,
             "85bd39f727158d5a9d6eea6828c1673f73850e783a655b09660cc9b66d84321a",
-            FIGIEL_AQUEOUS_MIAC_PACKAGED_SHA256,
-            298.15,
-            100_000.0,
-            (1.0, 2.0),
-            (1.2, 1.8),
+            "2f63e13f06a5b0f4e8bca2980b6a8d9d7fb0f839153c43e3a71952daf9796595",
+            FIGIEL_NABR_MIAC_PACKAGED_SHA256,
+            "99d46eafbdae3428f690543364096fb414b818db201d1c35b0c0da8b03ae91d5",
+            "55ea2cd69af62c45b26179cfab6939760de23058b5a7e8c880a79f67faa417ed",
+            FIGIEL_FIXED_BORN_DIAMETERS_ANGSTROM,
             FIGIEL_AQUEOUS_KIJ_COORDINATES,
             FIGIEL_AQUEOUS_PUBLISHED_KIJ,
-            (-1.0, 1.0),
-            ((0.0,) * 11, (-0.5,) * 11, (0.5,) * 11),
-            3,
-            1.0e-5,
+            "sha256:89d400b3641da07053da0823fe2fbcfd951dd97aaf339c1651a4338c954a7caf",
+            (
+                0.001,
+                0.002,
+                0.005,
+                0.01,
+                0.02,
+                0.05,
+                0.1,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.2,
+                1.4,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+            ),
+            298.15,
+            100_000.0,
+            "water_solvation_factor",
+            (1.0, 2.0),
+            (1.2, 1.8),
             500,
             180.0,
             1.0e-10,
             1.0e-10,
             1.0e-10,
             100.0,
-            0.05,
-            0.17,
-            0.35,
-            1.25,
-            0.98,
+            1.0e-5,
+            "1 - gamma_model/gamma_observed",
+            "DENSE_QR",
+            1,
+            "SILENT",
         )
-        if identity != expected:
-            raise ValueError("staged aqueous controls must match the frozen design")
-
-    @property
-    def stage_b_observations(self) -> tuple[AqueousMiacObservation, ...]:
-        return tuple(row for row in self.observations if row.salt == "NaBr")
+        if exact_contract != expected_contract:
+            raise ValueError("water-factor controls must match the frozen one-stage contract")
 
 
-def _load_figiel_aqueous_miac_targets() -> tuple[AqueousMiacObservation, ...]:
+def _load_figiel_nabr_miac_targets() -> tuple[AqueousMiacObservation, ...]:
     data = files("epcsaft_regression.data").joinpath(
-        "figiel-aqueous-miac-targets.csv"
+        "figiel-nabr-miac-targets.csv"
     ).read_bytes()
-    if hashlib.sha256(data).hexdigest() != FIGIEL_AQUEOUS_MIAC_PACKAGED_SHA256:
-        raise ValueError("packaged aqueous MIAC hash does not match the frozen packet")
+    if hashlib.sha256(data).hexdigest() != FIGIEL_NABR_MIAC_PACKAGED_SHA256:
+        raise ValueError("packaged NaBr MIAC hash does not match the frozen packet")
     reader = csv.DictReader(io.StringIO(data.decode("utf-8"), newline=""))
-    if tuple(reader.fieldnames or ()) != FIGIEL_AQUEOUS_MIAC_HEADER:
-        raise ValueError("packaged aqueous MIAC header does not match the frozen packet")
-    counts = {salt: 0 for salt in FIGIEL_AQUEOUS_SALTS}
-    observations = []
-    for source_row in reader:
-        salt = source_row["salt"]
-        if salt not in counts:
-            raise ValueError("packaged aqueous MIAC salt is outside the frozen packet")
-        counts[salt] += 1
-        cation, anion = FIGIEL_AQUEOUS_COMPONENTS[salt]
-        observations.append(
-            AqueousMiacObservation(
-                row_id=f"hamer-wu-1972-{salt.lower()}-{counts[salt]:03d}",
-                salt=salt,
-                cation_component_id=cation,
-                anion_component_id=anion,
-                molality_mol_per_kg=float(source_row["molality_mol_kg"]),
-                gamma_pm_m=float(source_row["gamma_pm_m"]),
-            )
+    if tuple(reader.fieldnames or ()) != FIGIEL_NABR_MIAC_HEADER:
+        raise ValueError("packaged NaBr MIAC header does not match the frozen packet")
+    return tuple(
+        AqueousMiacObservation(
+            row_id=f"hamer-wu-1972-nabr-{index:03d}",
+            salt=row["salt"],
+            cation_component_id="sodium-cation",
+            anion_component_id="bromide-anion",
+            molality_mol_per_kg=float(row["molality_mol_kg"]),
+            gamma_pm_m=float(row["gamma_pm_m"]),
         )
-    return tuple(observations)
+        for index, row in enumerate(reader, start=1)
+    )
 
 
-FIGIEL_STAGED_AQUEOUS_RECOVERY_V1 = FigielStagedAqueousRecoverySpecification(
-    specification_id="figiel-2025-staged-aqueous-current-catalog-recovery-v1",
-    observations=_load_figiel_aqueous_miac_targets(),
+FIGIEL_WATER_SOLVATION_FACTOR_V1 = FigielWaterSolvationFactorSpecification(
+    specification_id="figiel-2025-water-solvation-factor-nabr-v1",
+    observations=_load_figiel_nabr_miac_targets(),
     source_validation_commit="8944d34f7002cda1bb8760e606cc1f11696f58cd",
     source_validation_tree="6c8fd350dcd6bfdd7be1918f73fd33a23e2070dd",
-    source_ledger_sha256=(
-        "f405a3e48d21cd979a8dd480d5f8cb3be40754f5d6babf368b505b5f305607f0"
-    ),
-    source_parameter_packet_sha256=(
-        "932e8baa90fcefbaa8c3a8730cdeadd83a4c01f0a3b109f4e4cd0319aee9312b"
-    ),
-    source_metadata_sha256=(
-        "8ea06c6ca5452d01448a03f9a76cf7d0c35bb99c9abe23ccb1729d56c71d468f"
-    ),
+    source_ledger_sha256=FIGIEL_VALIDATION_LEDGER_SHA256,
+    source_parameter_packet_sha256=FIGIEL_VALIDATION_PARAMETER_PACKET_SHA256,
+    source_metadata_sha256=FIGIEL_VALIDATION_METADATA_SHA256,
     source_si_extraction_sha256=(
         "85bd39f727158d5a9d6eea6828c1673f73850e783a655b09660cc9b66d84321a"
     ),
-    source_csv_sha256=FIGIEL_AQUEOUS_MIAC_PACKAGED_SHA256,
+    source_hamer_wu_csv_sha256=(
+        "2f63e13f06a5b0f4e8bca2980b6a8d9d7fb0f839153c43e3a71952daf9796595"
+    ),
+    packaged_nabr_sha256=FIGIEL_NABR_MIAC_PACKAGED_SHA256,
+    fixed_born_evidence_file_sha256=(
+        "99d46eafbdae3428f690543364096fb414b818db201d1c35b0c0da8b03ae91d5"
+    ),
+    fixed_born_evidence_subject_sha256=(
+        "55ea2cd69af62c45b26179cfab6939760de23058b5a7e8c880a79f67faa417ed"
+    ),
+    fixed_born_diameters_angstrom=FIGIEL_FIXED_BORN_DIAMETERS_ANGSTROM,
+    fixed_aqueous_kij_coordinate_order=FIGIEL_AQUEOUS_KIJ_COORDINATES,
+    fixed_aqueous_kij=FIGIEL_AQUEOUS_PUBLISHED_KIJ,
+    expected_provider_fingerprint=(
+        "sha256:89d400b3641da07053da0823fe2fbcfd951dd97aaf339c1651a4338c954a7caf"
+    ),
     temperature_k=298.15,
     pressure_pa=100_000.0,
-    solvent_factor_bounds=(1.0, 2.0),
-    solvent_factor_starts=(1.2, 1.8),
-    kij_coordinate_order=FIGIEL_AQUEOUS_KIJ_COORDINATES,
-    published_kij=FIGIEL_AQUEOUS_PUBLISHED_KIJ,
-    kij_bounds=(-1.0, 1.0),
-    kij_starts=((0.0,) * 11, (-0.5,) * 11, (0.5,) * 11),
-    max_confirmation_cycles=3,
-    cycle_scaled_max_delta=1.0e-5,
+    parameter_name="water_solvation_factor",
+    parameter_bounds=(1.0, 2.0),
+    starts=(1.2, 1.8),
     max_num_iterations=500,
-    aqueous_start_wall_time_max_seconds=180.0,
+    start_wall_time_max_seconds=180.0,
     function_tolerance=1.0e-10,
     gradient_tolerance=1.0e-10,
     parameter_tolerance=1.0e-10,
     rank_threshold_multiplier=100.0,
-    parameter_comparison_max_abs=0.05,
-    pooled_miac_rmse_max=0.17,
-    per_salt_miac_rmse_max=0.35,
-    per_salt_miac_max_abs_error=1.25,
-    first_predicted_miac_max=0.98,
+    start_agreement_max_abs=1.0e-5,
+    residual_definition="1 - gamma_model/gamma_observed",
+    ceres_linear_solver="DENSE_QR",
+    ceres_num_threads=1,
+    ceres_logging="SILENT",
 )
 
 
