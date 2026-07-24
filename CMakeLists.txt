@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.24)
 project(epcsaft_regression LANGUAGES CXX)
 
 find_package(Python 3.13 REQUIRED COMPONENTS Interpreter Development.Module)
+find_path(Unwind_INCLUDE_DIR NAMES unwind.h PATH_SUFFIXES libunwind)
+find_package(glog CONFIG REQUIRED)
 find_package(Ceres 2.2 REQUIRED)
 
 if(NOT DEFINED ENV{EPCSAFT_INCLUDE_DIR} OR "$ENV{EPCSAFT_INCLUDE_DIR}" STREQUAL "")
@@ -15,6 +17,7 @@ endif()
 
 Python_add_library(_native MODULE WITH_SOABI
   src/epcsaft_regression/native/born_diameter_fit.cpp
+  src/epcsaft_regression/native/figiel_water_factor_fit.cpp
   src/epcsaft_regression/native/pure_saturation_contract.cpp
   src/epcsaft_regression/native/pure_saturation_fit.cpp
   src/epcsaft_regression/native/module.cpp

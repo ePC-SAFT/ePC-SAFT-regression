@@ -1,14 +1,25 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 
-from epcsaft import native_sdk
+from epcsaft import EPCSAFT, ParameterBundle, native_sdk, unit_registry
+from epcsaft.records import (
+    AssociationParameterRecord,
+    ConstantCorrelation,
+    ConstantPlusSumOfExponentialsCorrelation,
+    ModelParameterRecord,
+    PairParameterRecord,
+    SingleParameterRecord,
+    SiteRecord,
+)
 
 from . import _native
 from .records import (
     FIGIEL_BORN_DIAMETER_TRACER_V1,
+    FIGIEL_WATER_SOLVATION_FACTOR_V1,
     BornDiameterTracerSpecification,
+    FigielWaterSolvationFactorSpecification,
     PureSaturationDataset,
     PureSaturationFitSpecification,
     SaturationObservation,
@@ -24,6 +35,11 @@ PREDICTIVE_STATUS = "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
 DIAMETER_TRANSFORM = "d_i = 3.0 angstrom + 1.0 angstrom * z_i"
 BORN_RESIDUAL = "r_i = (G_i(d_i) - G_i_target) / abs(G_i_target)"
 BORN_JACOBIAN = "J_ij = delta_ij * G_i_prime(d_i) * 1 angstrom / abs(G_i_target)"
+WATER_FACTOR_RESIDUAL = "r_q = 1 - gamma_q_model / gamma_q_observed"
+WATER_FACTOR_JACOBIAN = (
+    "dr_q/df_water = -(gamma_q_model/gamma_q_observed) "
+    "* dln(gamma_q_model)/df_water"
+)
 
 
 def _row_payload(row: SaturationObservation) -> tuple[object, ...]:
@@ -204,6 +220,61 @@ class BornDiameterFitResult:
     @property
     def observations(self) -> tuple[BornObservationDiagnostic, ...]:
         return self.starts[0].observations
+
+
+@dataclass(frozen=True, slots=True)
+class WaterSolvationFactorRowDiagnostic:
+    row_id: str
+    molality_mol_per_kg: float
+    observed_gamma_pm_m: float
+    modeled_log_gamma_pm_m: float
+    modeled_gamma_pm_m: float
+    scaled_residual: float
+    provider_log_derivative: float
+    exact_scaled_residual_derivative: float
+    reference_molality_mol_per_kg: float
+    reference_convergence_error: float
+    reference_derivative_convergence_error: float
+    provider_fingerprint: str
+
+
+@dataclass(frozen=True, slots=True)
+class WaterSolvationFactorStartDiagnostic:
+    name: str
+    termination: str
+    solution_usable: bool
+    initial_cost: float
+    final_cost: float
+    iterations: int
+    parameter: float
+    rows: tuple[WaterSolvationFactorRowDiagnostic, ...]
+    singular_value: float
+    rank_threshold: float
+    rank: int
+    condition_number: float
+    complete_jacobian_column: bool
+    active_bound: bool
+    solver_converged: bool
+    failure_reasons: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class FigielWaterSolvationFactorFitResult:
+    specification_id: str
+    provider_fingerprint: str
+    fitted_water_solvation_factor: float
+    starts: tuple[WaterSolvationFactorStartDiagnostic, ...]
+    start_parameter_max_abs_delta: float
+    miac_rmse: float
+    input_row_ids: tuple[str, ...]
+    evaluated_row_ids: tuple[str, ...]
+    failed_row_ids: tuple[str, ...]
+    solver_converged: bool
+    numerically_converged: bool
+    physically_valid: bool
+    workflow_valid: bool
+    predictive_status: str
+    failure_reasons: tuple[str, ...]
 
 
 def _born_native_payload(
@@ -948,5 +1019,303 @@ def fit_figiel_born_diameters(*, models: tuple[object, ...]) -> BornDiameterFitR
             float(confirmation_deltas[0]),
             float(confirmation_deltas[1]),
         ),
+        failure_reasons=tuple(failure_reasons),
+    )
+
+
+def _fixed_water_factor_model(
+    specification: FigielWaterSolvationFactorSpecification,
+) -> EPCSAFT:
+    catalog = ParameterBundle.from_catalog(
+        "figiel-2025-reference-electrolytes", version=1
+    )
+    born_by_component = {
+        target.active_component_id: diameter
+        for target, diameter in zip(
+            FIGIEL_BORN_DIAMETER_TRACER_V1.targets,
+            specification.fixed_born_diameters_angstrom,
+            strict=True,
+        )
+    }
+    records = tuple(
+        replace(
+            record,
+            value=(
+                born_by_component[record.component_id]
+                * unit_registry.angstrom
+            ),
+        )
+        if (
+            isinstance(record, SingleParameterRecord)
+            and record.family == "born_diameter"
+            and record.component_id in born_by_component
+        )
+        else record
+        for record in catalog.records
+    )
+    bundle = ParameterBundle.from_records(
+        bundle_id="figiel-water-factor-fixed-inputs",
+        bundle_version=1,
+        purpose="user-provided",
+        sources=catalog.sources,
+        domains=catalog.domains,
+        components=catalog.components,
+        singles=(
+            record
+            for record in records
+            if isinstance(record, SingleParameterRecord)
+        ),
+        pairs=(
+            record
+            for record in records
+            if isinstance(record, PairParameterRecord)
+        ),
+        sites=(
+            record for record in records if isinstance(record, SiteRecord)
+        ),
+        associations=(
+            record
+            for record in records
+            if isinstance(record, AssociationParameterRecord)
+        ),
+        correlations=(
+            record
+            for record in records
+            if isinstance(
+                record,
+                (
+                    ConstantCorrelation,
+                    ConstantPlusSumOfExponentialsCorrelation,
+                ),
+            )
+        ),
+        models=(
+            record
+            for record in records
+            if isinstance(record, ModelParameterRecord)
+        ),
+    )
+    return EPCSAFT(
+        bundle.select(("water", "sodium-cation", "bromide-anion"))
+    )
+
+
+def _water_factor_native_payload(
+    specification: FigielWaterSolvationFactorSpecification,
+) -> tuple[object, ...]:
+    observations = tuple(
+        (
+            row.row_id,
+            row.molality_mol_per_kg,
+            row.gamma_pm_m,
+        )
+        for row in specification.observations
+    )
+    starts = (
+        ("primary", specification.starts[0]),
+        ("upper", specification.starts[1]),
+    )
+    return (
+        observations,
+        specification.expected_provider_fingerprint,
+        starts,
+        specification.temperature_k,
+        specification.pressure_pa,
+        specification.parameter_bounds,
+        specification.max_num_iterations,
+        specification.start_wall_time_max_seconds,
+        specification.function_tolerance,
+        specification.gradient_tolerance,
+        specification.parameter_tolerance,
+        specification.rank_threshold_multiplier,
+    )
+
+
+def _water_factor_row(
+    native_row: tuple[object, ...],
+) -> WaterSolvationFactorRowDiagnostic:
+    return WaterSolvationFactorRowDiagnostic(
+        row_id=str(native_row[0]),
+        molality_mol_per_kg=float(native_row[1]),
+        observed_gamma_pm_m=float(native_row[2]),
+        modeled_log_gamma_pm_m=float(native_row[3]),
+        modeled_gamma_pm_m=float(native_row[4]),
+        scaled_residual=float(native_row[5]),
+        provider_log_derivative=float(native_row[6]),
+        exact_scaled_residual_derivative=float(native_row[7]),
+        reference_molality_mol_per_kg=float(native_row[8]),
+        reference_convergence_error=float(native_row[9]),
+        reference_derivative_convergence_error=float(native_row[10]),
+        provider_fingerprint=str(native_row[11]),
+    )
+
+
+def _water_factor_start(
+    native_start: tuple[object, ...],
+    specification: FigielWaterSolvationFactorSpecification,
+) -> WaterSolvationFactorStartDiagnostic:
+    if len(native_start) != 13:
+        raise RuntimeError("native water-factor start has the wrong dimension")
+    rows = tuple(
+        _water_factor_row(tuple(row)) for row in tuple(native_start[7])
+    )
+    parameter = float(native_start[6])
+    initial_cost = float(native_start[3])
+    final_cost = float(native_start[4])
+    singular_value = float(native_start[8])
+    rank_threshold = float(native_start[9])
+    termination = str(native_start[1])
+    solution_usable = bool(native_start[2])
+    rank = int(native_start[10])
+    complete_column = bool(native_start[11])
+    active_tolerance = math.sqrt(math.ulp(1.0)) * 2.0
+    active_bound = min(
+        parameter - specification.parameter_bounds[0],
+        specification.parameter_bounds[1] - parameter,
+    ) <= active_tolerance
+    finite = all(
+        math.isfinite(value)
+        for value in (
+            parameter,
+            initial_cost,
+            final_cost,
+            singular_value,
+            rank_threshold,
+            *(
+                value
+                for row in rows
+                for value in (
+                    row.modeled_log_gamma_pm_m,
+                    row.modeled_gamma_pm_m,
+                    row.scaled_residual,
+                    row.provider_log_derivative,
+                    row.exact_scaled_residual_derivative,
+                    row.reference_molality_mol_per_kg,
+                    row.reference_convergence_error,
+                    row.reference_derivative_convergence_error,
+                )
+            ),
+        )
+    )
+    failure_reasons: list[str] = []
+    if termination != "CONVERGENCE":
+        failure_reasons.append(f"Ceres termination was {termination}")
+    if not solution_usable:
+        failure_reasons.append("Ceres solution was unusable")
+    if not finite:
+        failure_reasons.append("water-factor solution or Jacobian was nonfinite")
+    if final_cost > initial_cost + math.ulp(max(1.0, abs(initial_cost))):
+        failure_reasons.append("water-factor solve increased cost")
+    if len(rows) != 21:
+        failure_reasons.append("water-factor result did not contain 21 rows")
+    if not complete_column:
+        failure_reasons.append("water-factor Jacobian column was incomplete")
+    if rank != 1:
+        failure_reasons.append(f"water-factor Jacobian rank was {rank} of 1")
+    native_failure = str(native_start[12]).strip()
+    if native_failure:
+        failure_reasons.append(native_failure)
+    return WaterSolvationFactorStartDiagnostic(
+        name=str(native_start[0]),
+        termination=termination,
+        solution_usable=solution_usable,
+        initial_cost=initial_cost,
+        final_cost=final_cost,
+        iterations=int(native_start[5]),
+        parameter=parameter,
+        rows=rows,
+        singular_value=singular_value,
+        rank_threshold=rank_threshold,
+        rank=rank,
+        condition_number=1.0 if rank == 1 else math.inf,
+        complete_jacobian_column=complete_column,
+        active_bound=active_bound,
+        solver_converged=(
+            termination == "CONVERGENCE" and solution_usable
+        ),
+        failure_reasons=tuple(failure_reasons),
+    )
+
+
+def fit_figiel_water_solvation_factor() -> FigielWaterSolvationFactorFitResult:
+    specification = FIGIEL_WATER_SOLVATION_FACTOR_V1
+    model = _fixed_water_factor_model(specification)
+    expected_fingerprint = specification.expected_provider_fingerprint
+    if model.parameter_fingerprint != expected_fingerprint:
+        raise RuntimeError("installed Provider model fingerprint does not match")
+    payload = _water_factor_native_payload(specification)
+    native_starts = _native.solve_figiel_water_factor(
+        native_sdk(model), payload
+    )
+    starts = tuple(
+        _water_factor_start(tuple(start), specification)
+        for start in tuple(native_starts)
+    )
+    if tuple(start.name for start in starts) != ("primary", "upper"):
+        raise RuntimeError("native water-factor starts did not match the contract")
+
+    primary = starts[0]
+    start_delta = abs(starts[1].parameter - primary.parameter)
+    input_row_ids = tuple(row.row_id for row in specification.observations)
+    evaluated_row_ids = tuple(row.row_id for row in primary.rows)
+    failed_row_ids = tuple(
+        row_id for row_id in input_row_ids if row_id not in evaluated_row_ids
+    )
+    solver_converged = all(start.solver_converged for start in starts)
+    numerically_converged = (
+        solver_converged
+        and all(not start.failure_reasons for start in starts)
+        and start_delta <= specification.start_agreement_max_abs
+    )
+    physically_valid = all(
+        row.modeled_gamma_pm_m > 0.0
+        and row.provider_fingerprint == expected_fingerprint
+        and math.isfinite(row.reference_molality_mol_per_kg)
+        and math.isfinite(row.reference_convergence_error)
+        and math.isfinite(row.reference_derivative_convergence_error)
+        for start in starts
+        for row in start.rows
+    )
+    workflow_valid = (
+        input_row_ids == evaluated_row_ids
+        and not failed_row_ids
+        and len(primary.rows) == 21
+    )
+    miac_rmse = math.sqrt(
+        sum(
+            (
+                row.modeled_gamma_pm_m - row.observed_gamma_pm_m
+            )
+            ** 2
+            for row in primary.rows
+        )
+        / len(primary.rows)
+    )
+    failure_reasons = [
+        f"{start.name}: {reason}"
+        for start in starts
+        for reason in start.failure_reasons
+    ]
+    if start_delta > specification.start_agreement_max_abs:
+        failure_reasons.append("declared-start agreement gate failed")
+    if not physically_valid:
+        failure_reasons.append("Provider state or reference diagnostic gate failed")
+    if not workflow_valid:
+        failure_reasons.append("source-bound identity or row accounting failed")
+    return FigielWaterSolvationFactorFitResult(
+        specification_id=specification.specification_id,
+        provider_fingerprint=expected_fingerprint,
+        fitted_water_solvation_factor=primary.parameter,
+        starts=starts,
+        start_parameter_max_abs_delta=start_delta,
+        miac_rmse=miac_rmse,
+        input_row_ids=input_row_ids,
+        evaluated_row_ids=evaluated_row_ids,
+        failed_row_ids=failed_row_ids,
+        solver_converged=solver_converged,
+        numerically_converged=numerically_converged,
+        physically_valid=physically_valid,
+        workflow_valid=workflow_valid,
+        predictive_status=PREDICTIVE_STATUS,
         failure_reasons=tuple(failure_reasons),
     )

@@ -60,13 +60,17 @@ predictive evidence, Provider-catalog authority, or production authority.
 Validation writing remains closed until Migration serializes the exact package
 artifact subject.
 The user-approved next family is the staged Figiel aqueous current-catalog
-recovery: the existing five-target Born fit (`5x5`, rank 5), one water
-solvation factor against all 21 audited NaBr rows (`21x1`, rank 1), then the 11
-Table 4/5 interactions against all 164 Hamer--Wu rows (`164x11`, rank 11),
-with at most three confirmation cycles and a `1e-5` scaled cycle threshold.
-Its sole design owner is `docs/science/figiel-aqueous-kij-regression.md`; status
-is `READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_SOLVATION_FACTOR_DERIVATIVE`.
-Provider artifact `06d21af` already supplies the corrected Stage-C callback.
+recovery. Its sole design owner is
+`docs/science/figiel-aqueous-kij-regression.md`. The first standalone step is
+implemented: one water solvation factor against all 21 audited NaBr rows
+(`21x1`, rank 1). The two declared starts converge to
+`1.5590515389548207`; the paper's one-decimal `1.5` is a sufficiently close
+descriptive comparison under the user's engineering judgment, not a numeric
+acceptance gate. The 11 Table 4/5 interactions over all 164 Hamer--Wu rows
+(`164x11`, rank 11) remain a separate next checkpoint and are not implemented
+by this package surface. Provider artifact `fa766e5` supplies the exact
+installed batch derivative used by the water-factor fit and the Stage-C
+callback.
 The retained exact isolated log and relative fits are falsification evidence,
 not proof that the staged route is impossible. Keep the user-approved Table
 4/5 maximum parameter difference at `0.05`; do not tune rows, weights, bounds,

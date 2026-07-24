@@ -46,6 +46,7 @@ owners:
   compiled_contract: src/epcsaft_regression/native/pure_saturation_contract.cpp
   residual_jacobian_and_ceres: src/epcsaft_regression/native/pure_saturation_fit.cpp
   born_residual_jacobian_and_ceres: src/epcsaft_regression/native/born_diameter_fit.cpp
+  water_factor_residual_jacobian_and_ceres: src/epcsaft_regression/native/figiel_water_factor_fit.cpp
   provider_capsule_gate: src/epcsaft_regression/native/module.cpp
   component_receipt_runner: tools/run_candidate.py
   figiel_candidate_evidence_runner: tools/run_figiel_born_candidate.py
@@ -161,7 +162,7 @@ parallel_regression_track:
   authority_effect: none
 
 figiel_aqueous_kij_design:
-  status: READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_SOLVATION_FACTOR_DERIVATIVE
+  status: WATER_SOLVATION_FACTOR_PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_STAGE_C_NOT_STARTED
   migration_decision: D-023
   design_owner: docs/science/figiel-aqueous-kij-regression.md
   source_scope: five-table-s5-averages-plus-21-nabr-plus-164-hamer-wu-rows
@@ -192,6 +193,13 @@ figiel_aqueous_kij_design:
       scale: 1.0
       starts: [1.2, 1.8]
       published_comparison_only: 1.5
+      fitted_value: 1.5590515389548207
+      start_max_abs_delta: 2.2369601326843735e-7
+      miac_rmse: 0.04582795014810974
+      rank: 1
+      condition_number: 1.0
+      active_bounds: 0
+      comparison_interpretation: user-adjudicated-sufficiently-close-no-numeric-gate
     stage_c_aqueous_kij:
       variables: 11
       residuals: 164
@@ -212,15 +220,14 @@ figiel_aqueous_kij_design:
     published_parameter_max_abs_delta: 0.05
     failed_recovery_status: SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE
     predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
-  current_provider_status: stage-a-and-stage-c-seams-retained-stage-b-seam-missing
-  required_provider_addition: >-
-    Model-bound NaBr aqueous ln(gamma_pm^m) plus exact total fixed-T,P first
-    derivative with respect to one active water solvation factor.
+  current_provider_status: exact-stage-b-and-stage-c-batch-callback-artifact-retained
+  required_provider_addition: none
   provider_artifact:
-    implementation_commit: 06d21af0334a22bafd31d617f3c8535b53711140
-    merged_commit: 39b39d9d7831a8da943372df019f5a9d7d388b44
-    wheel_sha256: 3bacac6818708091629a79ce9a7a320a07f87093f0697508060aa1aee7368cb6
-    installed_header_sha256: 01568808f48c8cf0cd5fd0eb0b3d038349a319251eb8a9f9053b028ed35e5a36
+    implementation_commit: fa766e5af86f70ae92870247b1801d7681255e98
+    implementation_tree: 962b00eac3fac18d98d9eea3c56eb137031d4b4f
+    merged_commit: 161f02cb13569c56fcd75d5bdfe1987d320d56a2
+    wheel_sha256: ee9842889a82251d5d7b501d30d235b63c727cfcd15419f3c5970730870e5286
+    installed_header_sha256: 7b08de2a57dfd9eb0ed0546a368f65b09d6fe7d921f2df086e70b8738e872914
   installed_preflight:
     evidence: evidence/figiel-aqueous-kij-published-tuple-preflight.json
     evidence_sha256: 5bd86e332b94781112eeee0ca06765a0f084020a30af76169861bbc610d5743d
@@ -238,13 +245,13 @@ figiel_aqueous_kij_design:
     fitted_max_abs_published_delta: 1.7999999999999998
     fitted_active_bound_columns: [3, 5, 6, 7, 8]
     interpretation: rejected-isolated-fixed-family-alternative
-    runtime_unblocker: installed-active-water-solvation-factor-derivative
+    runtime_unblocker: none-for-stage-b
     review_owner: bounded-independent-subagent
   required_provider_result: >-
     Existing Stage-C model-bound aqueous salt ln(gamma_pm^m) plus three exact
     total fixed-T,P k_ij derivatives, and one new Stage-B NaBr value plus exact
     total fixed-T,P water-solvation-factor derivative.
-  runtime_effect: none-preflight-evidence-only
+  runtime_effect: authority-neutral-standalone-water-factor-workflow
   validation_campaign: not-started
   authority_effect: none
 
@@ -274,11 +281,14 @@ public_surface:
     - ETHANE_SATURATION_FIT_V1
     - PROPANE_SATURATION_FIT_V1
     - FIGIEL_BORN_DIAMETER_TRACER_V1
+    - FIGIEL_WATER_SOLVATION_FACTOR_V1
     - load_pure_saturation_dataset
     - PureSaturationFitResult
     - BornDiameterFitResult
+    - FigielWaterSolvationFactorFitResult
     - fit_pure_saturation
     - fit_figiel_born_diameters
+    - fit_figiel_water_solvation_factor
   retired_without_aliases:
     - METHANE_FIT_SPECIFICATION_V1
     - load_methane_dataset
@@ -305,6 +315,11 @@ public_surface:
         entry: evaluate_ion_solvation_born
         coordinate: active_born_diameter_angstrom
         derivative_order: 1
+      figiel_water_solvation_factor:
+        entry: evaluate_aqueous_miac_solvation_factor_batch
+        coordinate: active_water_solvation_factor
+        derivative_order: 1
+        batch_unit: nabr-all-21-rows
 
 component_contracts:
   methane:
@@ -353,7 +368,7 @@ parameter_family_readiness:
   polar_parameters: NOT_READY
   electrolyte_born_parameters: NOT_READY_NO_CATALOG_ADMISSION
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
-  figiel_current_catalog_aqueous_kij: READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_SOLVATION_FACTOR_DERIVATIVE
+  figiel_current_catalog_aqueous_kij: WATER_SOLVATION_FACTOR_PASSED_STAGE_C_NOT_STARTED
   reactive_or_temperature_dependent_parameters: NOT_READY
   full_breadth_regression: NOT_READY_NO_GENERIC_REGISTRY_OR_UNIVERSAL_SURFACE
 
@@ -428,16 +443,16 @@ propane_candidate_artifact:
     test_receipt_sha256: 07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480
 
 manifest:
-  tracked_files_after_project_truss_shaping: 49
+  tracked_files_after_project_truss_shaping: 53
   production_python_files: 3
-  native_source_files: 7
-  installed_data_files: 4
-  package_test_files: 4
+  native_source_files: 9
+  installed_data_files: 5
+  package_test_files: 5
   retained_binary_input_evidence_files: 1
   retained_binary_result_evidence_files: 1
   ide_project_files: 7
-  physical_production_lines: 4464
-  physical_package_test_lines: 1079
+  physical_production_lines: 5809
+  physical_package_test_lines: 1250
   tracked_generated_evidence_files_after_figiel_candidate: 6
   generated_file_policy: >-
     The accepted methane and ethane fit receipts bind deterministic
@@ -451,11 +466,13 @@ manifest:
     - path: src/epcsaft_regression/native/pure_saturation_fit.cpp
       physical_lines: 920
     - path: src/epcsaft_regression/records.py
-      physical_lines: 1137
+      physical_lines: 1400
     - path: src/epcsaft_regression/workflow.py
-      physical_lines: 953
+      physical_lines: 1321
     - path: src/epcsaft_regression/native/born_diameter_fit.cpp
       physical_lines: 710
+    - path: src/epcsaft_regression/native/figiel_water_factor_fit.cpp
+      physical_lines: 679
   oversized_file_policy: >-
     The frozen Figiel design requires records.py and workflow.py to remain the
     single source/specification and result/status owners. The family-specific

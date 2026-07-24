@@ -1,4 +1,5 @@
 #include "born_diameter_fit.hpp"
+#include "figiel_water_factor_fit.hpp"
 #include "pure_saturation_fit.hpp"
 
 #include <epcsaft/native_sdk_v1.h>
@@ -158,6 +159,40 @@ PyObject* py_solve_born(PyObject*, PyObject* args) {
     return epcsaft_regression::solve_born_python(capsules, payload);
 }
 
+PyObject* py_solve_figiel_water_factor(PyObject*, PyObject* args) {
+    PyObject* capsule = nullptr;
+    PyObject* payload = nullptr;
+    if (!PyArg_ParseTuple(
+            args,
+            "OO:solve_figiel_water_factor",
+            &capsule,
+            &payload
+        )) {
+        return nullptr;
+    }
+    return epcsaft_regression::solve_figiel_water_factor_python(
+        capsule, payload
+    );
+}
+
+PyObject* py_evaluate_figiel_water_factor(PyObject*, PyObject* args) {
+    PyObject* capsule = nullptr;
+    PyObject* payload = nullptr;
+    double parameter = 0.0;
+    if (!PyArg_ParseTuple(
+            args,
+            "OOd:evaluate_figiel_water_factor",
+            &capsule,
+            &payload,
+            &parameter
+        )) {
+        return nullptr;
+    }
+    return epcsaft_regression::evaluate_figiel_water_factor_python(
+        capsule, payload, parameter
+    );
+}
+
 PyMethodDef methods[] = {
     {"transport_info", py_transport_info, METH_O, "Validate the installed provider capsule."},
     {
@@ -181,6 +216,18 @@ PyMethodDef methods[] = {
         "Evaluate exact Figiel Born residuals and Jacobian."
     },
     {"solve_born", py_solve_born, METH_VARARGS, "Fit the five Figiel Born diameters."},
+    {
+        "solve_figiel_water_factor",
+        py_solve_figiel_water_factor,
+        METH_VARARGS,
+        "Fit the Figiel NaBr water solvation factor."
+    },
+    {
+        "evaluate_figiel_water_factor",
+        py_evaluate_figiel_water_factor,
+        METH_VARARGS,
+        "Evaluate Figiel NaBr water-factor residuals and Jacobian."
+    },
     {nullptr, nullptr, 0, nullptr},
 };
 

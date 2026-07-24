@@ -50,7 +50,7 @@ with no added runtime test seam.
 
 `runtime_status: AUTHORITY_NEUTRAL_PACKAGE_IMPLEMENTED_VALIDATION_NOT_STARTED`
 
-`next_figiel_family_status: READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_SOLVATION_FACTOR_DERIVATIVE`
+`next_figiel_family_status: WATER_SOLVATION_FACTOR_PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_STAGE_C_NOT_STARTED`
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint
@@ -166,27 +166,26 @@ is reported without moving their accepted expected values.
 not be interpreted as downstream readiness, predictive evidence, or Provider
 catalog authority.
 
-The active source-bound family is now the staged Figiel aqueous recovery in
-`docs/science/figiel-aqueous-kij-regression.md`: reuse the five-target Born fit
-(`5x5`, rank 5), fit one water solvation factor to all 21 audited NaBr MIAC
-rows (`21x1`, rank 1), fit eleven Table 4/5 interactions to all 164 audited
-Hamer--Wu rows (`164x11`, rank 11), then run at most three confirmation A-B-C
-cycles with maximum scaled coordinate change `1e-5`. Stages B and C use the
-predeclared equal-weight relative residual `1-gamma_model/gamma_observed`.
-The Table 4/5 recovery gate remains the user-approved maximum parameter delta
-`0.05`; every row is training evidence and predictive status remains
+The active source-bound family is the Figiel aqueous recovery in
+`docs/science/figiel-aqueous-kij-regression.md`. The first standalone
+water-solvation-factor checkpoint now fits all 21 audited NaBr MIAC rows as a
+`21x1`, rank-1 Ceres problem using the predeclared equal-weight residual
+`1-gamma_model/gamma_observed`. Both declared starts converge, all rows are
+evaluated, and the fitted value is `1.5590515389548207`. The paper's
+one-decimal `1.5` is a sufficiently close descriptive comparison under the
+user's engineering judgment; it is not a second numeric acceptance gate.
+Every row is training evidence and predictive status remains
 `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
-Corrected Provider artifact `06d21af` supplies the Stage-C three-active-
-interaction callback. At the all-`0.2` trial, its `164x11` Jacobian is full
-rank and all 492 derivative checks pass. The isolated logarithmic fit and a
-read-only relative-residual discriminator both select an incompatible boundary
-optimum with maximum published-parameter delta `1.8`. These are retained
-falsification evidence, not proof that the source-described sequence is
-impossible. Runtime is waiting only for an exact installed Provider callback
-returning the active water-solvation-factor value and total fixed-pressure
-first derivative. No rows, weights, bounds, starts, cycle limits, or tolerances
-may be changed after the staged result is seen.
+Provider artifact `fa766e5` supplies the exact installed NaBr batch value and
+water-solvation-factor derivative used by this checkpoint. The separately
+approved 11-parameter Table 4/5 interaction fit remains unimplemented. Its
+existing callback preflight has a full-rank `164x11` Jacobian and all 492
+derivative checks pass, while isolated fixed-family fits retain their boundary
+solutions as falsification evidence. Those results do not invalidate the
+source-described staged route. The Table 4/5 recovery gate remains the
+user-approved maximum parameter delta `0.05`; no rows, weights, bounds, starts,
+cycles, or tolerances may be tuned to the answer.
 
 The eventual direction is a staged, family-by-family recovery campaign for
 Figiel Tables 2–5. That later intent does not broaden the first Born-diameter

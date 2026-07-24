@@ -1,11 +1,12 @@
 # Figiel Staged Aqueous Current-Catalog Recovery
 
-Status: `READY_WAITING_PROVIDER_AQUEOUS_ACTIVE_SOLVATION_FACTOR_DERIVATIVE`.
-The source and Regression contract are frozen. The existing active-Born and
-aqueous-active-`k_ij` Provider seams are sufficient for stages A and C, but no
-installed Provider artifact yet exposes the exact active water-solvation-factor
-derivative required by stage B. No staged runtime, wheel, Validation campaign,
-catalog admission, prediction, or authority transfer exists.
+Status:
+`WATER_SOLVATION_FACTOR_PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_STAGE_C_NOT_STARTED`.
+The source contract remains frozen. The standalone Stage-B workflow consumes
+the exact installed Provider batch value/derivative seam and fits one water
+solvation factor to the 21 audited NaBr rows. No Stage-C runtime, confirmation
+cycle, Validation campaign, catalog admission, prediction, or authority
+transfer exists.
 
 This document is the sole design and science owner for the staged Figiel
 current-catalog recovery. It replaces the falsified assumption that one
@@ -24,9 +25,10 @@ The smallest source-backed sequence is:
    ion-independent `f_water` to all 21 audited Hamer--Wu NaBr MIAC rows.
 3. **Stage C — aqueous interactions (`164 x 11`, rank 11).** Fit the eleven
    Table 4/5 interactions to all 164 audited Hamer--Wu rows.
-4. **Confirmation.** Replay A-B-C with the preceding stage outputs fixed. Run
-   at most three confirmation cycles and require the maximum scaled coordinate
-   change between consecutive cycles to be at most `1e-5`.
+4. **Future confirmation.** After Stage C is separately implemented, replay
+   A-B-C with the preceding stage outputs fixed. Run at most three confirmation
+   cycles and require the maximum scaled coordinate change between consecutive
+   cycles to be at most `1e-5`.
 
 The final candidate either reproduces the printed Table 4/5 tuple within the
 frozen `0.05` maximum parameter difference and passes the in-sample observable
@@ -216,26 +218,45 @@ incompatible boundary optimum: all-164 published AARD `5.13246%` versus fitted
 maximum parameter difference `1.8`. These results justify the staged source
 contract. Neither establishes global impossibility or author error.
 
+## Standalone Stage-B result
+
+The two declared starts converged in seven Ceres iterations to
+`1.5590515389548207` and `1.559051762650834`, a maximum absolute difference
+of `2.2369601326843735e-7`, below the frozen `1e-5` start-agreement gate. The
+`21x1` exact Jacobian has rank 1, no bound is active, all 21 rows are evaluated,
+and the primary MIAC RMSE is `0.04582795014810974`. Solver, numerical,
+physical, and workflow statuses pass independently.
+
+The Table 5 value `1.5` is printed to one decimal and was never a hidden seed.
+The fitted difference `0.05905153895482074` is sufficiently close for the
+user's engineering comparison. This is descriptive adjudication, not a newly
+invented acceptance tolerance and not experimental uncertainty.
+
 ## Result and status semantics
 
-One closed staged result retains source/artifact identities, input and
-evaluated row IDs, each stage/cycle/start, all 17 fitted coordinates, published
-comparisons, row residuals, objectives, gradients, rank/conditioning,
-sensitivity, active bounds, Provider diagnostics, and ordered failure reasons.
+The standalone Stage-B result retains source/artifact identities, input and
+evaluated row IDs, both starts, the fitted coordinate, row residuals,
+objectives, rank, active bounds, Provider diagnostics, and ordered failure
+reasons. A future Stage-C result must remain separately reviewable until a
+confirmation workflow is explicitly authorized.
 
 Statuses remain independent:
 
 1. `solver_converged` is reported per Ceres stage/start.
-2. `numerically_converged` requires exact derivatives, required local rank,
-   declared-start agreement, finite diagnostics, and confirmation-cycle
-   agreement within `1e-5`.
+2. For standalone Stage B, `numerically_converged` requires finite diagnostics,
+   rank 1, and declared-start agreement within `1e-5`; the installed-artifact
+   test separately checks the exact Jacobian at both declared centered-
+   difference steps. A future combined result must additionally pass its
+   confirmation-cycle gate.
 3. `physically_valid` requires every fixed-pressure state to be Provider-usable
-   with positive finite MIAC and all existing Born-tracer physical gates.
+   with positive finite MIAC. Born-tracer physical gates remain owned by Stage
+   A and are not silently re-run by the standalone Stage-B result.
 4. `workflow_valid` additionally requires exact source hashes, row membership,
    units/basis, state, salt/component order, Provider artifacts/fingerprints,
    fixed-family inputs, and complete input/evaluated/failed accounting.
-5. `scientifically_valid` additionally requires every frozen in-sample
-   observable gate and
+5. The standalone Stage-B comparison is descriptive and user-adjudicated. A
+   future Stage-C `scientifically_valid` status additionally requires every
+   frozen in-sample observable gate and
    `max_j abs(k_j_fit-k_j_published) <= 0.05`.
 6. `predictive_status` remains
    `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
@@ -249,18 +270,21 @@ catalog candidate.
 
 ## Ownership, next gate, and negative space
 
-Regression owns targets, residuals, Ceres execution, diagnostics, and the one
-staged result. Provider owns values, exact derivatives, model records,
-reference sequences, and density closure. After an exact Provider wheel/header
-implements and verifies the Stage-B seam, Regression may add only the compact
-164-row packet and focused staged cost/workflow owners to its existing package,
-native module, result family, and target.
+Regression owns targets, residuals, Ceres execution, diagnostics, and the
+standalone Stage-B result. Provider owns values, exact derivatives, model
+records, reference sequences, and density closure. Provider implementation
+`fa766e5af86f70ae92870247b1801d7681255e98`, tree
+`962b00eac3fac18d98d9eea3c56eb137031d4b4f`, supplies the installed batch
+seam. Its retained wheel and installed-header SHA-256 values are
+`ee9842889a82251d5d7b501d30d235b63c727cfcd15419f3c5970730870e5286`
+and `7b08de2a57dfd9eb0ed0546a368f65b09d6fe7d921f2df086e70b8738e872914`.
 
-The next gate is therefore one Provider artifact with the approved active
-water-solvation-factor callback and installed derivative proof. Runtime work
-must then prove ranks `5/1/11` before retaining a staged candidate. Regression
-may author the later installed-artifact Validation campaign under the standing
-serialized writer rule; its own evidence cannot self-promote.
+The next checkpoint is the separately bounded `164x11` Stage-C Table 4/5
+interaction fit. It must consume the installed Provider derivative seam,
+retain the `0.05` comparison gate, and prove rank 11 and declared-start
+agreement without broadening the standalone Stage-B surface. Regression may
+author a later installed-artifact Validation campaign; its own evidence cannot
+self-promote.
 
 Excluded: generic registries, mutable parameter overlays, Provider catalog
 writes, compatibility shims, simultaneous all-table solves, organic-solvent or
