@@ -549,6 +549,18 @@
     "tree": "2ec243429600de75ccaeb51955044bf2e7557fbe",
     "wheel_sha256": "1d77a46aca369269fd97b32a722e8b548617a4ae840e07645040a138f63863db"
   },
+  "regression_artifact": {
+    "implementation_commit": "1a594a537e632d902878ab4d6c76ce04ac580ebb",
+    "implementation_tree": "38540ef2d9a73100785f5da5ac0a739c92d3669b",
+    "source_date_epoch": 1785196214,
+    "wheel": "../artifacts/regression-figiel-aqueous-kij-v1/1a594a5/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl",
+    "wheel_sha256": "a9283603156edb6f564af50b320ba0807ccee2e37e0feee42851d00ea278e221",
+    "wheel_members": 14,
+    "installed_non_record_members_verified": 13,
+    "installed_stage_c_tests": "5-passed",
+    "installed_accepted_provider_legacy_tests": "49-passed",
+    "assigned_provider_full_suite": "60-passed-3-failed-known-legacy-numerical-compatibility"
+  },
   "schema_version": 1,
   "source": {
     "hamer_wu_csv_sha256": "2f63e13f06a5b0f4e8bca2980b6a8d9d7fb0f839153c43e3a71952daf9796595",

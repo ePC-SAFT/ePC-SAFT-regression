@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+import hashlib
 import json
 from pathlib import Path
 
@@ -138,13 +139,16 @@ def test_aqueous_kij_residual_jacobian_maps_all_exact_provider_columns() -> None
 
 
 def test_conditional_campaign_evidence_retains_separate_statuses() -> None:
-    evidence = json.loads(
-        (
-            Path(__file__).parents[1]
-            / "evidence"
-            / "figiel-aqueous-kij-conditional-recovery.json"
-        ).read_text()
+    evidence_path = (
+        Path(__file__).parents[1]
+        / "evidence"
+        / "figiel-aqueous-kij-conditional-recovery.json"
     )
+    evidence_bytes = evidence_path.read_bytes()
+    assert hashlib.sha256(evidence_bytes).hexdigest() == (
+        "6796624b77152d04050293ae4ae6140bf54b0afa181999dc345d69dd7d8e5d51"
+    )
+    evidence = json.loads(evidence_bytes)
 
     assert evidence["primary"]["rank"] == 11
     assert evidence["primary"]["complete_jacobian_columns"] == [True] * 11
@@ -169,6 +173,12 @@ def test_conditional_campaign_evidence_retains_separate_statuses() -> None:
     )
     assert evidence["derivative_checks"]["passed_entries"] == 1804
     assert evidence["derivative_checks"]["total_entries"] == 1804
+    assert evidence["regression_artifact"]["implementation_commit"] == (
+        "1a594a537e632d902878ab4d6c76ce04ac580ebb"
+    )
+    assert evidence["regression_artifact"]["wheel_sha256"] == (
+        "a9283603156edb6f564af50b320ba0807ccee2e37e0feee42851d00ea278e221"
+    )
     assert evidence["comparison"]["start_max_abs_delta"] <= 1.0e-5
     assert evidence["comparison"]["published_max_abs_delta"] > 0.05
     assert evidence["comparison"]["coordinates_within_gate"] == 2

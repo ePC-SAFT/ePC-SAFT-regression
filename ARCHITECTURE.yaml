@@ -261,7 +261,7 @@ figiel_aqueous_kij_design:
     input_rows: 164
     evaluated_rows: 164
     failed_rows: 0
-    evidence_sha256: a3ac4716c58544b72653af404aff0bc5c353bb6a86b73bbf1212a287467d770d
+    evidence_sha256: 6796624b77152d04050293ae4ae6140bf54b0afa181999dc345d69dd7d8e5d51
     fitted_coordinates_within_0_05: 2
     fitted_coordinates_outside_0_05: 9
     worst_coordinate: Li+-Br-
@@ -272,6 +272,17 @@ figiel_aqueous_kij_design:
     start_max_abs_delta: 1.3809200687386891e-6
     exact_jacobian_entries_passed: 1804
     scientific_status: SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE
+    regression_artifact:
+      implementation_commit: 1a594a537e632d902878ab4d6c76ce04ac580ebb
+      implementation_tree: 38540ef2d9a73100785f5da5ac0a739c92d3669b
+      source_date_epoch: 1785196214
+      local_wheel: ../artifacts/regression-figiel-aqueous-kij-v1/1a594a5/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl
+      wheel_sha256: a9283603156edb6f564af50b320ba0807ccee2e37e0feee42851d00ea278e221
+      wheel_members: 14
+      installed_non_record_members_verified: 13
+      installed_stage_c_tests: 5-passed
+      accepted_provider_legacy_tests: 49-passed
+      assigned_provider_suite: 60-passed-3-failed-known-legacy-numerical-compatibility
   provider_result: >-
     Stage B uses the model-bound NaBr ln(gamma_pm^m) value and exact total
     fixed-T,P water-solvation-factor derivative from fa766e5. Conditional
@@ -486,7 +497,7 @@ manifest:
   retained_binary_result_evidence_files: 1
   ide_project_files: 7
   physical_production_lines: 8053
-  physical_package_test_lines: 1432
+  physical_package_test_lines: 1442
   tracked_generated_evidence_files_after_figiel_candidate: 7
   generated_file_policy: >-
     The accepted methane and ethane fit receipts bind deterministic
