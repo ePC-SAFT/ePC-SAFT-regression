@@ -406,6 +406,16 @@ def _born_diameter_problem(
     )
 
 
+def _replace_observations(
+    problem: RegressionProblem, observations: tuple[object, ...]
+) -> RegressionProblem:
+    source = replace(
+        problem.sources[0],
+        canonical_dataset_sha256=canonical_dataset_sha256(observations),
+    )
+    return replace(problem, sources=(source,), observations=observations)
+
+
 def test_installed_provider_advertises_exact_neutral_binary_kij_contract(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -620,6 +630,45 @@ def test_general_engine_fits_each_born_diameter_independently(
     assert result.rows[0].derivative_status == (
         "EXACT_PROVIDER_FIRST_DERIVATIVE"
     )
+
+
+def test_direct_observations_fail_before_native_evaluation_outside_domain() -> None:
+    solvation_model = _fixed_water_factor_model(
+        FIGIEL_WATER_SOLVATION_FACTOR_V1
+    )
+    solvation = _solvation_factor_problem(solvation_model)
+    first = solvation.observations[0]
+    wrong_pressure = _replace_observations(
+        solvation,
+        (
+            replace(first, pressure_pa=200_000.0),
+            *solvation.observations[1:],
+        ),
+    )
+    low_molality = _replace_observations(
+        solvation,
+        (
+            replace(
+                first,
+                formula_unit_molality_mol_per_kg=0.0009,
+            ),
+            *solvation.observations[1:],
+        ),
+    )
+    with pytest.raises(ValueError, match="pressure or molality"):
+        fit_parameters(wrong_pressure, solvation_model)
+    with pytest.raises(ValueError, match="pressure or molality"):
+        fit_parameters(low_molality, solvation_model)
+
+    target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[0]
+    born_model = _aqueous_model(target.component_order)
+    born = _born_diameter_problem(born_model, 0)
+    born_wrong_pressure = _replace_observations(
+        born,
+        (replace(born.observations[0], pressure_pa=200_000.0),),
+    )
+    with pytest.raises(ValueError, match="pressure is outside"):
+        fit_parameters(born_wrong_pressure, born_model)
 
 
 def test_installed_provider_advertises_scalar_pure_parameter_contracts() -> None:

@@ -976,6 +976,16 @@ def _matched_capability(
             )
         if isinstance(row, MeanIonicActivityObservation):
             if (
+                row.pressure_pa != 100_000.0
+                or not 0.001
+                <= row.formula_unit_molality_mol_per_kg
+                <= 6.0
+            ):
+                raise ValueError(
+                    f"observation {row.row_id!r} pressure or molality is "
+                    "outside the Provider direct-observable domain"
+                )
+            if (
                 capability.observation_contract
                 != "aqueous_mean_ionic_activity"
                 or capability.active_component_ids
@@ -986,6 +996,11 @@ def _matched_capability(
                     "Provider direct-observable capability"
                 )
         elif isinstance(row, SolvationGibbsObservation):
+            if row.pressure_pa != 100_000.0:
+                raise ValueError(
+                    f"observation {row.row_id!r} pressure is outside the "
+                    "Provider direct-observable domain"
+                )
             if (
                 capability.observation_contract != "ion_solvation_gibbs"
                 or capability.active_component_ids
