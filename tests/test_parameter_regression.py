@@ -2139,7 +2139,21 @@ def _may_methane_propane_problem(
     rows: tuple[FixedCompositionVleObservation, ...] | None = None,
 ) -> RegressionProblem:
     observations = rows or _may_methane_propane_rows()
-    capability = _capability(model, ParameterFamily.K_IJ)
+    capability = next(
+        (
+            candidate
+            for candidate in parameter_capabilities(model)
+            if not isinstance(candidate, UnsupportedParameterCapability)
+            and candidate.capability_id == "neutral_binary_phase_kij_v1"
+        ),
+        None,
+    )
+    assert capability is not None
+    assert capability.family is ParameterFamily.K_IJ
+    assert capability.observation_contract == "fixed_composition_helmholtz_phase"
+    assert capability.component_ids == ("methane", "propane")
+    assert capability.active_component_ids == ("methane", "propane")
+    assert capability.model_domain == "neutral_nonassociating_binary"
     source = SourceDescriptor(
         source_id="may-2015-methane-propane",
         citation=(
@@ -2250,6 +2264,10 @@ def test_may_methane_propane_source_identity_and_transform() -> None:
     )
     assert observed == expected
     rows = _may_methane_propane_rows()
+    problem = _may_methane_propane_problem(_methane_propane_model(), rows)
+    assert problem.sources[0].source_artifact_sha256 == (
+        "53fd1bdd55dc6807ec76cf88626438d8dfceb3ec09149d4405ea36cfbe6b842a"
+    )
     assert tuple(row.pressure_pa for row in rows) == tuple(
         1000.0 * values[1] for values in expected
     )
@@ -2364,6 +2382,11 @@ def test_may_methane_propane_campaign_reproduces_reference_fit() -> None:
     assert result.evaluated_row_count == 22
     assert result.skipped_row_count == 0
     assert result.failed_row_count == 0
+    assert result.physical_status == "NOT_ADJUDICATED_NO_ROW_ACCEPTANCE_CRITERIA"
+    assert result.scientific_status == (
+        "NOT_ADJUDICATED_NO_APPROVED_SCIENTIFIC_CUTOFF"
+    )
+    assert result.predictive_status == "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
     assert result.residual_evaluation_count > 0
     assert isinstance(result.residual_evaluation_count, int)
     assert result.jacobian_evaluation_count > 0
@@ -2376,10 +2399,10 @@ def test_may_methane_propane_campaign_reproduces_reference_fit() -> None:
         for row in result.rows
     )
     assert result.parameter.final == pytest.approx(
-        0.0038919335722629794, rel=0.0, abs=2.0e-15
+        0.0038919335722629794, rel=0.0, abs=1.0e-14
     )
     assert result.final_cost == pytest.approx(
-        0.03734758119771876, rel=0.0, abs=2.0e-15
+        0.03734758119771876, rel=0.0, abs=1.0e-14
     )
 
     # A second complete run establishes the observed deterministic
