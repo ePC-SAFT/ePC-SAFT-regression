@@ -880,15 +880,14 @@ results. Neutral VLE also verifies invariance to row order and to the caller's
 ordering of the unordered pair identity. Direct aqueous cases verify that the
 two inactive pair values supplied by each row remain fixed context rather than
 additional fitted coordinates. Negative controls must fail closed for an
-unsupported Provider fingerprint or observation domain, a missing or
-structurally zero active derivative, incomplete Provider row evaluation, and a
-terminal rank or conditioning failure.
+unsupported Provider fingerprint or observation domain, incomplete Provider
+row evaluation, and a terminal projected-rank-zero or conditioning failure.
 
 The 17-row methane/ethane solve is the performance sentinel. On the current
 development host it completes in `0.55 s` wall time under the explicit campaign
 command; this measurement is diagnostic, not a portable acceptance cutoff.
-The campaign shall retain iteration and Provider-evaluation accounting so a
-future slowdown can be diagnosed without adding a user-selectable backend.
+The campaign shall retain Ceres residual- and Jacobian-evaluation accounting
+so a future slowdown can be diagnosed without adding a user-selectable backend.
 Ceres remains single-threaded `DENSE_QR` for this `68 x 35` problem because the
 measured solve is small and fast. A bounded native solver-time budget is
 required so a malformed or unexpectedly expensive case returns a diagnostic
@@ -937,10 +936,9 @@ An additional literature reference may be admitted only when its raw
 observations, component order, units, `k_ij` convention, fitted comparison
 value, and installed Provider capability are all independently available.
 Published parameters without their fitting rows remain comparison provenance,
-not a regression benchmark. A second neutral VLE case is preferred because it
-would test component and state transfer beyond methane/ethane; an already
-source-bound aqueous case remains valid cross-domain evidence but is not a
-substitute for missing neutral rows.
+not a regression benchmark. A further neutral VLE case may add component and
+state transfer evidence; an already source-bound aqueous case remains valid
+cross-domain evidence but is not a substitute for missing neutral rows.
 
 The scalar pure implementation replays the four accepted methane training
 rows independently for each family. Every `16 x 9` solve has full rank 9 and

@@ -47,6 +47,10 @@ from epcsaft_regression.parameter_regression import (
     _native_payload,
 )
 
+_MAY_METHANE_PROPANE_CANONICAL_SHA256 = (
+    "c7506ce654d9b6df60ec7ff6bdc6dfde526f82a3d69fc524ac9186976785cefe"
+)
+
 
 def _model() -> EPCSAFT:
     parameters = ParameterBundle.from_catalog(
@@ -2113,6 +2117,58 @@ def test_rows_outside_provider_temperature_domain_fail_before_ceres(
         fit_parameters(problem, model)
 
 
+def test_parameter_fingerprint_mismatch_fails_before_ceres(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = _model()
+    problem = _problem(model)
+    mismatched = replace(
+        problem,
+        parameters=(
+            replace(
+                problem.parameters[0],
+                provider_parameter_fingerprint=f"sha256:{'0' * 64}",
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        parameter_regression._native,
+        "solve_general",
+        lambda *_: pytest.fail(
+            "Ceres must not start for a fingerprint mismatch"
+        ),
+    )
+
+    with pytest.raises(ValueError, match="does not match"):
+        fit_parameters(mismatched, model)
+
+
+def test_phase_observation_contract_mismatch_fails_before_ceres(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = _model()
+    problem = _problem(model)
+    capability = replace(
+        _capability(model),
+        observation_contract="aqueous_mean_ionic_activity",
+    )
+    monkeypatch.setattr(
+        parameter_regression,
+        "parameter_capabilities",
+        lambda _: (capability,),
+    )
+    monkeypatch.setattr(
+        parameter_regression._native,
+        "solve_general",
+        lambda *_: pytest.fail(
+            "Ceres must not start for an observation-contract mismatch"
+        ),
+    )
+
+    with pytest.raises(ValueError, match="phase observation"):
+        fit_parameters(problem, model)
+
+
 def test_provider_failure_returns_diagnostic_result() -> None:
     model = _model()
     invalid = replace(
@@ -2304,7 +2360,10 @@ def test_may_methane_propane_source_identity_and_transform() -> None:
         / "evidence"
         / "may-2015-methane-propane-vle.csv"
     )
-    assert canonical_dataset_sha256(_may_methane_propane_rows())
+    assert (
+        canonical_dataset_sha256(_may_methane_propane_rows())
+        == _MAY_METHANE_PROPANE_CANONICAL_SHA256
+    )
     assert data_path.read_bytes() and __import__("hashlib").sha256(
         data_path.read_bytes()
     ).hexdigest() == "97a07b274dc4da6a281614f3fd39c520ebd6678776413746b13bc8665113c529"
