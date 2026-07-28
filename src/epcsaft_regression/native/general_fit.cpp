@@ -293,6 +293,17 @@ const epcsaft_native_sdk_v1* capability_table(PyObject* capsule) {
     return table;
 }
 
+bool bounded_field_equal(
+    const std::string& expected,
+    const char field[EPCSAFT_NATIVE_SDK_V1_FINGERPRINT_SIZE]
+) {
+    const std::size_t length = strnlen(
+        field, EPCSAFT_NATIVE_SDK_V1_FINGERPRINT_SIZE
+    );
+    return length == expected.size()
+        && std::memcmp(field, expected.data(), length) == 0;
+}
+
 const char* capability_id(std::uint32_t value);
 
 void validate_descriptor(
@@ -310,8 +321,12 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
     const auto& descriptor = table.capabilities[0];
     validate_descriptor(descriptor);
     if (payload.capability_id != capability_id(descriptor.capability)
-        || payload.parameter_fingerprint != descriptor.parameter_fingerprint
-        || payload.topology_fingerprint != descriptor.topology_fingerprint
+        || !bounded_field_equal(
+            payload.parameter_fingerprint, descriptor.parameter_fingerprint
+        )
+        || !bounded_field_equal(
+            payload.topology_fingerprint, descriptor.topology_fingerprint
+        )
         || descriptor.component_count != 2
         || descriptor.component_ids == nullptr
         || payload.component_ids[0] != descriptor.component_ids[0]
@@ -515,8 +530,12 @@ PyObject* descriptor_to_python(
         descriptor.topology_fingerprint,
         EPCSAFT_NATIVE_SDK_V1_FINGERPRINT_SIZE
     );
+    const std::size_t basis_length = strnlen(
+        descriptor.helmholtz_basis_id,
+        EPCSAFT_NATIVE_SDK_V1_FINGERPRINT_SIZE
+    );
     PyObject* result = Py_BuildValue(
-        "(ssNNNs#s#iss)",
+        "(ssNNNs#s#issddssssnns#ss)",
         capability_id(descriptor.capability),
         parameter_family(descriptor.parameter_family),
         components,
@@ -528,7 +547,19 @@ PyObject* descriptor_to_python(
         static_cast<Py_ssize_t>(topology_length),
         static_cast<int>(descriptor.derivative_order),
         "DERIVATIVE_READY",
-        "NONE"
+        "NONE",
+        descriptor.temperature_min_k,
+        descriptor.temperature_max_k,
+        "unordered_component_pair",
+        "fixed_composition_helmholtz_phase",
+        "neutral_nonassociating_binary",
+        "row_major",
+        static_cast<Py_ssize_t>(descriptor.state_coordinate_count),
+        static_cast<Py_ssize_t>(descriptor.active_parameter_count),
+        descriptor.helmholtz_basis_id,
+        static_cast<Py_ssize_t>(basis_length),
+        "UNSUPPORTED_MODEL",
+        "DOMAIN_ERROR"
     );
     return result;
 }
@@ -566,7 +597,9 @@ Phase evaluate_phase(
             std::string("Provider phase evaluation failed: ") + result.error
         );
     }
-    if (payload.parameter_fingerprint != result.parameter_fingerprint) {
+    if (!bounded_field_equal(
+            payload.parameter_fingerprint, result.parameter_fingerprint
+        )) {
         throw std::runtime_error(
             "Provider evaluation parameter fingerprint changed"
         );
@@ -1009,6 +1042,37 @@ PyObject* doubles_to_tuple(const std::vector<double>& values) {
     return tuple;
 }
 
+PyObject* row_to_python(
+    const Row& row,
+    double liquid_volume,
+    double vapor_volume,
+    const std::vector<double>& residuals,
+    bool usable,
+    const std::string& failure_reason
+) {
+    PyObject* residual_tuple = doubles_to_tuple(residuals);
+    if (residual_tuple == nullptr) return nullptr;
+    return Py_BuildValue(
+        "(ssddNOs)",
+        row.row_id.c_str(),
+        row.partition.c_str(),
+        liquid_volume,
+        vapor_volume,
+        residual_tuple,
+        usable ? Py_True : Py_False,
+        failure_reason.c_str()
+    );
+}
+
+bool complete_evaluation(
+    const SolveOutcome& outcome, const Payload& payload
+) {
+    const std::size_t residual_count = 4 * payload.training_rows.size();
+    return outcome.evaluation.residuals.size() == residual_count
+        && outcome.evaluation.jacobian.size()
+            == residual_count * outcome.variables.size();
+}
+
 PyObject* rows_to_python(
     const Payload& payload,
     const SolveOutcome& primary,
@@ -1018,29 +1082,37 @@ PyObject* rows_to_python(
         payload.training_rows.size() + payload.reporting_rows.size();
     PyObject* result = PyTuple_New(static_cast<Py_ssize_t>(count));
     if (result == nullptr) return nullptr;
+    const bool primary_evaluation_available =
+        complete_evaluation(primary, payload);
+    const std::string unavailable_reason = primary.failure_reason.empty()
+        ? "primary exact evaluation is unavailable"
+        : primary.failure_reason;
     for (std::size_t index = 0; index < payload.training_rows.size(); ++index) {
         const Row& row = payload.training_rows[index];
-        const double liquid_volume =
-            row.liquid_volume_origin * std::exp(primary.variables[1 + 2 * index]);
-        const double vapor_volume =
-            row.vapor_volume_origin * std::exp(primary.variables[2 + 2 * index]);
-        std::vector<double> residuals(
-            primary.evaluation.residuals.begin() + 4 * index,
-            primary.evaluation.residuals.begin() + 4 * index + 4
-        );
-        PyObject* residual_tuple = doubles_to_tuple(residuals);
-        PyObject* item = residual_tuple == nullptr
-            ? nullptr
-            : Py_BuildValue(
-                "(ssddNOs)",
-                row.row_id.c_str(),
-                row.partition.c_str(),
-                liquid_volume,
-                vapor_volume,
-                residual_tuple,
-                Py_True,
-                ""
+        const double liquid_volume = primary_evaluation_available
+            ? row.liquid_volume_origin
+                * std::exp(primary.variables[1 + 2 * index])
+            : row.liquid_volume_start;
+        const double vapor_volume = primary_evaluation_available
+            ? row.vapor_volume_origin
+                * std::exp(primary.variables[2 + 2 * index])
+            : row.vapor_volume_start;
+        const std::vector<double> residuals = primary_evaluation_available
+            ? std::vector<double>(
+                primary.evaluation.residuals.begin() + 4 * index,
+                primary.evaluation.residuals.begin() + 4 * index + 4
+            )
+            : std::vector<double>(
+                4, std::numeric_limits<double>::quiet_NaN()
             );
+        PyObject* item = row_to_python(
+            row,
+            liquid_volume,
+            vapor_volume,
+            residuals,
+            primary_evaluation_available,
+            primary_evaluation_available ? "" : unavailable_reason
+        );
         if (item == nullptr) {
             Py_DECREF(result);
             return nullptr;
@@ -1048,25 +1120,32 @@ PyObject* rows_to_python(
         PyTuple_SET_ITEM(result, static_cast<Py_ssize_t>(index), item);
     }
     for (std::size_t index = 0; index < payload.reporting_rows.size(); ++index) {
-        const RowOutcome outcome = solve_reporting(
-            table, payload, payload.reporting_rows[index], primary.variables[0]
+        const Row& row = payload.reporting_rows[index];
+        const RowOutcome outcome = primary_evaluation_available
+            ? solve_reporting(table, payload, row, primary.variables[0])
+            : RowOutcome{
+                row,
+                row.liquid_volume_start,
+                row.vapor_volume_start,
+                {
+                    std::numeric_limits<double>::quiet_NaN(),
+                    std::numeric_limits<double>::quiet_NaN(),
+                    std::numeric_limits<double>::quiet_NaN(),
+                    std::numeric_limits<double>::quiet_NaN(),
+                },
+                false,
+                unavailable_reason,
+            };
+        PyObject* item = row_to_python(
+            outcome.row,
+            outcome.liquid_volume,
+            outcome.vapor_volume,
+            std::vector<double>(
+                outcome.residuals.begin(), outcome.residuals.end()
+            ),
+            outcome.usable,
+            outcome.failure_reason
         );
-        const std::vector<double> residuals(
-            outcome.residuals.begin(), outcome.residuals.end()
-        );
-        PyObject* residual_tuple = doubles_to_tuple(residuals);
-        PyObject* item = residual_tuple == nullptr
-            ? nullptr
-            : Py_BuildValue(
-                "(ssddNOs)",
-                outcome.row.row_id.c_str(),
-                outcome.row.partition.c_str(),
-                outcome.liquid_volume,
-                outcome.vapor_volume,
-                residual_tuple,
-                outcome.usable ? Py_True : Py_False,
-                outcome.failure_reason.c_str()
-            );
         if (item == nullptr) {
             Py_DECREF(result);
             return nullptr;
@@ -1157,26 +1236,16 @@ PyObject* solve_general_kij_python(
             throw std::invalid_argument("at least one parameter start is required");
         }
         const SolveOutcome& primary = outcomes.front();
-        const std::size_t expected_residuals =
-            4 * payload.training_rows.size();
-        const std::size_t expected_variables =
-            1 + 2 * payload.training_rows.size();
-        if (primary.evaluation.residuals.size() != expected_residuals
-            || primary.evaluation.jacobian.size()
-                != expected_residuals * expected_variables) {
-            throw std::runtime_error(
-                primary.failure_reason.empty()
-                    ? "primary exact evaluation is unavailable"
-                    : primary.failure_reason
-            );
-        }
         double maximum_parameter_delta = 0.0;
         double maximum_cost_delta = 0.0;
         bool confirmations_usable = true;
         for (std::size_t index = 1; index < outcomes.size(); ++index) {
             const SolveOutcome& confirmation = outcomes[index];
             confirmations_usable =
-                confirmations_usable && confirmation.summary.IsSolutionUsable();
+                confirmations_usable
+                && confirmation.summary.IsSolutionUsable()
+                && confirmation.failure_reason.empty()
+                && complete_evaluation(confirmation, payload);
             maximum_parameter_delta = std::max(
                 maximum_parameter_delta,
                 std::abs(primary.variables[0] - confirmation.variables[0])

@@ -45,6 +45,17 @@ class ParameterCapability:
     derivative_order: int
     maturity: str
     authority_effect: str
+    temperature_min_k: float
+    temperature_max_k: float
+    identity_shape: str
+    observation_contract: str
+    model_domain: str
+    tensor_layout: str
+    state_coordinate_count: int
+    active_parameter_count: int
+    helmholtz_basis_id: str
+    unsupported_status: str
+    domain_status: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +63,8 @@ class FittedParameterDiagnostic:
     family: ParameterFamily
     component_ids: tuple[str, ...]
     unit: str
+    transform_origin: float
+    transform_scale: float
     start: float
     final: float
     movement: float
@@ -126,6 +139,17 @@ def parameter_capabilities(model: object) -> tuple[ParameterCapability, ...]:
             derivative_order=raw[7],
             maturity=raw[8],
             authority_effect=raw[9],
+            temperature_min_k=raw[10],
+            temperature_max_k=raw[11],
+            identity_shape=raw[12],
+            observation_contract=raw[13],
+            model_domain=raw[14],
+            tensor_layout=raw[15],
+            state_coordinate_count=raw[16],
+            active_parameter_count=raw[17],
+            helmholtz_basis_id=raw[18],
+            unsupported_status=raw[19],
+            domain_status=raw[20],
         )
         for raw in raw_capabilities
     )
@@ -548,6 +572,14 @@ def _matched_capability(
             raise ValueError(
                 f"observation {row.row_id!r} component order does not match the Provider model"
             )
+        if not (
+            capability.temperature_min_k
+            <= row.temperature_k
+            <= capability.temperature_max_k
+        ):
+            raise ValueError(
+                f"observation {row.row_id!r} temperature is outside the Provider capability domain"
+            )
     return capability
 
 
@@ -584,6 +616,8 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         family=parameter_coordinate.family,
         component_ids=parameter_coordinate.identity.canonical_component_ids,
         unit=parameter_coordinate.unit,
+        transform_origin=parameter_coordinate.transform.origin,
+        transform_scale=parameter_coordinate.transform.scale,
         start=parameter_coordinate.starts[0],
         final=native[5],
         movement=native[5] - parameter_coordinate.starts[0],
@@ -602,14 +636,15 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         projected_parameter_rank=native[14],
         projected_parameter_condition_number=native[15],
     )
-    solver_converged = bool(native[1]) and not native[21]
+    solver_converged = (
+        native[0] == "CONVERGENCE" and bool(native[1]) and not native[21]
+    )
     confirmations_usable = bool(native[19])
     numerically_converged = (
         solver_converged
         and confirmations_usable
         and native[17] <= problem.confirmation_parameter_scaled_max_delta
         and native[18] <= problem.confirmation_cost_relative_delta
-        and jacobian.full_rank == jacobian.variable_count
         and jacobian.projected_parameter_rank == len(problem.parameters)
         and math.isfinite(jacobian.full_condition_number)
         and jacobian.full_condition_number <= problem.maximum_condition_number
