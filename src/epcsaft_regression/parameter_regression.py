@@ -368,6 +368,7 @@ class ParameterCoordinate:
             ParameterFamily.SEGMENT_COUNT: "1",
             ParameterFamily.SEGMENT_DIAMETER: "angstrom",
             ParameterFamily.DISPERSION_ENERGY_OVER_K: "K",
+            ParameterFamily.RELATIVE_PERMITTIVITY: "1",
             ParameterFamily.BORN_DIAMETER: "angstrom",
             ParameterFamily.SOLVATION_FACTOR: "1",
         }
@@ -400,7 +401,8 @@ class ParameterCoordinate:
             raise ValueError(
                 "the v1 coordinate contract supports only k_ij, l_ij, "
                 "segment_count, segment_diameter, and "
-                "dispersion_energy_over_k, born_diameter, or "
+                "dispersion_energy_over_k, relative_permittivity, "
+                "born_diameter, or "
                 "solvation_factor, or dielectric_ion_suppression_coefficient"
                 ", ionic_region_relative_permittivity, "
                 "association_energy_over_k, or association_volume"
@@ -1147,6 +1149,11 @@ class RegressionProblem:
                         IonSolvationKijObservation,
                     ),
                 )
+                else (row.component_ids[0],)
+                if (
+                    self.parameters[0].family is ParameterFamily.RELATIVE_PERMITTIVITY
+                    and isinstance(row, SolvationGibbsObservation)
+                )
                 else (row.active_component_id,)
                 if isinstance(row, (MeanIonicActivityObservation, SolvationGibbsObservation))
                 else (
@@ -1432,7 +1439,10 @@ def _matched_capability(
                 )
             if (
                 capability.capability_id
-                == "ion_solvation_ionic_region_permittivity_v1"
+                in (
+                    "ion_solvation_ionic_region_permittivity_v1",
+                    "ion_solvation_solvent_permittivity_v1",
+                )
                 and (
                     len(capability.component_ids) < 2
                     or row.active_component_id != capability.component_ids[1]

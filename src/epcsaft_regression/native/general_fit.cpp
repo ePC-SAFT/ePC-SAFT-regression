@@ -123,6 +123,8 @@ bool direct_observation(const Payload& payload) {
     return payload.capability_id == "ion_solvation_born_v1"
         || payload.capability_id
             == "ion_solvation_ionic_region_permittivity_v1"
+        || payload.capability_id
+            == "ion_solvation_solvent_permittivity_v1"
         || payload.capability_id == "aqueous_solvation_factor_miac_v1"
         || payload.capability_id == "aqueous_water_cation_kij_miac_v1"
         || payload.capability_id == "aqueous_water_anion_kij_miac_v1"
@@ -417,6 +419,8 @@ Payload parse_payload(PyObject* object) {
         payload.capability_id == "ion_solvation_born_v1"
                 || payload.capability_id
                     == "ion_solvation_ionic_region_permittivity_v1"
+                || payload.capability_id
+                    == "ion_solvation_solvent_permittivity_v1"
         ? ObservationKind::solvation_gibbs
         : payload.capability_id == "aqueous_solvation_factor_miac_v1"
             ? ObservationKind::mean_ionic_activity
@@ -580,7 +584,9 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
             || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_CATION_ANION_KIJ_V1
             || candidate.capability
-                == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_IONIC_REGION_PERMITTIVITY_V1;
+                == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_IONIC_REGION_PERMITTIVITY_V1
+            || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_PERMITTIVITY_V1;
         if (!supported) {
             continue;
         }
@@ -627,9 +633,12 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
             == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_CATION_ANION_KIJ_V1;
     const bool ionic_permittivity = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_IONIC_REGION_PERMITTIVITY_V1;
+    const bool solvent_permittivity = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_PERMITTIVITY_V1;
     const bool binary = kij || lij;
     const bool direct = born || solvation_factor || aqueous_kij || dielectric
-        || ion_solvation_kij || ionic_permittivity;
+        || ion_solvation_kij || ionic_permittivity
+        || solvent_permittivity;
     const bool callback_available = kij
         ? table.evaluate_mixture_phase_kij != nullptr
         : lij
@@ -689,6 +698,20 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
                             && table.ion_solvation_ionic_permittivity_result_size
                                 == sizeof(
                                     epcsaft_ion_solvation_ionic_permittivity_result_v1
+                                )
+                    : solvent_permittivity
+                        ? table.table_size
+                                >= offsetof(
+                                    epcsaft_native_sdk_v1,
+                                    evaluate_ion_solvation_solvent_permittivity
+                                ) + sizeof(
+                                    table.evaluate_ion_solvation_solvent_permittivity
+                                )
+                            && table.evaluate_ion_solvation_solvent_permittivity
+                                != nullptr
+                            && table.ion_solvation_solvent_permittivity_result_size
+                                == sizeof(
+                                    epcsaft_ion_solvation_solvent_permittivity_result_v1
                                 )
                     : (table.table_size
                     >= offsetof(
@@ -796,6 +819,10 @@ const char* capability_id(std::uint32_t value) {
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_IONIC_REGION_PERMITTIVITY_V1) {
         return "ion_solvation_ionic_region_permittivity_v1";
     }
+    if (value
+        == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_PERMITTIVITY_V1) {
+        return "ion_solvation_solvent_permittivity_v1";
+    }
     throw std::runtime_error("provider advertised an unknown capability");
 }
 
@@ -839,6 +866,9 @@ const char* parameter_family(std::uint32_t value) {
         == EPCSAFT_NATIVE_PARAMETER_FAMILY_IONIC_REGION_RELATIVE_PERMITTIVITY_V1) {
         return "ionic_region_relative_permittivity";
     }
+    if (value == EPCSAFT_NATIVE_PARAMETER_FAMILY_RELATIVE_PERMITTIVITY_V1) {
+        return "relative_permittivity";
+    }
     throw std::runtime_error("provider advertised an unknown parameter family");
 }
 
@@ -870,6 +900,8 @@ const char* coordinate_kind(std::uint32_t value) {
             return "association_volume";
         case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_IONIC_REGION_RELATIVE_PERMITTIVITY_V1:
             return "ionic_region_relative_permittivity";
+        case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_RELATIVE_PERMITTIVITY_V1:
+            return "relative_permittivity";
         default:
             throw std::runtime_error(
                 "provider advertised an unknown capability coordinate"
@@ -917,11 +949,14 @@ void validate_descriptor(
             == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_CATION_ANION_KIJ_V1;
     const bool ionic_permittivity = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_IONIC_REGION_PERMITTIVITY_V1;
+    const bool solvent_permittivity = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_PERMITTIVITY_V1;
     const bool binary = kij || lij;
     const bool pure = segment_count || segment_diameter || dispersion_energy
         || association;
     const bool direct = born || solvation_factor || aqueous_kij || dielectric
-        || ion_solvation_kij || ionic_permittivity;
+        || ion_solvation_kij || ionic_permittivity
+        || solvent_permittivity;
     const bool matching_family =
         (kij
          && descriptor.parameter_family
@@ -961,9 +996,13 @@ void validate_descriptor(
                 == EPCSAFT_NATIVE_PARAMETER_FAMILY_DIELECTRIC_ION_SUPPRESSION_V1)
         || (ionic_permittivity
             && descriptor.parameter_family
-                == EPCSAFT_NATIVE_PARAMETER_FAMILY_IONIC_REGION_RELATIVE_PERMITTIVITY_V1);
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_IONIC_REGION_RELATIVE_PERMITTIVITY_V1)
+        || (solvent_permittivity
+            && descriptor.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_RELATIVE_PERMITTIVITY_V1);
     const std::uint32_t expected_observation =
         born || ion_solvation_kij || ionic_permittivity
+                || solvent_permittivity
         ? EPCSAFT_NATIVE_OBSERVATION_ION_SOLVATION_GIBBS_V1
         : solvation_factor || aqueous_kij
             ? EPCSAFT_NATIVE_OBSERVATION_AQUEOUS_MEAN_IONIC_ACTIVITY_V1
@@ -976,7 +1015,7 @@ void validate_descriptor(
             ? EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_ASSOCIATING_PURE_V1
         : pure
             ? EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_NONASSOCIATING_PURE_V1
-            : born || ionic_permittivity
+            : born || ionic_permittivity || solvent_permittivity
                 ? EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_WATER_SINGLE_ION_V1
                 : dielectric
                     ? EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_DIELECTRIC_V1
@@ -1070,10 +1109,14 @@ void validate_descriptor(
                     ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_DIELECTRIC_ION_SUPPRESSION_V1
                 : ionic_permittivity
                     ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_IONIC_REGION_RELATIVE_PERMITTIVITY_V1
+                : solvent_permittivity
+                    ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_RELATIVE_PERMITTIVITY_V1
                 : EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SOLVATION_FACTOR_V1
         );
         components.push_back(
-            dielectric || ionic_permittivity ? -1 : born ? 1 : 0
+            dielectric || ionic_permittivity ? -1
+            : born ? 1
+            : 0
         );
         pair_a.push_back(-1);
         pair_b.push_back(-1);
@@ -1579,6 +1622,51 @@ void evaluate_direct_problem(
                 throw std::runtime_error(
                     std::string(
                         "Provider ionic-region permittivity evaluation failed: "
+                    ) + result.error
+                );
+            }
+            evaluation.modeled_values[index] =
+                result.solvation_gibbs_j_per_mol;
+            evaluation.provider_derivatives[index] =
+                result.derivative_j_per_mol;
+            evaluation.residuals[index] =
+                (result.solvation_gibbs_j_per_mol - row.observed_value)
+                / row.direct_scale;
+            evaluation.jacobian[index] =
+                result.derivative_j_per_mol
+                * payload.parameter_scale / row.direct_scale;
+        }
+        return;
+    }
+
+    if (payload.capability_id
+        == "ion_solvation_solvent_permittivity_v1") {
+        for (std::size_t index = 0; index < row_count; ++index) {
+            const Row& row = payload.training_rows[index];
+            epcsaft_ion_solvation_solvent_permittivity_result_v1 result{};
+            result.struct_size = sizeof(result);
+            const int status =
+                table.evaluate_ion_solvation_solvent_permittivity(
+                    table.model_context,
+                    payload.parameter_fingerprint.c_str(),
+                    row.temperature,
+                    row.pressure,
+                    parameter,
+                    &result
+                );
+            if (status != EPCSAFT_NATIVE_STATUS_OK_V1
+                || result.status != status
+                || !bounded_field_equal(
+                    payload.parameter_fingerprint,
+                    result.parameter_fingerprint
+                )
+                || !std::isfinite(result.solvation_gibbs_j_per_mol)
+                || !std::isfinite(result.derivative_j_per_mol)
+                || !std::isfinite(result.reference_molality_mol_per_kg)
+                || !std::isfinite(result.reference_convergence_error)) {
+                throw std::runtime_error(
+                    std::string(
+                        "Provider solvent permittivity evaluation failed: "
                     ) + result.error
                 );
             }
@@ -2895,6 +2983,8 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
                     == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1
                 || descriptor.capability
                     == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_IONIC_REGION_PERMITTIVITY_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_PERMITTIVITY_V1
             )
                 ? descriptor_to_python(descriptor)
                 : unsupported_descriptor_to_python(descriptor);
