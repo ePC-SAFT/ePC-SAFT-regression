@@ -7,6 +7,10 @@ import json
 import math
 from typing import Iterable
 
+from epcsaft import native_sdk
+
+from . import _native
+
 
 class ParameterFamily(StrEnum):
     SEGMENT_COUNT = "segment_count"
@@ -27,6 +31,104 @@ class ParameterFamily(StrEnum):
     ASSOCIATION_VOLUME = "association_volume"
     DIELECTRIC_ION_SUPPRESSION_COEFFICIENT = "dielectric_ion_suppression_coefficient"
     IONIC_REGION_RELATIVE_PERMITTIVITY = "ionic_region_relative_permittivity"
+
+
+@dataclass(frozen=True, slots=True)
+class ParameterCapability:
+    capability_id: str
+    family: ParameterFamily
+    component_ids: tuple[str, ...]
+    coordinate_kinds: tuple[str, ...]
+    coordinate_units: tuple[str, ...]
+    parameter_fingerprint: str
+    topology_fingerprint: str
+    derivative_order: int
+    maturity: str
+    authority_effect: str
+
+
+@dataclass(frozen=True, slots=True)
+class FittedParameterDiagnostic:
+    family: ParameterFamily
+    component_ids: tuple[str, ...]
+    unit: str
+    start: float
+    final: float
+    movement: float
+    lower_bound: float
+    upper_bound: float
+    active_bound_distance: float
+    active_bound: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class GeneralJacobianDiagnostics:
+    residual_count: int
+    variable_count: int
+    full_singular_values: tuple[float, ...]
+    full_rank: int
+    full_condition_number: float
+    projected_parameter_singular_values: tuple[float, ...]
+    projected_parameter_rank: int
+    projected_parameter_condition_number: float
+
+
+@dataclass(frozen=True, slots=True)
+class GeneralRowDiagnostic:
+    row_id: str
+    partition: str
+    liquid_volume_m3_per_mol: float
+    vapor_volume_m3_per_mol: float
+    scaled_residuals: tuple[float, float, float, float]
+    evaluated: bool
+    failure_reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class RegressionResult:
+    provider_parameter_fingerprint: str
+    provider_topology_fingerprint: str
+    solver_converged: bool
+    numerically_converged: bool
+    workflow_valid: bool
+    physical_status: str
+    scientific_status: str
+    predictive_status: str
+    termination: str
+    solution_usable: bool
+    initial_cost: float
+    final_cost: float
+    iterations: int
+    parameter: FittedParameterDiagnostic
+    jacobian: GeneralJacobianDiagnostics
+    rows: tuple[GeneralRowDiagnostic, ...]
+    confirmation_count: int
+    confirmation_parameter_scaled_max_delta: float
+    confirmation_cost_relative_max_delta: float
+    confirmations_usable: bool
+    training_row_count: int
+    held_out_row_count: int
+    stress_row_count: int
+    failure_reasons: tuple[str, ...]
+
+
+def parameter_capabilities(model: object) -> tuple[ParameterCapability, ...]:
+    raw_capabilities = _native.parameter_capabilities(native_sdk(model))
+    return tuple(
+        ParameterCapability(
+            capability_id=raw[0],
+            family=ParameterFamily(raw[1]),
+            component_ids=tuple(raw[2]),
+            coordinate_kinds=tuple(raw[3]),
+            coordinate_units=tuple(raw[4]),
+            parameter_fingerprint=raw[5],
+            topology_fingerprint=raw[6],
+            derivative_order=raw[7],
+            maturity=raw[8],
+            authority_effect=raw[9],
+        )
+        for raw in raw_capabilities
+    )
 
 
 class ObservationPartition(StrEnum):
@@ -363,3 +465,197 @@ class RegressionProblem:
         return tuple(
             row for row in self.observations if row.partition is ObservationPartition.STRESS
         )
+
+
+def _row_payload(row: FixedCompositionVleObservation) -> tuple[object, ...]:
+    return (
+        row.row_id,
+        row.partition.value,
+        row.temperature_k,
+        row.pressure_pa,
+        row.liquid_mole_fraction_first,
+        row.vapor_mole_fraction_first,
+        row.pressure_scale_pa,
+        row.chemical_potential_scales[0],
+        row.chemical_potential_scales[1],
+        row.liquid_volume_origin_m3_per_mol,
+        row.liquid_volume_start_m3_per_mol,
+        row.liquid_volume_bounds_m3_per_mol[0],
+        row.liquid_volume_bounds_m3_per_mol[1],
+        row.vapor_volume_origin_m3_per_mol,
+        row.vapor_volume_start_m3_per_mol,
+        row.vapor_volume_bounds_m3_per_mol[0],
+        row.vapor_volume_bounds_m3_per_mol[1],
+    )
+
+
+def _native_payload(
+    problem: RegressionProblem, capability: ParameterCapability
+) -> tuple[object, ...]:
+    parameter = problem.parameters[0]
+    return (
+        parameter.capability_id,
+        parameter.provider_parameter_fingerprint,
+        parameter.provider_topology_fingerprint,
+        capability.component_ids,
+        parameter.transform.origin,
+        parameter.transform.scale,
+        parameter.lower_bound,
+        parameter.upper_bound,
+        parameter.starts,
+        problem.maximum_condition_number,
+        problem.maximum_iterations,
+        problem.function_tolerance,
+        problem.gradient_tolerance,
+        problem.parameter_tolerance,
+        problem.confirmation_parameter_scaled_max_delta,
+        problem.confirmation_cost_relative_delta,
+        tuple(_row_payload(row) for row in problem.training_observations),
+        tuple(
+            _row_payload(row)
+            for row in (*problem.held_out_observations, *problem.stress_observations)
+        ),
+    )
+
+
+def _matched_capability(
+    problem: RegressionProblem, model: object
+) -> ParameterCapability:
+    capabilities = parameter_capabilities(model)
+    parameter = problem.parameters[0]
+    matches = tuple(
+        capability
+        for capability in capabilities
+        if capability.capability_id == parameter.capability_id
+    )
+    if len(matches) != 1:
+        raise ValueError(
+            "installed Provider does not advertise the requested parameter capability"
+        )
+    capability = matches[0]
+    if (
+        capability.family is not parameter.family
+        or capability.parameter_fingerprint
+        != parameter.provider_parameter_fingerprint
+        or capability.topology_fingerprint
+        != parameter.provider_topology_fingerprint
+    ):
+        raise ValueError(
+            "regression parameter does not match the installed Provider capability"
+        )
+    for row in problem.observations:
+        if row.component_ids != capability.component_ids:
+            raise ValueError(
+                f"observation {row.row_id!r} component order does not match the Provider model"
+            )
+    return capability
+
+
+def _evaluate_parameters(
+    problem: RegressionProblem, model: object, variables: tuple[float, ...]
+) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    capability = _matched_capability(problem, model)
+    residuals, jacobian = _native.evaluate_general_kij(
+        native_sdk(model), _native_payload(problem, capability), variables
+    )
+    return tuple(residuals), tuple(jacobian)
+
+
+def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResult:
+    capability = _matched_capability(problem, model)
+    native = _native.solve_general_kij(
+        native_sdk(model), _native_payload(problem, capability)
+    )
+    parameter_coordinate = problem.parameters[0]
+    rows = tuple(
+        GeneralRowDiagnostic(
+            row_id=row[0],
+            partition=row[1],
+            liquid_volume_m3_per_mol=row[2],
+            vapor_volume_m3_per_mol=row[3],
+            scaled_residuals=tuple(row[4]),
+            evaluated=row[5],
+            failure_reason=row[6],
+        )
+        for row in native[20]
+    )
+    active_bound = native[7] or None
+    parameter = FittedParameterDiagnostic(
+        family=parameter_coordinate.family,
+        component_ids=parameter_coordinate.identity.canonical_component_ids,
+        unit=parameter_coordinate.unit,
+        start=parameter_coordinate.starts[0],
+        final=native[5],
+        movement=native[5] - parameter_coordinate.starts[0],
+        lower_bound=parameter_coordinate.lower_bound,
+        upper_bound=parameter_coordinate.upper_bound,
+        active_bound_distance=native[6],
+        active_bound=active_bound,
+    )
+    jacobian = GeneralJacobianDiagnostics(
+        residual_count=native[23],
+        variable_count=native[22],
+        full_singular_values=tuple(native[10]),
+        full_rank=native[11],
+        full_condition_number=native[12],
+        projected_parameter_singular_values=tuple(native[13]),
+        projected_parameter_rank=native[14],
+        projected_parameter_condition_number=native[15],
+    )
+    solver_converged = bool(native[1]) and not native[21]
+    confirmations_usable = bool(native[19])
+    numerically_converged = (
+        solver_converged
+        and confirmations_usable
+        and native[17] <= problem.confirmation_parameter_scaled_max_delta
+        and native[18] <= problem.confirmation_cost_relative_delta
+        and jacobian.full_rank == jacobian.variable_count
+        and jacobian.projected_parameter_rank == len(problem.parameters)
+        and math.isfinite(jacobian.full_condition_number)
+        and jacobian.full_condition_number <= problem.maximum_condition_number
+        and math.isfinite(jacobian.projected_parameter_condition_number)
+        and jacobian.projected_parameter_condition_number
+        <= problem.maximum_condition_number
+    )
+    workflow_valid = (
+        all(row.evaluated and not row.failure_reason for row in rows)
+        and len(rows) == len(problem.observations)
+    )
+    failures = tuple(
+        reason
+        for reason in (
+            native[21],
+            *(
+                f"{row.row_id}: {row.failure_reason}"
+                for row in rows
+                if row.failure_reason
+            ),
+        )
+        if reason
+    )
+    return RegressionResult(
+        provider_parameter_fingerprint=capability.parameter_fingerprint,
+        provider_topology_fingerprint=capability.topology_fingerprint,
+        solver_converged=solver_converged,
+        numerically_converged=numerically_converged,
+        workflow_valid=workflow_valid,
+        physical_status="NOT_ADJUDICATED_NO_ROW_ACCEPTANCE_CRITERIA",
+        scientific_status="NOT_ADJUDICATED_NO_APPROVED_SCIENTIFIC_CUTOFF",
+        predictive_status="NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF",
+        termination=native[0],
+        solution_usable=bool(native[1]),
+        initial_cost=native[2],
+        final_cost=native[3],
+        iterations=native[4],
+        parameter=parameter,
+        jacobian=jacobian,
+        rows=rows,
+        confirmation_count=native[16],
+        confirmation_parameter_scaled_max_delta=native[17],
+        confirmation_cost_relative_max_delta=native[18],
+        confirmations_usable=confirmations_usable,
+        training_row_count=len(problem.training_observations),
+        held_out_row_count=len(problem.held_out_observations),
+        stress_row_count=len(problem.stress_observations),
+        failure_reasons=failures,
+    )

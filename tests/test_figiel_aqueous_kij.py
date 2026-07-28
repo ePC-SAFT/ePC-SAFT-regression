@@ -76,7 +76,8 @@ def _copied_provider_capsules(
         pointer = get_pointer(capsule, name)
         table = _NativeSdkV1()
         ctypes.memmove(ctypes.addressof(table), pointer, ctypes.sizeof(table))
-        assert table.table_size == ctypes.sizeof(table)
+        assert table.table_size >= ctypes.sizeof(table)
+        table.table_size = ctypes.sizeof(table)
         if clear_scalar:
             table.evaluate_aqueous_miac_kij = None
         if truncate_before_bounded_batch:
