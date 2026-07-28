@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 import hashlib
 import json
@@ -165,7 +165,7 @@ class DirectObservationRowDiagnostic:
 @dataclass(frozen=True, slots=True)
 class RegressionResult:
     problem: RegressionProblem
-    capability: ParameterCapability
+    capabilities: tuple[ParameterCapability, ...]
     provider_parameter_fingerprint: str
     provider_topology_fingerprint: str
     solver_converged: bool
@@ -181,7 +181,7 @@ class RegressionResult:
     iterations: int
     residual_evaluation_count: int
     jacobian_evaluation_count: int
-    parameter: FittedParameterDiagnostic
+    parameters: tuple[FittedParameterDiagnostic, ...]
     jacobian: GeneralJacobianDiagnostics
     rows: tuple[
         GeneralRowDiagnostic
@@ -360,7 +360,6 @@ class ParameterCoordinate:
     transform: AffineParameterTransform
     lower_bound: float
     upper_bound: float
-    starts: tuple[float, ...]
 
     def __post_init__(self) -> None:
         if not isinstance(self.family, ParameterFamily):
@@ -431,16 +430,6 @@ class ParameterCoordinate:
         _require_finite(self.upper_bound, "upper bound")
         if self.lower_bound >= self.upper_bound:
             raise ValueError("parameter bounds must be strictly increasing")
-        if type(self.starts) is not tuple or len(self.starts) < 2:
-            raise ValueError("starts must contain a primary and at least one confirmation start")
-        for start in self.starts:
-            _require_finite(start, "parameter start")
-            if not self.lower_bound <= start <= self.upper_bound:
-                raise ValueError("every parameter start must lie within the declared bounds")
-
-    @property
-    def solver_starts(self) -> tuple[float, ...]:
-        return tuple(self.transform.to_solver(start) for start in self.starts)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1084,6 +1073,8 @@ def canonical_dataset_sha256(
 class RegressionProblem:
     sources: tuple[SourceDescriptor, ...]
     parameters: tuple[ParameterCoordinate, ...]
+    parameter_slot_indices: tuple[int, ...]
+    start_vectors: tuple[tuple[float, ...], ...]
     observations: tuple[RegressionObservation, ...]
     maximum_condition_number: float
     maximum_iterations: int
@@ -1099,6 +1090,39 @@ class RegressionProblem:
             raise ValueError("at least one source is required")
         if not self.parameters:
             raise ValueError("at least one parameter is required")
+        if (
+            type(self.parameter_slot_indices) is not tuple
+            or not self.parameter_slot_indices
+            or any(type(index) is not int for index in self.parameter_slot_indices)
+            or any(
+                index < 0 or index >= len(self.parameters)
+                for index in self.parameter_slot_indices
+            )
+        ):
+            raise ValueError(
+                "parameter_slot_indices must be a nonempty ordered map into "
+                "parameters"
+            )
+        if set(self.parameter_slot_indices) != set(range(len(self.parameters))):
+            raise ValueError(
+                "every fitted parameter must own at least one evaluator slot"
+            )
+        if type(self.start_vectors) is not tuple or len(self.start_vectors) < 2:
+            raise ValueError(
+                "start_vectors must contain a primary and at least one "
+                "confirmation vector"
+            )
+        for vector in self.start_vectors:
+            if type(vector) is not tuple or len(vector) != len(self.parameters):
+                raise ValueError(
+                    "every start vector must match the ordered parameter count"
+                )
+            for coordinate, start in zip(self.parameters, vector, strict=True):
+                _require_finite(start, "parameter start")
+                if not coordinate.lower_bound <= start <= coordinate.upper_bound:
+                    raise ValueError(
+                        "every parameter start must lie within its declared bounds"
+                    )
         if not self.observations:
             raise ValueError("at least one observation is required")
         source_ids = tuple(source.source_id for source in self.sources)
@@ -1127,8 +1151,6 @@ class RegressionProblem:
                 )
         if not self.training_observations:
             raise ValueError("at least one training observation is required")
-        if len(self.parameters) != 1:
-            raise ValueError("the first implementation accepts exactly one shared parameter")
         density_observations = tuple(
             isinstance(row, PureDensityObservation) for row in self.observations
         )
@@ -1137,38 +1159,43 @@ class RegressionProblem:
                 "pure-density and phase-equilibrium observations cannot share "
                 "one regression problem"
             )
-        identity = self.parameters[0].identity.canonical_component_ids
-        for row in self.observations:
-            row_identity = (
-                ()
-                if isinstance(self.parameters[0].identity, ModelParameterIdentity)
-                else ()
-                if isinstance(row, RelativePermittivityRatioObservation)
-                else row.canonical_active_pair_component_ids
-                if isinstance(
-                    row,
-                    (
-                        AqueousKijMeanIonicActivityObservation,
-                        IonSolvationKijObservation,
-                    ),
+        for parameter in self.parameters:
+            identity = parameter.identity.canonical_component_ids
+            for row in self.observations:
+                row_identity = (
+                    ()
+                    if isinstance(parameter.identity, ModelParameterIdentity)
+                    else ()
+                    if isinstance(row, RelativePermittivityRatioObservation)
+                    else row.canonical_active_pair_component_ids
+                    if isinstance(
+                        row,
+                        (
+                            AqueousKijMeanIonicActivityObservation,
+                            IonSolvationKijObservation,
+                        ),
+                    )
+                    else (row.component_ids[0],)
+                    if (
+                        parameter.family is ParameterFamily.RELATIVE_PERMITTIVITY
+                        and isinstance(row, SolvationGibbsObservation)
+                    )
+                    else (row.active_component_id,)
+                    if isinstance(
+                        row,
+                        (MeanIonicActivityObservation, SolvationGibbsObservation),
+                    )
+                    else (
+                        tuple(sorted(row.component_ids))
+                        if len(row.component_ids) == 2
+                        else row.component_ids
+                    )
                 )
-                else (row.component_ids[0],)
-                if (
-                    self.parameters[0].family is ParameterFamily.RELATIVE_PERMITTIVITY
-                    and isinstance(row, SolvationGibbsObservation)
-                )
-                else (row.active_component_id,)
-                if isinstance(row, (MeanIonicActivityObservation, SolvationGibbsObservation))
-                else (
-                    tuple(sorted(row.component_ids))
-                    if len(row.component_ids) == 2
-                    else row.component_ids
-                )
-            )
-            if row_identity != identity:
-                raise ValueError(
-                    f"observation {row.row_id!r} identity does not match the parameter identity"
-                )
+                if row_identity != identity:
+                    raise ValueError(
+                        f"observation {row.row_id!r} identity does not match "
+                        "the parameter identity"
+                    )
         _require_finite(
             self.maximum_condition_number,
             "maximum_condition_number",
@@ -1202,6 +1229,18 @@ class RegressionProblem:
     def stress_observations(self) -> tuple[RegressionObservation, ...]:
         return tuple(
             row for row in self.observations if row.partition is ObservationPartition.STRESS
+        )
+
+    @property
+    def solver_start_vectors(self) -> tuple[tuple[float, ...], ...]:
+        return tuple(
+            tuple(
+                coordinate.transform.to_solver(start)
+                for coordinate, start in zip(
+                    self.parameters, vector, strict=True
+                )
+            )
+            for vector in self.start_vectors
         )
 
 
@@ -1317,6 +1356,11 @@ def _row_payload(row: RegressionObservation) -> tuple[object, ...]:
 def _native_payload(
     problem: RegressionProblem, capability: ParameterCapability
 ) -> tuple[object, ...]:
+    if len(problem.parameters) != 1:
+        raise ValueError(
+            "the installed capability does not expose a multi-active "
+            "parameter evaluator"
+        )
     parameter = problem.parameters[0]
     observation_shape = (
         "pure_density"
@@ -1332,7 +1376,7 @@ def _native_payload(
         parameter.transform.scale,
         parameter.lower_bound,
         parameter.upper_bound,
-        parameter.starts,
+        tuple(vector[0] for vector in problem.start_vectors),
         problem.maximum_condition_number,
         problem.maximum_iterations,
         problem.maximum_solver_time_seconds,
@@ -1482,10 +1526,35 @@ def _matched_capability(
     return capability
 
 
+def _matched_capabilities(
+    problem: RegressionProblem, model: object
+) -> tuple[ParameterCapability, ...]:
+    return tuple(
+        _matched_capability(
+            replace(
+                problem,
+                parameters=(parameter,),
+                parameter_slot_indices=(0,),
+                start_vectors=tuple(
+                    (vector[index],) for vector in problem.start_vectors
+                ),
+            ),
+            model,
+        )
+        for index, parameter in enumerate(problem.parameters)
+    )
+
+
 def _evaluate_parameters(
     problem: RegressionProblem, model: object, variables: tuple[float, ...]
 ) -> tuple[tuple[float, ...], tuple[float, ...]]:
-    capability = _matched_capability(problem, model)
+    capabilities = _matched_capabilities(problem, model)
+    if len(capabilities) != 1:
+        raise ValueError(
+            "the installed capabilities do not expose one compatible "
+            "multi-active evaluator"
+        )
+    capability = capabilities[0]
     residuals, jacobian = _native.evaluate_general(
         native_sdk(model), _native_payload(problem, capability), variables
     )
@@ -1493,7 +1562,13 @@ def _evaluate_parameters(
 
 
 def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResult:
-    capability = _matched_capability(problem, model)
+    capabilities = _matched_capabilities(problem, model)
+    if len(capabilities) != 1:
+        raise ValueError(
+            "the installed capabilities do not expose one compatible "
+            "multi-active evaluator"
+        )
+    capability = capabilities[0]
     native = _native.solve_general(
         native_sdk(model), _native_payload(problem, capability)
     )
@@ -1672,9 +1747,9 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         unit=parameter_coordinate.unit,
         transform_origin=parameter_coordinate.transform.origin,
         transform_scale=parameter_coordinate.transform.scale,
-        start=parameter_coordinate.starts[0],
+        start=problem.start_vectors[0][0],
         final=native[5],
-        movement=native[5] - parameter_coordinate.starts[0],
+        movement=native[5] - problem.start_vectors[0][0],
         lower_bound=parameter_coordinate.lower_bound,
         upper_bound=parameter_coordinate.upper_bound,
         active_bound_distance=native[6],
@@ -1724,7 +1799,7 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
     )
     return RegressionResult(
         problem=problem,
-        capability=capability,
+        capabilities=capabilities,
         provider_parameter_fingerprint=capability.parameter_fingerprint,
         provider_topology_fingerprint=capability.topology_fingerprint,
         solver_converged=solver_converged,
@@ -1740,7 +1815,7 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         iterations=native[4],
         residual_evaluation_count=native[24],
         jacobian_evaluation_count=native[25],
-        parameter=parameter,
+        parameters=(parameter,),
         jacobian=jacobian,
         rows=rows,
         confirmation_count=native[16],

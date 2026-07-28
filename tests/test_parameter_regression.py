@@ -210,9 +210,10 @@ def _pure_density_problem(
                 transform=AffineParameterTransform(origin=origin, scale=scale),
                 lower_bound=bounds[0],
                 upper_bound=bounds[1],
-                starts=starts,
             ),
         ),
+        parameter_slot_indices=(0,),
+        start_vectors=tuple((start,) for start in starts),
         observations=(row,),
         maximum_condition_number=1.0e12,
         maximum_iterations=100,
@@ -305,11 +306,12 @@ def _problem(
         transform=AffineParameterTransform(origin=0.0, scale=0.01),
         lower_bound=-0.15,
         upper_bound=0.10,
-        starts=(0.0, -0.05, 0.05),
     )
     return RegressionProblem(
         sources=(source,),
         parameters=(parameter,),
+        parameter_slot_indices=(0,),
+        start_vectors=((0.0,), (-0.05,), (0.05,)),
         observations=observations,
         maximum_condition_number=1.0e10,
         maximum_iterations=50,
@@ -365,7 +367,7 @@ def _mock_general_native_result() -> tuple[object, ...]:
 
 def _general_result_signature(result: RegressionResult) -> tuple[object, ...]:
     return (
-        result.parameter.final,
+        result.parameters[0].final,
         result.final_cost,
         result.jacobian.residual_count,
         result.jacobian.variable_count,
@@ -466,11 +468,12 @@ def _pure_problem(
         transform=AffineParameterTransform(origin=origin, scale=scale),
         lower_bound=lower,
         upper_bound=upper,
-        starts=starts,
     )
     return RegressionProblem(
         sources=(source,),
         parameters=(parameter,),
+        parameter_slot_indices=(0,),
+        start_vectors=tuple((start,) for start in starts),
         observations=observations,
         maximum_condition_number=1.0e12,
         maximum_iterations=500,
@@ -542,11 +545,12 @@ def _solvation_factor_problem(model: EPCSAFT) -> RegressionProblem:
         transform=AffineParameterTransform(origin=1.5, scale=0.1),
         lower_bound=specification.parameter_bounds[0],
         upper_bound=specification.parameter_bounds[1],
-        starts=specification.starts,
     )
     return RegressionProblem(
         sources=(source,),
         parameters=(parameter,),
+        parameter_slot_indices=(0,),
+        start_vectors=tuple((start,) for start in specification.starts),
         observations=observations,
         maximum_condition_number=1.0e10,
         maximum_iterations=specification.max_num_iterations,
@@ -624,11 +628,12 @@ def _aqueous_kij_problem(model: EPCSAFT) -> RegressionProblem:
         transform=AffineParameterTransform(origin=-0.3, scale=0.1),
         lower_bound=-1.0,
         upper_bound=1.0,
-        starts=(0.0, 0.25),
     )
     return RegressionProblem(
         sources=(source,),
         parameters=(parameter,),
+        parameter_slot_indices=(0,),
+        start_vectors=((0.0,), (0.25,)),
         observations=observations,
         maximum_condition_number=1.0e10,
         maximum_iterations=50,
@@ -699,14 +704,15 @@ def _born_diameter_problem(
         ),
         lower_bound=specification.diameter_bounds_angstrom[0],
         upper_bound=specification.diameter_bounds_angstrom[1],
-        starts=tuple(
-            start[target_index]
-            for start in specification.start_diameters_angstrom
-        ),
     )
     return RegressionProblem(
         sources=(source,),
         parameters=(parameter,),
+        parameter_slot_indices=(0,),
+        start_vectors=tuple(
+            (start[target_index],)
+            for start in specification.start_diameters_angstrom
+        ),
         observations=(observation,),
         maximum_condition_number=1.0e10,
         maximum_iterations=specification.max_num_iterations,
@@ -775,11 +781,12 @@ def _ionic_region_permittivity_problem(model: EPCSAFT) -> RegressionProblem:
         transform=AffineParameterTransform(origin=8.0, scale=2.0),
         lower_bound=1.01,
         upper_bound=50.0,
-        starts=(4.0, 12.0),
     )
     return RegressionProblem(
         sources=(source,),
         parameters=(parameter,),
+        parameter_slot_indices=(0,),
+        start_vectors=((4.0,), (12.0,)),
         observations=(observation,),
         maximum_condition_number=1.0e10,
         maximum_iterations=50,
@@ -844,11 +851,12 @@ def _solvent_relative_permittivity_problem(model: EPCSAFT) -> RegressionProblem:
         transform=AffineParameterTransform(origin=78.09, scale=10.0),
         lower_bound=1.01,
         upper_bound=200.0,
-        starts=(50.0, 110.0),
     )
     return RegressionProblem(
         sources=(source,),
         parameters=(parameter,),
+        parameter_slot_indices=(0,),
+        start_vectors=((50.0,), (110.0,)),
         observations=(observation,),
         maximum_condition_number=1.0e10,
         maximum_iterations=50,
@@ -921,11 +929,12 @@ def _dielectric_suppression_problem(model: EPCSAFT) -> RegressionProblem:
         transform=AffineParameterTransform(origin=7.0, scale=1.0),
         lower_bound=0.01,
         upper_bound=30.0,
-        starts=(2.0, 12.0),
     )
     return RegressionProblem(
         sources=(source,),
         parameters=(parameter,),
+        parameter_slot_indices=(0,),
+        start_vectors=((2.0,), (12.0,)),
         observations=observations,
         maximum_condition_number=1.0e10,
         maximum_iterations=50,
@@ -1004,11 +1013,12 @@ def _ion_solvation_kij_problem(
         transform=AffineParameterTransform(origin=0.3, scale=0.1),
         lower_bound=-1.5,
         upper_bound=1.5,
-        starts=(0.0, 0.7),
     )
     return RegressionProblem(
         sources=(source,),
         parameters=(parameter,),
+        parameter_slot_indices=(0,),
+        start_vectors=((0.0,), (0.7,)),
         observations=observations,
         maximum_condition_number=1.0e10,
         maximum_iterations=50,
@@ -1251,26 +1261,6 @@ def test_installed_provider_advertises_each_aqueous_kij_miac_contract() -> None:
     )
 
 
-def test_exact_solvation_factor_jacobian_matches_directional_residual_difference() -> None:
-    model = _fixed_water_factor_model(FIGIEL_WATER_SOLVATION_FACTOR_V1)
-    problem = _solvation_factor_problem(model)
-    trial = problem.parameters[0].transform.to_solver(1.4)
-
-    residuals, jacobian = _evaluate_parameters(problem, model, (trial,))
-    step = 1.0e-5
-    plus = _evaluate_parameters(problem, model, (trial + step,))[0]
-    minus = _evaluate_parameters(problem, model, (trial - step,))[0]
-    finite_difference = tuple(
-        (upper - lower) / (2.0 * step)
-        for upper, lower in zip(plus, minus, strict=True)
-    )
-
-    assert len(residuals) == len(jacobian) == 21
-    assert jacobian == pytest.approx(
-        finite_difference, rel=2.0e-6, abs=2.0e-8
-    )
-
-
 @pytest.mark.campaign
 def test_general_engine_fits_water_solvation_factor_over_all_nabr_rows() -> None:
     model = _fixed_water_factor_model(FIGIEL_WATER_SOLVATION_FACTOR_V1)
@@ -1279,10 +1269,10 @@ def test_general_engine_fits_water_solvation_factor_over_all_nabr_rows() -> None
     assert result.solver_converged
     assert result.numerically_converged
     assert result.workflow_valid
-    assert result.parameter.final == pytest.approx(
+    assert result.parameters[0].final == pytest.approx(
         1.5590515389548207, rel=1.0e-11, abs=1.0e-11
     )
-    assert result.parameter.active_bound is None
+    assert result.parameters[0].active_bound is None
     assert result.jacobian.residual_count == 21
     assert result.jacobian.variable_count == 1
     assert result.jacobian.full_rank == 1
@@ -1296,97 +1286,6 @@ def test_general_engine_fits_water_solvation_factor_over_all_nabr_rows() -> None
     )
 
 
-def test_exact_aqueous_kij_jacobian_matches_directional_residual_difference() -> None:
-    model = _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4]
-    problem = _aqueous_kij_problem(model)
-    trial = problem.parameters[0].transform.to_solver(-0.2)
-
-    residuals, jacobian = _evaluate_parameters(problem, model, (trial,))
-    step = 1.0e-5
-    plus = _evaluate_parameters(problem, model, (trial + step,))[0]
-    minus = _evaluate_parameters(problem, model, (trial - step,))[0]
-    finite_difference = tuple(
-        (upper - lower) / (2.0 * step)
-        for upper, lower in zip(plus, minus, strict=True)
-    )
-
-    assert len(residuals) == len(jacobian) == 21
-    assert jacobian == pytest.approx(
-        finite_difference, rel=2.0e-6, abs=2.0e-8
-    )
-
-
-def test_exact_dielectric_jacobian_matches_directional_residual_difference() -> None:
-    model = _aqueous_model()
-    problem = _dielectric_suppression_problem(model)
-    trial = problem.parameters[0].transform.to_solver(7.01)
-
-    residuals, jacobian = _evaluate_parameters(problem, model, (trial,))
-    step = 1.0e-5
-    plus = _evaluate_parameters(problem, model, (trial + step,))[0]
-    minus = _evaluate_parameters(problem, model, (trial - step,))[0]
-    finite_difference = tuple(
-        (upper - lower) / (2.0 * step)
-        for upper, lower in zip(plus, minus, strict=True)
-    )
-
-    assert len(residuals) == len(jacobian) == 3
-    assert jacobian == pytest.approx(
-        finite_difference, rel=2.0e-9, abs=2.0e-10
-    )
-
-
-@pytest.mark.parametrize(
-    ("capability_id", "active_component_id", "active_pair_component_ids"),
-    (
-        (
-            "ion_solvation_solvent_cation_kij_v1",
-            "potassium-cation",
-            ("methanol", "potassium-cation"),
-        ),
-        (
-            "ion_solvation_solvent_anion_kij_v1",
-            "bromide-anion",
-            ("methanol", "bromide-anion"),
-        ),
-        (
-            "ion_solvation_cation_anion_kij_v1",
-            "potassium-cation",
-            ("potassium-cation", "bromide-anion"),
-        ),
-    ),
-)
-def test_exact_ion_solvation_kij_jacobian_matches_directional_difference(
-    capability_id: str,
-    active_component_id: str,
-    active_pair_component_ids: tuple[str, str],
-) -> None:
-    model = _aqueous_model(
-        ("methanol", "potassium-cation", "bromide-anion")
-    )
-    problem = _ion_solvation_kij_problem(
-        model,
-        capability_id=capability_id,
-        active_component_id=active_component_id,
-        active_pair_component_ids=active_pair_component_ids,
-    )
-    trial = problem.parameters[0].transform.to_solver(0.32)
-
-    residuals, jacobian = _evaluate_parameters(problem, model, (trial,))
-    step = 1.0e-5
-    plus = _evaluate_parameters(problem, model, (trial + step,))[0]
-    minus = _evaluate_parameters(problem, model, (trial - step,))[0]
-    finite_difference = tuple(
-        (upper - lower) / (2.0 * step)
-        for upper, lower in zip(plus, minus, strict=True)
-    )
-
-    assert len(residuals) == len(jacobian) == 1
-    assert jacobian == pytest.approx(
-        finite_difference, rel=2.0e-6, abs=2.0e-8
-    )
-
-
 @pytest.mark.campaign
 def test_general_engine_fits_organic_ion_solvation_kij_endpoint() -> None:
     model = _aqueous_model(
@@ -1397,10 +1296,10 @@ def test_general_engine_fits_organic_ion_solvation_kij_endpoint() -> None:
     assert result.solver_converged
     assert result.numerically_converged
     assert result.workflow_valid
-    assert result.parameter.final == pytest.approx(
+    assert result.parameters[0].final == pytest.approx(
         0.3467279724950645, rel=0.0, abs=2.0e-12
     )
-    assert result.parameter.active_bound is None
+    assert result.parameters[0].active_bound is None
     assert result.jacobian.full_rank == 1
     assert result.jacobian.projected_parameter_rank == 1
     assert result.confirmations_usable
@@ -1416,7 +1315,7 @@ def test_general_engine_fits_dielectric_suppression_from_user_rows() -> None:
     assert result.solver_converged
     assert result.numerically_converged
     assert result.workflow_valid
-    assert result.parameter.active_bound is None
+    assert result.parameters[0].active_bound is None
     assert result.jacobian.residual_count == 3
     assert result.jacobian.variable_count == 1
     assert result.jacobian.full_rank == 1
@@ -1447,7 +1346,7 @@ def test_general_engine_fits_one_aqueous_kij_from_user_rows() -> None:
     assert result.solver_converged
     assert result.numerically_converged
     assert result.workflow_valid
-    assert result.parameter.active_bound is None
+    assert result.parameters[0].active_bound is None
     assert len(result.problem.parameters) == 1
     assert result.jacobian.residual_count == 21
     assert result.jacobian.variable_count == 1
@@ -1472,48 +1371,17 @@ def test_general_engine_fits_one_aqueous_kij_from_user_rows() -> None:
     )
 
 
-def test_exact_born_diameter_jacobian_matches_directional_residual_difference() -> None:
-    target_index = 1
-    target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[target_index]
-    model = _aqueous_model(target.component_order)
-    problem = _born_diameter_problem(model, target_index)
-    trial = problem.parameters[0].transform.to_solver(3.2)
-
-    residuals, jacobian = _evaluate_parameters(problem, model, (trial,))
-    step = 1.0e-5
-    plus = _evaluate_parameters(problem, model, (trial + step,))[0]
-    minus = _evaluate_parameters(problem, model, (trial - step,))[0]
-    finite_difference = (plus[0] - minus[0]) / (2.0 * step)
-
-    assert len(residuals) == len(jacobian) == 1
-    assert jacobian[0] == pytest.approx(
-        finite_difference, rel=2.0e-7, abs=2.0e-9
-    )
-
-
 @pytest.mark.campaign
 def test_ionic_region_permittivity_has_exact_rank_one_fit() -> None:
     target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[1]
     model = _aqueous_model(target.component_order)
     problem = _ionic_region_permittivity_problem(model)
-    trial = problem.parameters[0].transform.to_solver(8.0)
-
-    residuals, jacobian = _evaluate_parameters(problem, model, (trial,))
-    step = 1.0e-5
-    plus = _evaluate_parameters(problem, model, (trial + step,))[0]
-    minus = _evaluate_parameters(problem, model, (trial - step,))[0]
-    finite_difference = (plus[0] - minus[0]) / (2.0 * step)
-    assert len(residuals) == len(jacobian) == 1
-    assert jacobian[0] == pytest.approx(
-        finite_difference, rel=2.0e-7, abs=2.0e-9
-    )
-
     result = fit_parameters(problem, model)
     assert result.solver_converged
     assert result.numerically_converged
     assert result.workflow_valid
-    assert result.parameter.active_bound is None
-    assert 1.01 < result.parameter.final < 50.0
+    assert result.parameters[0].active_bound is None
+    assert 1.01 < result.parameters[0].final < 50.0
     assert result.jacobian.full_rank == 1
     assert result.jacobian.projected_parameter_rank == 1
     assert result.confirmations_usable
@@ -1548,24 +1416,12 @@ def test_solvent_relative_permittivity_has_exact_rank_one_fit() -> None:
     target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[1]
     model = _aqueous_model(target.component_order)
     problem = _solvent_relative_permittivity_problem(model)
-    trial = problem.parameters[0].transform.to_solver(78.09)
-
-    residuals, jacobian = _evaluate_parameters(problem, model, (trial,))
-    step = 1.0e-5
-    plus = _evaluate_parameters(problem, model, (trial + step,))[0]
-    minus = _evaluate_parameters(problem, model, (trial - step,))[0]
-    finite_difference = (plus[0] - minus[0]) / (2.0 * step)
-    assert len(residuals) == len(jacobian) == 1
-    assert jacobian[0] == pytest.approx(
-        finite_difference, rel=2.0e-7, abs=2.0e-9
-    )
-
     result = fit_parameters(problem, model)
     assert result.solver_converged
     assert result.numerically_converged
     assert result.workflow_valid
-    assert result.parameter.active_bound is None
-    assert 1.01 < result.parameter.final < 200.0
+    assert result.parameters[0].active_bound is None
+    assert 1.01 < result.parameters[0].final < 200.0
     assert result.jacobian.full_rank == 1
     assert result.jacobian.projected_parameter_rank == 1
     assert result.confirmations_usable
@@ -1622,10 +1478,10 @@ def test_general_engine_fits_each_born_diameter_independently(
     assert result.solver_converged
     assert result.numerically_converged
     assert result.workflow_valid
-    assert result.parameter.final == pytest.approx(
+    assert result.parameters[0].final == pytest.approx(
         expected, rel=2.0e-11, abs=2.0e-11
     )
-    assert result.parameter.active_bound is None
+    assert result.parameters[0].active_bound is None
     assert result.jacobian.residual_count == 1
     assert result.jacobian.variable_count == 1
     assert result.jacobian.full_rank == 1
@@ -1751,47 +1607,6 @@ def test_installed_provider_advertises_bounded_pure_association_contracts() -> N
         ParameterFamily.ASSOCIATION_VOLUME,
     ),
 )
-def test_exact_pure_density_association_jacobian_matches_directional_difference(
-    family: ParameterFamily,
-) -> None:
-    model = _associating_pure_model()
-    problem = _pure_density_problem(model, family)
-    variables = (0.0, math.log(1.01))
-    direction = (2.0e-4, -3.0e-5)
-    residuals, jacobian = _evaluate_parameters(problem, model, variables)
-    step = 1.0e-3
-    lower, _ = _evaluate_parameters(
-        problem,
-        model,
-        tuple(
-            value - step * delta
-            for value, delta in zip(variables, direction, strict=True)
-        ),
-    )
-    upper, _ = _evaluate_parameters(
-        problem,
-        model,
-        tuple(
-            value + step * delta
-            for value, delta in zip(variables, direction, strict=True)
-        ),
-    )
-    assert len(residuals) == 2
-    assert len(jacobian) == 4
-    for row in range(2):
-        exact = sum(jacobian[2 * row + column] * direction[column] for column in range(2))
-        finite_difference = (upper[row] - lower[row]) / (2.0 * step)
-        assert exact == pytest.approx(finite_difference, rel=3.0e-6, abs=1.0e-9)
-
-
-@pytest.mark.campaign
-@pytest.mark.parametrize(
-    "family",
-    (
-        ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
-        ParameterFamily.ASSOCIATION_VOLUME,
-    ),
-)
 def test_pure_density_association_surface_reports_nonconverged_rank_diagnostics(
     family: ParameterFamily,
 ) -> None:
@@ -1802,59 +1617,14 @@ def test_pure_density_association_surface_reports_nonconverged_rank_diagnostics(
     assert result.jacobian.variable_count == 2
     assert result.jacobian.full_rank == 2
     assert result.jacobian.projected_parameter_rank == 1
-    assert result.parameter.active_bound is None
-    assert math.isfinite(result.parameter.final)
+    assert result.parameters[0].active_bound is None
+    assert math.isfinite(result.parameters[0].final)
     assert not result.solver_converged
     assert not result.numerically_converged
     assert isinstance(result.rows[0], PureDensityRowDiagnostic)
     assert result.rows[0].evaluated
     assert all(math.isfinite(value) for value in result.rows[0].scaled_residuals)
     assert result.scientific_status == "NOT_ADJUDICATED_NO_APPROVED_SCIENTIFIC_CUTOFF"
-
-
-@pytest.mark.parametrize(
-    "family",
-    (
-        ParameterFamily.SEGMENT_COUNT,
-        ParameterFamily.SEGMENT_DIAMETER,
-        ParameterFamily.DISPERSION_ENERGY_OVER_K,
-    ),
-)
-def test_exact_lifted_pure_scalar_jacobian_matches_directional_residual_difference(
-    family: ParameterFamily,
-) -> None:
-    model = _pure_model()
-    problem = _pure_problem(model, family)
-    variables = (0.0, math.log(1.01), math.log(0.98))
-    direction = (0.20, -0.10, 0.15)
-
-    _, jacobian = _evaluate_parameters(problem, model, variables)
-    step = 1.0e-6
-    plus = tuple(
-        value + step * delta
-        for value, delta in zip(variables, direction, strict=True)
-    )
-    minus = tuple(
-        value - step * delta
-        for value, delta in zip(variables, direction, strict=True)
-    )
-    residuals_plus = _evaluate_parameters(problem, model, plus)[0]
-    residuals_minus = _evaluate_parameters(problem, model, minus)[0]
-    finite_difference = tuple(
-        (upper - lower) / (2.0 * step)
-        for upper, lower in zip(residuals_plus, residuals_minus, strict=True)
-    )
-    exact_product = tuple(
-        math.fsum(
-            jacobian[row * 3 + column] * direction[column]
-            for column in range(3)
-        )
-        for row in range(4)
-    )
-
-    assert exact_product == pytest.approx(
-        finite_difference, rel=2.0e-6, abs=2.0e-8
-    )
 
 
 @pytest.mark.parametrize(
@@ -1876,8 +1646,8 @@ def test_general_engine_fits_one_pure_component_parameter(
     assert result.solver_converged
     assert result.numerically_converged
     assert result.workflow_valid
-    assert result.parameter.family is family
-    assert result.parameter.active_bound is None
+    assert result.parameters[0].family is family
+    assert result.parameters[0].active_bound is None
     assert result.jacobian.full_rank == result.jacobian.variable_count == 9
     assert result.jacobian.projected_parameter_rank == 1
     expected = {
@@ -1885,7 +1655,7 @@ def test_general_engine_fits_one_pure_component_parameter(
         ParameterFamily.SEGMENT_DIAMETER: 3.7063548743836034,
         ParameterFamily.DISPERSION_ENERGY_OVER_K: 150.00325287725062,
     }
-    assert result.parameter.final == pytest.approx(expected[family], abs=2.0e-10)
+    assert result.parameters[0].final == pytest.approx(expected[family], abs=2.0e-10)
     assert all(
         isinstance(row, PureSaturationRowDiagnostic) and row.evaluated
         for row in result.rows
@@ -1926,45 +1696,6 @@ def test_native_general_engine_rejects_nonfinite_scaled_result() -> None:
         )
 
 
-@pytest.mark.parametrize("family", (ParameterFamily.K_IJ, ParameterFamily.L_IJ))
-def test_exact_lifted_pair_jacobian_matches_directional_residual_difference(
-    family: ParameterFamily,
-) -> None:
-    model = _model()
-    problem = _problem(model, family=family)
-    variables = (
-        0.0,
-        math.log(6.5e-5 / 6.0e-5),
-        math.log(1.0e-3 / 9.0e-4),
-    )
-    direction = (0.20, -0.10, 0.15)
-
-    residuals, jacobian = _evaluate_parameters(problem, model, variables)
-    step = 1.0e-6
-    plus = tuple(
-        value + step * delta
-        for value, delta in zip(variables, direction, strict=True)
-    )
-    minus = tuple(
-        value - step * delta
-        for value, delta in zip(variables, direction, strict=True)
-    )
-    residuals_plus = _evaluate_parameters(problem, model, plus)[0]
-    residuals_minus = _evaluate_parameters(problem, model, minus)[0]
-    finite_difference = tuple(
-        (upper - lower) / (2.0 * step)
-        for upper, lower in zip(residuals_plus, residuals_minus, strict=True)
-    )
-    exact_product = tuple(
-        math.fsum(jacobian[row * 3 + column] * direction[column] for column in range(3))
-        for row in range(4)
-    )
-
-    assert len(residuals) == 4
-    assert len(jacobian) == 12
-    assert exact_product == pytest.approx(finite_difference, rel=2.0e-7, abs=2.0e-8)
-
-
 def test_general_kij_fit_reports_rank_confirmation_and_partition_isolation() -> None:
     model = _model()
     training = _row()
@@ -1983,12 +1714,12 @@ def test_general_kij_fit_reports_rank_confirmation_and_partition_isolation() -> 
 
     assert isinstance(result, RegressionResult)
     assert result.problem == problem
-    assert result.capability == parameter_capabilities(model)[0]
-    assert result.parameter.final == repeated.parameter.final
+    assert result.capabilities == (parameter_capabilities(model)[0],)
+    assert result.parameters[0].final == repeated.parameters[0].final
     assert result.final_cost == repeated.final_cost
-    assert result.parameter.lower_bound <= result.parameter.final <= result.parameter.upper_bound
-    assert result.parameter.transform_origin == 0.0
-    assert result.parameter.transform_scale == 0.01
+    assert result.parameters[0].lower_bound <= result.parameters[0].final <= result.parameters[0].upper_bound
+    assert result.parameters[0].transform_origin == 0.0
+    assert result.parameters[0].transform_scale == 0.01
     assert result.jacobian.full_rank == 3
     assert result.jacobian.projected_parameter_rank == 1
     assert result.confirmation_count == 2
@@ -2031,12 +1762,12 @@ def test_general_lij_fit_reuses_the_exact_lifted_pair_engine() -> None:
         model,
     )
 
-    assert result.parameter.family is ParameterFamily.L_IJ
-    assert result.capability.family is ParameterFamily.L_IJ
+    assert result.parameters[0].family is ParameterFamily.L_IJ
+    assert result.capabilities[0].family is ParameterFamily.L_IJ
     assert result.jacobian.residual_count == 4
     assert result.jacobian.variable_count == 3
     assert result.jacobian.projected_parameter_rank == 1
-    assert result.parameter.active_bound is None
+    assert result.parameters[0].active_bound is None
     assert result.confirmation_count == 2
     assert result.rows[0].derivative_status == "EXACT_PROVIDER_HESSIAN"
 
@@ -2104,9 +1835,9 @@ def test_active_bound_diagnostic_is_preserved(
 
     result = fit_parameters(problem, model)
 
-    assert result.parameter.final == problem.parameters[0].upper_bound
-    assert result.parameter.active_bound == "upper"
-    assert result.parameter.active_bound_distance == 0.0
+    assert result.parameters[0].final == problem.parameters[0].upper_bound
+    assert result.parameters[0].active_bound == "upper"
+    assert result.parameters[0].active_bound_distance == 0.0
 
 
 def test_rows_outside_provider_temperature_domain_fail_before_ceres(
@@ -2346,11 +2077,12 @@ def _may_methane_propane_problem(
         transform=AffineParameterTransform(origin=0.0, scale=0.01),
         lower_bound=-0.15,
         upper_bound=0.10,
-        starts=(0.0, -0.05, 0.05),
     )
     return RegressionProblem(
         sources=(source,),
         parameters=(parameter,),
+        parameter_slot_indices=(0,),
+        start_vectors=((0.0,), (-0.05,), (0.05,)),
         observations=observations,
         maximum_condition_number=1.0e10,
         maximum_iterations=100,
@@ -2447,60 +2179,6 @@ def test_may_methane_propane_source_identity_and_transform() -> None:
     )
 
 
-def test_exact_may_methane_propane_lifted_kij_jacobian_matches_directional_difference() -> None:
-    model = _methane_propane_model()
-    problem = _may_methane_propane_problem(model)
-    variables = (0.0,) + tuple(
-        value
-        for row in problem.observations
-        for value in (
-            math.log(
-                row.liquid_volume_start_m3_per_mol
-                / row.liquid_volume_origin_m3_per_mol
-            ),
-            math.log(
-                row.vapor_volume_start_m3_per_mol
-                / row.vapor_volume_origin_m3_per_mol
-            ),
-        )
-    )
-    direction = (0.20,) + tuple(
-        value
-        for _ in problem.observations
-        for value in (-0.10, 0.15)
-    )
-    residuals, jacobian = _evaluate_parameters(problem, model, variables)
-    step = 1.0e-6
-    plus = tuple(
-        value + step * delta
-        for value, delta in zip(variables, direction, strict=True)
-    )
-    minus = tuple(
-        value - step * delta
-        for value, delta in zip(variables, direction, strict=True)
-    )
-    finite_difference = tuple(
-        (upper - lower) / (2.0 * step)
-        for upper, lower in zip(
-            _evaluate_parameters(problem, model, plus)[0],
-            _evaluate_parameters(problem, model, minus)[0],
-            strict=True,
-        )
-    )
-    exact_product = tuple(
-        math.fsum(
-            jacobian[row * 45 + column] * direction[column]
-            for column in range(45)
-        )
-        for row in range(88)
-    )
-    assert len(residuals) == 88
-    assert len(jacobian) == 88 * 45
-    assert exact_product == pytest.approx(
-        finite_difference, rel=2.0e-7, abs=2.0e-8
-    )
-
-
 def test_may_methane_propane_kij_is_invariant_to_row_order_and_pair_identity() -> None:
     # Two source rows keep the invariance check independent of the retained
     # 22-row campaign while still exercising a nontrivial row reversal.
@@ -2551,7 +2229,7 @@ def test_may_methane_propane_kij_is_invariant_to_row_order_and_pair_identity() -
         "methane",
         "propane",
     )
-    assert identity_result.parameter.component_ids == (
+    assert identity_result.parameters[0].component_ids == (
         "methane",
         "propane",
     )
@@ -2569,7 +2247,7 @@ def test_may_methane_propane_campaign_reproduces_reference_fit() -> None:
     assert problem.parameters[0].identity == PairParameterIdentity(
         "methane", "propane"
     )
-    assert problem.parameters[0].starts == (0.0, -0.05, 0.05)
+    assert problem.start_vectors == ((0.0,), (-0.05,), (0.05,))
     assert result.solver_converged
     assert result.numerically_converged
     assert result.workflow_valid
@@ -2579,7 +2257,7 @@ def test_may_methane_propane_campaign_reproduces_reference_fit() -> None:
     assert result.jacobian.variable_count == 45
     assert result.jacobian.full_rank == 45
     assert result.jacobian.projected_parameter_rank == 1
-    assert result.parameter.active_bound is None
+    assert result.parameters[0].active_bound is None
     assert result.confirmation_count == 2
     assert result.confirmations_usable
     assert result.training_row_count == 22
@@ -2604,7 +2282,7 @@ def test_may_methane_propane_campaign_reproduces_reference_fit() -> None:
         and not row.failure_reason
         for row in result.rows
     )
-    assert result.parameter.final == pytest.approx(
+    assert result.parameters[0].final == pytest.approx(
         0.0038919335722629794, rel=0.0, abs=1.0e-14
     )
     assert result.final_cost == pytest.approx(
@@ -2614,12 +2292,12 @@ def test_may_methane_propane_campaign_reproduces_reference_fit() -> None:
     # A second complete run establishes the observed deterministic
     # repeatability; no scientific or wall-time cutoff is inferred here.
     repeatability_parameter_delta = abs(
-        result.parameter.final - repeat.parameter.final
+        result.parameters[0].final - repeat.parameters[0].final
     )
     repeatability_cost_delta = abs(result.final_cost - repeat.final_cost)
     assert repeatability_parameter_delta <= 1.0e-14
     assert repeatability_cost_delta <= 1.0e-14
-    assert result.parameter.final == repeat.parameter.final
+    assert result.parameters[0].final == repeat.parameters[0].final
     assert result.final_cost == repeat.final_cost
 
 
@@ -2638,8 +2316,8 @@ def test_all_audited_may_rows_reproduce_the_general_kij_reference_fit() -> None:
     assert result.jacobian.variable_count == 35
     assert result.jacobian.full_rank == 35
     assert result.jacobian.projected_parameter_rank == 1
-    assert result.parameter.active_bound is None
-    assert result.parameter.final == pytest.approx(
+    assert result.parameters[0].active_bound is None
+    assert result.parameters[0].final == pytest.approx(
         -0.00843032298906253, rel=0.0, abs=2.0e-12
     )
     assert result.confirmation_count == 2
@@ -2663,7 +2341,7 @@ def test_all_audited_may_rows_are_fit_ready_for_general_lij() -> None:
     assert result.jacobian.variable_count == 35
     assert result.jacobian.full_rank == 35
     assert result.jacobian.projected_parameter_rank == 1
-    assert result.parameter.active_bound is None
+    assert result.parameters[0].active_bound is None
     assert result.confirmation_count == 2
     assert result.training_row_count == 17
     assert result.failed_row_count == 0

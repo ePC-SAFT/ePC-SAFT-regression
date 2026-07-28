@@ -17,6 +17,7 @@ endif()
 
 Python_add_library(_native MODULE WITH_SOABI
   src/epcsaft_regression/native/born_diameter_fit.cpp
+  src/epcsaft_regression/native/ceres_core.cpp
   src/epcsaft_regression/native/figiel_kij_fit.cpp
   src/epcsaft_regression/native/figiel_water_factor_fit.cpp
   src/epcsaft_regression/native/general_fit.cpp
@@ -33,3 +34,20 @@ set_target_properties(_native PROPERTIES
   VISIBILITY_INLINES_HIDDEN YES
 )
 install(TARGETS _native LIBRARY DESTINATION epcsaft_regression)
+
+include(CTest)
+if(BUILD_TESTING)
+  add_executable(ceres_core_test EXCLUDE_FROM_ALL
+    tests/native/test_ceres_core.cpp
+    src/epcsaft_regression/native/ceres_core.cpp
+  )
+  target_compile_features(ceres_core_test PRIVATE cxx_std_17)
+  target_compile_options(ceres_core_test PRIVATE
+    -Wall -Wextra -Wpedantic -Werror
+  )
+  target_include_directories(ceres_core_test PRIVATE
+    src/epcsaft_regression/native
+  )
+  target_link_libraries(ceres_core_test PRIVATE Ceres::ceres)
+  add_test(NAME ceres_core COMMAND ceres_core_test)
+endif()

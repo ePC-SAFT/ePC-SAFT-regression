@@ -1,11 +1,9 @@
 #include "general_fit.hpp"
+#include "ceres_core.hpp"
 
 #include <epcsaft/native_sdk_v1.h>
 
 #include <ceres/ceres.h>
-#include <Eigen/Dense>
-#include <Eigen/SVD>
-
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -2210,131 +2208,6 @@ void evaluate_problem(
     }
 }
 
-class GeneralCost final : public ceres::CostFunction {
-public:
-    GeneralCost(
-        const epcsaft_native_sdk_v1* table, const Payload& payload
-    ) : table_(table), payload_(payload), scratch_(make_evaluation(payload)) {
-        set_num_residuals(static_cast<int>(residual_count(payload)));
-        mutable_parameter_block_sizes()->push_back(
-            static_cast<int>(variable_count(payload))
-        );
-    }
-
-    bool Evaluate(
-        double const* const* values, double* residuals, double** jacobians
-    ) const override {
-        try {
-            evaluate_problem(
-                *table_,
-                payload_,
-                values[0],
-                static_cast<std::size_t>(parameter_block_sizes()[0]),
-                scratch_
-            );
-            std::copy(
-                scratch_.residuals.begin(),
-                scratch_.residuals.end(),
-                residuals
-            );
-            if (jacobians != nullptr && jacobians[0] != nullptr) {
-                std::copy(
-                    scratch_.jacobian.begin(),
-                    scratch_.jacobian.end(),
-                    jacobians[0]
-                );
-            }
-            failure_reason_.clear();
-            return true;
-        } catch (const std::exception& error) {
-            failure_reason_ = error.what();
-            return false;
-        }
-    }
-
-    const std::string& failure_reason() const noexcept {
-        return failure_reason_;
-    }
-
-private:
-    const epcsaft_native_sdk_v1* table_;
-    const Payload& payload_;
-    mutable Evaluation scratch_;
-    mutable std::string failure_reason_;
-};
-
-MatrixDiagnostics matrix_diagnostics(const Eigen::MatrixXd& matrix) {
-    MatrixDiagnostics diagnostics{};
-    const Eigen::JacobiSVD<Eigen::MatrixXd> decomposition(
-        matrix, Eigen::ComputeThinU | Eigen::ComputeThinV
-    );
-    const Eigen::VectorXd singular = decomposition.singularValues();
-    diagnostics.singular_values.assign(
-        singular.data(), singular.data() + singular.size()
-    );
-    if (singular.size() == 0 || !std::isfinite(singular[0])) {
-        return diagnostics;
-    }
-    const double threshold =
-        100.0 * std::numeric_limits<double>::epsilon()
-        * static_cast<double>(std::max(matrix.rows(), matrix.cols()))
-        * singular[0];
-    for (Eigen::Index index = 0; index < singular.size(); ++index) {
-        if (singular[index] > threshold) {
-            ++diagnostics.rank;
-        }
-    }
-    if (diagnostics.rank > 0) {
-        diagnostics.condition_number =
-            singular[0] / singular[diagnostics.rank - 1];
-    }
-    return diagnostics;
-}
-
-void diagnose_jacobian(SolveOutcome& outcome) {
-    const Eigen::Index residual_count = static_cast<Eigen::Index>(
-        outcome.evaluation.residuals.size()
-    );
-    const Eigen::Index variable_count = static_cast<Eigen::Index>(
-        outcome.variables.size()
-    );
-    const Eigen::Map<
-        const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
-    > full(
-        outcome.evaluation.jacobian.data(), residual_count, variable_count
-    );
-    outcome.full_jacobian = matrix_diagnostics(full);
-    if (variable_count == 1) {
-        outcome.projected_parameter_jacobian = outcome.full_jacobian;
-        return;
-    }
-    const Eigen::MatrixXd nuisance = full.rightCols(variable_count - 1);
-    const Eigen::JacobiSVD<Eigen::MatrixXd> nuisance_svd(
-        nuisance, Eigen::ComputeThinU
-    );
-    const Eigen::VectorXd nuisance_singular = nuisance_svd.singularValues();
-    Eigen::Index nuisance_rank = 0;
-    if (nuisance_singular.size() > 0 && std::isfinite(nuisance_singular[0])) {
-        const double threshold =
-            100.0 * std::numeric_limits<double>::epsilon()
-            * static_cast<double>(
-                std::max(nuisance.rows(), nuisance.cols())
-            )
-            * nuisance_singular[0];
-        while (nuisance_rank < nuisance_singular.size()
-               && nuisance_singular[nuisance_rank] > threshold) {
-            ++nuisance_rank;
-        }
-    }
-    Eigen::MatrixXd projected = full.leftCols(1);
-    if (nuisance_rank > 0) {
-        const Eigen::MatrixXd basis =
-            nuisance_svd.matrixU().leftCols(nuisance_rank);
-        projected -= basis * (basis.transpose() * projected);
-    }
-    outcome.projected_parameter_jacobian = matrix_diagnostics(projected);
-}
-
 ceres::Solver::Options solver_options(const Payload& payload) {
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
@@ -2353,9 +2226,8 @@ SolveOutcome solve_training(
     const Payload& payload,
     double physical_start
 ) {
-    SolveOutcome outcome{};
-    outcome.variables.resize(variable_count(payload));
-    outcome.variables[0] =
+    std::vector<double> start(variable_count(payload));
+    start[0] =
         (physical_start - payload.parameter_origin) / payload.parameter_scale;
     if (!direct_observation(payload)) {
         for (
@@ -2366,35 +2238,31 @@ SolveOutcome solve_training(
             const Row& row = payload.training_rows[index];
             const std::size_t stride =
                 pure_density_observation(payload) ? 1u : 2u;
-            outcome.variables[1 + stride * index] =
+            start[1 + stride * index] =
                 std::log(
                     row.liquid_volume_start / row.liquid_volume_origin
                 );
             if (!pure_density_observation(payload)) {
-                outcome.variables[2 + 2 * index] =
+                start[2 + 2 * index] =
                     std::log(
                         row.vapor_volume_start / row.vapor_volume_origin
                     );
             }
         }
     }
-    GeneralCost cost(&table, payload);
-    ceres::Problem::Options problem_options;
-    problem_options.cost_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
-    ceres::Problem problem(problem_options);
-    problem.AddResidualBlock(&cost, nullptr, outcome.variables.data());
+    std::vector<internal::CoordinateBound> bounds(
+        variable_count(payload)
+    );
     const double parameter_lower =
         (payload.parameter_lower_bound - payload.parameter_origin)
         / payload.parameter_scale;
     const double parameter_upper =
         (payload.parameter_upper_bound - payload.parameter_origin)
         / payload.parameter_scale;
-    problem.SetParameterLowerBound(
-        outcome.variables.data(), 0, std::min(parameter_lower, parameter_upper)
-    );
-    problem.SetParameterUpperBound(
-        outcome.variables.data(), 0, std::max(parameter_lower, parameter_upper)
-    );
+    bounds[0] = {
+        std::min(parameter_lower, parameter_upper),
+        std::max(parameter_lower, parameter_upper),
+    };
     if (!direct_observation(payload)) {
         for (
             std::size_t index = 0;
@@ -2404,62 +2272,93 @@ SolveOutcome solve_training(
             const Row& row = payload.training_rows[index];
             const std::size_t stride =
                 pure_density_observation(payload) ? 1u : 2u;
-            problem.SetParameterLowerBound(
-                outcome.variables.data(),
-                static_cast<int>(1 + stride * index),
+            bounds[1 + stride * index] = {
                 std::log(
                     row.liquid_volume_bounds[0]
                     / row.liquid_volume_origin
-                )
-            );
-            problem.SetParameterUpperBound(
-                outcome.variables.data(),
-                static_cast<int>(1 + stride * index),
+                ),
                 std::log(
                     row.liquid_volume_bounds[1]
                     / row.liquid_volume_origin
-                )
-            );
+                ),
+            };
             if (pure_density_observation(payload)) {
                 continue;
             }
-            problem.SetParameterLowerBound(
-                outcome.variables.data(),
-                static_cast<int>(2 + 2 * index),
+            bounds[2 + 2 * index] = {
                 std::log(
                     row.vapor_volume_bounds[0]
                     / row.vapor_volume_origin
-                )
-            );
-            problem.SetParameterUpperBound(
-                outcome.variables.data(),
-                static_cast<int>(2 + 2 * index),
+                ),
                 std::log(
                     row.vapor_volume_bounds[1]
                     / row.vapor_volume_origin
-                )
+                ),
+            };
+        }
+    }
+    const internal::ProblemShape shape{
+        1u,
+        variable_count(payload) - 1u,
+        residual_count(payload),
+    };
+    const internal::SolverControls controls{
+        payload.maximum_iterations,
+        payload.maximum_solver_time_seconds,
+        payload.function_tolerance,
+        payload.gradient_tolerance,
+        payload.parameter_tolerance,
+    };
+    const auto evaluator = [&](const double* variables,
+                               std::size_t size,
+                               bool jacobian_requested,
+                               double* residuals,
+                               double* jacobian,
+                               std::string& failure_reason) {
+        try {
+            Evaluation evaluation = make_evaluation(payload);
+            evaluate_problem(table, payload, variables, size, evaluation);
+            std::copy(
+                evaluation.residuals.cbegin(),
+                evaluation.residuals.cend(),
+                residuals
             );
+            if (jacobian_requested) {
+                std::copy(
+                    evaluation.jacobian.cbegin(),
+                    evaluation.jacobian.cend(),
+                    jacobian
+                );
+            }
+            failure_reason.clear();
+            return true;
+        } catch (const std::exception& error) {
+            failure_reason = error.what();
+            return false;
         }
-    }
-    ceres::Solve(
-        solver_options(payload), &problem, &outcome.summary
+    };
+    internal::SolveResult solved = internal::solve(
+        shape, start, bounds, controls, evaluator
     );
-    outcome.failure_reason = cost.failure_reason();
-    try {
-        outcome.evaluation = make_evaluation(payload);
-        evaluate_problem(
-            table,
-            payload,
-            outcome.variables.data(),
-            outcome.variables.size(),
-            outcome.evaluation
-        );
-        diagnose_jacobian(outcome);
-    } catch (const std::exception& error) {
-        if (outcome.failure_reason.empty()) {
-            outcome.failure_reason = error.what();
-        }
-    }
+    SolveOutcome outcome{};
+    outcome.summary = std::move(solved.summary);
+    outcome.variables = std::move(solved.variables);
+    outcome.evaluation = make_evaluation(payload);
+    outcome.evaluation.residuals = std::move(solved.residuals);
+    outcome.evaluation.jacobian = std::move(solved.jacobian);
+    outcome.full_jacobian = {
+        std::move(solved.full_jacobian.singular_values),
+        solved.full_jacobian.rank,
+        solved.full_jacobian.condition_number,
+    };
+    outcome.projected_parameter_jacobian = {
+        std::move(
+            solved.projected_parameter_jacobian.singular_values
+        ),
+        solved.projected_parameter_jacobian.rank,
+        solved.projected_parameter_jacobian.condition_number,
+    };
+    outcome.failure_reason = std::move(solved.failure_reason);
     return outcome;
 }
 
