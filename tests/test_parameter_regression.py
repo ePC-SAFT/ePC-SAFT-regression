@@ -28,7 +28,7 @@ from epcsaft_regression import (
     PureSaturationRowDiagnostic,
     RegressionProblem,
     RegressionResult,
-    RelativePermittivityObservation,
+    RelativePermittivityRatioObservation,
     SourceDescriptor,
     SolvationGibbsObservation,
     UnsupportedParameterCapability,
@@ -502,7 +502,7 @@ def _dielectric_suppression_problem(model: EPCSAFT) -> RegressionProblem:
         ("figiel2025-dielectric-water-010", 0.033808290, 62.87401575),
     )
     observations = tuple(
-        RelativePermittivityObservation(
+        RelativePermittivityRatioObservation(
             row_id=row_id,
             source_id="retained-lab-figiel-figure-2",
             source_locator=f"validation:figiel-ledger:{row_id}",
@@ -510,7 +510,7 @@ def _dielectric_suppression_problem(model: EPCSAFT) -> RegressionProblem:
             temperature_k=298.15,
             pressure_pa=100_000.0,
             total_ion_mole_fraction=ion_fraction,
-            observed_relative_permittivity=permittivity,
+            observed_relative_permittivity_ratio=permittivity / 78.09,
             residual_scale=1.0,
             partition=ObservationPartition.TRAINING,
         )
@@ -706,7 +706,7 @@ def test_installed_provider_advertises_exact_direct_observable_contracts() -> No
         ("dimensionless",),
         1,
         "model",
-        "relative_permittivity",
+        "relative_permittivity_ratio",
         "figiel_dielectric",
         (),
     )
@@ -843,7 +843,7 @@ def test_general_engine_fits_dielectric_suppression_from_user_rows() -> None:
     assert result.confirmations_usable
     assert all(
         isinstance(row, DirectObservationRowDiagnostic)
-        and row.observable == "relative_permittivity"
+        and row.observable == "relative_permittivity_ratio"
         and row.observable_unit == "1"
         and row.evaluated
         and row.derivative_status == "EXACT_PROVIDER_FIRST_DERIVATIVE"

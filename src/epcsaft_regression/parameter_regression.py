@@ -710,7 +710,7 @@ class SolvationGibbsObservation:
 
 
 @dataclass(frozen=True, slots=True)
-class RelativePermittivityObservation:
+class RelativePermittivityRatioObservation:
     row_id: str
     source_id: str
     source_locator: str
@@ -718,7 +718,7 @@ class RelativePermittivityObservation:
     temperature_k: float
     pressure_pa: float
     total_ion_mole_fraction: float
-    observed_relative_permittivity: float
+    observed_relative_permittivity_ratio: float
     residual_scale: float
     partition: ObservationPartition
 
@@ -736,7 +736,7 @@ class RelativePermittivityObservation:
         for field in (
             "temperature_k",
             "pressure_pa",
-            "observed_relative_permittivity",
+            "observed_relative_permittivity_ratio",
             "residual_scale",
         ):
             _require_finite(getattr(self, field), field, positive=True)
@@ -755,7 +755,7 @@ DirectObservation = (
     MeanIonicActivityObservation
     | AqueousKijMeanIonicActivityObservation
     | SolvationGibbsObservation
-    | RelativePermittivityObservation
+    | RelativePermittivityRatioObservation
 )
 RegressionObservation = (
     FixedCompositionVleObservation
@@ -765,7 +765,7 @@ RegressionObservation = (
 
 
 def _canonical_row(row: RegressionObservation) -> dict[str, object]:
-    if isinstance(row, RelativePermittivityObservation):
+    if isinstance(row, RelativePermittivityRatioObservation):
         return {
             "row_id": row.row_id,
             "source_id": row.source_id,
@@ -774,8 +774,8 @@ def _canonical_row(row: RegressionObservation) -> dict[str, object]:
             "temperature_k": row.temperature_k,
             "pressure_pa": row.pressure_pa,
             "total_ion_mole_fraction": row.total_ion_mole_fraction,
-            "observed_relative_permittivity": (
-                row.observed_relative_permittivity
+            "observed_relative_permittivity_ratio": (
+                row.observed_relative_permittivity_ratio
             ),
             "residual_scale": row.residual_scale,
             "partition": row.partition.value,
@@ -948,7 +948,7 @@ class RegressionProblem:
         for row in self.observations:
             row_identity = (
                 ()
-                if isinstance(row, RelativePermittivityObservation)
+                if isinstance(row, RelativePermittivityRatioObservation)
                 else row.canonical_active_pair_component_ids
                 if isinstance(row, AqueousKijMeanIonicActivityObservation)
                 else (row.active_component_id,)
@@ -999,14 +999,14 @@ class RegressionProblem:
 
 
 def _row_payload(row: RegressionObservation) -> tuple[object, ...]:
-    if isinstance(row, RelativePermittivityObservation):
+    if isinstance(row, RelativePermittivityRatioObservation):
         return (
             row.row_id,
             row.partition.value,
             row.temperature_k,
             row.pressure_pa,
             row.total_ion_mole_fraction,
-            row.observed_relative_permittivity,
+            row.observed_relative_permittivity_ratio,
             row.residual_scale,
         )
     if isinstance(row, AqueousKijMeanIonicActivityObservation):
@@ -1200,14 +1200,15 @@ def _matched_capability(
                     "solvation-Gibbs observation does not match the Provider "
                     "direct-observable capability"
                 )
-        elif isinstance(row, RelativePermittivityObservation):
+        elif isinstance(row, RelativePermittivityRatioObservation):
             if row.pressure_pa != 100_000.0:
                 raise ValueError(
                     f"observation {row.row_id!r} pressure is outside the "
                     "Provider direct-observable domain"
                 )
             if (
-                capability.observation_contract != "relative_permittivity"
+                capability.observation_contract
+                != "relative_permittivity_ratio"
                 or capability.identity_shape != "model"
                 or capability.active_component_ids
             ):
@@ -1260,8 +1261,10 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
                             AqueousKijMeanIonicActivityObservation,
                         ),
                     )
-                    else "relative_permittivity"
-                    if isinstance(observation, RelativePermittivityObservation)
+                    else "relative_permittivity_ratio"
+                    if isinstance(
+                        observation, RelativePermittivityRatioObservation
+                    )
                     else "solvation_gibbs_energy"
                 ),
                 observable_unit=(
@@ -1273,7 +1276,9 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
                             AqueousKijMeanIonicActivityObservation,
                         ),
                     )
-                    or isinstance(observation, RelativePermittivityObservation)
+                    or isinstance(
+                        observation, RelativePermittivityRatioObservation
+                    )
                     else "J/mol"
                 ),
                 observed_value=(
@@ -1285,8 +1290,10 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
                             AqueousKijMeanIonicActivityObservation,
                         ),
                     )
-                    else observation.observed_relative_permittivity
-                    if isinstance(observation, RelativePermittivityObservation)
+                    else observation.observed_relative_permittivity_ratio
+                    if isinstance(
+                        observation, RelativePermittivityRatioObservation
+                    )
                     else observation.observed_solvation_gibbs_j_per_mol
                 ),
                 modeled_value=row[7],
@@ -1307,7 +1314,7 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
                     MeanIonicActivityObservation,
                     AqueousKijMeanIonicActivityObservation,
                     SolvationGibbsObservation,
-                    RelativePermittivityObservation,
+                    RelativePermittivityRatioObservation,
                 ),
             )
             else PureSaturationRowDiagnostic(

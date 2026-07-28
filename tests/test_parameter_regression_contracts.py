@@ -17,7 +17,7 @@ from epcsaft_regression.parameter_regression import (
     ParameterCoordinate,
     ParameterFamily,
     RegressionProblem,
-    RelativePermittivityObservation,
+    RelativePermittivityRatioObservation,
     SolvationGibbsObservation,
     SourceDescriptor,
     canonical_dataset_sha256,
@@ -209,8 +209,8 @@ def test_aqueous_kij_observation_binds_active_pair_and_fixed_context() -> None:
     assert canonical_dataset_sha256((row,))
 
 
-def test_relative_permittivity_observation_binds_one_model_parameter() -> None:
-    row = RelativePermittivityObservation(
+def test_relative_permittivity_ratio_observation_binds_one_model_parameter() -> None:
+    row = RelativePermittivityRatioObservation(
         row_id="figiel-water-001",
         source_id="doi:example",
         source_locator="figure-s1:water:001",
@@ -218,7 +218,7 @@ def test_relative_permittivity_observation_binds_one_model_parameter() -> None:
         temperature_k=298.15,
         pressure_pa=100_000.0,
         total_ion_mole_fraction=0.05,
-        observed_relative_permittivity=58.4,
+        observed_relative_permittivity_ratio=0.747,
         residual_scale=1.0,
         partition=ObservationPartition.TRAINING,
     )

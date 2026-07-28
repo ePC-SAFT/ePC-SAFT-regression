@@ -29,7 +29,7 @@ enum class ObservationKind {
     mean_ionic_activity,
     aqueous_kij_activity,
     solvation_gibbs,
-    relative_permittivity,
+    relative_permittivity_ratio,
 };
 
 struct Row final {
@@ -197,7 +197,7 @@ Row parse_row(PyObject* object, ObservationKind kind) {
     const bool direct = kind == ObservationKind::mean_ionic_activity
         || kind == ObservationKind::aqueous_kij_activity
         || kind == ObservationKind::solvation_gibbs
-        || kind == ObservationKind::relative_permittivity;
+        || kind == ObservationKind::relative_permittivity_ratio;
     const Py_ssize_t expected_size =
         kind == ObservationKind::aqueous_kij_activity ? 10 : direct ? 7 : 17;
     if (!sequence
@@ -231,7 +231,7 @@ Row parse_row(PyObject* object, ObservationKind kind) {
             && row.direct_scale > 0.0
             && (kind != ObservationKind::mean_ionic_activity
                 || (row.direct_state > 0.0 && row.observed_value > 0.0))
-            && (kind != ObservationKind::relative_permittivity
+            && (kind != ObservationKind::relative_permittivity_ratio
                 || (row.direct_state > 0.0 && row.direct_state < 1.0
                     && row.observed_value > 0.0));
         if (!valid) {
@@ -368,7 +368,7 @@ Payload parse_payload(PyObject* object) {
         : payload.capability_id == "aqueous_solvation_factor_miac_v1"
             ? ObservationKind::mean_ionic_activity
             : payload.capability_id == "figiel_dielectric_suppression_v1"
-                ? ObservationKind::relative_permittivity
+                ? ObservationKind::relative_permittivity_ratio
             : payload.capability_id == "aqueous_water_cation_kij_miac_v1"
                     || payload.capability_id
                         == "aqueous_water_anion_kij_miac_v1"
@@ -789,7 +789,7 @@ void validate_descriptor(
         : solvation_factor || aqueous_kij
             ? EPCSAFT_NATIVE_OBSERVATION_AQUEOUS_MEAN_IONIC_ACTIVITY_V1
             : dielectric
-                ? EPCSAFT_NATIVE_OBSERVATION_RELATIVE_PERMITTIVITY_V1
+                ? EPCSAFT_NATIVE_OBSERVATION_RELATIVE_PERMITTIVITY_RATIO_V1
             : EPCSAFT_NATIVE_OBSERVATION_FIXED_COMPOSITION_HELMHOLTZ_PHASE_V1;
     const std::uint32_t expected_domain = binary
         ? EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_NONASSOCIATING_BINARY_V1
@@ -1060,8 +1060,8 @@ PyObject* descriptor_to_python(
                     == EPCSAFT_NATIVE_OBSERVATION_AQUEOUS_MEAN_IONIC_ACTIVITY_V1
                 ? "aqueous_mean_ionic_activity"
                 : descriptor.observation_contract
-                        == EPCSAFT_NATIVE_OBSERVATION_RELATIVE_PERMITTIVITY_V1
-                    ? "relative_permittivity"
+                        == EPCSAFT_NATIVE_OBSERVATION_RELATIVE_PERMITTIVITY_RATIO_V1
+                    ? "relative_permittivity_ratio"
                 : "fixed_composition_helmholtz_phase";
     const char* model_domain =
         descriptor.model_domain
@@ -1352,15 +1352,17 @@ void evaluate_direct_problem(
                     + result.error
                 );
             }
-            evaluation.modeled_values[index] =
-                result.bulk_relative_permittivity;
-            evaluation.provider_derivatives[index] = result.derivative;
+            const double modeled =
+                result.bulk_relative_permittivity
+                / result.salt_free_relative_permittivity;
+            const double derivative =
+                result.derivative / result.salt_free_relative_permittivity;
+            evaluation.modeled_values[index] = modeled;
+            evaluation.provider_derivatives[index] = derivative;
             evaluation.residuals[index] =
-                (result.bulk_relative_permittivity - row.observed_value)
-                / row.direct_scale;
+                (modeled - row.observed_value) / row.direct_scale;
             evaluation.jacobian[index] =
-                result.derivative * payload.parameter_scale
-                / row.direct_scale;
+                derivative * payload.parameter_scale / row.direct_scale;
         }
         return;
     }
