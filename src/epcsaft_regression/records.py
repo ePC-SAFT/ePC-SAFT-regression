@@ -1372,8 +1372,8 @@ class PureSaturationFitSpecification:
     parameter_scales: tuple[float, ...]
     fixed_amount_mol: float
     molar_mass_kg_per_mol: float
-    residual_names: tuple[str, str, str, str]
-    residual_weights: tuple[float, float, float, float]
+    residual_names: tuple[str, ...]
+    residual_weights: tuple[float, ...]
     liquid_volume_bounds_m3: tuple[float, float]
     vapor_volume_bounds_m3: tuple[float, float]
     training_temperatures_k: tuple[float, ...]
@@ -1435,7 +1435,7 @@ class PureSaturationFitSpecification:
             )
         elif self.component_id == "monoethanolamine":
             expected_identity = (
-                "baygi-2015-mea-2b-lifted-volumes-v1",
+                "baygi-2015-mea-2b-equilibrium-observables-v1",
                 "baygi-2015-mea-2b-correlation-grid-v1",
                 MEA_SOURCE_ID,
                 "sha256:aa1a3afb4e95a96b1863fa7930434ec6a552f93d3dbdb13be81f8bb43d1b489a",
@@ -1542,18 +1542,25 @@ class PureSaturationFitSpecification:
                 "the pure-saturation slice fixes amount at exactly one mole"
             )
         _positive_finite(self.molar_mass_kg_per_mol, "molar mass")
-        if self.residual_names != (
-            "liquid_pressure",
-            "vapor_pressure",
-            "chemical_potential_equality",
-            "liquid_density",
-        ):
-            raise ValueError(
-                "residual ordering must match the lifted-volume formulation"
+        expected_residual_contract = (
+            (
+                ("pressure_relative_error", "liquid_density_relative_error"),
+                (1.0, 1.0),
             )
-        if self.residual_weights != (0.25, 0.25, 0.25, 0.25):
+            if self.component_id == "monoethanolamine"
+            else (
+                (
+                    "liquid_pressure",
+                    "vapor_pressure",
+                    "chemical_potential_equality",
+                    "liquid_density",
+                ),
+                (0.25, 0.25, 0.25, 0.25),
+            )
+        )
+        if (self.residual_names, self.residual_weights) != expected_residual_contract:
             raise ValueError(
-                "residual weights must be the declared equal row normalization"
+                "residual identities and weights do not match the component objective"
             )
         if self.liquid_volume_bounds_m3[1] >= self.vapor_volume_bounds_m3[0]:
             raise ValueError("phase volume bounds must enforce liquid below vapor")
@@ -1587,12 +1594,20 @@ class PureSaturationFitSpecification:
         if (
             self.confirmation_liquid_volume_start_multiplier,
             self.confirmation_vapor_volume_start_multiplier,
-        ) != (1.01, 0.98):
+        ) != (
+            (1.0, 1.0)
+            if self.component_id == "monoethanolamine"
+            else (1.01, 0.98)
+        ):
             raise ValueError("confirmation start multipliers do not match the contract")
         if (
             self.confirmation_parameter_scaled_max_delta,
             self.confirmation_cost_relative_delta,
-        ) != (1.0e-5, 1.0e-8):
+        ) != (
+            (0.05, 0.01)
+            if self.component_id == "monoethanolamine"
+            else (1.0e-5, 1.0e-8)
+        ):
             raise ValueError(
                 "confirmation acceptance thresholds do not match the contract"
             )
@@ -1650,12 +1665,20 @@ def _fit_specification(
         fixed_amount_mol=1.0,
         molar_mass_kg_per_mol=molar_mass_kg_per_mol,
         residual_names=(
-            "liquid_pressure",
-            "vapor_pressure",
-            "chemical_potential_equality",
-            "liquid_density",
+            ("pressure_relative_error", "liquid_density_relative_error")
+            if component_id == "monoethanolamine"
+            else (
+                "liquid_pressure",
+                "vapor_pressure",
+                "chemical_potential_equality",
+                "liquid_density",
+            )
         ),
-        residual_weights=(0.25, 0.25, 0.25, 0.25),
+        residual_weights=(
+            (1.0, 1.0)
+            if component_id == "monoethanolamine"
+            else (0.25, 0.25, 0.25, 0.25)
+        ),
         liquid_volume_bounds_m3=liquid_volume_bounds_m3,
         vapor_volume_bounds_m3=vapor_volume_bounds_m3,
         training_temperatures_k=training_temperatures_k,
@@ -1665,10 +1688,18 @@ def _fit_specification(
         parameter_tolerance=1.0e-10,
         topology_relative_separation_min=1.0e-3,
         reporting_pressure_bounds_pa=reporting_pressure_bounds_pa,
-        confirmation_liquid_volume_start_multiplier=1.01,
-        confirmation_vapor_volume_start_multiplier=0.98,
-        confirmation_parameter_scaled_max_delta=1.0e-5,
-        confirmation_cost_relative_delta=1.0e-8,
+        confirmation_liquid_volume_start_multiplier=(
+            1.0 if component_id == "monoethanolamine" else 1.01
+        ),
+        confirmation_vapor_volume_start_multiplier=(
+            1.0 if component_id == "monoethanolamine" else 0.98
+        ),
+        confirmation_parameter_scaled_max_delta=(
+            0.05 if component_id == "monoethanolamine" else 1.0e-5
+        ),
+        confirmation_cost_relative_delta=(
+            0.01 if component_id == "monoethanolamine" else 1.0e-8
+        ),
         reporting_pressure_scaled_residual_max=1.0e-8,
         reporting_chemical_potential_residual_max=1.0e-8,
         ceres_linear_solver="DENSE_QR",
@@ -1723,14 +1754,14 @@ PROPANE_SATURATION_FIT_V1 = _fit_specification(
 )
 MEA_SATURATION_FIT_V1 = _fit_specification(
     component_id="monoethanolamine",
-    specification_id="baygi-2015-mea-2b-lifted-volumes-v1",
+    specification_id="baygi-2015-mea-2b-equilibrium-observables-v1",
     dataset_id="baygi-2015-mea-2b-correlation-grid-v1",
     source_id=MEA_SOURCE_ID,
     expected_provider_fingerprint=(
         "sha256:aa1a3afb4e95a96b1863fa7930434ec6a552f93d3dbdb13be81f8bb43d1b489a"
     ),
     start=(2.5, 3.5, 225.0, 2000.0, 0.05),
-    confirmation_start=(3.25, 3.0, 300.0, 3000.0, 0.10),
+    confirmation_start=(2.9997, 3.2522, 233.40, 2276.8, 0.015268),
     lower_bounds=(0.5, 2.0, 50.0, 250.0, 0.001),
     upper_bounds=(5.0, 5.0, 400.0, 5000.0, 0.25),
     parameter_scales=(0.5, 0.5, 50.0, 500.0, 0.05),

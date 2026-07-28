@@ -4,20 +4,26 @@
 
 **Goal:** Fit the five pure-component PC-SAFT parameters of 2B
 monoethanolamine to the frozen Baygi--Pahlavanzadeh saturation correlations
-with the existing lifted-volume Ceres workflow and exact Provider derivatives.
+with a declared smooth-L1 approximation to the paper's Eq. 8 observable
+objective and exact Provider derivatives.
 
 **Architecture:** Append one model-bound Provider callback over
-`(n,V,m,sigma,epsilon/k,epsilon_assoc/k,kappa_assoc)`. Generalize the existing
-Regression pure-saturation owner from fixed four-row/three-parameter arrays to
-data-sized rows and either three or five parameters; retain its one Ceres
-engine, result family, Python workflow, native module, and native target.
+`(n,V,m,sigma,epsilon/k,epsilon_assoc/k,kappa_assoc)` using Baygi Eq. 4's
+explicit `d_ij^3` association basis. Generalize the existing Regression
+pure-saturation owner from fixed four-row/three-parameter arrays, eliminate
+each MEA row's two equilibrium volumes with exact implicit sensitivities, and
+retain its one Ceres engine, result family, Python workflow, native module,
+and native target.
 
-**Tech Stack:** C++20, CppAD, Ceres, Eigen, Python 3.13, CMake, pytest.
+**Tech Stack:** C++17, CppAD, Ceres, Eigen, Python 3.13, CMake, pytest.
 
 ## Global Constraints
 
 - Baygi 2B is a 15-row correlation reconstruction, not an exact author-run
   replay or experimental-data fit.
+- The local result is a Baygi Eq. 4-inspired refit candidate. Baygi's printed
+  tuple does not reproduce its printed AADs under the implemented convention,
+  so no source-faithful/reference-validation claim is allowed.
 - Preserve all methane, ethane, and propane behavior.
 - Consume exact Provider value/gradient/Hessian output; no copied EOS or
   production finite differences.
@@ -42,20 +48,20 @@ engine, result family, Python workflow, native module, and native target.
 **Interfaces:**
 - Consumes: one-component neutral 2B `ParameterBundle.from_records` model.
 - Produces:
-  `evaluate_associating_pure_phase_parameters(model,T,n,V,m,sigma,epsilon_k,epsilon_assoc_k,kappa_assoc,result)`
+  `evaluate_diameter_basis_associating_pure_phase_parameters(model,T,n,V,m,sigma,epsilon_k,epsilon_assoc_k,kappa_assoc,result)`
   with seven-coordinate gradient and Hessian, pressure, `mu/RT`, parameter
   fingerprint, and topology fingerprint.
 
-- [ ] Add a ctypes ABI test that requires the appended callback and verifies
+- [x] Add a ctypes ABI test that requires the appended callback and verifies
   its coordinate order, finite `7 x 7` derivatives, source/topology
   fingerprints, and unsupported-model behavior.
-- [ ] Run the focused test and retain the expected missing-tail failure.
-- [ ] Extend the existing CppAD pure-phase tape so all five parameter
+- [x] Run the focused test and retain the expected missing-tail failure.
+- [x] Extend the existing CppAD pure-phase tape so all five parameter
   coordinates are independent together; expose the result through one
   append-only SDK callback without adding target or fitting policy.
-- [ ] Run Provider native SDK tests plus directional value/gradient/Hessian
+- [x] Run Provider native SDK tests plus directional value/gradient/Hessian
   checks for representative MEA liquid and vapor states.
-- [ ] Commit the green Provider checkpoint on
+- [x] Commit the green Provider checkpoint (`c0e526b`) on
   `codex/regression-provider-integration`.
 
 ### Task 2: Source-bound MEA records and immutable fit specification
@@ -72,15 +78,15 @@ engine, result family, Python workflow, native module, and native target.
 - Produces: `load_pure_saturation_dataset("monoethanolamine")` and the existing
   `PureSaturationFitSpecification` shape with five ordered parameter entries.
 
-- [ ] Add failing record tests for the exact PDF hash, DOI, 15 temperatures,
+- [x] Add failing record tests for the exact PDF hash, DOI, 15 temperatures,
   calculated pressures, DIPPR-105 densities, molar-mass conversion, all-training
   partition, five parameter identities, and two declared starts.
-- [ ] Run the focused record tests and retain the expected unsupported
+- [x] Run the focused record tests and retain the expected unsupported
   component/specification failure.
-- [ ] Add the immutable MEA dataset/specification through the existing closed
+- [x] Add the immutable MEA dataset/specification through the existing closed
   record owners; do not add a registry or external runtime data dependency.
-- [ ] Run all record tests and verify methane/ethane/propane serialized parity.
-- [ ] Commit the green source-contract checkpoint.
+- [x] Run all record tests and verify methane/ethane/propane serialized parity.
+- [x] Commit the green source-contract checkpoint (`cd678b8`).
 
 ### Task 3: Data-sized existing Ceres owner
 
@@ -96,20 +102,22 @@ engine, result family, Python workflow, native module, and native target.
 - Consumes: three- or five-parameter payload and the installed Provider SDK
   tail from Task 1.
 - Produces: the existing `fit_pure_saturation` and
-  `PureSaturationFitResult`, with variable-length `parameters` and projected
-  parameter diagnostics.
+  `PureSaturationFitResult`, with variable-length `parameters`, exact
+  smooth-observable Jacobians, rank diagnostics, and a separate bounded
+  scientific-comparison status.
 
-- [ ] Add failing native tests proving a `60 x 35` MEA residual/Jacobian,
-  exact directional derivatives, full rank 35, projected parameter rank 5,
+- [x] Add failing native tests proving a `30 x 5` MEA residual/Jacobian,
+  start and terminal directional derivatives, the smooth-objective cost
+  identity, full and parameter rank 5,
   and unchanged methane/ethane/propane results.
-- [ ] Run the focused native tests and retain the fixed-dimension/callback
+- [x] Run the focused native tests and retain the fixed-dimension/callback
   failure.
-- [ ] Replace fixed row/parameter arrays with vectors inside the existing
+- [x] Replace fixed row/parameter arrays with vectors inside the existing
   owner, dispatch the three-parameter or seven-coordinate Provider callback,
-  and calculate `(I-J_V J_V^+)J_p` diagnostics.
-- [ ] Make `PureSaturationFitResult.parameters` a variable-length tuple while
+  and assemble `du/dz=-H_u^{-1}H_z` for the MEA observable objective.
+- [x] Make `PureSaturationFitResult.parameters` a variable-length tuple while
   preserving the same result type and all existing fields.
-- [ ] Run native and Python fit tests, including unsupported callback,
+- [ ] Run the final native and Python fit matrix, including unsupported callback,
   fingerprint, topology, incomplete-column, active-bound, and multistart
   failures.
 - [ ] Commit the green engine checkpoint.

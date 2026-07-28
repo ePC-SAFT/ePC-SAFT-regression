@@ -71,7 +71,7 @@ general_parameter_regression:
   forbidden_interpretation: every-provider-parameter-is-fit-ready-now
   immediate_provider_gate: SATISFIED_FOR_TEN_FAMILIES
   pure_association_recovery:
-    status: BAYGI_MEA_2B_DESIGN_READY_PROVIDER_JOINT_CALLBACK_REQUIRED
+    status: BAYGI_EQ4_INSPIRED_CORRELATION_REFIT_PACKAGE_CANDIDATE
     design_owner: docs/science/general-parameter-regression.md
     evidence_owners:
       - docs/research/gross-sadowski-2002-association-fitting.md
@@ -93,6 +93,23 @@ general_parameter_regression:
       - association_energy_over_k_kelvin
       - association_volume
     required_provider_derivative_order: 2
+    development_provider_subject: c0e526b
+    provider_association_basis: baygi-2015-equation-4-temperature-dependent-diameter-cubed
+    standard_provider_association_basis_unchanged: sigma-cubed
+    regression_preflight:
+      residual_jacobian_shape: 30x5
+      full_rank: 5
+      parameter_rank: 5
+      primary_termination: CONVERGENCE
+      confirmation_termination: CONVERGENCE
+      confirmation_parameter_scaled_max_delta: 4.41369601431596e-05
+      confirmation_cost_relative_delta: 7.040276730647146e-08
+      reporting_rows_physically_valid: 15-of-15
+      pressure_aad_percent: 0.0223110056352493
+      liquid_density_aad_percent: 0.04588968414644012
+      published_tuple_pressure_aad_percent_on_frozen_grid: 3.4008154117537406
+      published_tuple_liquid_density_aad_percent_on_frozen_grid: 0.12882019477715204
+      smooth_absolute_relative_error_delta: 0.0001
     required_source_rows: 15-predeclared-correlation-rows-from-303.15-to-443.15-k
     comparison_role: published-mea-2b-tuple-and-aads-are-descriptive
     forbidden_shortcut: independent-association-only-fit-from-one-density-row
@@ -609,7 +626,7 @@ parameter_family_readiness:
   constant_methane_ethane_kij:
     status: NOT_READY_DEFERRED_NONPRODUCTION_UNDER_D023
     retained_evidence_authority: D-022
-  association_parameters: DERIVATIVE_AND_REGRESSION_SURFACE_READY_PURE_2B_SOURCE_SERIES_NOT_READY
+  association_parameters: LOCAL_PACKAGE_CANDIDATE_JOINT_PURE_2B_SOURCE_REFIT
   polar_parameters: EXCLUDED_FROM_REGRESSION_ROADMAP_BY_USER_DECISION
   electrolyte_born_parameters: FIT_READY_DIRECT_OBSERVABLE_AUTHORITY_NEUTRAL_NO_CATALOG_ADMISSION
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
@@ -624,7 +641,7 @@ parameter_family_readiness:
   model_dielectric_ion_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
   mixture_independent_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   model_ionic_region_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
-  mixture_independent_association: PARTIAL_PURE_2B_MODEL_BOUND_DERIVATIVE_AND_DENSITY_SURFACE_READY_SOURCE_SERIES_NOT_READY
+  mixture_independent_association: PARTIAL_PURE_2B_MODEL_BOUND_LOCAL_REFIT_CANDIDATE_NOT_YET_GENERAL_CALLER_DATA
   khb_ij: NOT_READY_NOT_A_CURRENT_PROVIDER_PARAMETER_FAMILY
   next_engineering_investment_after_d026: EQUILIBRIUM_EXACT_IMPLICIT_PARAMETER_SENSITIVITY_FOR_MEA
   required_prior_gate: D026_INSTALLED_TWO_LIQUID_STAGE_II_III
@@ -703,16 +720,16 @@ propane_candidate_artifact:
     test_receipt_sha256: 07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480
 
 manifest:
-  tracked_files_after_stage_c_candidate: 67
-  production_python_files: 3
-  native_source_files: 11
-  installed_data_files: 6
-  package_test_files: 6
+  tracked_files_after_stage_c_candidate: 79
+  production_python_files: 4
+  native_source_files: 13
+  installed_data_files: 7
+  package_test_files: 8
   retained_binary_input_evidence_files: 1
   retained_binary_result_evidence_files: 1
   ide_project_files: 7
-  physical_production_lines: 7984
-  physical_package_test_lines: 1606
+  physical_production_lines: 14130
+  physical_package_test_lines: 4466
   tracked_generated_evidence_files_after_figiel_candidate: 7
   generated_file_policy: >-
     The accepted methane and ethane fit receipts bind deterministic
@@ -725,20 +742,26 @@ manifest:
     temporary replay receipts, and wheels remain outside the repository.
   oversized_files:
     - path: src/epcsaft_regression/parameter_regression.py
-      physical_lines: 979
+      physical_lines: 1750
       capability_delta: finite typed component identities and pure-saturation observations
     - path: src/epcsaft_regression/native/general_fit.cpp
-      physical_lines: 1842
+      physical_lines: 3215
       capability_delta: one exact Ceres owner for pair VLE and scalar pure saturation
     - path: tests/test_parameter_regression.py
-      physical_lines: 720
+      physical_lines: 2049
       capability_delta: scalar pure derivative, rank, fit, and reference anchors
     - path: src/epcsaft_regression/native/pure_saturation_fit.cpp
-      physical_lines: 920
+      physical_lines: 1560
+      capability_delta: >-
+        one shared Ceres cost/solve/diagnostic owner for accepted lifted pure
+        saturation and the bounded Baygi-inspired five-parameter refit; the
+        private two-state Newton evaluator is retained here because it shares
+        phase/result serialization and avoids a second target, EOS owner, or
+        Equilibrium dependency
     - path: src/epcsaft_regression/records.py
-      physical_lines: 1751
+      physical_lines: 1955
     - path: src/epcsaft_regression/workflow.py
-      physical_lines: 1845
+      physical_lines: 1903
     - path: src/epcsaft_regression/native/figiel_kij_fit.cpp
       physical_lines: 1218
     - path: src/epcsaft_regression/native/born_diameter_fit.cpp
@@ -777,7 +800,7 @@ evidence_limits:
 excluded:
   # These are current runtime exclusions, not denials of the staged design goal.
   - runtime neutral methane/ethane binary interaction regression; the private dependency-gated contract grants no capability
-  - association regression
+  - association regression beyond the bounded Baygi pure-2B reconstruction
   - electrolyte regression beyond the bounded nonproduction Figiel Born-tracer candidate
   - reactive regression
   - arbitrary residual plugins or mutable runtime registries

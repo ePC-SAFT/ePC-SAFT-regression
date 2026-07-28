@@ -369,15 +369,24 @@ def test_mea_joint_five_parameter_specification_is_frozen() -> None:
     assert specification.parameter_units == ("1", "angstrom", "K", "K", "1")
     assert specification.start == (2.5, 3.5, 225.0, 2000.0, 0.05)
     assert specification.confirmation_start == (
-        3.25,
-        3.0,
-        300.0,
-        3000.0,
-        0.10,
+        2.9997,
+        3.2522,
+        233.40,
+        2276.8,
+        0.015268,
     )
     assert specification.lower_bounds == (0.5, 2.0, 50.0, 250.0, 0.001)
     assert specification.upper_bounds == (5.0, 5.0, 400.0, 5000.0, 0.25)
     assert specification.parameter_scales == (0.5, 0.5, 50.0, 500.0, 0.05)
+    assert specification.residual_names == (
+        "pressure_relative_error",
+        "liquid_density_relative_error",
+    )
+    assert specification.residual_weights == (1.0, 1.0)
+    assert specification.confirmation_liquid_volume_start_multiplier == 1.0
+    assert specification.confirmation_vapor_volume_start_multiplier == 1.0
+    assert specification.confirmation_parameter_scaled_max_delta == 0.05
+    assert specification.confirmation_cost_relative_delta == 0.01
     assert specification.expected_provider_fingerprint == (
         "sha256:aa1a3afb4e95a96b1863fa7930434ec6a552f93d3dbdb13be81f8bb43d1b489a"
     )

@@ -7,11 +7,21 @@ import sys
 from types import SimpleNamespace
 
 import pytest
-from epcsaft import EPCSAFT, ParameterBundle, native_sdk
+from epcsaft import EPCSAFT, ParameterBundle, native_sdk, unit_registry
+from epcsaft.records import (
+    AssociationParameterRecord,
+    ComponentRecord,
+    ConstantCorrelation,
+    SingleParameterRecord,
+    SiteRecord,
+    SourceRecord,
+    ValidityDomain,
+)
 
 import epcsaft_regression._native as native
 from epcsaft_regression.records import (
     ETHANE_SATURATION_FIT_V1,
+    MEA_SATURATION_FIT_V1,
     METHANE_SATURATION_FIT_V1,
     PROPANE_SATURATION_FIT_V1,
     PureSaturationFitSpecification,
@@ -25,6 +35,7 @@ SPECIFICATIONS = {
     "methane": METHANE_SATURATION_FIT_V1,
     "ethane": ETHANE_SATURATION_FIT_V1,
     "propane": PROPANE_SATURATION_FIT_V1,
+    "monoethanolamine": MEA_SATURATION_FIT_V1,
 }
 
 
@@ -67,7 +78,139 @@ class _NativeSdkTable(ctypes.Structure):
     )
 
 
+def _mea_model() -> EPCSAFT:
+    source = SourceRecord(
+        "baygi-pahlavanzadeh-2015",
+        "Baygi and Pahlavanzadeh (2015)",
+        "source-backed regression input",
+        doi="10.1016/j.cherd.2014.07.017",
+    )
+    domain = ValidityDomain(
+        "baygi-mea-303-443-k",
+        "fit-range",
+        303.15 * unit_registry.kelvin,
+        443.15 * unit_registry.kelvin,
+    )
+    component = ComponentRecord(
+        "monoethanolamine",
+        "Monoethanolamine",
+        "141-43-5",
+        "C2H7NO",
+    )
+    singles = (
+        SingleParameterRecord(
+            "mea-molar-mass",
+            component.component_id,
+            "molar_mass",
+            61.0831 * unit_registry.gram / unit_registry.mole,
+            source.source_id,
+            "NIST identity",
+            domain.domain_id,
+        ),
+        SingleParameterRecord(
+            "mea-segment-count",
+            component.component_id,
+            "segment_count",
+            3.0353,
+            source.source_id,
+            "Table 2 2B",
+            domain.domain_id,
+        ),
+        SingleParameterRecord(
+            "mea-dispersion-energy",
+            component.component_id,
+            "dispersion_energy_over_k",
+            277.174 * unit_registry.kelvin,
+            source.source_id,
+            "Table 2 2B",
+            domain.domain_id,
+        ),
+        SingleParameterRecord(
+            "mea-charge",
+            component.component_id,
+            "charge_number",
+            0,
+            source.source_id,
+            "neutral molecular component",
+            domain.domain_id,
+        ),
+    )
+    sites = (
+        SiteRecord(
+            "mea-site-a",
+            component.component_id,
+            "a",
+            "a",
+            1,
+            source.source_id,
+            "2B topology",
+            domain.domain_id,
+        ),
+        SiteRecord(
+            "mea-site-b",
+            component.component_id,
+            "b",
+            "b",
+            1,
+            source.source_id,
+            "2B topology",
+            domain.domain_id,
+        ),
+    )
+    associations = (
+        AssociationParameterRecord(
+            "mea-association-energy",
+            component.component_id,
+            "a",
+            component.component_id,
+            "b",
+            "association_energy_over_k",
+            2586.3 * unit_registry.kelvin,
+            source.source_id,
+            "Table 2 2B",
+            domain.domain_id,
+        ),
+        AssociationParameterRecord(
+            "mea-association-volume",
+            component.component_id,
+            "a",
+            component.component_id,
+            "b",
+            "association_volume",
+            0.037470,
+            source.source_id,
+            "Table 2 2B",
+            domain.domain_id,
+        ),
+    )
+    bundle = ParameterBundle.from_records(
+        bundle_id="baygi-2015-mea-2b-trial",
+        bundle_version=1,
+        purpose="user-provided",
+        sources=(source,),
+        domains=(domain,),
+        components=(component,),
+        singles=singles,
+        sites=sites,
+        associations=associations,
+        correlations=(
+            ConstantCorrelation(
+                "mea-segment-diameter",
+                component.component_id,
+                "segment_diameter",
+                3.0435 * unit_registry.angstrom,
+                source.source_id,
+                "Table 2 2B",
+                domain.domain_id,
+            ),
+        ),
+    )
+    return EPCSAFT(bundle.select((component.component_id,)))
+
+
 def _model(component_id: str) -> EPCSAFT:
+    if component_id == "monoethanolamine":
+        return _mea_model()
     bundle_id = (
         "gross-2001-propane"
         if component_id == "propane"
@@ -88,6 +231,15 @@ def _payload(component_id: str) -> tuple[object, ...]:
     specification = SPECIFICATIONS[component_id]
     model = _model(component_id)
     return _native_payload(dataset, specification, model.parameter_fingerprint)
+
+
+@pytest.fixture(scope="module")
+def mea_fit_result() -> object:
+    return fit_pure_saturation(
+        model=_model("monoethanolamine"),
+        dataset=load_pure_saturation_dataset("monoethanolamine"),
+        specification=MEA_SATURATION_FIT_V1,
+    )
 
 
 def _failing_provider_capsule() -> tuple[object, _NativeSdkTable, object]:
@@ -136,6 +288,173 @@ def test_methane_start_residuals_match_accepted_provider_anchor() -> None:
     assert len(jacobian) == 16 * 11
     assert len(diagnostics) == 4
     assert fingerprint.startswith("sha256:")
+
+
+def test_mea_start_evaluation_has_exact_dynamic_problem_shape() -> None:
+    residuals, jacobian, diagnostics, fingerprint = native.evaluate(
+        _capsule("monoethanolamine"),
+        _payload("monoethanolamine"),
+        (0.0,) * 5,
+    )
+
+    assert len(residuals) == 30
+    assert len(jacobian) == 30 * 5
+    assert len(diagnostics) == 15
+    assert all(math.isfinite(value) for value in residuals)
+    assert all(math.isfinite(value) for value in jacobian)
+    assert fingerprint == MEA_SATURATION_FIT_V1.expected_provider_fingerprint
+
+
+def test_mea_exact_jacobian_matches_directional_residual_difference() -> None:
+    capsule = _capsule("monoethanolamine")
+    payload = _payload("monoethanolamine")
+    variables = (0.0,) * 5
+    direction = tuple(
+        (1.0 if index % 2 == 0 else -1.0) * (0.002 + 0.0001 * index)
+        for index in range(5)
+    )
+    residuals, jacobian, _, _ = native.evaluate(capsule, payload, variables)
+    step = 2.0e-4
+    plus = tuple(step * value for value in direction)
+    minus = tuple(-step * value for value in direction)
+    residuals_plus = native.evaluate(capsule, payload, plus)[0]
+    residuals_minus = native.evaluate(capsule, payload, minus)[0]
+    finite_difference = tuple(
+        (right - left) / (2.0 * step)
+        for right, left in zip(
+            residuals_plus, residuals_minus, strict=True
+        )
+    )
+    product = tuple(
+        math.fsum(
+            jacobian[row * 5 + column] * direction[column]
+            for column in range(5)
+        )
+        for row in range(30)
+    )
+
+    assert residuals
+    assert product == pytest.approx(
+        finite_difference, rel=5.0e-6, abs=5.0e-7
+    )
+
+
+def test_mea_joint_fit_reproduces_the_source_correlation_targets(
+    mea_fit_result: object,
+) -> None:
+    result = mea_fit_result
+    published = (3.0353, 3.0435, 277.174, 2586.3, 0.037470)
+    fitted = tuple(parameter.final for parameter in result.parameters)
+    pressure_aad_percent = 100.0 * math.fsum(
+        abs(row.predicted_pressure_pa / row.observed_pressure_pa - 1.0)
+        for row in result.reporting_rows
+    ) / len(result.reporting_rows)
+    density_aad_percent = 100.0 * math.fsum(
+        abs(
+            row.predicted_liquid_density_kg_m3
+            / row.observed_liquid_density_kg_m3
+            - 1.0
+        )
+        for row in result.reporting_rows
+    ) / len(result.reporting_rows)
+    smooth_absolute_cost = math.fsum(
+        math.hypot(relative_error, 1.0e-4) - 1.0e-4
+        for row in result.reporting_rows
+        for relative_error in (
+            row.pressure_relative_error,
+            row.liquid_density_relative_error,
+        )
+    )
+
+    assert result.solver_converged
+    assert result.numerically_converged
+    assert result.physically_valid
+    assert result.jacobian.full_rank == 5
+    assert result.jacobian.parameter_rank == 5
+    assert result.jacobian.complete_columns
+    assert all(parameter.active_bound is None for parameter in result.parameters)
+    assert max(
+        abs(value / reference - 1.0)
+        for value, reference in zip(fitted, published, strict=True)
+    ) <= 0.15
+    assert pressure_aad_percent <= 0.62
+    assert density_aad_percent <= 0.12
+    assert result.final_cost == pytest.approx(
+        smooth_absolute_cost, rel=2.0e-12, abs=2.0e-14
+    )
+    assert result.pressure_aad_percent == pytest.approx(pressure_aad_percent)
+    assert result.liquid_density_aad_percent == pytest.approx(
+        density_aad_percent
+    )
+    assert result.published_parameter_max_relative_difference == pytest.approx(
+        max(
+            abs(value / reference - 1.0)
+            for value, reference in zip(fitted, published, strict=True)
+        )
+    )
+    assert result.scientific_comparison_status == (
+        "PASSED_BOUNDED_BAYGI_INSPIRED_COMPARISON"
+    )
+    assert result.predictive_status == (
+        "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
+    )
+
+
+def test_mea_terminal_smooth_objective_jacobian_is_directionally_stable(
+    mea_fit_result: object,
+) -> None:
+    result = mea_fit_result
+    variables = tuple(
+        (parameter.final - start) / scale
+        for parameter, start, scale in zip(
+            result.parameters,
+            MEA_SATURATION_FIT_V1.start,
+            MEA_SATURATION_FIT_V1.parameter_scales,
+            strict=True,
+        )
+    )
+    direction = (0.002, -0.0021, 0.0022, -0.0023, 0.0024)
+    _, jacobian, _, _ = native.evaluate(
+        _capsule("monoethanolamine"),
+        _payload("monoethanolamine"),
+        variables,
+    )
+    # The 1e-3 transformed-coordinate step stays above the frozen 1e-8
+    # inner-equilibrium closure floor while remaining in the local linear
+    # regime. The measured worst directional difference is 4.15e-4 on a
+    # 0.706 derivative.
+    step = 1.0e-3
+    plus = tuple(
+        value + step * delta
+        for value, delta in zip(variables, direction, strict=True)
+    )
+    minus = tuple(
+        value - step * delta
+        for value, delta in zip(variables, direction, strict=True)
+    )
+    residuals_plus = native.evaluate(
+        _capsule("monoethanolamine"), _payload("monoethanolamine"), plus
+    )[0]
+    residuals_minus = native.evaluate(
+        _capsule("monoethanolamine"), _payload("monoethanolamine"), minus
+    )[0]
+    finite_difference = tuple(
+        (right - left) / (2.0 * step)
+        for right, left in zip(
+            residuals_plus, residuals_minus, strict=True
+        )
+    )
+    product = tuple(
+        math.fsum(
+            jacobian[row * 5 + column] * direction[column]
+            for column in range(5)
+        )
+        for row in range(30)
+    )
+
+    assert product == pytest.approx(
+        finite_difference, rel=7.0e-4, abs=5.0e-5
+    )
 
 
 @pytest.mark.parametrize("component_id", ("methane", "ethane", "propane"))

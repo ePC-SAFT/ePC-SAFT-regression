@@ -1,8 +1,8 @@
 # General ePC-SAFT Parameter Regression
 
-Status: ten nonpolar/electrolyte parameter families fit-ready for their typed
-observation contracts; pure 2B association derivative/surface-ready but
-source-series blocked; polar regression excluded
+Status: ten general nonpolar/electrolyte parameter families fit-ready for
+their typed observation contracts; one bounded Baygi-inspired pure 2B joint
+association refit is a local package candidate; polar regression excluded
 
 Date: 2026-07-28
 
@@ -151,8 +151,8 @@ conditioning, non-bound diagnostics, and confirmation-start agreement.
 | `relative_permittivity` | solvent component | Source-bound single-ion solvation-Gibbs targets with fixed other model inputs, exact solvent identity, x-process convention, state, and scale | Exact Provider solvation-Gibbs value/first derivative for the active solvent permittivity; direct-observable Ceres rows | `FIT_READY`. Corrected Validation subject `e4cb7af` gives five independent rank-1 water fits returning `78.0899937514462` through `78.08999375166104` versus fixed `78.09`. This is implementation evidence, not a paper-fitted target or MEA prerequisite. |
 | `dielectric_ion_suppression_coefficient` | model | Salt-free-normalized relative-permittivity observations spanning enough total-ion mole fraction to identify one coefficient | Exact Provider relative-permittivity ratio and first derivative; direct-observable Ceres rows | `FIT_READY`; 36 digitized Figiel water/methanol rows are reference evidence. Optional standalone recovery. |
 | `ionic_region_relative_permittivity` | model | Source-defined single-ion solvation-Gibbs targets with fixed Born diameters and other inputs | Exact Provider SSM+DS solvation-Gibbs value/first derivative; direct-observable Ceres rows | `FIT_READY`; five independent Figiel fits recover fixed `8` within `2.2e-9`. Parallel groundwork, not coupled-MEA readiness. |
-| `association_energy_over_k` | association endpoints; currently one model-bound symmetric pure 2B pair | Simultaneous multi-temperature vapor-pressure and liquid-density observations; one density point is insufficient. The first campaign uses the frozen Baygi--Pahlavanzadeh MEA target correlations. | Current scalar `(n,V,p)` Hessian is mechanics evidence only. The selected route requires one joint Provider Hessian and the existing lifted pure-saturation owner over `(n,V,m,sigma,epsilon/k,epsilon_assoc/k,kappa_assoc)`. | `BAYGI_MEA_2B_DESIGN_READY_PROVIDER_JOINT_CALLBACK_REQUIRED`. Gross--Sadowski and Baygi--Pahlavanzadeh did not recover this coordinate independently. |
-| `association_volume` | association endpoints; currently one model-bound symmetric pure 2B pair | The same simultaneous vapor-pressure/liquid-density series is required to distinguish this coordinate from association energy and the three ordinary pure parameters | Same selected joint five-parameter Provider and Regression contract; no second association-only engine | `BAYGI_MEA_2B_DESIGN_READY_PROVIDER_JOINT_CALLBACK_REQUIRED`. |
+| `association_energy_over_k` | association endpoints; currently one model-bound symmetric pure 2B pair | Simultaneous multi-temperature vapor-pressure and liquid-density observations; one density point is insufficient. The first campaign uses the frozen Baygi--Pahlavanzadeh MEA target correlations. | Provider subject `c0e526b` supplies the explicit Baygi `d_ij^3` joint Hessian. Regression solves each pure equilibrium state and consumes its exact implicit parameter sensitivity in the existing pure-saturation Ceres owner. | `BAYGI_EQ4_INSPIRED_CORRELATION_REFIT_PACKAGE_CANDIDATE`. This local campaign proves joint five-coordinate recovery mechanics; it does not yet admit arbitrary caller association datasets or validate the paper's model result. |
+| `association_volume` | association endpoints; currently one model-bound symmetric pure 2B pair | The same simultaneous vapor-pressure/liquid-density series is required to distinguish this coordinate from association energy and the three ordinary pure parameters | Same joint five-parameter Provider and Regression contract; no second association-only engine | Same bounded local-candidate status; no independent association-only claim. |
 | `k_hb_ij` | source-defined cross-association combining-rule coordinate | A source-defined combining rule and sign convention plus composition/temperature-varying association-sensitive observations that separate cross from pure association | New Provider record/transform identity, versioned fingerprint, exact chain-rule derivative, and an association-endpoint Regression identity are required | `NOT_READY`. Ascani's fixed `0.026` is provenance, not a recovery dataset. Do not alias it to resolved association energy or invent zero defaults. Not the next MEA investment. |
 | `schreckenberg_dielectric_volume`, `schreckenberg_dielectric_temperature` | component/correlation coordinates | Multi-temperature electrolyte relative-permittivity or other source observables that independently identify the selected coefficient | New exact Provider active-parameter callback and Regression correlation identity/surface | `REPRESENTED_NOT_DERIVATIVE_READY`; no retained rank-sufficient recovery series. Optional, not on the MEA critical path. |
 | `zuber_ion_suppression_coefficient` | ion component | Relative-permittivity, MIAC, osmotic/activity, or solvation observations spanning ion fraction/molality and preferably temperature | New exact Provider active-parameter callback and matching typed Regression observation contract | `REPRESENTED_NOT_DERIVATIVE_READY`; the retained one-row osmotic oracle is insufficient. Optional. |
@@ -380,40 +380,62 @@ reconstruction choices selected before execution:
 
 | Coordinate | Bounds | Scale | Primary start | Confirmation start |
 |---|---:|---:|---:|---:|
-| `m` | `[0.5, 5.0]` | `0.5` | `2.5` | `3.25` |
-| `sigma` | `[2.0, 5.0] angstrom` | `0.5 angstrom` | `3.5` | `3.0` |
-| `epsilon/k` | `[50, 400] K` | `50 K` | `225` | `300` |
-| `epsilon_assoc/k` | `[250, 5000] K` | `500 K` | `2000` | `3000` |
-| `kappa_assoc` | `[0.001, 0.25]` | `0.05` | `0.05` | `0.10` |
+| `m` | `[0.5, 5.0]` | `0.5` | `2.5` | `2.9997` |
+| `sigma` | `[2.0, 5.0] angstrom` | `0.5 angstrom` | `3.5` | `3.2522` |
+| `epsilon/k` | `[50, 400] K` | `50 K` | `225` | `233.40` |
+| `epsilon_assoc/k` | `[250, 5000] K` | `500 K` | `2000` | `2276.8` |
+| `kappa_assoc` | `[0.001, 0.25]` | `0.05` | `0.05` | `0.015268` |
 
 These bounds enclose the associating parameter sets tabulated by the inspected
 Gross--Sadowski, Baygi--Pahlavanzadeh, Diamantonis--Economou, and Fuenzalida
-sources. They are campaign bounds, not universal PC-SAFT limits. Neither start
-is the published MEA 2B tuple or a rounded copy of it.
+sources. They are campaign bounds, not universal PC-SAFT limits. The primary
+start is a broad interior reconstruction start. The confirmation start is the
+independent Gross--Sadowski Table 1 1-propanol 2B tuple, selected because its
+molar mass and hydroxyl association make it a defensible neighboring source
+model. Neither start uses or perturbs Baygi's published MEA answer.
 
-For `N=15`, the existing lifted-volume problem has 35 variables and 60
-residuals:
+For every parameter trial and row, Regression solves the two pure-equilibrium
+equations for `u = (log V_L, log V_V)`:
 
 ```text
-variables = five transformed global parameters
-          + (log V_L,j, log V_V,j) for j=1,...,15
+H_1 = (P_L - P_V) / P_obs = 0
+H_2 = mu_L/RT - mu_V/RT = 0
 
-r_j = [
-  (P_L - P_obs) / P_obs,
-  (P_V - P_obs) / P_obs,
-  mu_L/RT - mu_V/RT,
-  (rho_L - rho_obs) / rho_obs
-]
+P_sat = (P_L + P_V) / 2
+rho_L = M / V_L
 ```
 
-The four row residuals retain the existing equal `0.25` weights. This is the
-smallest extension of the accepted Ceres workflow, but it is not Baygi and
-Pahlavanzadeh's exact Eq. 8 objective: their printed objective is an
-unweighted sum of absolute relative errors in the final saturation pressure
-and liquid density, and their optimizer is not reported. The result must
-therefore calculate and report the two paper-style AAD values after solving
-the equilibrium reporting problem, while labeling the fitted result a
-correlation reconstruction rather than an exact author-run replay.
+The outer problem has five variables and 30 observable residuals. For
+`e_P = (P_sat-P_obs)/P_obs` and
+`e_rho = (rho_L-rho_obs)/rho_obs`, the numerical objective uses
+
+```text
+rho_delta(e) = sqrt(e^2 + delta^2) - delta
+delta = 1e-4 relative error
+r_delta(e) = e * sqrt(2 / (sqrt(e^2 + delta^2) + delta))
+```
+
+so Ceres' one-half squared cost is exactly `rho_delta(e)`. This is a smooth
+approximation to Baygi Eq. 8's absolute relative error, not the authors'
+undisclosed optimizer. The `1e-4` transition is a numerical regularization:
+`0.01%` relative error, below the paper's smallest reported property AAD
+(`0.12%`) by a factor of 12. It is not experimental uncertainty or a
+post-hoc acceptance tolerance. The direct cost identity and start/terminal
+directional derivatives are tested. This avoids both the nondifferentiable
+square-root residual cusp and the failed alternative that softened
+equilibrium constraints into the data objective.
+
+The exact implicit sensitivity is
+
+```text
+du/dz = -H_u^{-1} H_z
+```
+
+and the observable Jacobian applies the chain rule through `P_sat(u,z)` and
+`rho_L(u)`. `H_u`, `H_z`, and both observable partials require only the
+Provider gradient and Hessian in
+`(n,V,m,sigma,epsilon/k,epsilon_assoc/k,kappa_assoc)`; no third derivatives,
+finite-difference production path, or Equilibrium dependency are introduced.
 
 The Provider prerequisite is one model-bound callback over the exact
 coordinate order
@@ -424,9 +446,12 @@ coordinate order
 
 returning `Phi`, its gradient of length 7, and its symmetric Hessian of shape
 `7 x 7`, plus pressure, `mu/RT`, stability diagnostics, parameter fingerprint,
-and topology fingerprint. Regression consumes the Hessian entries
+and topology fingerprint. Provider subject `c0e526b` names this callback's
+Baygi Eq. 4 association-strength basis explicitly as `d_ij^3`. The ordinary
+Provider EOS and scalar association callbacks remain on their source-owned
+`sigma_ij^3` basis. Regression consumes the Hessian entries
 `Phi_VV`, `Phi_Vp`, `Phi_nV`, and `Phi_np` for every active parameter `p`.
-The exact residual Jacobian follows by the existing chain rule:
+The exact phase partials remain:
 
 ```text
 dP/dp       = -R T Phi_Vp
@@ -445,14 +470,17 @@ The same native target, Ceres engine, Python workflow, and
 row counts become data-sized rather than adding a second association fitter.
 Methane, ethane, and propane records and numerical behavior remain unchanged.
 
-Acceptance of the executable reconstruction requires:
+The two source-backed fits use confirmation thresholds of `0.05` in maximum
+scaled parameter distance and `0.01` in relative cost. These are
+engineering-repeatability gates for the smooth reconstructed objective,
+not experimental uncertainty or predictive cutoffs. Acceptance of the
+executable reconstruction requires:
 
 - Provider value/gradient/Hessian agreement with an independent directional
   finite-difference oracle at representative liquid and vapor states;
-- finite exact `60 x 35` residual Jacobian with directional agreement;
-- full Jacobian rank 35;
-- projected parameter rank 5 after eliminating the lifted-volume column
-  space, using `(I - J_V J_V^+) J_p`, with retained singular values and
+- finite exact `30 x 5` smooth-observable residual Jacobian with directional
+  agreement at the broad start and the converged result;
+- full and parameter Jacobian rank 5, with retained singular values and
   condition number;
 - finite interior fitted parameters and mechanically stable, correctly
   ordered liquid and vapor states;
@@ -465,19 +493,21 @@ Acceptance of the executable reconstruction requires:
   `(3.0353, 3.0435 angstrom, 277.174 K, 2586.3 K, 0.037470)` and AADs
   `(0.62%, 0.12%)`.
 
-No parameter-distance or AAD acceptance cutoff is invented. A converged,
-full-rank reconstruction can establish that the package supports a joint
-five-parameter pure 2B fit and can describe its agreement with the published
-case. It cannot establish exact reproduction of the authors' undisclosed
-optimization, predictive validity, global uniqueness, uncertainty, or
-Provider-catalog authority.
+The local reference gate requires every fitted coordinate to remain within
+15% relative difference of Baygi's printed tuple and the reconstructed-grid
+pressure/density AADs not to exceed the paper's descriptive `0.62%` and
+`0.12%`. This is the user's engineering “close enough” reproduction criterion,
+not experimental uncertainty, general model acceptance, or a catalog gate.
+A converged, full-rank reconstruction establishes joint five-parameter pure
+2B recovery mechanics for this source-bound case. It cannot establish exact
+reproduction of the authors' undisclosed grid/optimizer, predictive validity,
+global uniqueness, uncertainty, or Provider-catalog authority.
 
 Rejected first-slice alternatives are:
 
-1. An exact Eq. 8 author-run replay. It is not currently definable because the
-   paper omits its grid, optimizer, starts, bounds, and tolerances; implementing
-   a new nonsmooth inner-equilibrium objective would broaden the solver surface
-   without recovering those facts.
+1. An exact author-run replay. The implementation uses a declared smooth
+   approximation to Eq. 8, and the paper omits its grid, optimizer, starts,
+   bounds, and tolerances; those facts cannot be reconstructed.
 2. The Albers--Sadowski five-point PCP-SAFT minimum-data design. It is useful
    identifiability evidence, but it is a different model and target selection,
    not the Baygi MEA campaign.
@@ -878,12 +908,19 @@ prediction evidence, or Provider-catalog authority.
    independent `1 x 1` fits are rank 1, non-bound, and confirmed from starts
    50 and 110. Recovery of fixed `78.09` is mechanics evidence, not a
    paper-fitted or predictive result.
-9. **Partial for pure 2B association.** Exact Provider Hessians and the
-   Regression pure-density surface exist for the sole symmetric association
-   pair. Recovery remains source-blocked until the original simultaneous
-   vapor-pressure/liquid-density rows and objective are retained. General
-   association endpoints and an explicit `k_hb_ij` combining-rule coordinate
-   remain separate future capabilities.
+9. **Local package candidate for bounded pure 2B association.** Provider subject
+   `c0e526b` supplies the Baygi `d_ij^3` joint Hessian without changing the
+   standard `sigma_ij^3` EOS. Regression consumes exact implicit equilibrium
+   sensitivities in a `30 x 5`, rank-5 smooth-L1 refit. Both independent
+   starts converge to interior solutions; the primary tuple is approximately
+   `(3.31145, 2.95617, 277.186, 2298.44, 0.0424813)` with pressure/density AADs
+   `0.0223%` and `0.0459%`, and all 15 rows pass the existing physical gates.
+   Baygi's printed tuple gives `3.4008%` and `0.12882%` on the frozen grid,
+   rather than its printed `0.62%` and `0.12%`; the unresolved convention
+   difference prevents a source-faithful/reference-validation claim. This
+   proves bounded five-coordinate mechanics, not arbitrary caller association
+   datasets. General association endpoints and an explicit `k_hb_ij`
+   combining-rule coordinate remain separate future capabilities.
 10. **Deferred optional standalone recovery.** Remaining nonpolar dielectric,
     ion-suppression, association, and temperature-correlation families require
     their own source series plus exact Provider derivative seams. They do not

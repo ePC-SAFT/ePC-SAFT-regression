@@ -64,9 +64,19 @@ association-only fitter. Baygi and Pahlavanzadeh (2015) provide a bounded MEA
 2B correlation reconstruction with an explicit property objective, target
 correlations, range, and fitted tuple. Their exact grid, starts, bounds, and
 optimizer are absent, so the selected campaign is explicitly a reconstruction
-rather than an author-run replay. Provider does not yet expose the joint
-seven-coordinate phase Hessian. Status is
-`BAYGI_MEA_2B_DESIGN_READY_PROVIDER_JOINT_CALLBACK_REQUIRED`.
+rather than an author-run replay. Provider subject `c0e526b` keeps the
+standard Provider association equation on its source-owned `sigma_ij^3`
+convention and exposes one explicit Baygi Eq. 4 joint callback using
+temperature-dependent `d_ij^3`. Regression eliminates each row's two phase
+volumes through the equilibrium equations and consumes only the Provider
+gradient/Hessian for the resulting `30 x 5` smooth-observable Jacobian.
+Both independent source-backed starts converge, the Jacobian has rank 5, all
+parameters are interior, and all 15 rows pass the existing physical gates.
+The local refit obtains pressure/density AADs of about `0.0223%` and
+`0.0459%`. Baygi's printed tuple instead gives `3.4008%` and `0.12882%` on
+the frozen grid, so the remaining model-convention discrepancy forbids a
+source-faithful or reference-validation claim. Status is
+`BAYGI_EQ4_INSPIRED_CORRELATION_REFIT_PACKAGE_CANDIDATE`.
 
 The user-approved 2026-07-27 destination is general parameter-family
 regression, defined in `docs/science/general-parameter-regression.md`. The
