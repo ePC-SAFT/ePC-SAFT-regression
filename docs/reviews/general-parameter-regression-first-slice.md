@@ -39,12 +39,13 @@ derivatives, or Equilibrium dependency are present.
 - Regression commits:
   `626b62df1d7ba43275a3931748ad60458325609c`,
   `dd45126095689d01110e1152ea27a90e4a82694e`,
-  `8816c3cd53e1f1b779e92ca43f669cc70d01fc78`
-- Regression tree: `08af610318df82a7ee4f286f46d06b9bfce4105e`
+  `8816c3cd53e1f1b779e92ca43f669cc70d01fc78`, and
+  `c4523ef5ea770cb8d07bab7d06ac07c9f0f4316d`
+- Regression package tree: `f4af697cd3a6f85695c298be0beaa561573530ce`
 - Regression wheel:
-  `/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/regression-general-parameter-v1/8816c3c/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl`
+  `/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/regression-general-parameter-v1/c4523ef/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl`
 - Regression wheel SHA-256:
-  `f2a8f757eb56b7b1c21676245d40ced5f58b95b3ff233b9c6a233b9061365adc`
+  `4ccc8caa8ee35ca15b2c5bc555abad7b91c1b5e38c2aaeb92b11016f5c1dfff2`
 
 ## Verification
 

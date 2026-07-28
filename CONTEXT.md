@@ -75,9 +75,11 @@ its installed public header has SHA-256
 `18d74d761290154dad3a336ced0d25c0b2badeab7e9462de3485a99e619fae1a`.
 Regression commits `626b62df1d7ba43275a3931748ad60458325609c`,
 `dd45126095689d01110e1152ea27a90e4a82694e`, and
-`8816c3cd53e1f1b779e92ca43f669cc70d01fc78` implement and harden the runtime.
+`8816c3cd53e1f1b779e92ca43f669cc70d01fc78` implement and harden the runtime;
+commit `c4523ef5ea770cb8d07bab7d06ac07c9f0f4316d` records the bounded public
+surface and reference campaign.
 The retained Regression wheel has SHA-256
-`f2a8f757eb56b7b1c21676245d40ced5f58b95b3ff233b9c6a233b9061365adc`.
+`4ccc8caa8ee35ca15b2c5bc555abad7b91c1b5e38c2aaeb92b11016f5c1dfff2`.
 
 All 17 audited May rows reproduce the frozen `68 x 35` formulation with
 convergence, full rank 35, projected parameter rank 1, a non-bound

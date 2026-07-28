@@ -69,8 +69,8 @@ general_parameter_regression:
   provider_subject: 5d9065110dae1f2548fbf831e92bd5c3362d58d1
   provider_wheel_sha256: f5c06ee9e5dbe29bcca881378355672057283a69e59e3ec8561c0d1378c60d14
   provider_header_sha256: 18d74d761290154dad3a336ced0d25c0b2badeab7e9462de3485a99e619fae1a
-  regression_subject: 8816c3cd53e1f1b779e92ca43f669cc70d01fc78
-  regression_wheel_sha256: f2a8f757eb56b7b1c21676245d40ced5f58b95b3ff233b9c6a233b9061365adc
+  regression_subject: c4523ef5ea770cb8d07bab7d06ac07c9f0f4316d
+  regression_wheel_sha256: 4ccc8caa8ee35ca15b2c5bc555abad7b91c1b5e38c2aaeb92b11016f5c1dfff2
   first_fit_ready_family:
     family: k_ij
     model_domain: neutral-nonassociating-binary
