@@ -257,7 +257,7 @@ owners:
   immutable_sources_and_specifications: src/epcsaft_regression/records.py
   public_workflow_and_result: src/epcsaft_regression/workflow.py
   compiled_contract: src/epcsaft_regression/native/pure_saturation_contract.cpp
-  residual_jacobian_and_ceres: src/epcsaft_regression/native/pure_saturation_fit.cpp
+  pure_saturation_final_diagnostics_and_reporting_closure: src/epcsaft_regression/native/pure_saturation_fit.cpp
   born_residual_jacobian_and_ceres: src/epcsaft_regression/native/born_diameter_fit.cpp
   water_factor_residual_jacobian_and_ceres: src/epcsaft_regression/native/figiel_water_factor_fit.cpp
   aqueous_kij_residual_jacobian_and_ceres: src/epcsaft_regression/native/figiel_kij_fit.cpp
@@ -641,6 +641,35 @@ parameter_family_readiness:
   figiel_current_catalog_aqueous_kij: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED
   reactive_or_temperature_dependent_parameters: NOT_READY
   general_parameter_regression: TEN_NONPOLAR_ELECTROLYTE_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
+  multi_parameter_core:
+    status: IMPLEMENTED_ACCEPTED_PURE_WORKFLOWS_CUT_OVER_LOCAL
+    canonical_variable_order: [fitted_solver_coordinates, lifted_coordinates]
+    fitted_parameter_start_vectors: complete-ordered-no-cartesian-products
+    lifted_starts: observation-owned-with-declared-confirmation-policy
+    evaluator_slot_sharing: explicit-immutable-sparse-map
+    jacobian:
+      full: "W [H_y Y_theta S D | H_y Y_q + H_q]"
+      nuisance_projected: "(I - U_q U_q^T) J_parameter"
+      full_rank_required: "N + Q"
+      projected_parameter_rank_required: "N"
+      structural_gate: "R >= N + Q"
+    first_installed_multi_parameter_seam:
+      entry: evaluate_pure_phase_parameters
+      parameters: [segment_count, segment_diameter, dispersion_energy_over_k]
+      methane_shape: {N: 3, Q: 8, R: 16}
+      ethane_shape: {N: 3, Q: 8, R: 16}
+      full_rank: 11
+      projected_parameter_rank: 3
+      accepted_public_wrapper: preserved
+      duplicate_native_training_solver: removed
+      common_pressure_reporting_solver: preserved
+    analytic_core_fixture:
+      shape: {N: 2, Q: 1, R: 4}
+      full_rank: 3
+      projected_parameter_rank: 2
+      derivative_oracle: closed-form-no-finite-difference
+      packaging: build-testing-only-not-installed
+    generic_downstream_transport: DESIGN_ONLY_GOVERNANCE_DECISION_REQUIRED
   mixture_independent_scalar_pure: FIT_READY_PURE_SATURATION_PRESSURE_AND_LIQUID_DENSITY
   mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_VLE_ADVERTISED_AQUEOUS_MIAC_AND_ADVERTISED_ORGANIC_ION_SOLVATION
   mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
@@ -750,23 +779,23 @@ manifest:
     temporary replay receipts, and wheels remain outside the repository.
   oversized_files:
     - path: src/epcsaft_regression/parameter_regression.py
-      physical_lines: 1757
+      physical_lines: 1896
       capability_delta: finite typed component identities and pure-saturation observations
     - path: src/epcsaft_regression/native/general_fit.cpp
-      physical_lines: 3229
-      capability_delta: one exact Ceres owner for pair VLE and scalar pure saturation
+      physical_lines: 3677
+      capability_delta: one exact Ceres owner for pair VLE and scalar or joint pure saturation
     - path: tests/test_parameter_regression.py
-      physical_lines: 2670
+      physical_lines: 2418
       capability_delta: scalar pure derivative, rank, fit, and reference anchors
     - path: src/epcsaft_regression/native/pure_saturation_fit.cpp
-      physical_lines: 920
+      physical_lines: 598
       capability_delta: >-
-        one shared Ceres cost/solve/diagnostic owner for the accepted lifted
-        pure-saturation workflows
+        final training-row diagnostics and the distinct three-coordinate
+        common-pressure reporting closure; no fitted-parameter training solve
     - path: src/epcsaft_regression/records.py
       physical_lines: 1751
     - path: src/epcsaft_regression/workflow.py
-      physical_lines: 1845
+      physical_lines: 2016
     - path: src/epcsaft_regression/native/figiel_kij_fit.cpp
       physical_lines: 1218
     - path: src/epcsaft_regression/native/born_diameter_fit.cpp

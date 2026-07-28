@@ -85,11 +85,12 @@ def _problem(
         transform=AffineParameterTransform(origin=0.0, scale=0.01),
         lower_bound=-0.15,
         upper_bound=0.10,
-        starts=(0.0, -0.05, 0.05),
     )
     return RegressionProblem(
         sources=(source,),
         parameters=(coordinate,),
+        parameter_slot_indices=(0,),
+        start_vectors=((0.0,), (-0.05,), (0.05,)),
         observations=rows,
         maximum_condition_number=1.0e10,
         maximum_iterations=200,
@@ -122,6 +123,55 @@ def test_native_payload_serializes_solver_time_after_maximum_iterations() -> Non
     assert payload[12] == problem.function_tolerance
 
 
+def test_problem_accepts_ordered_multi_parameter_start_vectors_without_cartesian_expansion() -> None:
+    rows = (_row("train-1"), _row("train-2"))
+    base = _problem(rows)
+    second = replace(
+        base.parameters[0],
+        family=ParameterFamily.L_IJ,
+        capability_id="neutral_binary_phase_lij_v1",
+    )
+
+    problem = replace(
+        base,
+        parameters=(base.parameters[0], second),
+        parameter_slot_indices=(0, 1, 0),
+        start_vectors=((0.0, 0.01), (-0.05, -0.02)),
+    )
+
+    assert problem.parameter_slot_indices == (0, 1, 0)
+    assert problem.start_vectors == ((0.0, 0.01), (-0.05, -0.02))
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"start_vectors": ((0.0,), (-0.05, -0.02))},
+        {"parameter_slot_indices": (0,)},
+        {"parameter_slot_indices": (0, 2)},
+    ),
+)
+def test_problem_rejects_incomplete_multi_parameter_vectors_or_slot_maps(
+    changes: dict[str, object],
+) -> None:
+    rows = (_row("train-1"), _row("train-2"))
+    base = _problem(rows)
+    second = replace(
+        base.parameters[0],
+        family=ParameterFamily.L_IJ,
+        capability_id="neutral_binary_phase_lij_v1",
+    )
+    values: dict[str, object] = {
+        "parameters": (base.parameters[0], second),
+        "parameter_slot_indices": (0, 1),
+        "start_vectors": ((0.0, 0.01), (-0.05, -0.02)),
+    }
+    values.update(changes)
+
+    with pytest.raises(ValueError):
+        replace(base, **values)
+
+
 def test_contract_canonicalizes_pair_and_binds_source_dataset_and_partitions() -> None:
     rows = (
         _row("train-1"),
@@ -136,7 +186,7 @@ def test_contract_canonicalizes_pair_and_binds_source_dataset_and_partitions() -
     assert problem.training_observations == (rows[0],)
     assert problem.held_out_observations == (rows[1],)
     assert problem.stress_observations == (rows[2],)
-    assert problem.parameters[0].solver_starts == (0.0, -5.0, 5.0)
+    assert problem.solver_start_vectors == ((0.0,), (-5.0,), (5.0,))
 
 
 def test_pair_coordinate_accepts_the_distinct_lij_family() -> None:
@@ -174,7 +224,6 @@ def test_component_coordinate_accepts_scalar_pure_families(
         unit=unit,
         lower_bound=0.1,
         upper_bound=500.0,
-        starts=(1.0, 1.1),
     )
 
     assert coordinate.identity.canonical_component_ids == ("methane",)
@@ -306,7 +355,6 @@ def test_relative_permittivity_ratio_observation_binds_one_model_parameter() -> 
         transform=AffineParameterTransform(origin=7.0, scale=1.0),
         lower_bound=0.01,
         upper_bound=30.0,
-        starts=(2.0, 12.0),
     )
 
     assert coordinate.identity.canonical_component_ids == ()
@@ -421,8 +469,8 @@ def test_observation_rejects_ambiguous_or_nonphysical_values(mutation: object, m
         ),
         (
             lambda rows: replace(
-                _problem(rows).parameters[0],
-                starts=(0.2, 0.3),
+                _problem(rows),
+                start_vectors=((0.2,), (0.3,)),
             ),
             "start",
         ),
@@ -433,6 +481,8 @@ def test_observation_rejects_ambiguous_or_nonphysical_values(mutation: object, m
                     _problem(rows).parameters[0],
                     _problem(rows).parameters[0],
                 ),
+                parameter_slot_indices=(0, 1),
+                start_vectors=((0.0, 0.0), (-0.05, -0.05)),
             ),
             "duplicate parameter identity",
         ),

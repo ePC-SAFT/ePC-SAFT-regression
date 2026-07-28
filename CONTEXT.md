@@ -54,6 +54,36 @@ with no added runtime test seam.
 
 `general_parameter_regression_status: TEN_PARAMETER_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
 
+`multi_parameter_core_status: IMPLEMENTED_ACCEPTED_PURE_WORKFLOWS_CUT_OVER_LOCAL`
+
+The canonical general design and native core now implement one ordered
+`[N fitted | Q lifted]` Ceres layout, complete ordered fitted-parameter start
+vectors, observation-owned lifted starts, an
+explicit evaluator-slot sharing map, exact full and nuisance-projected
+Jacobians, and residual-only versus exact-Jacobian request propagation. A compact
+closed-form native test proves `N = 2`, `Q = 1`, full rank 3, projected rank 2,
+fitted-vector confirmation, explicit slot sharing, structural rejection,
+incomplete-buffer rejection, and missing-column rank failure without finite
+differences.
+
+The installed Provider's joint pure callback is the first real `N > 1` seam.
+Accepted methane and ethane training now use the shared contiguous core with
+`N = 3`, `Q = 8`, `R = 16`, full rank 11, and nuisance-projected parameter
+rank 3. Their existing public presentation wrapper and common-pressure
+reporting solve remain, but the former duplicate pure training Ceres loop is
+gone. Frozen methane/ethane fitted values, costs, reporting predictions, and
+statuses remain within their existing numerical contracts. This does not
+imply that arbitrary simultaneous mixture parameters are executable; each
+such block still needs one installed exact multi-active evaluator contract.
+The public `fit_parameters` transport admits the same closed ordered
+`(m,sigma,epsilon/k)` pure block and returns three ordered parameter
+diagnostics. It still rejects every other arbitrary `N > 1` block; the pure
+adapter is not a generic cross-package callback.
+The installed pure callback returns value, gradient, and Hessian together;
+residual-only Ceres calls avoid copying a Regression Jacobian but cannot avoid
+the Provider derivative computation. That artifact limitation is not reported
+as a sensitivity-free value-only evaluation.
+
 Pure 2B `association_energy_over_k` and `association_volume` have exact scalar
 Provider-derivative and generic Regression-mechanics evidence, but they are
 not counted among the ten fit-ready families. The inspected sources fit them

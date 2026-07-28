@@ -1,9 +1,6 @@
 #include "pure_saturation_fit.hpp"
 #include "pure_saturation_fit_internal.hpp"
-
 #include <ceres/ceres.h>
-#include <Eigen/Dense>
-#include <Eigen/SVD>
 
 #include <algorithm>
 #include <array>
@@ -56,23 +53,6 @@ struct Evaluation final {
     std::array<double, residual_count * variable_count> jacobian{};
     std::array<RowDiagnostic, row_count> diagnostics;
     std::string fingerprint;
-};
-
-struct MatrixDiagnostics final {
-    std::vector<double> singular_values;
-    int rank{0};
-    double condition_number{std::numeric_limits<double>::infinity()};
-};
-
-struct SolveOutcome final {
-    ceres::Solver::Summary summary;
-    std::array<double, variable_count> variables;
-    Evaluation evaluation;
-    MatrixDiagnostics full_jacobian;
-    MatrixDiagnostics parameter_jacobian;
-    bool complete_columns{false};
-    bool evaluation_available{false};
-    std::string failure_reason;
 };
 
 struct ReportingOutcome final {
@@ -239,65 +219,6 @@ Evaluation evaluate_problem(
     return evaluation;
 }
 
-class TrainingCost final : public ceres::CostFunction {
-public:
-    TrainingCost(
-        const epcsaft_native_sdk_v1& table,
-        const Payload& payload,
-        std::string* failure_reason
-    ) : table_(table), payload_(payload), failure_reason_(failure_reason) {
-        set_num_residuals(static_cast<int>(residual_count));
-        mutable_parameter_block_sizes()->push_back(static_cast<int>(parameter_count));
-        for (std::size_t index = 0; index < row_count; ++index) {
-            mutable_parameter_block_sizes()->push_back(2);
-        }
-    }
-
-    bool Evaluate(double const* const* blocks, double* residuals, double** jacobians) const override {
-        try {
-            std::array<double, variable_count> variables{};
-            std::copy(blocks[0], blocks[0] + parameter_count, variables.begin());
-            for (std::size_t row = 0; row < row_count; ++row) {
-                variables[3 + 2 * row] = blocks[row + 1][0];
-                variables[4 + 2 * row] = blocks[row + 1][1];
-            }
-            const Evaluation evaluation = evaluate_problem(table_, payload_, variables);
-            std::copy(evaluation.residuals.begin(), evaluation.residuals.end(), residuals);
-            if (jacobians != nullptr) {
-                if (jacobians[0] != nullptr) {
-                    for (std::size_t row = 0; row < residual_count; ++row) {
-                        for (std::size_t column = 0; column < parameter_count; ++column) {
-                            jacobians[0][row * parameter_count + column] =
-                                evaluation.jacobian[row * variable_count + column];
-                        }
-                    }
-                }
-                for (std::size_t block = 0; block < row_count; ++block) {
-                    if (jacobians[block + 1] == nullptr) continue;
-                    for (std::size_t row = 0; row < residual_count; ++row) {
-                        jacobians[block + 1][row * 2] =
-                            evaluation.jacobian[row * variable_count + 3 + 2 * block];
-                        jacobians[block + 1][row * 2 + 1] =
-                            evaluation.jacobian[row * variable_count + 4 + 2 * block];
-                    }
-                }
-            }
-            return true;
-        } catch (const std::exception& error) {
-            *failure_reason_ = error.what();
-            return false;
-        } catch (...) {
-            *failure_reason_ = "unknown native training callback failure";
-            return false;
-        }
-    }
-
-private:
-    const epcsaft_native_sdk_v1& table_;
-    const Payload& payload_;
-    std::string* failure_reason_;
-};
-
 std::string termination_name(ceres::TerminationType termination) {
     switch (termination) {
         case ceres::CONVERGENCE: return "CONVERGENCE";
@@ -307,128 +228,6 @@ std::string termination_name(ceres::TerminationType termination) {
         case ceres::USER_FAILURE: return "USER_FAILURE";
     }
     return "UNKNOWN";
-}
-
-MatrixDiagnostics matrix_diagnostics(const Eigen::MatrixXd& matrix) {
-    const Eigen::JacobiSVD<Eigen::MatrixXd> decomposition(matrix, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    const auto singular = decomposition.singularValues();
-    MatrixDiagnostics diagnostics{};
-    diagnostics.singular_values.reserve(static_cast<std::size_t>(singular.size()));
-    for (Eigen::Index index = 0; index < singular.size(); ++index) {
-        diagnostics.singular_values.push_back(singular(index));
-    }
-    const double maximum = singular.size() == 0 ? 0.0 : singular(0);
-    const double threshold = maximum * static_cast<double>(std::max(matrix.rows(), matrix.cols()))
-        * std::numeric_limits<double>::epsilon() * 100.0;
-    diagnostics.rank = 0;
-    double minimum_accepted = std::numeric_limits<double>::infinity();
-    for (double value : diagnostics.singular_values) {
-        if (value > threshold) {
-            ++diagnostics.rank;
-            minimum_accepted = std::min(minimum_accepted, value);
-        }
-    }
-    diagnostics.condition_number = diagnostics.rank == 0
-        ? std::numeric_limits<double>::infinity()
-        : maximum / minimum_accepted;
-    return diagnostics;
-}
-
-SolveOutcome solve_training(
-    const epcsaft_native_sdk_v1& table,
-    const Payload& payload,
-    double liquid_start_offset,
-    double vapor_start_offset
-) {
-    SolveOutcome outcome{};
-    outcome.variables.fill(0.0);
-    std::array<double, 3> parameters{};
-    std::array<std::array<double, 2>, row_count> volumes{};
-    for (std::size_t row = 0; row < row_count; ++row) {
-        volumes[row] = {liquid_start_offset, vapor_start_offset};
-    }
-    ceres::Problem problem;
-    auto* cost = new TrainingCost(table, payload, &outcome.failure_reason);
-    std::vector<double*> blocks{parameters.data()};
-    for (auto& volume : volumes) blocks.push_back(volume.data());
-    problem.AddResidualBlock(cost, nullptr, blocks);
-    for (std::size_t parameter = 0; parameter < parameter_count; ++parameter) {
-        problem.SetParameterLowerBound(
-            parameters.data(), static_cast<int>(parameter),
-            (payload.lower[parameter] - payload.start[parameter]) / payload.parameter_scale[parameter]
-        );
-        problem.SetParameterUpperBound(
-            parameters.data(), static_cast<int>(parameter),
-            (payload.upper[parameter] - payload.start[parameter]) / payload.parameter_scale[parameter]
-        );
-    }
-    for (std::size_t row = 0; row < row_count; ++row) {
-        const double liquid_reference = payload.molar_mass / payload.rows[row].liquid_density;
-        const double vapor_reference = gas_constant * payload.rows[row].temperature / payload.rows[row].pressure;
-        problem.SetParameterLowerBound(
-            volumes[row].data(), 0, std::log(payload.liquid_volume_bounds[0] / liquid_reference)
-        );
-        problem.SetParameterUpperBound(
-            volumes[row].data(), 0, std::log(payload.liquid_volume_bounds[1] / liquid_reference)
-        );
-        problem.SetParameterLowerBound(
-            volumes[row].data(), 1, std::log(payload.vapor_volume_bounds[0] / vapor_reference)
-        );
-        problem.SetParameterUpperBound(
-            volumes[row].data(), 1, std::log(payload.vapor_volume_bounds[1] / vapor_reference)
-        );
-    }
-    ceres::Solver::Options options;
-    options.linear_solver_type = ceres::DENSE_QR;
-    options.max_num_iterations = payload.max_iterations;
-    options.function_tolerance = payload.function_tolerance;
-    options.gradient_tolerance = payload.gradient_tolerance;
-    options.parameter_tolerance = payload.parameter_tolerance;
-    options.logging_type = ceres::SILENT;
-    options.num_threads = payload.num_threads;
-    ceres::Solve(options, &problem, &outcome.summary);
-    std::copy(parameters.begin(), parameters.end(), outcome.variables.begin());
-    for (std::size_t row = 0; row < row_count; ++row) {
-        outcome.variables[3 + 2 * row] = volumes[row][0];
-        outcome.variables[4 + 2 * row] = volumes[row][1];
-    }
-    try {
-        outcome.evaluation = evaluate_problem(table, payload, outcome.variables);
-        outcome.evaluation_available = true;
-    } catch (const std::exception& error) {
-        outcome.failure_reason = std::string("training final evaluation failed: ") + error.what();
-        return outcome;
-    }
-    Eigen::MatrixXd full(static_cast<Eigen::Index>(residual_count), static_cast<Eigen::Index>(variable_count));
-    Eigen::MatrixXd parameter_matrix(
-        static_cast<Eigen::Index>(residual_count), static_cast<Eigen::Index>(parameter_count)
-    );
-    outcome.complete_columns = true;
-    for (std::size_t row = 0; row < residual_count; ++row) {
-        for (std::size_t column = 0; column < variable_count; ++column) {
-            const double value = outcome.evaluation.jacobian[row * variable_count + column];
-            full(static_cast<Eigen::Index>(row), static_cast<Eigen::Index>(column)) = value;
-            if (column < parameter_count) {
-                parameter_matrix(static_cast<Eigen::Index>(row), static_cast<Eigen::Index>(column)) = value;
-            }
-        }
-    }
-    outcome.complete_columns = std::all_of(
-        outcome.evaluation.jacobian.begin(),
-        outcome.evaluation.jacobian.end(),
-        [](double value) { return std::isfinite(value); }
-    );
-    outcome.full_jacobian = matrix_diagnostics(full);
-    outcome.parameter_jacobian = matrix_diagnostics(parameter_matrix);
-    if (outcome.summary.termination_type == ceres::CONVERGENCE
-        && outcome.summary.IsSolutionUsable()) {
-        outcome.failure_reason.clear();
-    } else if (outcome.failure_reason.empty()) {
-        outcome.failure_reason = "training Ceres solve ended without a usable converged solution";
-    } else {
-        outcome.failure_reason = std::string("training callback failed: ") + outcome.failure_reason;
-    }
-    return outcome;
 }
 
 class ReportingCost final : public ceres::SizedCostFunction<3, 3> {
@@ -645,26 +444,6 @@ PyObject* diagnostics_to_python(const std::array<RowDiagnostic, row_count>& diag
     return rows;
 }
 
-PyObject* vector_to_tuple(const std::vector<double>& values) {
-    return tuple_from_values(values.data(), values.size());
-}
-
-PyObject* strings_to_tuple(const std::vector<std::string>& values) {
-    PyObject* result = PyTuple_New(static_cast<Py_ssize_t>(values.size()));
-    if (result == nullptr) return nullptr;
-    for (std::size_t index = 0; index < values.size(); ++index) {
-        PyObject* value = PyUnicode_FromStringAndSize(
-            values[index].data(), static_cast<Py_ssize_t>(values[index].size())
-        );
-        if (value == nullptr) {
-            Py_DECREF(result);
-            return nullptr;
-        }
-        PyTuple_SET_ITEM(result, static_cast<Py_ssize_t>(index), value);
-    }
-    return result;
-}
-
 PyObject* reporting_to_python(const std::vector<ReportingOutcome>& outcomes) {
     PyObject* rows = PyTuple_New(static_cast<Py_ssize_t>(outcomes.size()));
     if (rows == nullptr) return nullptr;
@@ -751,15 +530,39 @@ PyObject* evaluate_python(PyObject* capsule, PyObject* payload_object, PyObject*
     }
 }
 
-PyObject* solve_python(PyObject* capsule, PyObject* payload_object, PyObject* reporting_rows_object) {
+PyObject* report_python(
+    PyObject* capsule,
+    PyObject* payload_object,
+    PyObject* reporting_rows_object,
+    PyObject* parameters_object
+) {
     const epcsaft_native_sdk_v1* table = checked_provider_table(capsule);
     if (table == nullptr) return nullptr;
     try {
         const Payload payload = parse_payload(payload_object);
+        const std::vector<double> parsed_parameters = doubles(
+            parameters_object, parameter_count, "fitted parameters"
+        );
+        std::array<double, parameter_count> parameters{};
+        std::copy(
+            parsed_parameters.cbegin(), parsed_parameters.cend(),
+            parameters.begin()
+        );
+        for (std::size_t index = 0; index < parameter_count; ++index) {
+            if (parameters[index] < payload.lower[index]
+                || parameters[index] > payload.upper[index]) {
+                throw std::invalid_argument(
+                    "fitted parameter is outside its physical bounds"
+                );
+            }
+        }
         OwnedPyObject reporting_sequence{
-            PySequence_Fast(reporting_rows_object, "reporting rows must be a sequence")
+            PySequence_Fast(
+                reporting_rows_object, "reporting rows must be a sequence"
+            )
         };
-        const std::size_t expected_reporting_rows = reporting_row_count(payload);
+        const std::size_t expected_reporting_rows =
+            reporting_row_count(payload);
         if (reporting_sequence == nullptr
             || PySequence_Fast_GET_SIZE(reporting_sequence.get())
                 != static_cast<Py_ssize_t>(expected_reporting_rows)) {
@@ -767,152 +570,27 @@ PyObject* solve_python(PyObject* capsule, PyObject* payload_object, PyObject* re
                 "reporting rows must contain the complete ordered component table"
             );
         }
-        std::vector<Row> reporting_inputs;
-        reporting_inputs.reserve(expected_reporting_rows);
+        std::vector<ReportingOutcome> outcomes;
+        outcomes.reserve(expected_reporting_rows);
         for (std::size_t index = 0; index < expected_reporting_rows; ++index) {
-            reporting_inputs.push_back(parse_row(
-                PySequence_Fast_GET_ITEM(
-                    reporting_sequence.get(), static_cast<Py_ssize_t>(index)
-                ),
-                payload.identity[1],
-                index
-            ));
-        }
-
-        const SolveOutcome primary = solve_training(*table, payload, 0.0, 0.0);
-        SolveOutcome confirmation{};
-        bool confirmation_ran = false;
-        double parameter_delta = std::numeric_limits<double>::infinity();
-        double cost_delta = std::numeric_limits<double>::infinity();
-        std::vector<ReportingOutcome> reporting;
-        if (primary.failure_reason.empty() && primary.evaluation_available) {
-            confirmation = solve_training(
+            outcomes.push_back(solve_reporting(
                 *table,
                 payload,
-                std::log(payload.confirmation_liquid_start_multiplier),
-                std::log(payload.confirmation_vapor_start_multiplier)
-            );
-            confirmation_ran = true;
-            parameter_delta = 0.0;
-            for (std::size_t index = 0; index < parameter_count; ++index) {
-                parameter_delta = std::max(
-                    parameter_delta,
-                    std::abs(primary.variables[index] - confirmation.variables[index])
-                );
-            }
-            // Symmetric relative agreement keeps the 1e-8 gate meaningful below unit cost.
-            cost_delta = std::abs(primary.summary.final_cost - confirmation.summary.final_cost)
-                / std::max({
-                    std::abs(primary.summary.final_cost),
-                    std::abs(confirmation.summary.final_cost),
-                    std::numeric_limits<double>::min(),
-                });
-            std::array<double, 3> final_parameters{};
-            for (std::size_t index = 0; index < parameter_count; ++index) {
-                final_parameters[index] = payload.start[index]
-                    + payload.parameter_scale[index] * primary.variables[index];
-            }
-            reporting.reserve(reporting_inputs.size());
-            for (const Row& row : reporting_inputs) {
-                reporting.push_back(solve_reporting(*table, payload, row, final_parameters));
-            }
+                parse_row(
+                    PySequence_Fast_GET_ITEM(
+                        reporting_sequence.get(),
+                        static_cast<Py_ssize_t>(index)
+                    ),
+                    payload.identity[1],
+                    index
+                ),
+                parameters
+            ));
         }
-        std::string native_failure_reason = primary.failure_reason;
-        if (native_failure_reason.empty() && confirmation_ran
-            && !confirmation.failure_reason.empty()) {
-            native_failure_reason = std::string("confirmation solve: ")
-                + confirmation.failure_reason;
-        }
-        PyObject* variables = tuple_from_values(primary.variables.data(), primary.variables.size());
-        PyObject* residuals = primary.evaluation_available
-            ? tuple_from_values(primary.evaluation.residuals.data(), residual_count)
-            : PyTuple_New(0);
-        PyObject* jacobian = primary.evaluation_available
-            ? tuple_from_values(
-                primary.evaluation.jacobian.data(), residual_count * variable_count
-            )
-            : PyTuple_New(0);
-        PyObject* diagnostics = primary.evaluation_available
-            ? diagnostics_to_python(primary.evaluation.diagnostics)
-            : PyTuple_New(0);
-        PyObject* full_singular = vector_to_tuple(primary.full_jacobian.singular_values);
-        PyObject* parameter_singular = vector_to_tuple(primary.parameter_jacobian.singular_values);
-        PyObject* reporting_python = reporting_to_python(reporting);
-        PyObject* compiled_identity = strings_to_tuple(payload.identity);
-        PyObject* failure_python = PyUnicode_FromStringAndSize(
-            native_failure_reason.data(), static_cast<Py_ssize_t>(native_failure_reason.size())
-        );
-        if (variables == nullptr || residuals == nullptr || jacobian == nullptr
-            || diagnostics == nullptr || full_singular == nullptr
-            || parameter_singular == nullptr || reporting_python == nullptr
-            || compiled_identity == nullptr || failure_python == nullptr) {
-            Py_XDECREF(variables);
-            Py_XDECREF(residuals);
-            Py_XDECREF(jacobian);
-            Py_XDECREF(diagnostics);
-            Py_XDECREF(full_singular);
-            Py_XDECREF(parameter_singular);
-            Py_XDECREF(reporting_python);
-            Py_XDECREF(compiled_identity);
-            Py_XDECREF(failure_python);
-            return nullptr;
-        }
-        PyObject* result = PyTuple_New(24);
-        if (result == nullptr) {
-            Py_DECREF(variables);
-            Py_DECREF(residuals);
-            Py_DECREF(jacobian);
-            Py_DECREF(diagnostics);
-            Py_DECREF(full_singular);
-            Py_DECREF(parameter_singular);
-            Py_DECREF(reporting_python);
-            Py_DECREF(compiled_identity);
-            Py_DECREF(failure_python);
-            return nullptr;
-        }
-        PyTuple_SET_ITEM(result, 0, PyUnicode_FromString(termination_name(primary.summary.termination_type).c_str()));
-        PyTuple_SET_ITEM(result, 1, Py_NewRef(primary.summary.IsSolutionUsable() ? Py_True : Py_False));
-        PyTuple_SET_ITEM(result, 2, PyFloat_FromDouble(primary.summary.initial_cost));
-        PyTuple_SET_ITEM(result, 3, PyFloat_FromDouble(primary.summary.final_cost));
-        PyTuple_SET_ITEM(result, 4, PyLong_FromSize_t(primary.summary.iterations.size()));
-        PyTuple_SET_ITEM(result, 5, variables);
-        PyTuple_SET_ITEM(result, 6, residuals);
-        PyTuple_SET_ITEM(result, 7, jacobian);
-        PyTuple_SET_ITEM(result, 8, diagnostics);
-        PyTuple_SET_ITEM(result, 9, full_singular);
-        PyTuple_SET_ITEM(result, 10, PyLong_FromLong(primary.full_jacobian.rank));
-        PyTuple_SET_ITEM(result, 11, PyFloat_FromDouble(primary.full_jacobian.condition_number));
-        PyTuple_SET_ITEM(result, 12, parameter_singular);
-        PyTuple_SET_ITEM(result, 13, PyLong_FromLong(primary.parameter_jacobian.rank));
-        PyTuple_SET_ITEM(result, 14, PyFloat_FromDouble(primary.parameter_jacobian.condition_number));
-        PyTuple_SET_ITEM(result, 15, Py_NewRef(primary.complete_columns ? Py_True : Py_False));
-        PyTuple_SET_ITEM(result, 16, PyFloat_FromDouble(parameter_delta));
-        PyTuple_SET_ITEM(result, 17, PyFloat_FromDouble(cost_delta));
-        PyTuple_SET_ITEM(
-            result,
-            18,
-            PyUnicode_FromString(
-                confirmation_ran
-                    ? termination_name(confirmation.summary.termination_type).c_str()
-                    : "NOT_RUN"
-            )
-        );
-        PyTuple_SET_ITEM(
-            result,
-            19,
-            Py_NewRef(
-                confirmation_ran && confirmation.summary.IsSolutionUsable()
-                    ? Py_True : Py_False
-            )
-        );
-        PyTuple_SET_ITEM(result, 20, reporting_python);
-        PyTuple_SET_ITEM(result, 21, PyUnicode_FromString(primary.evaluation.fingerprint.c_str()));
-        PyTuple_SET_ITEM(result, 22, compiled_identity);
-        PyTuple_SET_ITEM(result, 23, failure_python);
-        return result;
+        return reporting_to_python(outcomes);
     } catch (const std::exception& error) {
         if (PyErr_Occurred() != nullptr) PyErr_Clear();
-        PyErr_SetString(PyExc_RuntimeError, error.what());
+        PyErr_SetString(PyExc_ValueError, error.what());
         return nullptr;
     }
 }

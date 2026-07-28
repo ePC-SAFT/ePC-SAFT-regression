@@ -9,7 +9,12 @@ namespace epcsaft_regression {
 PyObject* transport_info(PyObject* capsule);
 const epcsaft_native_sdk_v1* checked_provider_table(PyObject* capsule);
 PyObject* evaluate_python(PyObject* capsule, PyObject* payload, PyObject* variables);
-PyObject* solve_python(PyObject* capsule, PyObject* payload, PyObject* reporting_rows);
+PyObject* report_python(
+    PyObject* capsule,
+    PyObject* payload,
+    PyObject* reporting_rows,
+    PyObject* parameters
+);
 Py_ssize_t minimum_parameterized_table_size() noexcept;
 Py_ssize_t parameterized_result_size() noexcept;
 

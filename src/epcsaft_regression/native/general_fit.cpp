@@ -1,11 +1,9 @@
 #include "general_fit.hpp"
+#include "ceres_core.hpp"
 
 #include <epcsaft/native_sdk_v1.h>
 
 #include <ceres/ceres.h>
-#include <Eigen/Dense>
-#include <Eigen/SVD>
-
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -70,6 +68,16 @@ struct Payload final {
     double parameter_lower_bound;
     double parameter_upper_bound;
     std::vector<double> starts;
+    // The legacy scalar payload uses the fields above.  A six-field tail
+    // carries one explicit joint-pure problem without changing that ABI:
+    // origins, scales, bounds, full physical start vectors, and the ordered
+    // parameter-to-slot map.
+    std::vector<double> parameter_origins;
+    std::vector<double> parameter_scales;
+    std::vector<double> parameter_lower_bounds;
+    std::vector<double> parameter_upper_bounds;
+    std::vector<std::vector<double>> start_vectors;
+    std::vector<std::size_t> parameter_slot_indices;
     double maximum_condition_number;
     int maximum_iterations;
     double maximum_solver_time_seconds;
@@ -84,8 +92,8 @@ struct Payload final {
 
 struct Phase final {
     double pressure;
-    std::array<double, 4> gradient;
-    std::array<double, 16> hessian;
+    std::array<double, 5> gradient;
+    std::array<double, 25> hessian;
     std::size_t coordinate_count;
 };
 
@@ -96,18 +104,12 @@ struct Evaluation final {
     std::vector<double> provider_derivatives;
 };
 
-struct MatrixDiagnostics final {
-    std::vector<double> singular_values;
-    int rank{0};
-    double condition_number{std::numeric_limits<double>::infinity()};
-};
-
 struct SolveOutcome final {
     ceres::Solver::Summary summary;
     std::vector<double> variables;
     Evaluation evaluation;
-    MatrixDiagnostics full_jacobian;
-    MatrixDiagnostics projected_parameter_jacobian;
+    internal::MatrixDiagnostics full_jacobian;
+    internal::MatrixDiagnostics projected_parameter_jacobian;
     std::string failure_reason;
 };
 
@@ -143,6 +145,13 @@ bool pure_density_observation(const Payload& payload) {
     return payload.observation_shape == "pure_density";
 }
 
+bool joint_pure_observation(const Payload& payload) {
+    return payload.capability_id == "neutral_pure_segment_count_v1"
+        && payload.parameter_origins.size() == 3
+        && payload.component_ids.size() == 1
+        && payload.observation_shape == "phase_or_direct";
+}
+
 std::size_t residual_count(const Payload& payload) {
     return (direct_observation(payload)
             ? 1u
@@ -151,6 +160,9 @@ std::size_t residual_count(const Payload& payload) {
 }
 
 std::size_t variable_count(const Payload& payload) {
+    if (joint_pure_observation(payload)) {
+        return 3u + 2u * payload.training_rows.size();
+    }
     return direct_observation(payload)
         ? 1u
         : 1u
@@ -384,10 +396,13 @@ Payload parse_payload(PyObject* object) {
     OwnedPyObject sequence{
         PySequence_Fast(object, "general regression payload must be a sequence")
     };
-    if (!sequence || PySequence_Fast_GET_SIZE(sequence.get()) != 20) {
+    const Py_ssize_t field_count = sequence
+        ? PySequence_Fast_GET_SIZE(sequence.get()) : 0;
+    if (!sequence || (field_count != 20 && field_count != 26)) {
         PyErr_Clear();
         throw std::invalid_argument(
-            "general regression payload must contain exactly 20 fields"
+            "general regression payload must contain exactly 20 fields, or "
+            "26 fields for the explicit joint-pure adapter"
         );
     }
     auto item = [&](Py_ssize_t index) {
@@ -450,6 +465,105 @@ Payload parse_payload(PyObject* object) {
     payload.parameter_lower_bound = number(item(6), "parameter lower bound");
     payload.parameter_upper_bound = number(item(7), "parameter upper bound");
     payload.starts = doubles(item(8), "parameter starts");
+    if (field_count == 26) {
+        payload.parameter_origins = doubles(
+            item(20), "joint-pure parameter origins"
+        );
+        payload.parameter_scales = doubles(
+            item(21), "joint-pure parameter scales"
+        );
+        payload.parameter_lower_bounds = doubles(
+            item(22), "joint-pure parameter lower bounds"
+        );
+        payload.parameter_upper_bounds = doubles(
+            item(23), "joint-pure parameter upper bounds"
+        );
+        OwnedPyObject starts_sequence{
+            PySequence_Fast(item(24), "joint-pure start vectors")
+        };
+        if (!starts_sequence) {
+            PyErr_Clear();
+            throw std::invalid_argument(
+                "joint-pure start vectors must be a sequence"
+            );
+        }
+        for (Py_ssize_t index = 0;
+             index < PySequence_Fast_GET_SIZE(starts_sequence.get());
+             ++index) {
+            payload.start_vectors.push_back(doubles(
+                PySequence_Fast_GET_ITEM(starts_sequence.get(), index),
+                "joint-pure start vector"
+            ));
+        }
+        const std::vector<double> slot_values = doubles(
+            item(25), "joint-pure parameter slot indices"
+        );
+        payload.parameter_slot_indices.reserve(slot_values.size());
+        for (const double value : slot_values) {
+            if (value < 0.0
+                || value != std::floor(value)
+                || value > static_cast<double>(
+                    std::numeric_limits<std::size_t>::max()
+                )) {
+                throw std::invalid_argument(
+                    "joint-pure parameter slot indices must be nonnegative "
+                    "integers"
+                );
+            }
+            payload.parameter_slot_indices.push_back(
+                static_cast<std::size_t>(value)
+            );
+        }
+        if (payload.parameter_origins.size() != 3
+            || payload.parameter_scales.size() != 3
+            || payload.parameter_lower_bounds.size() != 3
+            || payload.parameter_upper_bounds.size() != 3
+            || payload.start_vectors.size() < 2
+            || payload.parameter_slot_indices.size() != 3) {
+            throw std::invalid_argument(
+                "joint-pure adapter requires three parameter coordinates, "
+                "two full starts, and three slot indices"
+            );
+        }
+        if (payload.parameter_slot_indices
+            != std::vector<std::size_t>{0, 1, 2}) {
+            throw std::invalid_argument(
+                "joint-pure adapter requires the declared m, sigma, "
+                "epsilon/k slot order"
+            );
+        }
+        for (std::size_t index = 0; index < 3; ++index) {
+            if (!std::isfinite(payload.parameter_origins[index])
+                || !std::isfinite(payload.parameter_scales[index])
+                || payload.parameter_scales[index] == 0.0
+                || !std::isfinite(payload.parameter_lower_bounds[index])
+                || !std::isfinite(payload.parameter_upper_bounds[index])
+                || payload.parameter_lower_bounds[index]
+                    >= payload.parameter_upper_bounds[index]
+                || payload.parameter_slot_indices[index] >= 3) {
+                throw std::invalid_argument(
+                    "joint-pure parameter transforms or slots are invalid"
+                );
+            }
+        }
+        for (const auto& vector : payload.start_vectors) {
+            if (vector.size() != 3
+                || !std::all_of(vector.cbegin(), vector.cend(),
+                    [](double value) { return std::isfinite(value); })) {
+                throw std::invalid_argument(
+                    "joint-pure starts must contain three finite values"
+                );
+            }
+            for (std::size_t index = 0; index < 3; ++index) {
+                if (vector[index] < payload.parameter_lower_bounds[index]
+                    || vector[index] > payload.parameter_upper_bounds[index]) {
+                    throw std::invalid_argument(
+                        "joint-pure starts must lie within physical bounds"
+                    );
+                }
+            }
+        }
+    }
     payload.maximum_condition_number = number(
         item(9), "maximum condition number"
     );
@@ -490,9 +604,11 @@ Payload parse_payload(PyObject* object) {
                     && start <= payload.parameter_upper_bound;
             }
         );
-    if (payload.parameter_scale == 0.0
+    const bool joint_payload = field_count == 26;
+    if ((!joint_payload && payload.parameter_scale == 0.0)
         || payload.parameter_lower_bound >= payload.parameter_upper_bound
-        || !starts_valid || payload.maximum_condition_number <= 0.0
+        || (!joint_payload && !starts_valid)
+        || payload.maximum_condition_number <= 0.0
         || payload.maximum_solver_time_seconds <= 0.0
         || payload.function_tolerance <= 0.0
         || payload.gradient_tolerance <= 0.0
@@ -502,6 +618,25 @@ Payload parse_payload(PyObject* object) {
         throw std::invalid_argument(
             "parameter, solver, and confirmation contracts are invalid"
         );
+    }
+    if (field_count == 20) {
+        payload.parameter_origins = {payload.parameter_origin};
+        payload.parameter_scales = {payload.parameter_scale};
+        payload.parameter_lower_bounds = {payload.parameter_lower_bound};
+        payload.parameter_upper_bounds = {payload.parameter_upper_bound};
+        payload.start_vectors.reserve(payload.starts.size());
+        for (const double start : payload.starts) {
+            payload.start_vectors.push_back({start});
+        }
+        payload.parameter_slot_indices = {0};
+    } else {
+        // Keep the legacy scalar fields coherent for diagnostics that are
+        // shared with scalar result formatting; the joint path uses the
+        // ordered arrays above for all numerical work.
+        payload.starts.clear();
+        for (const auto& vector : payload.start_vectors) {
+            payload.starts.push_back(vector.front());
+        }
     }
     return payload;
 }
@@ -718,12 +853,27 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
                                 == sizeof(
                                     epcsaft_ion_solvation_solvent_permittivity_result_v1
                                 )
-                    : (table.table_size
-                    >= offsetof(
-                        epcsaft_native_sdk_v1,
-                        evaluate_pure_phase_parameter
-                    ) + sizeof(table.evaluate_pure_phase_parameter)
-                && table.evaluate_pure_phase_parameter != nullptr);
+                    : joint_pure_observation(payload)
+                        ? table.table_size
+                                >= offsetof(
+                                    epcsaft_native_sdk_v1,
+                                    evaluate_pure_phase_parameters
+                                ) + sizeof(
+                                    table.evaluate_pure_phase_parameters
+                                )
+                            && table.evaluate_pure_phase_parameters != nullptr
+                            && table.parameterized_result_size
+                                == sizeof(
+                                    epcsaft_parameterized_phase_block_result_v1
+                                )
+                        : table.table_size
+                                >= offsetof(
+                                    epcsaft_native_sdk_v1,
+                                    evaluate_pure_phase_parameter
+                                ) + sizeof(
+                                    table.evaluate_pure_phase_parameter
+                                )
+                            && table.evaluate_pure_phase_parameter != nullptr;
     const std::size_t expected_component_count =
         direct ? 3u : binary ? 2u : 1u;
     const bool components_match =
@@ -1549,6 +1699,70 @@ Phase evaluate_phase(
     return phase;
 }
 
+Phase evaluate_joint_pure_phase(
+    const epcsaft_native_sdk_v1& table,
+    const Payload& payload,
+    const Row& row,
+    double volume,
+    const std::array<double, 3>& parameters
+) {
+    if (table.evaluate_pure_phase_parameters == nullptr) {
+        throw std::runtime_error(
+            "Provider does not expose the joint pure-phase parameter callback"
+        );
+    }
+    epcsaft_parameterized_phase_block_result_v1 result{};
+    result.struct_size = sizeof(result);
+    const int status = table.evaluate_pure_phase_parameters(
+        table.model_context,
+        row.temperature,
+        1.0,
+        volume,
+        parameters[0],
+        parameters[1],
+        parameters[2],
+        &result
+    );
+    if (status != EPCSAFT_NATIVE_STATUS_OK_V1 || result.status != status) {
+        const std::size_t error_length = strnlen(
+            result.error, EPCSAFT_NATIVE_SDK_V1_ERROR_SIZE
+        );
+        throw std::runtime_error(
+            std::string("Provider joint pure-phase evaluation failed: ")
+            + std::string(result.error, error_length)
+        );
+    }
+    Phase phase{};
+    phase.coordinate_count = 5;
+    phase.pressure = result.pressure_pa;
+    std::copy(std::begin(result.gradient), std::end(result.gradient),
+              phase.gradient.begin());
+    std::copy(std::begin(result.hessian), std::end(result.hessian),
+              phase.hessian.begin());
+    const std::size_t fingerprint_length = strnlen(
+        result.parameter_fingerprint, EPCSAFT_NATIVE_SDK_V1_FINGERPRINT_SIZE
+    );
+    if (!bounded_field_equal(
+            payload.parameter_fingerprint, result.parameter_fingerprint
+        )
+        || !std::isfinite(phase.pressure)
+        || !std::all_of(
+            phase.gradient.cbegin(), phase.gradient.cend(),
+            [](double value) { return std::isfinite(value); }
+        )
+        || !std::all_of(
+            phase.hessian.cbegin(), phase.hessian.cend(),
+            [](double value) { return std::isfinite(value); }
+        )) {
+        (void)fingerprint_length;
+        throw std::runtime_error(
+            "Provider joint pure-phase result is incomplete or has a "
+            "parameter-fingerprint mismatch"
+        );
+    }
+    return phase;
+}
+
 void evaluate_direct_problem(
     const epcsaft_native_sdk_v1& table,
     const Payload& payload,
@@ -1954,6 +2168,128 @@ Evaluation make_evaluation(const Payload& payload) {
     };
 }
 
+void evaluate_joint_pure_problem(
+    const epcsaft_native_sdk_v1& table,
+    const Payload& payload,
+    const double* variables,
+    Evaluation& evaluation
+) {
+    const std::size_t row_count = payload.training_rows.size();
+    const std::size_t variable_total = variable_count(payload);
+    std::array<double, 3> parameters{};
+    for (std::size_t parameter = 0; parameter < parameters.size(); ++parameter) {
+        const double solver_value = variables[
+            payload.parameter_slot_indices[parameter]
+        ];
+        parameters[parameter] = payload.parameter_origins[parameter]
+            + payload.parameter_scales[parameter] * solver_value;
+        if (!std::isfinite(parameters[parameter])
+            || parameters[parameter] < payload.parameter_lower_bounds[parameter]
+            || parameters[parameter] > payload.parameter_upper_bounds[parameter]) {
+            throw std::invalid_argument(
+                "joint-pure parameter is outside its declared bounds"
+            );
+        }
+    }
+    for (std::size_t row_index = 0; row_index < row_count; ++row_index) {
+        const Row& row = payload.training_rows[row_index];
+        const std::size_t liquid_column = 3 + 2 * row_index;
+        const std::size_t vapor_column = liquid_column + 1;
+        const double liquid_volume = row.liquid_volume_origin
+            * std::exp(variables[liquid_column]);
+        const double vapor_volume = row.vapor_volume_origin
+            * std::exp(variables[vapor_column]);
+        if (!std::isfinite(liquid_volume) || !std::isfinite(vapor_volume)
+            || liquid_volume < row.liquid_volume_bounds[0]
+            || liquid_volume > row.liquid_volume_bounds[1]
+            || vapor_volume < row.vapor_volume_bounds[0]
+            || vapor_volume > row.vapor_volume_bounds[1]
+            || liquid_volume >= vapor_volume) {
+            throw std::invalid_argument(
+                "joint-pure phase volumes violate their bounds or topology"
+            );
+        }
+        const Phase liquid = evaluate_joint_pure_phase(
+            table, payload, row, liquid_volume, parameters
+        );
+        const Phase vapor = evaluate_joint_pure_phase(
+            table, payload, row, vapor_volume, parameters
+        );
+        constexpr std::size_t amount_coordinate = 0;
+        constexpr std::size_t volume_coordinate = 1;
+        constexpr std::size_t parameter_coordinate = 2;
+        if (!(liquid.hessian[volume_coordinate * 5 + volume_coordinate] > 0.0)
+            || !(vapor.hessian[volume_coordinate * 5 + volume_coordinate] > 0.0)) {
+            throw std::runtime_error("joint-pure phase is not mechanically stable");
+        }
+        const std::size_t residual_offset = 4 * row_index;
+        evaluation.residuals[residual_offset] =
+            (liquid.pressure - row.pressure) / row.pressure_scale;
+        evaluation.residuals[residual_offset + 1] =
+            (vapor.pressure - row.pressure) / row.pressure_scale;
+        evaluation.residuals[residual_offset + 2] =
+            (liquid.gradient[amount_coordinate]
+             - vapor.gradient[amount_coordinate])
+            / row.chemical_potential_scales[0];
+        const double density = row.molar_mass / liquid_volume;
+        evaluation.residuals[residual_offset + 3] =
+            (density - row.liquid_density) / row.liquid_density_scale;
+        auto jacobian = [&](std::size_t residual, std::size_t column)
+            -> double& {
+            return evaluation.jacobian[residual * variable_total + column];
+        };
+        const double pressure_factor = 1.0 / row.pressure_scale;
+        const double mu_factor = 1.0 / row.chemical_potential_scales[0];
+        for (std::size_t parameter = 0; parameter < parameters.size(); ++parameter) {
+            const std::size_t coordinate = parameter_coordinate + parameter;
+            const std::size_t column = payload.parameter_slot_indices[parameter];
+            jacobian(residual_offset, column) =
+                -gas_constant * row.temperature
+                * liquid.hessian[volume_coordinate * 5 + coordinate]
+                * payload.parameter_scales[parameter] * pressure_factor;
+            jacobian(residual_offset + 1, column) =
+                -gas_constant * row.temperature
+                * vapor.hessian[volume_coordinate * 5 + coordinate]
+                * payload.parameter_scales[parameter] * pressure_factor;
+            jacobian(residual_offset + 2, column) =
+                (liquid.hessian[amount_coordinate * 5 + coordinate]
+                 - vapor.hessian[amount_coordinate * 5 + coordinate])
+                * payload.parameter_scales[parameter] * mu_factor;
+        }
+        jacobian(residual_offset, liquid_column) =
+            -gas_constant * row.temperature
+            * liquid.hessian[volume_coordinate * 5 + volume_coordinate]
+            * liquid_volume * pressure_factor;
+        jacobian(residual_offset + 1, vapor_column) =
+            -gas_constant * row.temperature
+            * vapor.hessian[volume_coordinate * 5 + volume_coordinate]
+            * vapor_volume * pressure_factor;
+        jacobian(residual_offset + 2, liquid_column) =
+            liquid.hessian[amount_coordinate * 5 + volume_coordinate]
+            * liquid_volume * mu_factor;
+        jacobian(residual_offset + 2, vapor_column) =
+            -vapor.hessian[amount_coordinate * 5 + volume_coordinate]
+            * vapor_volume * mu_factor;
+        jacobian(residual_offset + 3, liquid_column) =
+            -density / row.liquid_density_scale;
+        evaluation.modeled_values[row_index] = density;
+        evaluation.provider_derivatives[row_index] =
+            liquid.hessian[volume_coordinate * 5 + parameter_coordinate];
+    }
+    if (!std::all_of(
+            evaluation.residuals.cbegin(), evaluation.residuals.cend(),
+            [](double value) { return std::isfinite(value); }
+        )
+        || !std::all_of(
+            evaluation.jacobian.cbegin(), evaluation.jacobian.cend(),
+            [](double value) { return std::isfinite(value); }
+        )) {
+        throw std::runtime_error(
+            "assembled joint-pure residual or Jacobian is nonfinite"
+        );
+    }
+}
+
 void evaluate_problem(
     const epcsaft_native_sdk_v1& table,
     const Payload& payload,
@@ -1974,6 +2310,10 @@ void evaluate_problem(
         throw std::logic_error("evaluation scratch dimensions are invalid");
     }
     std::fill(evaluation.jacobian.begin(), evaluation.jacobian.end(), 0.0);
+    if (joint_pure_observation(payload)) {
+        evaluate_joint_pure_problem(table, payload, variables, evaluation);
+        return;
+    }
     const double parameter =
         payload.parameter_origin + payload.parameter_scale * variables[0];
     if (!std::isfinite(parameter)
@@ -2210,131 +2550,6 @@ void evaluate_problem(
     }
 }
 
-class GeneralCost final : public ceres::CostFunction {
-public:
-    GeneralCost(
-        const epcsaft_native_sdk_v1* table, const Payload& payload
-    ) : table_(table), payload_(payload), scratch_(make_evaluation(payload)) {
-        set_num_residuals(static_cast<int>(residual_count(payload)));
-        mutable_parameter_block_sizes()->push_back(
-            static_cast<int>(variable_count(payload))
-        );
-    }
-
-    bool Evaluate(
-        double const* const* values, double* residuals, double** jacobians
-    ) const override {
-        try {
-            evaluate_problem(
-                *table_,
-                payload_,
-                values[0],
-                static_cast<std::size_t>(parameter_block_sizes()[0]),
-                scratch_
-            );
-            std::copy(
-                scratch_.residuals.begin(),
-                scratch_.residuals.end(),
-                residuals
-            );
-            if (jacobians != nullptr && jacobians[0] != nullptr) {
-                std::copy(
-                    scratch_.jacobian.begin(),
-                    scratch_.jacobian.end(),
-                    jacobians[0]
-                );
-            }
-            failure_reason_.clear();
-            return true;
-        } catch (const std::exception& error) {
-            failure_reason_ = error.what();
-            return false;
-        }
-    }
-
-    const std::string& failure_reason() const noexcept {
-        return failure_reason_;
-    }
-
-private:
-    const epcsaft_native_sdk_v1* table_;
-    const Payload& payload_;
-    mutable Evaluation scratch_;
-    mutable std::string failure_reason_;
-};
-
-MatrixDiagnostics matrix_diagnostics(const Eigen::MatrixXd& matrix) {
-    MatrixDiagnostics diagnostics{};
-    const Eigen::JacobiSVD<Eigen::MatrixXd> decomposition(
-        matrix, Eigen::ComputeThinU | Eigen::ComputeThinV
-    );
-    const Eigen::VectorXd singular = decomposition.singularValues();
-    diagnostics.singular_values.assign(
-        singular.data(), singular.data() + singular.size()
-    );
-    if (singular.size() == 0 || !std::isfinite(singular[0])) {
-        return diagnostics;
-    }
-    const double threshold =
-        100.0 * std::numeric_limits<double>::epsilon()
-        * static_cast<double>(std::max(matrix.rows(), matrix.cols()))
-        * singular[0];
-    for (Eigen::Index index = 0; index < singular.size(); ++index) {
-        if (singular[index] > threshold) {
-            ++diagnostics.rank;
-        }
-    }
-    if (diagnostics.rank > 0) {
-        diagnostics.condition_number =
-            singular[0] / singular[diagnostics.rank - 1];
-    }
-    return diagnostics;
-}
-
-void diagnose_jacobian(SolveOutcome& outcome) {
-    const Eigen::Index residual_count = static_cast<Eigen::Index>(
-        outcome.evaluation.residuals.size()
-    );
-    const Eigen::Index variable_count = static_cast<Eigen::Index>(
-        outcome.variables.size()
-    );
-    const Eigen::Map<
-        const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
-    > full(
-        outcome.evaluation.jacobian.data(), residual_count, variable_count
-    );
-    outcome.full_jacobian = matrix_diagnostics(full);
-    if (variable_count == 1) {
-        outcome.projected_parameter_jacobian = outcome.full_jacobian;
-        return;
-    }
-    const Eigen::MatrixXd nuisance = full.rightCols(variable_count - 1);
-    const Eigen::JacobiSVD<Eigen::MatrixXd> nuisance_svd(
-        nuisance, Eigen::ComputeThinU
-    );
-    const Eigen::VectorXd nuisance_singular = nuisance_svd.singularValues();
-    Eigen::Index nuisance_rank = 0;
-    if (nuisance_singular.size() > 0 && std::isfinite(nuisance_singular[0])) {
-        const double threshold =
-            100.0 * std::numeric_limits<double>::epsilon()
-            * static_cast<double>(
-                std::max(nuisance.rows(), nuisance.cols())
-            )
-            * nuisance_singular[0];
-        while (nuisance_rank < nuisance_singular.size()
-               && nuisance_singular[nuisance_rank] > threshold) {
-            ++nuisance_rank;
-        }
-    }
-    Eigen::MatrixXd projected = full.leftCols(1);
-    if (nuisance_rank > 0) {
-        const Eigen::MatrixXd basis =
-            nuisance_svd.matrixU().leftCols(nuisance_rank);
-        projected -= basis * (basis.transpose() * projected);
-    }
-    outcome.projected_parameter_jacobian = matrix_diagnostics(projected);
-}
-
 ceres::Solver::Options solver_options(const Payload& payload) {
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
@@ -2353,9 +2568,8 @@ SolveOutcome solve_training(
     const Payload& payload,
     double physical_start
 ) {
-    SolveOutcome outcome{};
-    outcome.variables.resize(variable_count(payload));
-    outcome.variables[0] =
+    std::vector<double> start(variable_count(payload));
+    start[0] =
         (physical_start - payload.parameter_origin) / payload.parameter_scale;
     if (!direct_observation(payload)) {
         for (
@@ -2366,35 +2580,31 @@ SolveOutcome solve_training(
             const Row& row = payload.training_rows[index];
             const std::size_t stride =
                 pure_density_observation(payload) ? 1u : 2u;
-            outcome.variables[1 + stride * index] =
+            start[1 + stride * index] =
                 std::log(
                     row.liquid_volume_start / row.liquid_volume_origin
                 );
             if (!pure_density_observation(payload)) {
-                outcome.variables[2 + 2 * index] =
+                start[2 + 2 * index] =
                     std::log(
                         row.vapor_volume_start / row.vapor_volume_origin
                     );
             }
         }
     }
-    GeneralCost cost(&table, payload);
-    ceres::Problem::Options problem_options;
-    problem_options.cost_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
-    ceres::Problem problem(problem_options);
-    problem.AddResidualBlock(&cost, nullptr, outcome.variables.data());
+    std::vector<internal::CoordinateBound> bounds(
+        variable_count(payload)
+    );
     const double parameter_lower =
         (payload.parameter_lower_bound - payload.parameter_origin)
         / payload.parameter_scale;
     const double parameter_upper =
         (payload.parameter_upper_bound - payload.parameter_origin)
         / payload.parameter_scale;
-    problem.SetParameterLowerBound(
-        outcome.variables.data(), 0, std::min(parameter_lower, parameter_upper)
-    );
-    problem.SetParameterUpperBound(
-        outcome.variables.data(), 0, std::max(parameter_lower, parameter_upper)
-    );
+    bounds[0] = {
+        std::min(parameter_lower, parameter_upper),
+        std::max(parameter_lower, parameter_upper),
+    };
     if (!direct_observation(payload)) {
         for (
             std::size_t index = 0;
@@ -2404,62 +2614,175 @@ SolveOutcome solve_training(
             const Row& row = payload.training_rows[index];
             const std::size_t stride =
                 pure_density_observation(payload) ? 1u : 2u;
-            problem.SetParameterLowerBound(
-                outcome.variables.data(),
-                static_cast<int>(1 + stride * index),
+            bounds[1 + stride * index] = {
                 std::log(
                     row.liquid_volume_bounds[0]
                     / row.liquid_volume_origin
-                )
-            );
-            problem.SetParameterUpperBound(
-                outcome.variables.data(),
-                static_cast<int>(1 + stride * index),
+                ),
                 std::log(
                     row.liquid_volume_bounds[1]
                     / row.liquid_volume_origin
-                )
-            );
+                ),
+            };
             if (pure_density_observation(payload)) {
                 continue;
             }
-            problem.SetParameterLowerBound(
-                outcome.variables.data(),
-                static_cast<int>(2 + 2 * index),
+            bounds[2 + 2 * index] = {
                 std::log(
                     row.vapor_volume_bounds[0]
                     / row.vapor_volume_origin
-                )
-            );
-            problem.SetParameterUpperBound(
-                outcome.variables.data(),
-                static_cast<int>(2 + 2 * index),
+                ),
                 std::log(
                     row.vapor_volume_bounds[1]
                     / row.vapor_volume_origin
-                )
+                ),
+            };
+        }
+    }
+    const internal::ProblemShape shape{
+        1u,
+        variable_count(payload) - 1u,
+        residual_count(payload),
+    };
+    const internal::SolverControls controls{
+        payload.maximum_iterations,
+        payload.maximum_solver_time_seconds,
+        payload.function_tolerance,
+        payload.gradient_tolerance,
+        payload.parameter_tolerance,
+    };
+    const auto evaluator = [&](const double* variables,
+                               std::size_t size,
+                               bool jacobian_requested,
+                               double* residuals,
+                               double* jacobian,
+                               std::string& failure_reason) {
+        try {
+            Evaluation evaluation = make_evaluation(payload);
+            evaluate_problem(table, payload, variables, size, evaluation);
+            std::copy(
+                evaluation.residuals.cbegin(),
+                evaluation.residuals.cend(),
+                residuals
             );
+            if (jacobian_requested) {
+                std::copy(
+                    evaluation.jacobian.cbegin(),
+                    evaluation.jacobian.cend(),
+                    jacobian
+                );
+            }
+            failure_reason.clear();
+            return true;
+        } catch (const std::exception& error) {
+            failure_reason = error.what();
+            return false;
         }
-    }
-    ceres::Solve(
-        solver_options(payload), &problem, &outcome.summary
+    };
+    internal::SolveResult solved = internal::solve(
+        shape, start, bounds, controls, evaluator
     );
-    outcome.failure_reason = cost.failure_reason();
-    try {
-        outcome.evaluation = make_evaluation(payload);
-        evaluate_problem(
-            table,
-            payload,
-            outcome.variables.data(),
-            outcome.variables.size(),
-            outcome.evaluation
-        );
-        diagnose_jacobian(outcome);
-    } catch (const std::exception& error) {
-        if (outcome.failure_reason.empty()) {
-            outcome.failure_reason = error.what();
-        }
+    SolveOutcome outcome{};
+    outcome.summary = std::move(solved.summary);
+    outcome.variables = std::move(solved.variables);
+    outcome.evaluation = make_evaluation(payload);
+    outcome.evaluation.residuals = std::move(solved.residuals);
+    outcome.evaluation.jacobian = std::move(solved.jacobian);
+    outcome.full_jacobian = std::move(solved.full_jacobian);
+    outcome.projected_parameter_jacobian =
+        std::move(solved.projected_parameter_jacobian);
+    outcome.failure_reason = std::move(solved.failure_reason);
+    return outcome;
+}
+
+SolveOutcome solve_joint_pure_training(
+    const epcsaft_native_sdk_v1& table,
+    const Payload& payload,
+    const std::vector<double>& physical_start
+) {
+    const std::size_t fitted_count = payload.parameter_origins.size();
+    const std::size_t row_count = payload.training_rows.size();
+    const std::size_t total = fitted_count + 2 * row_count;
+    std::vector<double> start(total, 0.0);
+    for (std::size_t parameter = 0; parameter < fitted_count; ++parameter) {
+        const std::size_t slot = payload.parameter_slot_indices[parameter];
+        start[slot] = (physical_start[parameter]
+                       - payload.parameter_origins[parameter])
+            / payload.parameter_scales[parameter];
     }
+    for (std::size_t row = 0; row < row_count; ++row) {
+        const Row& source = payload.training_rows[row];
+        start[fitted_count + 2 * row] = std::log(
+            source.liquid_volume_start / source.liquid_volume_origin
+        );
+        start[fitted_count + 2 * row + 1] = std::log(
+            source.vapor_volume_start / source.vapor_volume_origin
+        );
+    }
+    std::vector<internal::CoordinateBound> bounds(total);
+    for (std::size_t parameter = 0; parameter < fitted_count; ++parameter) {
+        const std::size_t slot = payload.parameter_slot_indices[parameter];
+        const double lower = (payload.parameter_lower_bounds[parameter]
+                              - payload.parameter_origins[parameter])
+            / payload.parameter_scales[parameter];
+        const double upper = (payload.parameter_upper_bounds[parameter]
+                              - payload.parameter_origins[parameter])
+            / payload.parameter_scales[parameter];
+        bounds[slot] = {std::min(lower, upper), std::max(lower, upper)};
+    }
+    for (std::size_t row = 0; row < row_count; ++row) {
+        const Row& source = payload.training_rows[row];
+        bounds[fitted_count + 2 * row] = {
+            std::log(source.liquid_volume_bounds[0] / source.liquid_volume_origin),
+            std::log(source.liquid_volume_bounds[1] / source.liquid_volume_origin),
+        };
+        bounds[fitted_count + 2 * row + 1] = {
+            std::log(source.vapor_volume_bounds[0] / source.vapor_volume_origin),
+            std::log(source.vapor_volume_bounds[1] / source.vapor_volume_origin),
+        };
+    }
+    const internal::ProblemShape shape{fitted_count, 2 * row_count, 4 * row_count};
+    const internal::SolverControls controls{
+        payload.maximum_iterations,
+        payload.maximum_solver_time_seconds,
+        payload.function_tolerance,
+        payload.gradient_tolerance,
+        payload.parameter_tolerance,
+    };
+    const auto evaluator = [&](const double* variables,
+                               std::size_t size,
+                               bool jacobian_requested,
+                               double* residuals,
+                               double* jacobian,
+                               std::string& failure_reason) {
+        try {
+            Evaluation evaluation = make_evaluation(payload);
+            evaluate_problem(table, payload, variables, size, evaluation);
+            std::copy(evaluation.residuals.cbegin(), evaluation.residuals.cend(), residuals);
+            if (jacobian_requested) {
+                std::copy(evaluation.jacobian.cbegin(), evaluation.jacobian.cend(), jacobian);
+            }
+            failure_reason.clear();
+            return true;
+        } catch (const std::exception& error) {
+            failure_reason = error.what();
+            return false;
+        }
+    };
+    internal::SolveResult solved = internal::solve(
+        shape, start, bounds, controls, evaluator
+    );
+    SolveOutcome outcome{};
+    outcome.summary = std::move(solved.summary);
+    outcome.variables = std::move(solved.variables);
+    outcome.evaluation = make_evaluation(payload);
+    outcome.evaluation.residuals = std::move(solved.residuals);
+    outcome.evaluation.jacobian = std::move(solved.jacobian);
+    outcome.full_jacobian = std::move(solved.full_jacobian);
+    outcome.projected_parameter_jacobian = std::move(
+        solved.projected_parameter_jacobian
+    );
+    outcome.failure_reason = std::move(solved.failure_reason);
     return outcome;
 }
 
@@ -2468,10 +2791,10 @@ public:
     ReportingCost(
         const epcsaft_native_sdk_v1* table,
         const Payload& payload,
-        double parameter_solver_value
+        std::vector<double> fitted_solver_values
     ) : table_(table),
         payload_(payload),
-        parameter_(parameter_solver_value),
+        fitted_solver_values_(std::move(fitted_solver_values)),
         scratch_(make_evaluation(payload)) {
         const bool density = pure_density_observation(payload_);
         set_num_residuals(density ? 2 : 4);
@@ -2482,9 +2805,11 @@ public:
         double const* const* values, double* residuals, double** jacobians
     ) const override {
         try {
-            std::vector<double> variables{parameter_, values[0][0]};
-            if (!pure_density_observation(payload_)) {
-                variables.push_back(values[0][1]);
+            std::vector<double> variables = fitted_solver_values_;
+            const std::size_t nuisance_count =
+                pure_density_observation(payload_) ? 1u : 2u;
+            for (std::size_t index = 0; index < nuisance_count; ++index) {
+                variables.push_back(values[0][index]);
             }
             evaluate_problem(
                 *table_,
@@ -2502,6 +2827,9 @@ public:
                     pure_density_observation(payload_) ? 1u : 2u;
                 const std::size_t row_count =
                     pure_density_observation(payload_) ? 2u : 4u;
+                const std::size_t fitted_count =
+                    joint_pure_observation(payload_)
+                    ? payload_.parameter_origins.size() : 1u;
                 for (std::size_t row = 0; row < row_count; ++row) {
                     for (
                         std::size_t column = 0;
@@ -2510,7 +2838,8 @@ public:
                     ) {
                         jacobians[0][nuisance_count * row + column] =
                             scratch_.jacobian[
-                                (1 + nuisance_count) * row + 1 + column
+                                (fitted_count + nuisance_count) * row
+                                + fitted_count + column
                             ];
                     }
                 }
@@ -2530,7 +2859,7 @@ public:
 private:
     const epcsaft_native_sdk_v1* table_;
     const Payload& payload_;
-    double parameter_;
+    std::vector<double> fitted_solver_values_;
     mutable Evaluation scratch_;
     mutable std::string failure_reason_;
 };
@@ -2539,7 +2868,7 @@ RowOutcome solve_reporting(
     const epcsaft_native_sdk_v1& table,
     const Payload& payload,
     const Row& row,
-    double parameter_solver_value
+    const std::vector<double>& fitted_solver_values
 ) {
     Payload row_payload = payload;
     row_payload.training_rows = {row};
@@ -2548,7 +2877,7 @@ RowOutcome solve_reporting(
         std::log(row.liquid_volume_start / row.liquid_volume_origin),
         std::log(row.vapor_volume_start / row.vapor_volume_origin),
     };
-    ReportingCost cost(&table, row_payload, parameter_solver_value);
+    ReportingCost cost(&table, row_payload, fitted_solver_values);
     ceres::Problem::Options problem_options;
     problem_options.cost_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
     ceres::Problem problem(problem_options);
@@ -2585,9 +2914,8 @@ RowOutcome solve_reporting(
     };
     try {
         Evaluation evaluation = make_evaluation(row_payload);
-        std::vector<double> final_variables{
-            parameter_solver_value, variables[0]
-        };
+        std::vector<double> final_variables = fitted_solver_values;
+        final_variables.push_back(variables[0]);
         if (!pure_density_observation(row_payload)) {
             final_variables.push_back(variables[1]);
         }
@@ -2830,8 +3158,15 @@ PyObject* rows_to_python(
             ++index
         ) {
             const Row& row = payload.reporting_rows[index];
+            const std::vector<double> fitted_solver_values =
+                joint_pure_observation(payload)
+                ? std::vector<double>(
+                    primary.variables.cbegin(),
+                    primary.variables.cbegin() + payload.parameter_origins.size()
+                )
+                : std::vector<double>{primary.variables[0]};
             const RowOutcome outcome = primary_evaluation_available
-                ? solve_reporting(table, payload, row, primary.variables[0])
+                ? solve_reporting(table, payload, row, fitted_solver_values)
                 : RowOutcome{
                     row,
                     row.liquid_volume_start,
@@ -2869,13 +3204,15 @@ PyObject* rows_to_python(
     }
     for (std::size_t index = 0; index < payload.training_rows.size(); ++index) {
         const Row& row = payload.training_rows[index];
+        const std::size_t fitted_count = joint_pure_observation(payload)
+            ? payload.parameter_origins.size() : 1u;
         const double liquid_volume = primary_evaluation_available
             ? row.liquid_volume_origin
-                * std::exp(primary.variables[1 + 2 * index])
+                * std::exp(primary.variables[fitted_count + 2 * index])
             : row.liquid_volume_start;
         const double vapor_volume = primary_evaluation_available
             ? row.vapor_volume_origin
-                * std::exp(primary.variables[2 + 2 * index])
+                * std::exp(primary.variables[fitted_count + 2 * index + 1])
             : row.vapor_volume_start;
         const std::vector<double> residuals = primary_evaluation_available
             ? std::vector<double>(
@@ -2903,8 +3240,15 @@ PyObject* rows_to_python(
     }
     for (std::size_t index = 0; index < payload.reporting_rows.size(); ++index) {
         const Row& row = payload.reporting_rows[index];
+        const std::vector<double> fitted_solver_values =
+            joint_pure_observation(payload)
+            ? std::vector<double>(
+                primary.variables.cbegin(),
+                primary.variables.cbegin() + payload.parameter_origins.size()
+            )
+            : std::vector<double>{primary.variables[0]};
         const RowOutcome outcome = primary_evaluation_available
-            ? solve_reporting(table, payload, row, primary.variables[0])
+            ? solve_reporting(table, payload, row, fitted_solver_values)
             : RowOutcome{
                 row,
                 row.liquid_volume_start,
@@ -3057,9 +3401,17 @@ PyObject* solve_general_python(
         const Payload payload = parse_payload(payload_object);
         checked_descriptor(*table, payload);
         std::vector<SolveOutcome> outcomes;
-        outcomes.reserve(payload.starts.size());
-        for (const double start : payload.starts) {
-            outcomes.push_back(solve_training(*table, payload, start));
+        outcomes.reserve(payload.start_vectors.size());
+        if (joint_pure_observation(payload)) {
+            for (const auto& start : payload.start_vectors) {
+                outcomes.push_back(
+                    solve_joint_pure_training(*table, payload, start)
+                );
+            }
+        } else {
+            for (const double start : payload.starts) {
+                outcomes.push_back(solve_training(*table, payload, start));
+            }
         }
         if (outcomes.empty()) {
             throw std::invalid_argument("at least one parameter start is required");
@@ -3072,13 +3424,31 @@ PyObject* solve_general_python(
             const SolveOutcome& confirmation = outcomes[index];
             confirmations_usable =
                 confirmations_usable
+                && confirmation.summary.termination_type
+                    == ceres::CONVERGENCE
                 && confirmation.summary.IsSolutionUsable()
                 && confirmation.failure_reason.empty()
                 && complete_evaluation(confirmation, payload);
-            maximum_parameter_delta = std::max(
-                maximum_parameter_delta,
-                std::abs(primary.variables[0] - confirmation.variables[0])
-            );
+            if (joint_pure_observation(payload)) {
+                for (std::size_t parameter = 0;
+                     parameter < payload.parameter_slot_indices.size();
+                     ++parameter) {
+                    const std::size_t column =
+                        payload.parameter_slot_indices[parameter];
+                    maximum_parameter_delta = std::max(
+                        maximum_parameter_delta,
+                        std::abs(
+                            primary.variables[column]
+                            - confirmation.variables[column]
+                        )
+                    );
+                }
+            } else {
+                maximum_parameter_delta = std::max(
+                    maximum_parameter_delta,
+                    std::abs(primary.variables[0] - confirmation.variables[0])
+                );
+            }
             maximum_cost_delta = std::max(
                 maximum_cost_delta,
                 std::abs(
@@ -3109,28 +3479,66 @@ PyObject* solve_general_python(
             Py_XDECREF(rows);
             return nullptr;
         }
-        const double physical_parameter =
-            payload.parameter_origin
-            + payload.parameter_scale * primary.variables[0];
-        const double bound_distance = std::min(
-            physical_parameter - payload.parameter_lower_bound,
-            payload.parameter_upper_bound - physical_parameter
-        );
-        const double active_tolerance =
-            std::sqrt(std::numeric_limits<double>::epsilon())
-            * std::max(
-                1.0,
-                payload.parameter_upper_bound - payload.parameter_lower_bound
-            );
-        const char* active_bound = "";
-        if (std::abs(
-                physical_parameter - payload.parameter_lower_bound
-            ) <= active_tolerance) {
-            active_bound = "lower";
-        } else if (std::abs(
-                       physical_parameter - payload.parameter_upper_bound
-                   ) <= active_tolerance) {
-            active_bound = "upper";
+        std::vector<double> physical_parameters;
+        std::vector<double> bound_distances;
+        std::vector<std::string> active_bounds;
+        if (joint_pure_observation(payload)) {
+            physical_parameters.resize(payload.parameter_origins.size());
+            bound_distances.resize(payload.parameter_origins.size());
+            active_bounds.resize(payload.parameter_origins.size());
+            for (std::size_t parameter = 0;
+                 parameter < payload.parameter_origins.size(); ++parameter) {
+                const std::size_t column =
+                    payload.parameter_slot_indices[parameter];
+                const double physical = payload.parameter_origins[parameter]
+                    + payload.parameter_scales[parameter]
+                        * primary.variables[column];
+                physical_parameters[parameter] = physical;
+                bound_distances[parameter] = std::min(
+                    physical - payload.parameter_lower_bounds[parameter],
+                    payload.parameter_upper_bounds[parameter] - physical
+                );
+                const double active_tolerance =
+                    std::sqrt(std::numeric_limits<double>::epsilon())
+                    * std::max(
+                        1.0,
+                        payload.parameter_upper_bounds[parameter]
+                            - payload.parameter_lower_bounds[parameter]
+                    );
+                if (std::abs(
+                        physical - payload.parameter_lower_bounds[parameter]
+                    ) <= active_tolerance) {
+                    active_bounds[parameter] = "lower";
+                } else if (std::abs(
+                               physical
+                               - payload.parameter_upper_bounds[parameter]
+                           ) <= active_tolerance) {
+                    active_bounds[parameter] = "upper";
+                }
+            }
+        } else {
+            const double physical = payload.parameter_origin
+                + payload.parameter_scale * primary.variables[0];
+            physical_parameters = {physical};
+            bound_distances = {std::min(
+                physical - payload.parameter_lower_bound,
+                payload.parameter_upper_bound - physical
+            )};
+            active_bounds = {""};
+            const double active_tolerance =
+                std::sqrt(std::numeric_limits<double>::epsilon())
+                * std::max(
+                    1.0,
+                    payload.parameter_upper_bound
+                        - payload.parameter_lower_bound
+                );
+            if (std::abs(physical - payload.parameter_lower_bound)
+                <= active_tolerance) {
+                active_bounds.front() = "lower";
+            } else if (std::abs(physical - payload.parameter_upper_bound)
+                       <= active_tolerance) {
+                active_bounds.front() = "upper";
+            }
         }
         PyObject* result = PyTuple_New(26);
         if (result == nullptr) {
@@ -3161,9 +3569,49 @@ PyObject* solve_general_python(
             result, 4,
             PyLong_FromSize_t(primary.summary.iterations.size())
         );
-        PyTuple_SET_ITEM(result, 5, PyFloat_FromDouble(physical_parameter));
-        PyTuple_SET_ITEM(result, 6, PyFloat_FromDouble(bound_distance));
-        PyTuple_SET_ITEM(result, 7, PyUnicode_FromString(active_bound));
+        if (joint_pure_observation(payload)) {
+            PyObject* parameters = doubles_to_tuple(physical_parameters);
+            PyObject* distances = doubles_to_tuple(bound_distances);
+            PyObject* bounds = PyTuple_New(
+                static_cast<Py_ssize_t>(active_bounds.size())
+            );
+            if (bounds != nullptr) {
+                for (std::size_t index = 0; index < active_bounds.size(); ++index) {
+                    PyObject* bound = PyUnicode_FromString(
+                        active_bounds[index].c_str()
+                    );
+                    if (bound == nullptr) {
+                        Py_DECREF(bounds);
+                        bounds = nullptr;
+                        break;
+                    }
+                    PyTuple_SET_ITEM(
+                        bounds, static_cast<Py_ssize_t>(index), bound
+                    );
+                }
+            }
+            if (parameters == nullptr || distances == nullptr || bounds == nullptr) {
+                Py_XDECREF(parameters);
+                Py_XDECREF(distances);
+                Py_XDECREF(bounds);
+                Py_DECREF(result);
+                return nullptr;
+            }
+            PyTuple_SET_ITEM(result, 5, parameters);
+            PyTuple_SET_ITEM(result, 6, distances);
+            PyTuple_SET_ITEM(result, 7, bounds);
+        } else {
+            PyTuple_SET_ITEM(
+                result, 5, PyFloat_FromDouble(physical_parameters.front())
+            );
+            PyTuple_SET_ITEM(
+                result, 6, PyFloat_FromDouble(bound_distances.front())
+            );
+            PyTuple_SET_ITEM(
+                result, 7,
+                PyUnicode_FromString(active_bounds.front().c_str())
+            );
+        }
         PyTuple_SET_ITEM(result, 8, residuals);
         PyTuple_SET_ITEM(result, 9, jacobian);
         PyTuple_SET_ITEM(result, 10, full_singular);

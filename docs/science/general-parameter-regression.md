@@ -84,7 +84,6 @@ ParameterCoordinate
   provider_parameter_fingerprint
   provider_topology_fingerprint
   transform: Affine(origin, scale)       # v1; p = origin + scale*z
-  starts
   lower_bound
   upper_bound
 ```
@@ -96,11 +95,15 @@ the canonical physical unit and an explicit mapping from these identities to
 its active coordinate order. A model, formulation, topology, transform, or
 parameter-fingerprint mismatch fails before evaluation.
 
-Bounds, affine scale, and primary/confirmation starts are mandatory source or
-workflow inputs; the runtime supplies no chemistry defaults. Multiple
-observations may share one coordinate, and multiple coordinates may be fitted
-together. A future non-affine transform requires a new closed transform kind
-and its exact `dp/dz`; v1 must not infer one from parameter sign or bounds.
+Bounds and affine scales are mandatory source or workflow inputs; the runtime
+supplies no chemistry defaults. `RegressionProblem.start_vectors` is an
+ordered collection of complete physical-coordinate vectors. Every vector has
+length `N` and uses the exact `parameters` order. The first is primary and all
+remaining vectors are confirmations. Per-coordinate start lists and Cartesian
+products are forbidden. Multiple observations may share one coordinate, and
+multiple coordinates may be fitted together. A future non-affine transform
+requires a new closed transform kind and its exact `dp/dz`; v1 must not infer
+one from parameter sign or bounds.
 
 Discrete model choices, charge number, component identity, site topology, and
 electrolyte formulation are specifications, not continuous fit coordinates.
@@ -326,14 +329,31 @@ Initial typed observation contracts are:
 - solvation Gibbs energy.
 - salt-free-normalized relative permittivity.
 
-Positive equality, linear aggregate, and one-sided censored observations may
-be added as typed contracts when a real source requires them. The current
-dependency doctrine permits Regression to consume Provider only. Therefore
-predicted bubble/dew/flash, reactive, or other eliminated-equilibrium
-observations are not authorized by this design. They require a future doctrine
-amendment and separately accepted value/sensitivity transport contract;
-Regression must not import Equilibrium, run a second equilibrium
-implementation, or finite-difference a black-box solve.
+The minimum future downstream observation vocabulary is frozen as follows for
+a source-declared positive scale `s`:
+
+```text
+identity equality:       r = (y - y_observed) / s
+positive log equality:   r = log(y / y_observed) / s
+linear aggregate:        r = (a^T y - b) / s
+lower censor:            r = max(0, (L - y) / s)^2
+upper censor:            r = max(0, (y - U) / s)^2
+```
+
+The log equality fails closed unless both values are positive. Aggregate
+coefficients and `b` carry source-defined units compatible with `s`. The
+squared hinge is continuously differentiable: its derivative is zero on the
+inactive side and at the boundary, and is the exact analytic derivative of
+the active quadratic branch. It is a censor penalty, never an experimental
+uncertainty model. These semantics may enter runtime only with a real
+source-bound observation and an authorized evaluator transport.
+
+The current dependency doctrine permits Regression to consume Provider only.
+Therefore predicted bubble/dew/flash, reactive, or other
+eliminated-equilibrium observations are not authorized by this design. They
+require a future doctrine amendment and separately accepted value/sensitivity
+transport contract; Regression must not import Equilibrium, run a second
+equilibrium implementation, or finite-difference a black-box solve.
 
 The loader rejects missing units, ambiguous composition bases, duplicate row
 identities, unsupported phases, nonfinite values, missing source identities,
@@ -403,11 +423,13 @@ J_gamma = -(gamma_model/gamma_observed)
           * d(log_gamma_model)/dp * p_scale / s_relative
 ```
 
-The implemented direct path accepts exactly one active parameter per problem.
-Parameter sharing is therefore explicit across rows, while the five Figiel
-Born targets are five independent one-parameter problems. Organic ion-solvent
-pair fits are likewise independent; other pair values remain explicit row
-inputs.
+The implemented direct-observable Provider paths each accept exactly one
+active parameter per problem. Parameter sharing is therefore explicit across
+rows, while the five Figiel Born targets are five independent one-parameter
+problems. Organic ion-solvent pair fits are likewise independent; other pair
+values remain explicit row inputs. The separate installed joint pure callback
+is the first multi-active seam and supplies all three ordered pure-parameter
+columns in one phase evaluation.
 
 The reference organic-ion campaign uses four constructed nearest-pure
 endpoints retained by Validation: K+/methanol, Br-/methanol, Na+/ethanol, and
@@ -451,6 +473,71 @@ reimplement the closure.
 
 Unsupported family/observation pairs fail before Ceres starts.
 
+## General fitted and lifted coordinate contract
+
+For one problem, let:
+
+```text
+z in R^N          ordered fitted solver coordinates
+q in R^Q          ordered Regression-owned lifted coordinates
+p = p0 + D z      physical fitted coordinates; D is diagonal and nonsingular
+theta = S p       ordered evaluator parameter slots; S has shape K_theta x N
+y in R^K          ordered evaluator primitive outputs
+r = W h(y, q)     ordered scaled residuals in R^R
+```
+
+`S` is an immutable sparse sharing map. It can route one fitted coordinate to
+multiple declared evaluator slots, but it cannot merge duplicate parameter
+identities implicitly. Provider or an authorized downstream evaluator returns
+exact primitive derivative blocks `Y_theta = dy/dtheta` and `Y_q = dy/dq`.
+With `H_y = dh/dy` and the explicit lifted-coordinate derivative
+`H_q = partial h/partial q`, Regression assembles
+
+```text
+J_parameter = W H_y Y_theta S D             # R x N
+J_lifted    = W (H_y Y_q + H_q)             # R x Q
+J_full      = [J_parameter | J_lifted]       # R x (N + Q)
+```
+
+The `H_q` term is mandatory when a residual depends directly on a lifted
+coordinate, including liquid density and common reporting pressure. All
+buffers are row-major. Parameter columns follow `RegressionProblem.parameters`;
+lifted columns follow observation order and then the observation contract's
+declared local order. Residuals follow observation order and then the
+contract's declared residual order. A missing, reordered, nonfinite, or
+unsupported derivative column fails closed.
+
+The structural preflight requires `R >= N + Q`; this is necessary, not
+sufficient. Let `J_q` be the lifted block and let `U_q` contain the left
+singular vectors spanning its numerical column space. The nuisance-projected
+parameter matrix is
+
+```text
+J_projected = (I - U_q U_q^T) J_parameter   # R x N
+```
+
+For `Q = 0`, `J_projected = J_parameter`. Full numerical validity requires
+rank `N + Q` for `J_full` and rank `N` for `J_projected`. Both use
+
+```text
+tau = 100 * epsilon_binary64 * max(R, N + Q) * sigma_max
+rank = count(sigma_i > tau)
+```
+
+and report condition numbers in scaled Ceres coordinates. The nonsingular
+physical transform `D` preserves exact rank but can materially change
+conditioning. Raw physical parameter columns, scaled solver columns, and
+nuisance-projected columns are distinct diagnostics. A coordinate on an
+active bound is reported separately and is not described as an identified
+interior parameter.
+
+Training rows contribute residual blocks and lifted coordinates. Held-out and
+stress rows never enter Ceres and are evaluated without refitting. Pure-
+saturation reporting keeps fixed fitted parameters and solves exactly three
+reporting coordinates `(log V_L, log V_V, log P_common)` against
+`(P_L-P_common, P_V-P_common, mu_L/RT-mu_V/RT)`; liquid density remains a
+descriptive prediction.
+
 ## One engine and result
 
 The intended public surface is:
@@ -477,13 +564,13 @@ starts. It contains no backend selector.
 - separate solver, numerical, physical-validity, workflow, scientific, and
   predictive statuses.
 
-Accepted legacy entry points remain stable while their internals migrate to
-this engine. Their existing public result types may remain compatibility
-projections of the canonical result until an explicitly admitted breaking
-change; they must not retain separate solvers or scientific logic. Each
-completed migration deletes its superseded paper-specific native cost path.
-New paper-named fit functions are forbidden when the paper can be represented
-as data plus a `RegressionProblem`.
+The canonical general result exposes only the ordered `parameters`
+collection; it has no scalar `parameter` compatibility alias. Accepted
+paper-specific entry points may retain their established presentation wrappers
+while their internals migrate to this engine, but they must not retain separate
+solvers or scientific logic. Each completed migration deletes its superseded
+paper-specific native cost path. New paper-named fit functions are forbidden
+when the paper can be represented as data plus a `RegressionProblem`.
 
 ## Identifiability and numerical preflight
 
@@ -492,17 +579,10 @@ dimensions. Before Ceres, Regression verifies that every active parameter has
 at least one exact finite derivative path to an observation. A missing or
 structurally zero column is a fail-closed input error.
 
-Rank is computed from the scaled Jacobian with
-
-```text
-tau = 100 * epsilon_binary64 * max(M, N) * sigma_max
-rank = count(sigma_i > tau)
-```
-
-For direct observations, the parameter Jacobian is tested directly. For a
-lifted formulation with nuisance columns `J_u`, the parameter rank uses
-`J_p_projected = (I - Q_u Q_u^T) J_p`, where `Q_u` spans `J_u`. The full lifted
-Jacobian rank is also reported. Active-bound coordinates are reported
+Rank uses the scaled matrices and tolerance defined by the general-coordinate
+contract above. For direct observations, the parameter Jacobian is tested
+directly. Lifted problems report both the full matrix and the
+nuisance-projected parameter matrix. Active-bound coordinates are reported
 separately and are not hidden as identified interior parameters.
 
 Primary and confirmation starts receive the same deterministic derivative
@@ -553,8 +633,86 @@ The implementation shall:
 - retain a benchmark comparing a migrated reference campaign with its legacy
   native path before deleting that path.
 
+Residual-only trial evaluations request values only. Jacobian evaluations
+request the complete exact derivative blocks. An evaluator that cannot honor
+the requested mode or buffer contract fails closed; Regression does not
+silently calculate a missing derivative or pretend that a derivative-bearing
+call was value-only.
+
+### Proposed downstream evaluator transport
+
+The following is a design constraint, not an authorized runtime ABI. A future
+Provider/Equilibrium transport must be model-bound and immutable for the
+lifetime of a solve. It declares schema version; evaluator capability ID;
+ordered parameter-slot, primitive-output, and lifted-coordinate identities
+with units; fixed `S` dimensions and entries; row and batch shapes; row-major
+buffer sizes; supported `VALUES_ONLY` and `VALUES_AND_JACOBIAN` requests;
+threading/reentrancy rules; applicability, topology/branch, and sensitivity
+conditioning statuses; evaluated/skipped/failed row accounting; and Provider,
+Equilibrium, model, parameter, topology, and installed-artifact fingerprints.
+
+The caller owns input and output buffers for the duration of a synchronous
+call. An evaluator may batch only rows with one compatible immutable
+topology/observation contract, and it must preserve canonical row order in its
+output. Unsupported requests, identity or unit mismatch, short buffers,
+nonfinite values, incomplete columns, topology/branch changes, failed
+sensitivities, and cancellation return explicit failure with the affected row
+identities. No partial batch is accepted as a complete residual evaluation.
+Production transfer remains blocked until Organization governance authorizes
+the cross-package direction and exact artifact contracts.
+
 Performance evidence cannot relax derivative, rank, or physical-validity
 gates.
+
+The native generalized core is one contiguous `[N fitted | Q lifted]`
+parameter block. Starts supplied by the public general problem are complete
+ordered fitted-parameter vectors of length `N`; lifted starts remain owned by
+the source-bound observation rows and their declared confirmation policy.
+Confirmation agreement gates the fitted vector and relative cost, not equality
+of nuisance coordinates that may legitimately converge to different
+representations of the same closure. Its build-testing-only closed-form
+fixture has `N = 2`,
+`Q = 1`, `R = 4`, full rank 3, and nuisance-projected parameter rank 2; it
+recovers the same solution from two complete starts, observes value-only and
+Jacobian requests separately, exercises the slot-sharing map `(0,1,0)`,
+rejects `R < N + Q`, rejects an incompletely written exact Jacobian, and
+reports a zero parameter column as rank deficient. It is neither installed
+nor exposed as a Provider capability.
+
+Accepted methane and ethane training are the first installed multi-active
+cutover. Each four-row campaign uses `N = 3`, `Q = 8`, `R = 16`, the Provider
+coordinate order `(n,V,m,sigma,epsilon/k)`, a `16 x 11` exact Jacobian, full
+rank 11, and nuisance-projected parameter rank 3. The shared core preserves
+the accepted parameter, residual, cost, confirmation, reporting, and status
+contracts. Their established public result wrapper remains a presentation
+projection; the duplicate pure training Ceres loop has been deleted. The
+three-coordinate common-pressure reporting solve remains intentionally
+separate from training because it owns reporting closure rather than fitted
+parameters.
+
+For this cutover, the primary fitted-parameter vector is the immutable
+component specification start. The deterministic confirmation vector adds
+`0.1` solver unit to each fitted coordinate (equivalently `0.1` times its
+declared physical transform scale, clamped to the existing bounds). Both runs
+use the observation-declared lifted-volume starts. This is a start
+perturbation only; it changes no source row, weight, bound, scale, or
+acceptance threshold.
+
+The public `fit_parameters` transport now admits exactly one multi-active
+block: the three ordered pure parameters
+`(m,sigma,epsilon/k)` on pure-saturation observations. This closed
+Provider-backed adapter maps the identity sharing order
+`(m,sigma,epsilon/k)` to the Provider's
+`(n,V,m,sigma,epsilon/k)` callback and delegates training to the same
+generalized core. A later mixture or reactive block must provide its own
+reviewed exact multi-active evaluator contract and remains fail-closed until
+then; this implementation does not pretend that several independent scalar
+callbacks are one coupled derivative.
+The current installed pure callback returns value, gradient, and Hessian in
+one inseparable ABI call. The core propagates Ceres's residual-only request and
+does not copy the assembled Regression Jacobian for that call, but the adapter
+still receives Provider derivatives. This is an artifact limitation, not a
+claim that pure trial evaluations are sensitivity-free.
 
 The installed pair-family campaigns evaluate all 17 audited May 2015
 methane/ethane rows as training data. Each `68 x 35` solve converges with full
@@ -580,10 +738,11 @@ domain:
 3. single-ion solvation Gibbs energy through the exact first-derivative path.
 
 For every applicable case the campaign must verify the exact Provider
-derivative against a bounded directional difference, projected parameter rank
-one, the declared conditioning gate, active-bound reporting, agreement of the
-primary and perturbed starts, complete row accounting, and deterministic
-results. Neutral VLE also verifies invariance to row order and to the caller's
+derivative against an independent analytic or automatic-differentiation
+oracle where one exists, projected parameter rank one, the declared
+conditioning gate, active-bound reporting, agreement of the primary and
+perturbed starts, complete row accounting, and deterministic results. Neutral
+VLE also verifies invariance to row order and to the caller's
 ordering of the unordered pair identity. Direct aqueous cases verify that the
 two inactive pair values supplied by each row remain fixed context rather than
 additional fitted coordinates. Negative controls must fail closed for an
@@ -669,8 +828,9 @@ prediction evidence, or Provider-catalog authority.
    and admit it through the same phase observation contract and Ceres owner.
 4. **Complete for independent scalar pure saturation.** Admit `m`, `sigma`,
    and `epsilon/k` component coordinates through the same contract, result,
-   Ceres owner, and native target. The accepted joint methane/ethane workflow
-   remains unchanged.
+   Ceres owner, and native target. The accepted joint methane/ethane public
+   result and reporting presentation remain unchanged while their training
+   now uses the same ordered three-parameter Ceres owner.
 5. **Complete for the advertised direct-observable domains.** Admit one Born
    diameter from one or more solvation-Gibbs targets, or one solvation factor
    from one or more mean-ionic-activity targets. Each problem remains one

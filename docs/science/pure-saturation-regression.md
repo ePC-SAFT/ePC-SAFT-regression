@@ -127,17 +127,22 @@ density. Each residual receives weight 0.25 for numerical row normalization.
 The weights make no uncertainty claim.
 
 The native cost assembles the `16 x 11` Jacobian from the provider Hessian and
-the affine, logarithmic, density, and scaling chain rules. A parameterized
-test checks methane, ethane, and propane directional products against centered
-residual differences. Production exposes no numerical derivative option.
+the affine, logarithmic, density, and scaling chain rules. An installed-capsule
+test independently reconstructs every methane and ethane Jacobian entry from
+the Provider coordinate order `(n,V,m,sigma,epsilon/k)`, the returned `5 x 5`
+Hessian, the analytic pressure and chemical-potential identities, the
+log-volume chain rule, density derivative, and structural zeros. Production
+exposes no numerical derivative option.
 
 ## Acceptance layers
 
 Solver convergence requires Ceres `CONVERGENCE`, a usable finite solution,
-complete Jacobian columns, full parameter-column rank, parameter movement
+complete Jacobian columns, full rank 11, projected parameter rank 3, parameter movement
 inside the declared bounds, and no provider error. A confirmation solve
-perturbs the volume starts and requires scaled parameter agreement below
-`1e-5` and relative cost agreement below `1e-8`. Cost agreement is the
+perturbs all eight nuisance-volume starts and requires agreement of the three
+fitted parameter coordinates below `1e-5` plus relative cost agreement below
+`1e-8`. Nuisance volumes are not required to agree coordinate by coordinate.
+Cost agreement is the
 symmetric relative difference `abs(primary - confirmation) /
 max(abs(primary), abs(confirmation), numeric_limits<double>::min())`, so the
 gate remains relative when both fitted costs are below one.
