@@ -54,6 +54,17 @@ with no added runtime test seam.
 
 `general_parameter_regression_status: TEN_PARAMETER_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
 
+`multi_parameter_core_status: DESIGN_FROZEN_IMPLEMENTATION_IN_PROGRESS`
+
+The canonical general design now freezes one ordered `[N fitted | Q lifted]`
+Ceres layout, complete physical start vectors, an explicit evaluator-slot
+sharing map, exact full and nuisance-projected Jacobians, and the minimum
+source-bound equality/aggregate/censor observation semantics. The installed
+Provider's joint pure callback is the first real `N > 1` seam: methane and
+ethane use `N = 3`, `Q = 8`, and `R = 16`. This does not imply that arbitrary
+simultaneous mixture parameters are executable; each such block still needs
+one installed exact multi-active evaluator contract.
+
 Pure 2B `association_energy_over_k` and `association_volume` have exact scalar
 Provider-derivative and generic Regression-mechanics evidence, but they are
 not counted among the ten fit-ready families. The inspected sources fit them

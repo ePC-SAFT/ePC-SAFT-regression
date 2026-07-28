@@ -641,6 +641,23 @@ parameter_family_readiness:
   figiel_current_catalog_aqueous_kij: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED
   reactive_or_temperature_dependent_parameters: NOT_READY
   general_parameter_regression: TEN_NONPOLAR_ELECTROLYTE_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
+  multi_parameter_core:
+    status: DESIGN_FROZEN_IMPLEMENTATION_IN_PROGRESS
+    canonical_variable_order: [fitted_solver_coordinates, lifted_coordinates]
+    full_vector_starts: required-no-cartesian-products
+    evaluator_slot_sharing: explicit-immutable-sparse-map
+    jacobian:
+      full: "W [H_y Y_theta S D | H_y Y_q + H_q]"
+      nuisance_projected: "(I - U_q U_q^T) J_parameter"
+      full_rank_required: "N + Q"
+      projected_parameter_rank_required: "N"
+      structural_gate: "R >= N + Q"
+    first_installed_multi_parameter_seam:
+      entry: evaluate_pure_phase_parameters
+      parameters: [segment_count, segment_diameter, dispersion_energy_over_k]
+      methane_shape: {N: 3, Q: 8, R: 16}
+      ethane_shape: {N: 3, Q: 8, R: 16}
+    generic_downstream_transport: DESIGN_ONLY_GOVERNANCE_DECISION_REQUIRED
   mixture_independent_scalar_pure: FIT_READY_PURE_SATURATION_PRESSURE_AND_LIQUID_DENSITY
   mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_VLE_ADVERTISED_AQUEOUS_MIAC_AND_ADVERTISED_ORGANIC_ION_SOLVATION
   mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
