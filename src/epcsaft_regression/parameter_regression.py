@@ -179,6 +179,8 @@ class RegressionResult:
     initial_cost: float
     final_cost: float
     iterations: int
+    residual_evaluation_count: int
+    jacobian_evaluation_count: int
     parameter: FittedParameterDiagnostic
     jacobian: GeneralJacobianDiagnostics
     rows: tuple[
@@ -1085,6 +1087,7 @@ class RegressionProblem:
     observations: tuple[RegressionObservation, ...]
     maximum_condition_number: float
     maximum_iterations: int
+    maximum_solver_time_seconds: float
     function_tolerance: float
     gradient_tolerance: float
     parameter_tolerance: float
@@ -1174,6 +1177,7 @@ class RegressionProblem:
         if type(self.maximum_iterations) is not int or self.maximum_iterations <= 0:
             raise ValueError("maximum_iterations must be a positive integer")
         for field in (
+            "maximum_solver_time_seconds",
             "function_tolerance",
             "gradient_tolerance",
             "parameter_tolerance",
@@ -1331,6 +1335,7 @@ def _native_payload(
         parameter.starts,
         problem.maximum_condition_number,
         problem.maximum_iterations,
+        problem.maximum_solver_time_seconds,
         problem.function_tolerance,
         problem.gradient_tolerance,
         problem.parameter_tolerance,
@@ -1733,6 +1738,8 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         initial_cost=native[2],
         final_cost=native[3],
         iterations=native[4],
+        residual_evaluation_count=native[24],
+        jacobian_evaluation_count=native[25],
         parameter=parameter,
         jacobian=jacobian,
         rows=rows,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 import math
+from types import SimpleNamespace
 
 import pytest
 
@@ -21,6 +22,7 @@ from epcsaft_regression.parameter_regression import (
     RelativePermittivityRatioObservation,
     SolvationGibbsObservation,
     SourceDescriptor,
+    _native_payload,
     canonical_dataset_sha256,
 )
 
@@ -60,6 +62,7 @@ def _problem(
     *,
     identity: PairParameterIdentity | None = None,
     dataset_hash: str | None = None,
+    maximum_solver_time_seconds: object = 30.0,
 ) -> RegressionProblem:
     source = SourceDescriptor(
         source_id="doi:example",
@@ -90,12 +93,33 @@ def _problem(
         observations=rows,
         maximum_condition_number=1.0e10,
         maximum_iterations=200,
+        maximum_solver_time_seconds=maximum_solver_time_seconds,
         function_tolerance=1.0e-12,
         gradient_tolerance=1.0e-12,
         parameter_tolerance=1.0e-12,
         confirmation_parameter_scaled_max_delta=1.0e-5,
         confirmation_cost_relative_delta=1.0e-8,
     )
+
+
+@pytest.mark.parametrize(
+    "budget",
+    (0.0, -1.0, math.inf, -math.inf, math.nan, "30.0", None),
+)
+def test_problem_requires_positive_finite_solver_time_budget(budget: object) -> None:
+    with pytest.raises(ValueError, match="maximum_solver_time_seconds"):
+        _problem((_row("train-1"),), maximum_solver_time_seconds=budget)
+
+
+def test_native_payload_serializes_solver_time_after_maximum_iterations() -> None:
+    problem = _problem((_row("train-1"),), maximum_solver_time_seconds=42.5)
+    capability = SimpleNamespace(component_ids=("methane", "ethane"))
+
+    payload = _native_payload(problem, capability)
+
+    assert payload[10] == problem.maximum_iterations
+    assert payload[11] == 42.5
+    assert payload[12] == problem.function_tolerance
 
 
 def test_contract_canonicalizes_pair_and_binds_source_dataset_and_partitions() -> None:

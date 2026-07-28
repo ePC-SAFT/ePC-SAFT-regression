@@ -155,6 +155,7 @@ def _pure_density_problem(
         observations=(row,),
         maximum_condition_number=1.0e12,
         maximum_iterations=100,
+        maximum_solver_time_seconds=30.0,
         function_tolerance=1.0e-12,
         gradient_tolerance=1.0e-12,
         parameter_tolerance=1.0e-12,
@@ -251,6 +252,7 @@ def _problem(
         observations=observations,
         maximum_condition_number=1.0e10,
         maximum_iterations=50,
+        maximum_solver_time_seconds=30.0,
         function_tolerance=1.0e-12,
         gradient_tolerance=1.0e-12,
         parameter_tolerance=1.0e-12,
@@ -353,6 +355,7 @@ def _pure_problem(
         observations=observations,
         maximum_condition_number=1.0e12,
         maximum_iterations=500,
+        maximum_solver_time_seconds=30.0,
         function_tolerance=1.0e-10,
         gradient_tolerance=1.0e-10,
         parameter_tolerance=1.0e-10,
@@ -428,6 +431,7 @@ def _solvation_factor_problem(model: EPCSAFT) -> RegressionProblem:
         observations=observations,
         maximum_condition_number=1.0e10,
         maximum_iterations=specification.max_num_iterations,
+        maximum_solver_time_seconds=180.0,
         function_tolerance=specification.function_tolerance,
         gradient_tolerance=specification.gradient_tolerance,
         parameter_tolerance=specification.parameter_tolerance,
@@ -509,6 +513,7 @@ def _aqueous_kij_problem(model: EPCSAFT) -> RegressionProblem:
         observations=observations,
         maximum_condition_number=1.0e10,
         maximum_iterations=50,
+        maximum_solver_time_seconds=180.0,
         function_tolerance=1.0e-10,
         gradient_tolerance=1.0e-10,
         parameter_tolerance=1.0e-10,
@@ -586,6 +591,7 @@ def _born_diameter_problem(
         observations=(observation,),
         maximum_condition_number=1.0e10,
         maximum_iterations=specification.max_num_iterations,
+        maximum_solver_time_seconds=180.0,
         function_tolerance=specification.function_tolerance,
         gradient_tolerance=specification.gradient_tolerance,
         parameter_tolerance=specification.parameter_tolerance,
@@ -658,6 +664,7 @@ def _ionic_region_permittivity_problem(model: EPCSAFT) -> RegressionProblem:
         observations=(observation,),
         maximum_condition_number=1.0e10,
         maximum_iterations=50,
+        maximum_solver_time_seconds=180.0,
         function_tolerance=1.0e-12,
         gradient_tolerance=1.0e-12,
         parameter_tolerance=1.0e-12,
@@ -726,6 +733,7 @@ def _solvent_relative_permittivity_problem(model: EPCSAFT) -> RegressionProblem:
         observations=(observation,),
         maximum_condition_number=1.0e10,
         maximum_iterations=50,
+        maximum_solver_time_seconds=180.0,
         function_tolerance=1.0e-12,
         gradient_tolerance=1.0e-12,
         parameter_tolerance=1.0e-12,
@@ -802,6 +810,7 @@ def _dielectric_suppression_problem(model: EPCSAFT) -> RegressionProblem:
         observations=observations,
         maximum_condition_number=1.0e10,
         maximum_iterations=50,
+        maximum_solver_time_seconds=180.0,
         function_tolerance=1.0e-12,
         gradient_tolerance=1.0e-12,
         parameter_tolerance=1.0e-12,
@@ -884,6 +893,7 @@ def _ion_solvation_kij_problem(
         observations=observations,
         maximum_condition_number=1.0e10,
         maximum_iterations=50,
+        maximum_solver_time_seconds=180.0,
         function_tolerance=1.0e-12,
         gradient_tolerance=1.0e-12,
         parameter_tolerance=1.0e-12,
@@ -1851,6 +1861,20 @@ def test_general_kij_fit_reports_rank_confirmation_and_partition_isolation() -> 
     assert result.skipped_row_count == 0
     assert result.failed_row_count == 0
     assert result.predictive_status == "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
+    assert result.residual_evaluation_count > 0
+    assert math.isfinite(result.residual_evaluation_count)
+    assert result.jacobian_evaluation_count > 0
+    assert math.isfinite(result.jacobian_evaluation_count)
+
+
+def test_general_engine_tiny_solver_budget_stops_without_numerical_convergence() -> None:
+    model = _model()
+    problem = replace(_problem(model), maximum_solver_time_seconds=1.0e-12)
+
+    result = fit_parameters(problem, model)
+
+    assert result.termination != "CONVERGENCE"
+    assert not result.numerically_converged
 
 
 def test_general_lij_fit_reuses_the_exact_lifted_pair_engine() -> None:
@@ -1910,6 +1934,8 @@ def test_status_requires_converged_termination_but_not_full_lifted_rank(
         "",
         3,
         4,
+        4,
+        3,
     )
     monkeypatch.setattr(
         parameter_regression._native, "solve_general", lambda *_: native

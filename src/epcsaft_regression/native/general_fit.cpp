@@ -72,6 +72,7 @@ struct Payload final {
     std::vector<double> starts;
     double maximum_condition_number;
     int maximum_iterations;
+    double maximum_solver_time_seconds;
     double function_tolerance;
     double gradient_tolerance;
     double parameter_tolerance;
@@ -383,10 +384,10 @@ Payload parse_payload(PyObject* object) {
     OwnedPyObject sequence{
         PySequence_Fast(object, "general regression payload must be a sequence")
     };
-    if (!sequence || PySequence_Fast_GET_SIZE(sequence.get()) != 19) {
+    if (!sequence || PySequence_Fast_GET_SIZE(sequence.get()) != 20) {
         PyErr_Clear();
         throw std::invalid_argument(
-            "general regression payload must contain exactly 19 fields"
+            "general regression payload must contain exactly 20 fields"
         );
     }
     auto item = [&](Py_ssize_t index) {
@@ -405,7 +406,7 @@ Payload parse_payload(PyObject* object) {
     }
     Payload payload{};
     payload.capability_id = text(item(0), "capability id");
-    payload.observation_shape = text(item(18), "observation shape");
+    payload.observation_shape = text(item(19), "observation shape");
     payload.parameter_fingerprint = text(item(1), "parameter fingerprint");
     payload.topology_fingerprint = text(item(2), "topology fingerprint");
     const Py_ssize_t component_count = PySequence_Fast_GET_SIZE(components.get());
@@ -459,20 +460,23 @@ Payload parse_payload(PyObject* object) {
         throw std::invalid_argument("maximum iterations must be a positive integer");
     }
     payload.maximum_iterations = static_cast<int>(maximum_iterations);
-    payload.function_tolerance = number(item(11), "function tolerance");
-    payload.gradient_tolerance = number(item(12), "gradient tolerance");
-    payload.parameter_tolerance = number(item(13), "parameter tolerance");
+    payload.maximum_solver_time_seconds = number(
+        item(11), "maximum solver time seconds"
+    );
+    payload.function_tolerance = number(item(12), "function tolerance");
+    payload.gradient_tolerance = number(item(13), "gradient tolerance");
+    payload.parameter_tolerance = number(item(14), "parameter tolerance");
     payload.confirmation_parameter_delta = number(
-        item(14), "confirmation parameter delta"
+        item(15), "confirmation parameter delta"
     );
     payload.confirmation_cost_delta = number(
-        item(15), "confirmation cost delta"
+        item(16), "confirmation cost delta"
     );
     payload.training_rows = parse_rows(
-        item(16), "training rows", observation_kind
+        item(17), "training rows", observation_kind
     );
     payload.reporting_rows = parse_rows(
-        item(17), "reporting rows", observation_kind
+        item(18), "reporting rows", observation_kind
     );
     if (payload.training_rows.empty()) {
         throw std::invalid_argument("at least one training row is required");
@@ -489,6 +493,7 @@ Payload parse_payload(PyObject* object) {
     if (payload.parameter_scale == 0.0
         || payload.parameter_lower_bound >= payload.parameter_upper_bound
         || !starts_valid || payload.maximum_condition_number <= 0.0
+        || payload.maximum_solver_time_seconds <= 0.0
         || payload.function_tolerance <= 0.0
         || payload.gradient_tolerance <= 0.0
         || payload.parameter_tolerance <= 0.0
@@ -2334,6 +2339,7 @@ ceres::Solver::Options solver_options(const Payload& payload) {
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
     options.max_num_iterations = payload.maximum_iterations;
+    options.max_solver_time_in_seconds = payload.maximum_solver_time_seconds;
     options.function_tolerance = payload.function_tolerance;
     options.gradient_tolerance = payload.gradient_tolerance;
     options.parameter_tolerance = payload.parameter_tolerance;
@@ -3126,7 +3132,7 @@ PyObject* solve_general_python(
                    ) <= active_tolerance) {
             active_bound = "upper";
         }
-        PyObject* result = PyTuple_New(24);
+        PyObject* result = PyTuple_New(26);
         if (result == nullptr) {
             Py_DECREF(residuals);
             Py_DECREF(jacobian);
@@ -3203,6 +3209,14 @@ PyObject* solve_general_python(
         PyTuple_SET_ITEM(
             result, 23,
             PyLong_FromSize_t(primary.evaluation.residuals.size())
+        );
+        PyTuple_SET_ITEM(
+            result, 24,
+            PyLong_FromLong(primary.summary.num_residual_evaluations)
+        );
+        PyTuple_SET_ITEM(
+            result, 25,
+            PyLong_FromLong(primary.summary.num_jacobian_evaluations)
         );
         return result;
     } catch (const std::exception& error) {
