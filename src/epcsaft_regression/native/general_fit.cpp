@@ -313,13 +313,27 @@ void validate_descriptor(
 const epcsaft_native_capability_descriptor_v1& checked_descriptor(
     const epcsaft_native_sdk_v1& table, const Payload& payload
 ) {
-    if (table.capability_count != 1 || table.capabilities == nullptr) {
+    const epcsaft_native_capability_descriptor_v1* selected = nullptr;
+    for (std::size_t index = 0; index < table.capability_count; ++index) {
+        const auto& candidate = table.capabilities[index];
+        if (candidate.capability
+            != EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1) {
+            continue;
+        }
+        validate_descriptor(candidate);
+        if (selected != nullptr) {
+            throw std::runtime_error(
+                "provider advertises duplicate neutral-binary capabilities"
+            );
+        }
+        selected = &candidate;
+    }
+    if (selected == nullptr) {
         throw std::runtime_error(
-            "provider does not advertise exactly one supported capability"
+            "provider does not advertise the requested capability"
         );
     }
-    const auto& descriptor = table.capabilities[0];
-    validate_descriptor(descriptor);
+    const auto& descriptor = *selected;
     if (payload.capability_id != capability_id(descriptor.capability)
         || !bounded_field_equal(
             payload.parameter_fingerprint, descriptor.parameter_fingerprint
@@ -564,6 +578,23 @@ PyObject* descriptor_to_python(
     return result;
 }
 
+PyObject* unsupported_descriptor_to_python(
+    const epcsaft_native_capability_descriptor_v1& descriptor
+) {
+    if (descriptor.struct_size
+        != sizeof(epcsaft_native_capability_descriptor_v1)) {
+        throw std::runtime_error(
+            "provider capability descriptor size is unsupported"
+        );
+    }
+    return Py_BuildValue(
+        "(III)",
+        descriptor.capability,
+        descriptor.schema_version,
+        descriptor.parameter_family
+    );
+}
+
 Phase evaluate_phase(
     const epcsaft_native_sdk_v1& table,
     const Payload& payload,
@@ -593,8 +624,12 @@ Phase evaluate_phase(
         &result
     );
     if (status != EPCSAFT_NATIVE_STATUS_OK_V1 || result.status != status) {
+        const std::size_t error_length = strnlen(
+            result.error, EPCSAFT_NATIVE_SDK_V1_ERROR_SIZE
+        );
         throw std::runtime_error(
-            std::string("Provider phase evaluation failed: ") + result.error
+            std::string("Provider phase evaluation failed: ")
+            + std::string(result.error, error_length)
         );
     }
     if (!bounded_field_equal(
@@ -608,21 +643,34 @@ Phase evaluate_phase(
     return phase;
 }
 
-Evaluation evaluate_problem(
+Evaluation make_evaluation(const Payload& payload) {
+    const std::size_t row_count = payload.training_rows.size();
+    const std::size_t variable_count = 1 + 2 * row_count;
+    return Evaluation{
+        std::vector<double>(4 * row_count),
+        std::vector<double>(4 * row_count * variable_count),
+    };
+}
+
+void evaluate_problem(
     const epcsaft_native_sdk_v1& table,
     const Payload& payload,
-    const std::vector<double>& variables
+    const double* variables,
+    std::size_t variable_size,
+    Evaluation& evaluation
 ) {
     const std::size_t row_count = payload.training_rows.size();
     const std::size_t variable_count = 1 + 2 * row_count;
-    if (variables.size() != variable_count) {
+    if (variable_size != variable_count) {
         throw std::invalid_argument(
             "solver variables do not match the training-row dimension"
         );
     }
-    Evaluation evaluation{};
-    evaluation.residuals.resize(4 * row_count);
-    evaluation.jacobian.assign(4 * row_count * variable_count, 0.0);
+    if (evaluation.residuals.size() != 4 * row_count
+        || evaluation.jacobian.size() != 4 * row_count * variable_count) {
+        throw std::logic_error("evaluation scratch dimensions are invalid");
+    }
+    std::fill(evaluation.jacobian.begin(), evaluation.jacobian.end(), 0.0);
     const double parameter =
         payload.parameter_origin + payload.parameter_scale * variables[0];
     for (std::size_t row_index = 0; row_index < row_count; ++row_index) {
@@ -682,14 +730,13 @@ Evaluation evaluate_problem(
                 -vapor.hessian[component * 4 + 2] * vapor_volume / scale;
         }
     }
-    return evaluation;
 }
 
 class GeneralKijCost final : public ceres::CostFunction {
 public:
     GeneralKijCost(
         const epcsaft_native_sdk_v1* table, const Payload& payload
-    ) : table_(table), payload_(payload) {
+    ) : table_(table), payload_(payload), scratch_(make_evaluation(payload)) {
         set_num_residuals(static_cast<int>(4 * payload.training_rows.size()));
         mutable_parameter_block_sizes()->push_back(
             static_cast<int>(1 + 2 * payload.training_rows.size())
@@ -700,22 +747,22 @@ public:
         double const* const* values, double* residuals, double** jacobians
     ) const override {
         try {
-            const std::size_t count = static_cast<std::size_t>(
-                parameter_block_sizes()[0]
-            );
-            std::vector<double> variables(values[0], values[0] + count);
-            const Evaluation evaluation = evaluate_problem(
-                *table_, payload_, variables
+            evaluate_problem(
+                *table_,
+                payload_,
+                values[0],
+                static_cast<std::size_t>(parameter_block_sizes()[0]),
+                scratch_
             );
             std::copy(
-                evaluation.residuals.begin(),
-                evaluation.residuals.end(),
+                scratch_.residuals.begin(),
+                scratch_.residuals.end(),
                 residuals
             );
             if (jacobians != nullptr && jacobians[0] != nullptr) {
                 std::copy(
-                    evaluation.jacobian.begin(),
-                    evaluation.jacobian.end(),
+                    scratch_.jacobian.begin(),
+                    scratch_.jacobian.end(),
                     jacobians[0]
                 );
             }
@@ -734,6 +781,7 @@ public:
 private:
     const epcsaft_native_sdk_v1* table_;
     const Payload& payload_;
+    mutable Evaluation scratch_;
     mutable std::string failure_reason_;
 };
 
@@ -887,7 +935,14 @@ SolveOutcome solve_training(
     );
     outcome.failure_reason = cost.failure_reason();
     try {
-        outcome.evaluation = evaluate_problem(table, payload, outcome.variables);
+        outcome.evaluation = make_evaluation(payload);
+        evaluate_problem(
+            table,
+            payload,
+            outcome.variables.data(),
+            outcome.variables.size(),
+            outcome.evaluation
+        );
         diagnose_jacobian(outcome);
     } catch (const std::exception& error) {
         if (outcome.failure_reason.empty()) {
@@ -903,7 +958,10 @@ public:
         const epcsaft_native_sdk_v1* table,
         const Payload& payload,
         double parameter_solver_value
-    ) : table_(table), payload_(payload), parameter_(parameter_solver_value) {
+    ) : table_(table),
+        payload_(payload),
+        parameter_(parameter_solver_value),
+        scratch_(make_evaluation(payload)) {
         set_num_residuals(4);
         mutable_parameter_block_sizes()->push_back(2);
     }
@@ -912,23 +970,27 @@ public:
         double const* const* values, double* residuals, double** jacobians
     ) const override {
         try {
-            const std::vector<double> variables = {
+            const std::array<double, 3> variables = {
                 parameter_, values[0][0], values[0][1]
             };
-            const Evaluation evaluation = evaluate_problem(
-                *table_, payload_, variables
+            evaluate_problem(
+                *table_,
+                payload_,
+                variables.data(),
+                variables.size(),
+                scratch_
             );
             std::copy(
-                evaluation.residuals.begin(),
-                evaluation.residuals.end(),
+                scratch_.residuals.begin(),
+                scratch_.residuals.end(),
                 residuals
             );
             if (jacobians != nullptr && jacobians[0] != nullptr) {
                 for (std::size_t row = 0; row < 4; ++row) {
                     jacobians[0][2 * row] =
-                        evaluation.jacobian[3 * row + 1];
+                        scratch_.jacobian[3 * row + 1];
                     jacobians[0][2 * row + 1] =
-                        evaluation.jacobian[3 * row + 2];
+                        scratch_.jacobian[3 * row + 2];
                 }
             }
             failure_reason_.clear();
@@ -947,6 +1009,7 @@ private:
     const epcsaft_native_sdk_v1* table_;
     const Payload& payload_;
     double parameter_;
+    mutable Evaluation scratch_;
     mutable std::string failure_reason_;
 };
 
@@ -995,10 +1058,16 @@ RowOutcome solve_reporting(
         cost.failure_reason(),
     };
     try {
-        const Evaluation evaluation = evaluate_problem(
+        Evaluation evaluation = make_evaluation(row_payload);
+        const std::array<double, 3> final_variables = {
+            parameter_solver_value, variables[0], variables[1]
+        };
+        evaluate_problem(
             table,
             row_payload,
-            {parameter_solver_value, variables[0], variables[1]}
+            final_variables.data(),
+            final_variables.size(),
+            evaluation
         );
         std::copy(
             evaluation.residuals.begin(),
@@ -1068,7 +1137,8 @@ bool complete_evaluation(
     const SolveOutcome& outcome, const Payload& payload
 ) {
     const std::size_t residual_count = 4 * payload.training_rows.size();
-    return outcome.evaluation.residuals.size() == residual_count
+    return outcome.failure_reason.empty()
+        && outcome.evaluation.residuals.size() == residual_count
         && outcome.evaluation.jacobian.size()
             == residual_count * outcome.variables.size();
 }
@@ -1169,7 +1239,11 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
         );
         if (result == nullptr) return nullptr;
         for (std::size_t index = 0; index < table->capability_count; ++index) {
-            PyObject* item = descriptor_to_python(table->capabilities[index]);
+            const auto& descriptor = table->capabilities[index];
+            PyObject* item = descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1
+                ? descriptor_to_python(descriptor)
+                : unsupported_descriptor_to_python(descriptor);
             if (item == nullptr) {
                 Py_DECREF(result);
                 return nullptr;
@@ -1194,8 +1268,13 @@ PyObject* evaluate_general_kij_python(
         const std::vector<double> variables = doubles(
             variables_object, "solver variables"
         );
-        const Evaluation evaluation = evaluate_problem(
-            *table, payload, variables
+        Evaluation evaluation = make_evaluation(payload);
+        evaluate_problem(
+            *table,
+            payload,
+            variables.data(),
+            variables.size(),
+            evaluation
         );
         PyObject* residuals = doubles_to_tuple(evaluation.residuals);
         PyObject* jacobian = doubles_to_tuple(evaluation.jacobian);

@@ -59,6 +59,13 @@ class ParameterCapability:
 
 
 @dataclass(frozen=True, slots=True)
+class UnsupportedParameterCapability:
+    capability_code: int
+    schema_version: int
+    parameter_family_code: int
+
+
+@dataclass(frozen=True, slots=True)
 class FittedParameterDiagnostic:
     family: ParameterFamily
     component_ids: tuple[str, ...]
@@ -93,12 +100,20 @@ class GeneralRowDiagnostic:
     liquid_volume_m3_per_mol: float
     vapor_volume_m3_per_mol: float
     scaled_residuals: tuple[float, float, float, float]
+    observed_pressure_pa: float
+    liquid_model_pressure_pa: float
+    vapor_model_pressure_pa: float
+    chemical_potential_differences_over_rt: tuple[float, float]
+    derivative_status: str
+    status: str
     evaluated: bool
     failure_reason: str
 
 
 @dataclass(frozen=True, slots=True)
 class RegressionResult:
+    problem: RegressionProblem
+    capability: ParameterCapability
     provider_parameter_fingerprint: str
     provider_topology_fingerprint: str
     solver_converged: bool
@@ -122,37 +137,53 @@ class RegressionResult:
     training_row_count: int
     held_out_row_count: int
     stress_row_count: int
+    evaluated_row_count: int
+    skipped_row_count: int
+    failed_row_count: int
     failure_reasons: tuple[str, ...]
 
 
-def parameter_capabilities(model: object) -> tuple[ParameterCapability, ...]:
+def parameter_capabilities(
+    model: object,
+) -> tuple[ParameterCapability | UnsupportedParameterCapability, ...]:
     raw_capabilities = _native.parameter_capabilities(native_sdk(model))
-    return tuple(
-        ParameterCapability(
-            capability_id=raw[0],
-            family=ParameterFamily(raw[1]),
-            component_ids=tuple(raw[2]),
-            coordinate_kinds=tuple(raw[3]),
-            coordinate_units=tuple(raw[4]),
-            parameter_fingerprint=raw[5],
-            topology_fingerprint=raw[6],
-            derivative_order=raw[7],
-            maturity=raw[8],
-            authority_effect=raw[9],
-            temperature_min_k=raw[10],
-            temperature_max_k=raw[11],
-            identity_shape=raw[12],
-            observation_contract=raw[13],
-            model_domain=raw[14],
-            tensor_layout=raw[15],
-            state_coordinate_count=raw[16],
-            active_parameter_count=raw[17],
-            helmholtz_basis_id=raw[18],
-            unsupported_status=raw[19],
-            domain_status=raw[20],
+    capabilities: list[ParameterCapability | UnsupportedParameterCapability] = []
+    for raw in raw_capabilities:
+        if len(raw) == 3 and type(raw[0]) is int:
+            capabilities.append(
+                UnsupportedParameterCapability(
+                    capability_code=raw[0],
+                    schema_version=raw[1],
+                    parameter_family_code=raw[2],
+                )
+            )
+            continue
+        capabilities.append(
+            ParameterCapability(
+                capability_id=raw[0],
+                family=ParameterFamily(raw[1]),
+                component_ids=tuple(raw[2]),
+                coordinate_kinds=tuple(raw[3]),
+                coordinate_units=tuple(raw[4]),
+                parameter_fingerprint=raw[5],
+                topology_fingerprint=raw[6],
+                derivative_order=raw[7],
+                maturity=raw[8],
+                authority_effect=raw[9],
+                temperature_min_k=raw[10],
+                temperature_max_k=raw[11],
+                identity_shape=raw[12],
+                observation_contract=raw[13],
+                model_domain=raw[14],
+                tensor_layout=raw[15],
+                state_coordinate_count=raw[16],
+                active_parameter_count=raw[17],
+                helmholtz_basis_id=raw[18],
+                unsupported_status=raw[19],
+                domain_status=raw[20],
+            )
         )
-        for raw in raw_capabilities
-    )
+    return tuple(capabilities)
 
 
 class ObservationPartition(StrEnum):
@@ -550,7 +581,8 @@ def _matched_capability(
     matches = tuple(
         capability
         for capability in capabilities
-        if capability.capability_id == parameter.capability_id
+        if isinstance(capability, ParameterCapability)
+        and capability.capability_id == parameter.capability_id
     )
     if len(matches) != 1:
         raise ValueError(
@@ -599,6 +631,7 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         native_sdk(model), _native_payload(problem, capability)
     )
     parameter_coordinate = problem.parameters[0]
+    observations = {row.row_id: row for row in problem.observations}
     rows = tuple(
         GeneralRowDiagnostic(
             row_id=row[0],
@@ -606,6 +639,25 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
             liquid_volume_m3_per_mol=row[2],
             vapor_volume_m3_per_mol=row[3],
             scaled_residuals=tuple(row[4]),
+            observed_pressure_pa=observations[row[0]].pressure_pa,
+            liquid_model_pressure_pa=(
+                observations[row[0]].pressure_pa
+                + row[4][0] * observations[row[0]].pressure_scale_pa
+            ),
+            vapor_model_pressure_pa=(
+                observations[row[0]].pressure_pa
+                + row[4][1] * observations[row[0]].pressure_scale_pa
+            ),
+            chemical_potential_differences_over_rt=(
+                row[4][2]
+                * observations[row[0]].chemical_potential_scales[0],
+                row[4][3]
+                * observations[row[0]].chemical_potential_scales[1],
+            ),
+            derivative_status=(
+                "EXACT_PROVIDER_HESSIAN" if row[5] else "UNAVAILABLE"
+            ),
+            status="evaluated" if row[5] else "failed",
             evaluated=row[5],
             failure_reason=row[6],
         )
@@ -669,6 +721,8 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         if reason
     )
     return RegressionResult(
+        problem=problem,
+        capability=capability,
         provider_parameter_fingerprint=capability.parameter_fingerprint,
         provider_topology_fingerprint=capability.topology_fingerprint,
         solver_converged=solver_converged,
@@ -692,5 +746,8 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         training_row_count=len(problem.training_observations),
         held_out_row_count=len(problem.held_out_observations),
         stress_row_count=len(problem.stress_observations),
+        evaluated_row_count=sum(row.evaluated for row in rows),
+        skipped_row_count=0,
+        failed_row_count=sum(not row.evaluated for row in rows),
         failure_reasons=failures,
     )

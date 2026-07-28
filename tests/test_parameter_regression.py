@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import replace
 
-from epcsaft import EPCSAFT, ParameterBundle
+from epcsaft import EPCSAFT, ParameterBundle, native_sdk
 import pytest
 
 import epcsaft_regression.parameter_regression as parameter_regression
@@ -17,6 +17,7 @@ from epcsaft_regression import (
     RegressionProblem,
     RegressionResult,
     SourceDescriptor,
+    UnsupportedParameterCapability,
     canonical_dataset_sha256,
     fit_parameters,
     parameter_capabilities,
@@ -101,7 +102,9 @@ def _problem(
     )
 
 
-def test_installed_provider_advertises_exact_neutral_binary_kij_contract() -> None:
+def test_installed_provider_advertises_exact_neutral_binary_kij_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     model = _model()
 
     (capability,) = parameter_capabilities(model)
@@ -128,6 +131,20 @@ def test_installed_provider_advertises_exact_neutral_binary_kij_contract() -> No
     )
     assert capability.unsupported_status == "UNSUPPORTED_MODEL"
     assert capability.domain_status == "DOMAIN_ERROR"
+
+    raw = parameter_regression._native.parameter_capabilities(native_sdk(model))
+    monkeypatch.setattr(
+        parameter_regression._native,
+        "parameter_capabilities",
+        lambda _: (*raw, (999, 1, 998)),
+    )
+    known, unsupported = parameter_capabilities(model)
+    assert known == capability
+    assert unsupported == UnsupportedParameterCapability(
+        capability_code=999,
+        schema_version=1,
+        parameter_family_code=998,
+    )
 
 
 def test_exact_lifted_kij_jacobian_matches_directional_residual_difference() -> None:
@@ -175,13 +192,16 @@ def test_general_kij_fit_reports_rank_confirmation_and_partition_isolation() -> 
         pressure_scale_pa=2.2e6,
     )
 
-    result = fit_parameters(_problem(model, (training, held)), model)
+    problem = _problem(model, (training, held))
+    result = fit_parameters(problem, model)
     perturbed_held = replace(held, pressure_pa=8.0e6, pressure_scale_pa=8.0e6)
     repeated = fit_parameters(
         _problem(model, (training, perturbed_held)), model
     )
 
     assert isinstance(result, RegressionResult)
+    assert result.problem == problem
+    assert result.capability == parameter_capabilities(model)[0]
     assert result.parameter.final == repeated.parameter.final
     assert result.final_cost == repeated.final_cost
     assert result.parameter.lower_bound <= result.parameter.final <= result.parameter.upper_bound
@@ -194,6 +214,16 @@ def test_general_kij_fit_reports_rank_confirmation_and_partition_isolation() -> 
     assert result.held_out_row_count == 1
     assert result.stress_row_count == 0
     assert tuple(row.partition for row in result.rows) == ("training", "held_out")
+    assert result.rows[0].observed_pressure_pa == training.pressure_pa
+    assert result.rows[0].liquid_model_pressure_pa == pytest.approx(
+        training.pressure_pa
+        + result.rows[0].scaled_residuals[0] * training.pressure_scale_pa
+    )
+    assert result.rows[0].derivative_status == "EXACT_PROVIDER_HESSIAN"
+    assert result.rows[0].status == "evaluated"
+    assert result.evaluated_row_count == 2
+    assert result.skipped_row_count == 0
+    assert result.failed_row_count == 0
     assert result.predictive_status == "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
 
 
@@ -289,3 +319,7 @@ def test_provider_failure_returns_diagnostic_result() -> None:
     assert not result.workflow_valid
     assert result.failure_reasons
     assert not result.rows[0].evaluated
+    assert result.rows[0].derivative_status == "UNAVAILABLE"
+    assert result.rows[0].status == "failed"
+    assert result.evaluated_row_count == 0
+    assert result.failed_row_count == 1
