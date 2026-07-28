@@ -2154,6 +2154,9 @@ def _may_methane_propane_problem(
     assert capability.component_ids == ("methane", "propane")
     assert capability.active_component_ids == ("methane", "propane")
     assert capability.model_domain == "neutral_nonassociating_binary"
+    assert all(
+        row.component_ids == capability.component_ids for row in observations
+    )
     source = SourceDescriptor(
         source_id="may-2015-methane-propane",
         citation=(
