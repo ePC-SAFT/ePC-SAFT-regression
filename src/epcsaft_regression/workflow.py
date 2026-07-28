@@ -74,9 +74,9 @@ class JacobianDiagnostics:
     full_singular_values: tuple[float, ...]
     full_rank: int
     full_condition_number: float
-    parameter_singular_values: tuple[float, ...]
-    parameter_rank: int
-    parameter_condition_number: float
+    projected_parameter_singular_values: tuple[float, ...]
+    projected_parameter_rank: int
+    projected_parameter_condition_number: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -767,11 +767,11 @@ def fit_pure_saturation(
         ),
         full_rank=int(full_rank_native),
         full_condition_number=float(full_condition_native),
-        parameter_singular_values=tuple(
+        projected_parameter_singular_values=tuple(
             float(value) for value in parameter_singular_values_native
         ),
-        parameter_rank=int(parameter_rank_native),
-        parameter_condition_number=float(parameter_condition_native),
+        projected_parameter_rank=int(parameter_rank_native),
+        projected_parameter_condition_number=float(parameter_condition_native),
     )
     termination = str(termination_native)
     usable = bool(solution_usable_native)
@@ -781,7 +781,9 @@ def fit_pure_saturation(
         item.lower_bound <= item.final <= item.upper_bound for item in parameters
     )
     fitted_parameter_count = len(parameters)
-    parameter_columns_full_rank = jacobian.parameter_rank == fitted_parameter_count
+    parameter_columns_full_rank = (
+        jacobian.projected_parameter_rank == fitted_parameter_count
+    )
     solver_converged = (
         termination == "CONVERGENCE"
         and usable
@@ -826,7 +828,8 @@ def fit_pure_saturation(
     if not parameter_columns_full_rank:
         failure_reasons.append(
             "training parameter Jacobian is rank deficient: "
-            f"{jacobian.parameter_rank} of {fitted_parameter_count} fitted parameter columns"
+            f"{jacobian.projected_parameter_rank} of "
+            f"{fitted_parameter_count} fitted parameter columns"
         )
     if not solver_converged:
         failure_reasons.append("training solver convergence gate failed")

@@ -1,9 +1,8 @@
 #include "pure_saturation_fit.hpp"
 #include "pure_saturation_fit_internal.hpp"
+#include "ceres_core.hpp"
 
 #include <ceres/ceres.h>
-#include <Eigen/Dense>
-#include <Eigen/SVD>
 
 #include <algorithm>
 #include <array>
@@ -58,18 +57,12 @@ struct Evaluation final {
     std::string fingerprint;
 };
 
-struct MatrixDiagnostics final {
-    std::vector<double> singular_values;
-    int rank{0};
-    double condition_number{std::numeric_limits<double>::infinity()};
-};
-
 struct SolveOutcome final {
     ceres::Solver::Summary summary;
     std::array<double, variable_count> variables;
     Evaluation evaluation;
-    MatrixDiagnostics full_jacobian;
-    MatrixDiagnostics parameter_jacobian;
+    internal::MatrixDiagnostics full_jacobian;
+    internal::MatrixDiagnostics parameter_jacobian;
     bool complete_columns{false};
     bool evaluation_available{false};
     std::string failure_reason;
@@ -239,65 +232,6 @@ Evaluation evaluate_problem(
     return evaluation;
 }
 
-class TrainingCost final : public ceres::CostFunction {
-public:
-    TrainingCost(
-        const epcsaft_native_sdk_v1& table,
-        const Payload& payload,
-        std::string* failure_reason
-    ) : table_(table), payload_(payload), failure_reason_(failure_reason) {
-        set_num_residuals(static_cast<int>(residual_count));
-        mutable_parameter_block_sizes()->push_back(static_cast<int>(parameter_count));
-        for (std::size_t index = 0; index < row_count; ++index) {
-            mutable_parameter_block_sizes()->push_back(2);
-        }
-    }
-
-    bool Evaluate(double const* const* blocks, double* residuals, double** jacobians) const override {
-        try {
-            std::array<double, variable_count> variables{};
-            std::copy(blocks[0], blocks[0] + parameter_count, variables.begin());
-            for (std::size_t row = 0; row < row_count; ++row) {
-                variables[3 + 2 * row] = blocks[row + 1][0];
-                variables[4 + 2 * row] = blocks[row + 1][1];
-            }
-            const Evaluation evaluation = evaluate_problem(table_, payload_, variables);
-            std::copy(evaluation.residuals.begin(), evaluation.residuals.end(), residuals);
-            if (jacobians != nullptr) {
-                if (jacobians[0] != nullptr) {
-                    for (std::size_t row = 0; row < residual_count; ++row) {
-                        for (std::size_t column = 0; column < parameter_count; ++column) {
-                            jacobians[0][row * parameter_count + column] =
-                                evaluation.jacobian[row * variable_count + column];
-                        }
-                    }
-                }
-                for (std::size_t block = 0; block < row_count; ++block) {
-                    if (jacobians[block + 1] == nullptr) continue;
-                    for (std::size_t row = 0; row < residual_count; ++row) {
-                        jacobians[block + 1][row * 2] =
-                            evaluation.jacobian[row * variable_count + 3 + 2 * block];
-                        jacobians[block + 1][row * 2 + 1] =
-                            evaluation.jacobian[row * variable_count + 4 + 2 * block];
-                    }
-                }
-            }
-            return true;
-        } catch (const std::exception& error) {
-            *failure_reason_ = error.what();
-            return false;
-        } catch (...) {
-            *failure_reason_ = "unknown native training callback failure";
-            return false;
-        }
-    }
-
-private:
-    const epcsaft_native_sdk_v1& table_;
-    const Payload& payload_;
-    std::string* failure_reason_;
-};
-
 std::string termination_name(ceres::TerminationType termination) {
     switch (termination) {
         case ceres::CONVERGENCE: return "CONVERGENCE";
@@ -309,89 +243,104 @@ std::string termination_name(ceres::TerminationType termination) {
     return "UNKNOWN";
 }
 
-MatrixDiagnostics matrix_diagnostics(const Eigen::MatrixXd& matrix) {
-    const Eigen::JacobiSVD<Eigen::MatrixXd> decomposition(matrix, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    const auto singular = decomposition.singularValues();
-    MatrixDiagnostics diagnostics{};
-    diagnostics.singular_values.reserve(static_cast<std::size_t>(singular.size()));
-    for (Eigen::Index index = 0; index < singular.size(); ++index) {
-        diagnostics.singular_values.push_back(singular(index));
-    }
-    const double maximum = singular.size() == 0 ? 0.0 : singular(0);
-    const double threshold = maximum * static_cast<double>(std::max(matrix.rows(), matrix.cols()))
-        * std::numeric_limits<double>::epsilon() * 100.0;
-    diagnostics.rank = 0;
-    double minimum_accepted = std::numeric_limits<double>::infinity();
-    for (double value : diagnostics.singular_values) {
-        if (value > threshold) {
-            ++diagnostics.rank;
-            minimum_accepted = std::min(minimum_accepted, value);
-        }
-    }
-    diagnostics.condition_number = diagnostics.rank == 0
-        ? std::numeric_limits<double>::infinity()
-        : maximum / minimum_accepted;
-    return diagnostics;
-}
-
 SolveOutcome solve_training(
     const epcsaft_native_sdk_v1& table,
     const Payload& payload,
     double liquid_start_offset,
     double vapor_start_offset
 ) {
-    SolveOutcome outcome{};
-    outcome.variables.fill(0.0);
-    std::array<double, 3> parameters{};
-    std::array<std::array<double, 2>, row_count> volumes{};
+    std::vector<double> start(variable_count, 0.0);
     for (std::size_t row = 0; row < row_count; ++row) {
-        volumes[row] = {liquid_start_offset, vapor_start_offset};
+        start[parameter_count + 2 * row] = liquid_start_offset;
+        start[parameter_count + 2 * row + 1] = vapor_start_offset;
     }
-    ceres::Problem problem;
-    auto* cost = new TrainingCost(table, payload, &outcome.failure_reason);
-    std::vector<double*> blocks{parameters.data()};
-    for (auto& volume : volumes) blocks.push_back(volume.data());
-    problem.AddResidualBlock(cost, nullptr, blocks);
+    std::vector<internal::CoordinateBound> bounds(variable_count);
     for (std::size_t parameter = 0; parameter < parameter_count; ++parameter) {
-        problem.SetParameterLowerBound(
-            parameters.data(), static_cast<int>(parameter),
-            (payload.lower[parameter] - payload.start[parameter]) / payload.parameter_scale[parameter]
-        );
-        problem.SetParameterUpperBound(
-            parameters.data(), static_cast<int>(parameter),
-            (payload.upper[parameter] - payload.start[parameter]) / payload.parameter_scale[parameter]
-        );
+        bounds[parameter] = {
+            (payload.lower[parameter] - payload.start[parameter])
+                / payload.parameter_scale[parameter],
+            (payload.upper[parameter] - payload.start[parameter])
+                / payload.parameter_scale[parameter],
+        };
     }
     for (std::size_t row = 0; row < row_count; ++row) {
         const double liquid_reference = payload.molar_mass / payload.rows[row].liquid_density;
         const double vapor_reference = gas_constant * payload.rows[row].temperature / payload.rows[row].pressure;
-        problem.SetParameterLowerBound(
-            volumes[row].data(), 0, std::log(payload.liquid_volume_bounds[0] / liquid_reference)
-        );
-        problem.SetParameterUpperBound(
-            volumes[row].data(), 0, std::log(payload.liquid_volume_bounds[1] / liquid_reference)
-        );
-        problem.SetParameterLowerBound(
-            volumes[row].data(), 1, std::log(payload.vapor_volume_bounds[0] / vapor_reference)
-        );
-        problem.SetParameterUpperBound(
-            volumes[row].data(), 1, std::log(payload.vapor_volume_bounds[1] / vapor_reference)
-        );
+        bounds[parameter_count + 2 * row] = {
+            std::log(
+                payload.liquid_volume_bounds[0] / liquid_reference
+            ),
+            std::log(
+                payload.liquid_volume_bounds[1] / liquid_reference
+            ),
+        };
+        bounds[parameter_count + 2 * row + 1] = {
+            std::log(
+                payload.vapor_volume_bounds[0] / vapor_reference
+            ),
+            std::log(
+                payload.vapor_volume_bounds[1] / vapor_reference
+            ),
+        };
     }
-    ceres::Solver::Options options;
-    options.linear_solver_type = ceres::DENSE_QR;
-    options.max_num_iterations = payload.max_iterations;
-    options.function_tolerance = payload.function_tolerance;
-    options.gradient_tolerance = payload.gradient_tolerance;
-    options.parameter_tolerance = payload.parameter_tolerance;
-    options.logging_type = ceres::SILENT;
-    options.num_threads = payload.num_threads;
-    ceres::Solve(options, &problem, &outcome.summary);
-    std::copy(parameters.begin(), parameters.end(), outcome.variables.begin());
-    for (std::size_t row = 0; row < row_count; ++row) {
-        outcome.variables[3 + 2 * row] = volumes[row][0];
-        outcome.variables[4 + 2 * row] = volumes[row][1];
-    }
+    const internal::ProblemShape shape{
+        parameter_count, variable_count - parameter_count, residual_count
+    };
+    const internal::SolverControls controls{
+        payload.max_iterations,
+        std::numeric_limits<double>::max(),
+        payload.function_tolerance,
+        payload.gradient_tolerance,
+        payload.parameter_tolerance,
+    };
+    const auto evaluator = [&](const double* values,
+                               std::size_t size,
+                               bool jacobian_requested,
+                               double* residuals,
+                               double* jacobian,
+                               std::string& failure_reason) {
+        if (size != variable_count) {
+            failure_reason = "pure training variable count mismatch";
+            return false;
+        }
+        try {
+            std::array<double, variable_count> variables{};
+            std::copy(values, values + size, variables.begin());
+            const Evaluation evaluation =
+                evaluate_problem(table, payload, variables);
+            std::copy(
+                evaluation.residuals.cbegin(),
+                evaluation.residuals.cend(),
+                residuals
+            );
+            if (jacobian_requested) {
+                std::copy(
+                    evaluation.jacobian.cbegin(),
+                    evaluation.jacobian.cend(),
+                    jacobian
+                );
+            }
+            failure_reason.clear();
+            return true;
+        } catch (const std::exception& error) {
+            failure_reason = error.what();
+            return false;
+        }
+    };
+    internal::SolveResult solved = internal::solve(
+        shape, start, bounds, controls, evaluator
+    );
+    SolveOutcome outcome{};
+    outcome.summary = std::move(solved.summary);
+    std::copy(
+        solved.variables.cbegin(),
+        solved.variables.cend(),
+        outcome.variables.begin()
+    );
+    outcome.full_jacobian = std::move(solved.full_jacobian);
+    outcome.parameter_jacobian =
+        std::move(solved.projected_parameter_jacobian);
+    outcome.failure_reason = std::move(solved.failure_reason);
     try {
         outcome.evaluation = evaluate_problem(table, payload, outcome.variables);
         outcome.evaluation_available = true;
@@ -399,27 +348,11 @@ SolveOutcome solve_training(
         outcome.failure_reason = std::string("training final evaluation failed: ") + error.what();
         return outcome;
     }
-    Eigen::MatrixXd full(static_cast<Eigen::Index>(residual_count), static_cast<Eigen::Index>(variable_count));
-    Eigen::MatrixXd parameter_matrix(
-        static_cast<Eigen::Index>(residual_count), static_cast<Eigen::Index>(parameter_count)
-    );
-    outcome.complete_columns = true;
-    for (std::size_t row = 0; row < residual_count; ++row) {
-        for (std::size_t column = 0; column < variable_count; ++column) {
-            const double value = outcome.evaluation.jacobian[row * variable_count + column];
-            full(static_cast<Eigen::Index>(row), static_cast<Eigen::Index>(column)) = value;
-            if (column < parameter_count) {
-                parameter_matrix(static_cast<Eigen::Index>(row), static_cast<Eigen::Index>(column)) = value;
-            }
-        }
-    }
     outcome.complete_columns = std::all_of(
         outcome.evaluation.jacobian.begin(),
         outcome.evaluation.jacobian.end(),
         [](double value) { return std::isfinite(value); }
     );
-    outcome.full_jacobian = matrix_diagnostics(full);
-    outcome.parameter_jacobian = matrix_diagnostics(parameter_matrix);
     if (outcome.summary.termination_type == ceres::CONVERGENCE
         && outcome.summary.IsSolutionUsable()) {
         outcome.failure_reason.clear();

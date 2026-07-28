@@ -423,11 +423,13 @@ J_gamma = -(gamma_model/gamma_observed)
           * d(log_gamma_model)/dp * p_scale / s_relative
 ```
 
-The implemented direct path accepts exactly one active parameter per problem.
-Parameter sharing is therefore explicit across rows, while the five Figiel
-Born targets are five independent one-parameter problems. Organic ion-solvent
-pair fits are likewise independent; other pair values remain explicit row
-inputs.
+The implemented direct-observable Provider paths each accept exactly one
+active parameter per problem. Parameter sharing is therefore explicit across
+rows, while the five Figiel Born targets are five independent one-parameter
+problems. Organic ion-solvent pair fits are likewise independent; other pair
+values remain explicit row inputs. The separate installed joint pure callback
+is the first multi-active seam and supplies all three ordered pure-parameter
+columns in one phase evaluation.
 
 The reference organic-ion campaign uses four constructed nearest-pure
 endpoints retained by Validation: K+/methanol, Br-/methanol, Na+/ethanol, and
@@ -661,6 +663,25 @@ the cross-package direction and exact artifact contracts.
 
 Performance evidence cannot relax derivative, rank, or physical-validity
 gates.
+
+The native generalized core is one contiguous `[N fitted | Q lifted]`
+parameter block. Its build-testing-only closed-form fixture has `N = 2`,
+`Q = 1`, `R = 4`, full rank 3, and nuisance-projected parameter rank 2; it
+recovers the same solution from two complete starts, observes value-only and
+Jacobian requests separately, rejects `R < N + Q`, and reports a missing
+parameter column as rank deficient. It is neither installed nor exposed as a
+Provider capability.
+
+Accepted methane and ethane training are the first installed multi-active
+cutover. Each four-row campaign uses `N = 3`, `Q = 8`, `R = 16`, the Provider
+coordinate order `(n,V,m,sigma,epsilon/k)`, a `16 x 11` exact Jacobian, full
+rank 11, and nuisance-projected parameter rank 3. The shared core preserves
+the accepted parameter, residual, cost, confirmation, reporting, and status
+contracts. Their established public result wrapper remains a presentation
+projection; the duplicate pure training Ceres loop has been deleted. The
+three-coordinate common-pressure reporting solve remains intentionally
+separate from training because it owns reporting closure rather than fitted
+parameters.
 
 The installed pair-family campaigns evaluate all 17 audited May 2015
 methane/ethane rows as training data. Each `68 x 35` solve converges with full

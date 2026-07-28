@@ -138,33 +138,6 @@ def test_methane_start_residuals_match_accepted_provider_anchor() -> None:
     assert fingerprint.startswith("sha256:")
 
 
-@pytest.mark.parametrize("component_id", ("methane", "ethane", "propane"))
-def test_exact_jacobian_matches_independent_directional_residual_difference(
-    component_id: str,
-) -> None:
-    capsule = _capsule(component_id)
-    payload = _payload(component_id)
-    variables = (0.0,) * 11
-    direction = (0.2, -0.1, 0.05, 0.01, -0.02, -0.015, 0.012, 0.008, -0.01, -0.006, 0.014)
-    residuals, jacobian, _, _ = native.evaluate(capsule, payload, variables)
-    step = 1.0e-6
-    plus = tuple(value + step * delta for value, delta in zip(variables, direction, strict=True))
-    minus = tuple(value - step * delta for value, delta in zip(variables, direction, strict=True))
-    residuals_plus = native.evaluate(capsule, payload, plus)[0]
-    residuals_minus = native.evaluate(capsule, payload, minus)[0]
-    finite_difference = tuple(
-        (right - left) / (2.0 * step)
-        for right, left in zip(residuals_plus, residuals_minus, strict=True)
-    )
-    product = tuple(
-        math.fsum(jacobian[row * 11 + column] * direction[column] for column in range(11))
-        for row in range(16)
-    )
-
-    assert residuals
-    assert product == pytest.approx(finite_difference, rel=2.0e-6, abs=2.0e-7)
-
-
 @pytest.mark.parametrize("component_id", ("methane", "ethane"))
 def test_public_workflow_returns_strict_component_diagnostics(
     component_id: str,
@@ -203,7 +176,7 @@ def test_public_workflow_returns_strict_component_diagnostics(
     assert not any(item.active_bound for item in result.parameters)
     assert result.jacobian.complete_columns
     assert result.jacobian.full_rank == 11
-    assert result.jacobian.parameter_rank == 3
+    assert result.jacobian.projected_parameter_rank == 3
     assert len(result.training_rows) == 4
     assert len(result.reporting_rows) == len(dataset.rows)
     assert tuple(row.temperature_k for row in result.reporting_rows) == tuple(
@@ -245,7 +218,7 @@ def test_propane_fit_preserves_distinct_statuses_at_the_frozen_pressure_gate() -
     assert result.confirmation_termination == "CONVERGENCE"
     assert result.iterations == 1090
     assert result.jacobian.full_rank == 11
-    assert result.jacobian.parameter_rank == 3
+    assert result.jacobian.projected_parameter_rank == 3
     assert not any(parameter.active_bound for parameter in result.parameters)
     assert result.confirmation_parameter_scaled_max_delta <= 1.0e-5
     assert result.confirmation_cost_relative_delta <= 1.0e-8
@@ -289,7 +262,7 @@ def test_rank_deficient_parameter_jacobian_cannot_be_accepted(
         specification=METHANE_SATURATION_FIT_V1,
     )
 
-    assert result.jacobian.parameter_rank == 2
+    assert result.jacobian.projected_parameter_rank == 2
     assert not result.solver_converged
     assert not result.numerically_converged
     assert not result.physically_valid
@@ -392,13 +365,36 @@ def test_generalized_workflow_preserves_accepted_methane_numerical_result() -> N
     assert result.initial_cost == pytest.approx(14340.021563034428, rel=2.0e-12)
     assert result.final_cost == pytest.approx(4.798586497669576e-6, rel=2.0e-9)
     assert result.jacobian.full_rank == 11
-    assert result.jacobian.parameter_rank == 3
+    assert result.jacobian.projected_parameter_rank == 3
     for observed, expected in zip(result.reporting_rows, expected_reporting, strict=True):
         assert (
             observed.temperature_k,
             observed.predicted_pressure_pa,
             observed.predicted_liquid_density_kg_m3,
         ) == pytest.approx(expected, rel=2.0e-9, abs=2.0e-9)
+
+
+def test_generalized_workflow_preserves_accepted_ethane_numerical_result() -> None:
+    result = fit_pure_saturation(
+        model=_model("ethane"),
+        dataset=load_pure_saturation_dataset("ethane"),
+        specification=ETHANE_SATURATION_FIT_V1,
+    )
+
+    assert tuple(item.final for item in result.parameters) == pytest.approx(
+        (1.6101710205193558, 3.524959232756593, 191.09459145171377),
+        rel=2.0e-11,
+        abs=2.0e-11,
+    )
+    assert result.initial_cost == pytest.approx(89326.40642623953, rel=2.0e-12)
+    assert result.final_cost == pytest.approx(
+        1.4622626154617253e-6, rel=2.0e-9
+    )
+    assert result.jacobian.full_rank == 11
+    assert result.jacobian.projected_parameter_rank == 3
+    assert result.predictive_status == (
+        "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
+    )
 
 
 def test_identity_mismatch_is_rejected_before_native_solve() -> None:

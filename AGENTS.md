@@ -6,6 +6,12 @@ Accepted workflows: pure methane under promotion 0020 and pure ethane under
 promotion 0023/state 0025. No local candidate has production or active-
 migration status.
 
+The local multi-parameter candidate routes both accepted pure training
+workflows through one contiguous `[N fitted | Q lifted]` Ceres core while
+preserving their established presentation and reporting contracts. This local
+cutover changes no accepted authority and does not imply a multi-active
+mixture capability without a matching installed Provider evaluator.
+
 Before work, read doctrine revision 4 at
 `../ePC-SAFT-organization/GOVERNANCE.md`. Its future published home is
 `https://github.com/ePC-SAFT/.github/blob/main/GOVERNANCE.md`. Local policy may

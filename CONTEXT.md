@@ -54,16 +54,25 @@ with no added runtime test seam.
 
 `general_parameter_regression_status: TEN_PARAMETER_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
 
-`multi_parameter_core_status: DESIGN_FROZEN_IMPLEMENTATION_IN_PROGRESS`
+`multi_parameter_core_status: IMPLEMENTED_ACCEPTED_PURE_WORKFLOWS_CUT_OVER_LOCAL`
 
-The canonical general design now freezes one ordered `[N fitted | Q lifted]`
-Ceres layout, complete physical start vectors, an explicit evaluator-slot
-sharing map, exact full and nuisance-projected Jacobians, and the minimum
-source-bound equality/aggregate/censor observation semantics. The installed
-Provider's joint pure callback is the first real `N > 1` seam: methane and
-ethane use `N = 3`, `Q = 8`, and `R = 16`. This does not imply that arbitrary
-simultaneous mixture parameters are executable; each such block still needs
-one installed exact multi-active evaluator contract.
+The canonical general design and native core now implement one ordered
+`[N fitted | Q lifted]` Ceres layout, complete physical start vectors, an
+explicit evaluator-slot sharing map, exact full and nuisance-projected
+Jacobians, and value-only versus exact-Jacobian evaluation requests. A compact
+closed-form native test proves `N = 2`, `Q = 1`, full rank 3, projected rank 2,
+full-vector confirmation, structural rejection, and missing-column rank
+failure without finite differences.
+
+The installed Provider's joint pure callback is the first real `N > 1` seam.
+Accepted methane and ethane training now use the shared contiguous core with
+`N = 3`, `Q = 8`, `R = 16`, full rank 11, and nuisance-projected parameter
+rank 3. Their existing public presentation wrapper and common-pressure
+reporting solve remain, but the former duplicate pure training Ceres loop is
+gone. Frozen methane/ethane fitted values, costs, reporting predictions, and
+statuses remain within their existing numerical contracts. This does not
+imply that arbitrary simultaneous mixture parameters are executable; each
+such block still needs one installed exact multi-active evaluator contract.
 
 Pure 2B `association_energy_over_k` and `association_volume` have exact scalar
 Provider-derivative and generic Regression-mechanics evidence, but they are
