@@ -54,14 +54,19 @@ with no added runtime test seam.
 
 `general_parameter_regression_status: TEN_PARAMETER_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
 
-Pure 2B `association_energy_over_k` and `association_volume` now have a
-model-bound exact Provider `(n,V,p)` Hessian and the shared Regression
-pressure/density `2 x 2` lifted surface. They are not counted among the ten
-fit-ready families: the retained Held-2012 ethanol row is one direct density
-anchor, while Gross--Sadowski fitted all five pure parameters simultaneously
-to vapor-pressure and liquid-density series. Those source rows and their exact
-objective are not retained, so status is
-`DERIVATIVE_READY_REGRESSION_SURFACE_READY_SOURCE_SERIES_NOT_READY`.
+Pure 2B `association_energy_over_k` and `association_volume` have scalar
+derivative/mechanics evidence, but they are not counted among the ten
+fit-ready families. Gross--Sadowski fitted both together with `m`, `sigma`,
+and `epsilon/k` against vapor-pressure and liquid-density series. Regression
+therefore selects one joint five-parameter extension of the existing
+pure-saturation owner; it will not promote the one-row scalar surface into an
+association-only fitter. Baygi and Pahlavanzadeh (2015) provide a bounded MEA
+2B correlation reconstruction with an explicit property objective, target
+correlations, range, and fitted tuple. Their exact grid, starts, bounds, and
+optimizer are absent, so the selected campaign is explicitly a reconstruction
+rather than an author-run replay. Provider does not yet expose the joint
+seven-coordinate phase Hessian. Status is
+`BAYGI_MEA_2B_DESIGN_READY_PROVIDER_JOINT_CALLBACK_REQUIRED`.
 
 The user-approved 2026-07-27 destination is general parameter-family
 regression, defined in `docs/science/general-parameter-regression.md`. The

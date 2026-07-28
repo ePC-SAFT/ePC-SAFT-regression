@@ -70,6 +70,32 @@ general_parameter_regression:
   reference_campaign_role: evidence-not-component-restriction
   forbidden_interpretation: every-provider-parameter-is-fit-ready-now
   immediate_provider_gate: SATISFIED_FOR_TEN_FAMILIES
+  pure_association_recovery:
+    status: BAYGI_MEA_2B_DESIGN_READY_PROVIDER_JOINT_CALLBACK_REQUIRED
+    design_owner: docs/science/general-parameter-regression.md
+    evidence_owners:
+      - docs/research/gross-sadowski-2002-association-fitting.md
+      - docs/research/association-regression-source-locator.md
+    first_campaign: baygi-pahlavanzadeh-2015-mea-2b-correlation-reconstruction-v1
+    fitted_coordinates:
+      - segment_count
+      - segment_diameter
+      - dispersion_energy_over_k
+      - association_energy_over_k
+      - association_volume
+    regression_owner: existing-pure-saturation-ceres-engine-result-and-native-target
+    required_provider_coordinates:
+      - amount_mol
+      - volume_m3
+      - segment_count
+      - segment_diameter_angstrom
+      - dispersion_energy_over_k_kelvin
+      - association_energy_over_k_kelvin
+      - association_volume
+    required_provider_derivative_order: 2
+    required_source_rows: 15-predeclared-correlation-rows-from-303.15-to-443.15-k
+    comparison_role: published-mea-2b-tuple-and-aads-are-descriptive
+    forbidden_shortcut: independent-association-only-fit-from-one-density-row
   provider_subject: 1e571ab0a84603a51ed6994b14286f683fb12b88
   provider_wheel_sha256: 6536edc63adaa13c5c6c67c185d82c9ae232048e99dc3dc3be502708eea4410f
   provider_header_sha256: b667379c2d7106d012c6b57f96b6f32dd23ef305fe6f15a87c22ab20029008f8

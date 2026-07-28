@@ -110,11 +110,15 @@ organic-solvent/ion pair callback. The four retained Figiel rows are
 constructed nearest-pure endpoint implementation evidence, not exact
 reproduction of the paper's pure-organic fitting data or mixed-solvent
 prediction evidence.
-Pure 2B association energy and volume now have an exact model-bound Provider
-Hessian and a shared Regression pure-density surface, but remain source-series
-blocked rather than fit-ready. The single Held-2012 ethanol density anchor is
-not a substitute for the simultaneous vapor-pressure/liquid-density series
-used by Gross and Sadowski.
+Pure 2B association energy and volume have scalar derivative/mechanics
+evidence but remain blocked rather than fit-ready. Gross and Sadowski fitted
+them jointly with `m`, `sigma`, and `epsilon/k`; the selected recovery route
+is therefore one five-parameter extension of the existing pure-saturation
+owner, not an association-only fitter. The first source-bound campaign is the
+Baygi--Pahlavanzadeh 2015 MEA 2B correlation reconstruction frozen in
+`docs/science/general-parameter-regression.md`. It is not an exact replay of
+the authors' unpublished grid, starts, bounds, or optimizer. Provider does not
+yet expose the required joint seven-coordinate phase Hessian.
 Polar parameter regression is excluded from this repository's roadmap by user
 decision. The selected next engineering investment is the exact installed
 Equilibrium reactive-state value and implicit parameter-sensitivity contract
