@@ -318,6 +318,64 @@ def _problem(
     )
 
 
+def _mock_general_native_result() -> tuple[object, ...]:
+    """Return one complete native result for status/diagnostic seam tests."""
+    row = (
+        "may2015-ch4-c2h6-002",
+        "training",
+        6.0e-5,
+        9.0e-4,
+        (0.0, 0.0, 0.0, 0.0),
+        True,
+        "",
+    )
+    return (
+        "CONVERGENCE",
+        True,
+        1.0,
+        0.1,
+        2,
+        -0.01,
+        0.09,
+        "",
+        (0.0,) * 4,
+        (0.0,) * 12,
+        (2.0, 1.0),
+        2,
+        2.0,
+        (0.1,),
+        1,
+        1.0,
+        2,
+        0.0,
+        0.0,
+        True,
+        (row,),
+        "",
+        3,
+        4,
+        4,
+        3,
+    )
+
+
+def _general_result_signature(result: RegressionResult) -> tuple[object, ...]:
+    return (
+        result.parameter.final,
+        result.final_cost,
+        result.jacobian.residual_count,
+        result.jacobian.variable_count,
+        result.jacobian.full_rank,
+        result.jacobian.projected_parameter_rank,
+        result.training_row_count,
+        result.held_out_row_count,
+        result.stress_row_count,
+        result.evaluated_row_count,
+        result.skipped_row_count,
+        result.failed_row_count,
+    )
+
+
 def _pure_problem(
     model: EPCSAFT,
     family: ParameterFamily,
@@ -1370,17 +1428,35 @@ def test_general_engine_fits_dielectric_suppression_from_user_rows() -> None:
 
 def test_general_engine_fits_one_aqueous_kij_from_user_rows() -> None:
     model = _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4]
-    result = fit_parameters(_aqueous_kij_problem(model), model)
+    problem = _aqueous_kij_problem(model)
+    observations_before = problem.observations
+    fixed_context_before = tuple(
+        row.fixed_k_ij for row in problem.observations
+    )
+    assert len(fixed_context_before) == 21
+
+    result = fit_parameters(problem, model)
 
     assert result.solver_converged
     assert result.numerically_converged
     assert result.workflow_valid
     assert result.parameter.active_bound is None
+    assert len(result.problem.parameters) == 1
     assert result.jacobian.residual_count == 21
     assert result.jacobian.variable_count == 1
     assert result.jacobian.full_rank == 1
     assert result.jacobian.projected_parameter_rank == 1
     assert result.confirmations_usable
+    assert result.training_row_count == 21
+    assert result.held_out_row_count == 0
+    assert result.stress_row_count == 0
+    assert result.evaluated_row_count == 21
+    assert result.skipped_row_count == 0
+    assert result.failed_row_count == 0
+    assert problem.observations == observations_before
+    assert tuple(
+        row.fixed_k_ij for row in problem.observations
+    ) == fixed_context_before
     assert all(
         isinstance(row, DirectObservationRowDiagnostic)
         and row.evaluated
@@ -1919,9 +1995,9 @@ def test_general_kij_fit_reports_rank_confirmation_and_partition_isolation() -> 
     assert result.failed_row_count == 0
     assert result.predictive_status == "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
     assert result.residual_evaluation_count > 0
-    assert math.isfinite(result.residual_evaluation_count)
+    assert type(result.residual_evaluation_count) is int
     assert result.jacobian_evaluation_count > 0
-    assert math.isfinite(result.jacobian_evaluation_count)
+    assert type(result.jacobian_evaluation_count) is int
 
 
 def test_general_engine_tiny_solver_budget_stops_without_numerical_convergence() -> None:
@@ -1952,48 +2028,22 @@ def test_general_lij_fit_reuses_the_exact_lifted_pair_engine() -> None:
     assert result.rows[0].derivative_status == "EXACT_PROVIDER_HESSIAN"
 
 
+@pytest.mark.parametrize(
+    ("diagnostic_index", "diagnostic_value"),
+    (
+        pytest.param(14, 0, id="projected-rank-zero"),
+        pytest.param(12, 1.0e11, id="full-conditioning-over-limit"),
+        pytest.param(15, 1.0e11, id="projected-conditioning-over-limit"),
+    ),
+)
 def test_status_requires_converged_termination_but_not_full_lifted_rank(
     monkeypatch: pytest.MonkeyPatch,
+    diagnostic_index: int,
+    diagnostic_value: float,
 ) -> None:
     model = _model()
     problem = _problem(model)
-    row = (
-        "may2015-ch4-c2h6-002",
-        "training",
-        6.0e-5,
-        9.0e-4,
-        (0.0, 0.0, 0.0, 0.0),
-        True,
-        "",
-    )
-    native = (
-        "CONVERGENCE",
-        True,
-        1.0,
-        0.1,
-        2,
-        -0.01,
-        0.09,
-        "",
-        (0.0,) * 4,
-        (0.0,) * 12,
-        (2.0, 1.0),
-        2,
-        2.0,
-        (0.1,),
-        1,
-        1.0,
-        2,
-        0.0,
-        0.0,
-        True,
-        (row,),
-        "",
-        3,
-        4,
-        4,
-        3,
-    )
+    native = _mock_general_native_result()
     monkeypatch.setattr(
         parameter_regression._native, "solve_general", lambda *_: native
     )
@@ -2003,6 +2053,17 @@ def test_status_requires_converged_termination_but_not_full_lifted_rank(
     assert converged.numerically_converged
     assert converged.jacobian.full_rank == 2
 
+    degraded = list(native)
+    degraded[diagnostic_index] = diagnostic_value
+    monkeypatch.setattr(
+        parameter_regression._native,
+        "solve_general",
+        lambda *_: tuple(degraded),
+    )
+    diagnostically_stopped = fit_parameters(problem, model)
+    assert diagnostically_stopped.solver_converged
+    assert not diagnostically_stopped.numerically_converged
+
     monkeypatch.setattr(
         parameter_regression._native,
         "solve_general",
@@ -2011,6 +2072,28 @@ def test_status_requires_converged_termination_but_not_full_lifted_rank(
     stopped = fit_parameters(problem, model)
     assert not stopped.solver_converged
     assert not stopped.numerically_converged
+
+
+def test_active_bound_diagnostic_is_preserved(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = _model()
+    problem = _problem(model)
+    native = list(_mock_general_native_result())
+    native[5] = problem.parameters[0].upper_bound
+    native[6] = 0.0
+    native[7] = "upper"
+    monkeypatch.setattr(
+        parameter_regression._native,
+        "solve_general",
+        lambda *_: tuple(native),
+    )
+
+    result = fit_parameters(problem, model)
+
+    assert result.parameter.final == problem.parameters[0].upper_bound
+    assert result.parameter.active_bound == "upper"
+    assert result.parameter.active_bound_distance == 0.0
 
 
 def test_rows_outside_provider_temperature_domain_fail_before_ceres(
@@ -2351,6 +2434,62 @@ def test_exact_may_methane_propane_lifted_kij_jacobian_matches_directional_diffe
     assert len(jacobian) == 88 * 45
     assert exact_product == pytest.approx(
         finite_difference, rel=2.0e-7, abs=2.0e-8
+    )
+
+
+def test_may_methane_propane_kij_is_invariant_to_row_order_and_pair_identity() -> None:
+    # Two source rows keep the invariance check independent of the retained
+    # 22-row campaign while still exercising a nontrivial row reversal.
+    rows = _may_methane_propane_rows()[:2]
+    base_model = _methane_propane_model()
+    base_result = fit_parameters(
+        _may_methane_propane_problem(base_model, rows), base_model
+    )
+
+    reversed_model = _methane_propane_model()
+    reversed_result = fit_parameters(
+        _may_methane_propane_problem(reversed_model, tuple(reversed(rows))),
+        reversed_model,
+    )
+
+    identity_model = _methane_propane_model()
+    identity_problem = _may_methane_propane_problem(identity_model, rows)
+    identity_problem = replace(
+        identity_problem,
+        parameters=(
+            replace(
+                identity_problem.parameters[0],
+                identity=PairParameterIdentity("propane", "methane"),
+            ),
+        ),
+    )
+    identity_result = fit_parameters(identity_problem, identity_model)
+
+    base_signature = _general_result_signature(base_result)
+    variants = (reversed_result, identity_result)
+    assert base_result.solver_converged
+    assert base_result.numerically_converged
+    assert base_result.workflow_valid
+    for variant in variants:
+        assert variant.solver_converged
+        assert variant.numerically_converged
+        assert variant.workflow_valid
+        signature = _general_result_signature(variant)
+        assert signature[0] == pytest.approx(
+            base_signature[0], rel=0.0, abs=1.0e-14
+        )
+        assert signature[1] == pytest.approx(
+            base_signature[1], rel=0.0, abs=1.0e-14
+        )
+        assert signature[2:] == base_signature[2:]
+
+    assert identity_problem.parameters[0].identity.component_ids == (
+        "methane",
+        "propane",
+    )
+    assert identity_result.parameter.component_ids == (
+        "methane",
+        "propane",
     )
 
 
