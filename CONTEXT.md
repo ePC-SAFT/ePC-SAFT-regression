@@ -133,6 +133,19 @@ non-bound, and converges from both declared starts to
 `7.067350349980952`, compared descriptively with the paper's `7.01`.
 These digitized training rows establish fit-ready execution only.
 
+Provider commit `621adbf9f60c75a1f108256c51eb1ae14161d6b9`
+fail-closed advertises exact first derivatives of infinite-dilution
+ion-solvation Gibbs energy with respect to the three pair coordinates for the
+source-bound methanol/K+/Br- and ethanol/Na+/Cl- selections. Its wheel SHA-256
+is `8c942e9177bec1502345b5193642460166d27fcee840663a18d19d7ea3d823e2`;
+the installed header SHA-256 remains
+`16c1996e592808ed2764de7b17bead6ed06789182fe8c0e649e049e83fe9a348`.
+The shared Regression path independently fits one advertised pair from one or
+more caller-supplied solvation-Gibbs endpoints. The four retained Figiel
+near-pure endpoints are constructed, rank-1 implementation evidence. Their
+differences from the rounded Table 5 values are descriptive and do not claim
+exact recovery of the paper's unavailable pure-organic fitting targets.
+
 All 17 audited May rows reproduce the frozen `68 x 35` formulation with
 convergence, full rank 35, projected parameter rank 1, a non-bound
 `k_ij = -0.00843032298906253`, and declared-start confirmation. The same
@@ -146,8 +159,8 @@ Published methane, ethane, Figiel, and later campaigns remain positive or
 negative evidence rather than hard-coded mixture limits. The finite typed
 schema is not an arbitrary residual plugin or mutable registry. All parameter
 families other than these exact neutral-binary fixed-composition, scalar pure-
-saturation, solvation-Gibbs, and mean-ionic-activity contracts retain their
-prior readiness states.
+saturation, advertised ion-solvation, solvation-Gibbs, and mean-ionic-activity
+contracts retain their prior readiness states.
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint

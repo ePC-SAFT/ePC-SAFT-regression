@@ -141,7 +141,7 @@ and rank gates.
 | `segment_count` (`m`) | component | pure saturation pressure/density, PVT density, phase-equilibrium and caloric observations | fit-ready one-family-at-a-time for caller-supplied pure-saturation pressure/liquid-density rows on an advertised neutral pure capability; other observations pending |
 | `segment_diameter` (`sigma`) | component or declared correlation coefficient | liquid density/PVT, saturation density, phase equilibrium | fit-ready one-family-at-a-time for caller-supplied pure-saturation pressure/liquid-density rows on an advertised neutral pure capability; correlation coefficients and other observations pending |
 | `dispersion_energy_over_k` (`epsilon/k`) | component | vapor pressure, phase equilibrium, caloric and PVT observations | fit-ready one-family-at-a-time for caller-supplied pure-saturation pressure/liquid-density rows on an advertised neutral pure capability; other observations pending |
-| `k_ij` | unordered component pair | fixed-composition VLE/LLE, activity/fugacity coefficients, MIAC when the electrolyte formulation makes that pair active | fit-ready for caller-supplied fixed-composition VLE rows on an advertised neutral, nonassociating binary capability and one-at-a-time aqueous MIAC fits on an advertised water/cation/anion capability; other observation/model domains remain pending |
+| `k_ij` | unordered component pair | fixed-composition VLE/LLE, activity/fugacity coefficients, MIAC when the electrolyte formulation makes that pair active, single-ion solvation Gibbs endpoints | fit-ready for caller-supplied fixed-composition VLE rows on an advertised neutral nonassociating binary capability, one-at-a-time aqueous MIAC fits on an advertised water/cation/anion capability, and one-at-a-time solvation-Gibbs fits on an advertised organic-solvent/ion capability; other observation/model domains remain pending |
 | `l_ij` | unordered component pair | density, excess volume, and phase-equilibrium data sensitive to cross-size mixing | fit-ready for caller-supplied fixed-composition VLE rows on any installed Provider model advertising the neutral, nonassociating binary capability; other observation/model domains remain pending |
 | `association_energy_over_k` | association endpoint pair | hydrogen-bond-sensitive VLE/LLE, solvation, enthalpy, and related phase-property observations | represented by Provider; exact active derivative and Regression surface pending |
 | `association_volume` | association endpoint pair | hydrogen-bond-sensitive VLE/LLE, density, solvation, and caloric observations | represented by Provider; exact active derivative and Regression surface pending |
@@ -214,6 +214,24 @@ The fixed context is a required workflow input, not a catalog default inferred
 by Regression. Water--cation, water--anion, and cation--anion are separate
 closed Provider capabilities; fitting one does not silently activate the other
 two.
+
+For an advertised organic ion-solvation capability, every row carries the
+ordered `(solvent, cation, anion)` model, active ion, active unordered pair,
+and explicit fixed
+`(k_solvent,cation, k_solvent,anion, k_cation,anion)` context. The active pair
+replaces exactly one entry. With solver coordinate `z`, physical pair
+parameter `k = k_origin + k_scale z`, and solvation-energy scale `s_G`,
+
+```text
+r_G = (G_solv(k) - G_solv,observed) / s_G
+dr_G/dz = (d G_solv/d k_ij) * k_scale / s_G.
+```
+
+Provider owns the pure-solvent infinite-dilution reference sequence and only
+returns success after its value and derivative limits converge. Regression
+does not copy the reference sequence, Born term, or EOS. Solvent--cation,
+solvent--anion, and cation--anion coordinates are separate closed capability
+IDs. The active component must be the cation or anion, never the solvent.
 
 For the model-level Figiel dielectric ion-suppression fit, every row supplies
 the total ion mole fraction and the observed dimensionless ratio to the
@@ -327,7 +345,17 @@ J_gamma = -(gamma_model/gamma_observed)
 
 The implemented direct path accepts exactly one active parameter per problem.
 Parameter sharing is therefore explicit across rows, while the five Figiel
-Born targets are five independent one-parameter problems.
+Born targets are five independent one-parameter problems. Organic ion-solvent
+pair fits are likewise independent; other pair values remain explicit row
+inputs.
+
+The reference organic-ion campaign uses four constructed nearest-pure
+endpoints retained by Validation: K+/methanol, Br-/methanol, Na+/ethanol, and
+Cl-/ethanol. Three digitized compositions are only near unity. Therefore this
+campaign proves exact-derivative fit execution and provides a descriptive
+comparison with rounded Table 5 parameters; it is not exact reconstruction of
+the paper's pure-organic fitting data, and the remaining mixed-solvent rows
+are not duplicated as training residuals.
 
 Lifted phase-equilibrium residuals consume Provider phase-potential values,
 gradients, and Hessians. The Hessian supplies exact derivatives of pressure

@@ -568,13 +568,22 @@ def _dielectric_suppression_problem(model: EPCSAFT) -> RegressionProblem:
     )
 
 
-def _ion_solvation_kij_problem(model: EPCSAFT) -> RegressionProblem:
+def _ion_solvation_kij_problem(
+    model: EPCSAFT,
+    *,
+    capability_id: str = "ion_solvation_solvent_cation_kij_v1",
+    active_component_id: str = "potassium-cation",
+    active_pair_component_ids: tuple[str, str] = (
+        "methanol",
+        "potassium-cation",
+    ),
+) -> RegressionProblem:
     capability = next(
         capability
         for capability in parameter_capabilities(model)
         if not isinstance(capability, UnsupportedParameterCapability)
         and capability.capability_id
-        == "ion_solvation_solvent_cation_kij_v1"
+        == capability_id
     )
     targets = (("figiel2025-constructed-gsolv-Kp-methanol-011", -298.25858),)
     observations = tuple(
@@ -583,8 +592,8 @@ def _ion_solvation_kij_problem(model: EPCSAFT) -> RegressionProblem:
             source_id="figiel-constructed-k-methanol",
             source_locator=f"validation:figiel-ledger:{row_id}",
             component_ids=capability.component_ids,
-            active_component_id="potassium-cation",
-            active_pair_component_ids=("methanol", "potassium-cation"),
+            active_component_id=active_component_id,
+            active_pair_component_ids=active_pair_component_ids,
             fixed_k_ij=(0.32, 0.15, -0.35),
             temperature_k=298.15,
             pressure_pa=100_000.0,
@@ -617,7 +626,7 @@ def _ion_solvation_kij_problem(model: EPCSAFT) -> RegressionProblem:
     )
     parameter = ParameterCoordinate(
         family=ParameterFamily.K_IJ,
-        identity=PairParameterIdentity("methanol", "potassium-cation"),
+        identity=PairParameterIdentity(*active_pair_component_ids),
         capability_id=capability.capability_id,
         provider_parameter_fingerprint=capability.parameter_fingerprint,
         provider_topology_fingerprint=capability.topology_fingerprint,
@@ -903,11 +912,40 @@ def test_exact_dielectric_jacobian_matches_directional_residual_difference() -> 
     )
 
 
-def test_exact_ion_solvation_kij_jacobian_matches_directional_difference() -> None:
+@pytest.mark.parametrize(
+    ("capability_id", "active_component_id", "active_pair_component_ids"),
+    (
+        (
+            "ion_solvation_solvent_cation_kij_v1",
+            "potassium-cation",
+            ("methanol", "potassium-cation"),
+        ),
+        (
+            "ion_solvation_solvent_anion_kij_v1",
+            "bromide-anion",
+            ("methanol", "bromide-anion"),
+        ),
+        (
+            "ion_solvation_cation_anion_kij_v1",
+            "potassium-cation",
+            ("potassium-cation", "bromide-anion"),
+        ),
+    ),
+)
+def test_exact_ion_solvation_kij_jacobian_matches_directional_difference(
+    capability_id: str,
+    active_component_id: str,
+    active_pair_component_ids: tuple[str, str],
+) -> None:
     model = _aqueous_model(
         ("methanol", "potassium-cation", "bromide-anion")
     )
-    problem = _ion_solvation_kij_problem(model)
+    problem = _ion_solvation_kij_problem(
+        model,
+        capability_id=capability_id,
+        active_component_id=active_component_id,
+        active_pair_component_ids=active_pair_component_ids,
+    )
     trial = problem.parameters[0].transform.to_solver(0.32)
 
     residuals, jacobian = _evaluate_parameters(problem, model, (trial,))

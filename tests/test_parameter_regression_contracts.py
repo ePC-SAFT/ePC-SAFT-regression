@@ -233,6 +233,31 @@ def test_ion_solvation_kij_observation_binds_ion_pair_and_fixed_context() -> Non
     assert canonical_dataset_sha256((row,))
 
 
+def test_ion_solvation_kij_observation_rejects_solvent_as_active_ion() -> None:
+    with pytest.raises(
+        ValueError,
+        match="must identify the cation or anion",
+    ):
+        IonSolvationKijObservation(
+            row_id="invalid",
+            source_id="doi:example",
+            source_locator="invalid",
+            component_ids=(
+                "methanol",
+                "potassium-cation",
+                "bromide-anion",
+            ),
+            active_component_id="methanol",
+            active_pair_component_ids=("methanol", "potassium-cation"),
+            fixed_k_ij=(0.32, 0.15, -0.35),
+            temperature_k=298.15,
+            pressure_pa=100_000.0,
+            observed_solvation_gibbs_j_per_mol=-298_258.58,
+            residual_scale_j_per_mol=298_258.58,
+            partition=ObservationPartition.TRAINING,
+        )
+
+
 def test_relative_permittivity_ratio_observation_binds_one_model_parameter() -> None:
     row = RelativePermittivityRatioObservation(
         row_id="figiel-water-001",

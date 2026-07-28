@@ -713,6 +713,10 @@ class IonSolvationKijObservation:
             )
         if self.active_component_id not in self.active_pair_component_ids:
             raise ValueError("active k_ij pair must contain the active ion")
+        if self.active_component_id == self.component_ids[0]:
+            raise ValueError(
+                "active_component_id must identify the cation or anion"
+            )
         if type(self.fixed_k_ij) is not tuple or len(self.fixed_k_ij) != 3:
             raise ValueError(
                 "fixed_k_ij must contain solvent-cation, solvent-anion, and "

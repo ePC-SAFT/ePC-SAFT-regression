@@ -100,3 +100,9 @@ paths are one-family-at-a-time and do not replace the accepted paper-specific
 workflows. All other general families retain their documented pending states;
 do not broaden them to uncertainty, catalog persistence, or global-
 identifiability authority.
+The shared `k_ij` family also accepts one source-bound ion-solvation Gibbs
+endpoint at a time when an installed Provider advertises the exact
+organic-solvent/ion pair callback. The four retained Figiel rows are
+constructed nearest-pure endpoint implementation evidence, not exact
+reproduction of the paper's pure-organic fitting data or mixed-solvent
+prediction evidence.

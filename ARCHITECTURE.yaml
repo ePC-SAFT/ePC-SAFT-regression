@@ -90,6 +90,9 @@ general_parameter_regression:
   dielectric_regression_wheel_sha256: f3d9f1a728a6e4b6e2f9cc2f0286d5d8ecbad46ababbc0201f59ab7b205f0b06
   dielectric_validation_subject: 7782b8d
   dielectric_validation_evidence_sha256: 04425a6a3e303cb7b5bf7032f34c3efbf47a5c422d7dfd66931b0f2639cc7f85
+  organic_ion_kij_provider_subject: 621adbf9f60c75a1f108256c51eb1ae14161d6b9
+  organic_ion_kij_provider_wheel_sha256: 8c942e9177bec1502345b5193642460166d27fcee840663a18d19d7ea3d823e2
+  organic_ion_kij_provider_header_sha256: 16c1996e592808ed2764de7b17bead6ed06789182fe8c0e649e049e83fe9a348
   pair_reference_regression_subject: da7a44ce093201022aec2f3514d4e4fd9d8d2929
   pair_reference_regression_wheel_sha256: 3a59d2233fec51f949a7784937b54f7f66beae2476fa8e33976672a480b67137
   fit_ready_pair_families:
@@ -103,6 +106,17 @@ general_parameter_regression:
     nuisance_variables_per_row: 2
     authority_effect: none
     predictive_effect: none
+    additional_direct_observable_domain:
+      family: k_ij
+      model_domain: figiel-single-ion-solvation
+      observation_contract: ion-solvation-gibbs-energy
+      provider_derivative_order: 1
+      parameter_count_per_problem: 1
+      nuisance_variables: 0
+      admitted_pair_coordinates: [solvent-cation, solvent-anion, cation-anion]
+      reference_shape: four-independent-1x1-problems
+      reference_source_classification: constructed-nearest-pure-endpoints
+      exact_paper_method_recovery: false
   fit_ready_scalar_pure_families:
     families: [segment_count, segment_diameter, dispersion_energy_over_k]
     identity: component
@@ -545,7 +559,7 @@ parameter_family_readiness:
   reactive_or_temperature_dependent_parameters: NOT_READY
   general_parameter_regression: PARTIAL_EIGHT_FAMILIES_FIT_READY
   mixture_independent_scalar_pure: FIT_READY_PURE_SATURATION_PRESSURE_AND_LIQUID_DENSITY
-  mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_VLE_AND_ADVERTISED_AQUEOUS_MIAC
+  mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_VLE_ADVERTISED_AQUEOUS_MIAC_AND_ADVERTISED_ORGANIC_ION_SOLVATION
   mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
   mixture_independent_born_diameter: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_solvation_factor: FIT_READY_ADVERTISED_MEAN_IONIC_ACTIVITY_DOMAIN
