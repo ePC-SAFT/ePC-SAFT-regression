@@ -1271,6 +1271,7 @@ def test_exact_solvation_factor_jacobian_matches_directional_residual_difference
     )
 
 
+@pytest.mark.campaign
 def test_general_engine_fits_water_solvation_factor_over_all_nabr_rows() -> None:
     model = _fixed_water_factor_model(FIGIEL_WATER_SOLVATION_FACTOR_V1)
     result = fit_parameters(_solvation_factor_problem(model), model)
@@ -1386,6 +1387,7 @@ def test_exact_ion_solvation_kij_jacobian_matches_directional_difference(
     )
 
 
+@pytest.mark.campaign
 def test_general_engine_fits_organic_ion_solvation_kij_endpoint() -> None:
     model = _aqueous_model(
         ("methanol", "potassium-cation", "bromide-anion")
@@ -1430,6 +1432,7 @@ def test_general_engine_fits_dielectric_suppression_from_user_rows() -> None:
     )
 
 
+@pytest.mark.campaign
 def test_general_engine_fits_one_aqueous_kij_from_user_rows() -> None:
     model = _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4]
     problem = _aqueous_kij_problem(model)
@@ -1488,6 +1491,7 @@ def test_exact_born_diameter_jacobian_matches_directional_residual_difference() 
     )
 
 
+@pytest.mark.campaign
 def test_ionic_region_permittivity_has_exact_rank_one_fit() -> None:
     target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[1]
     model = _aqueous_model(target.component_order)
@@ -1539,6 +1543,7 @@ def test_ionic_region_permittivity_rejects_a_mislabeled_observable_ion() -> None
         fit_parameters(mislabeled, model)
 
 
+@pytest.mark.campaign
 def test_solvent_relative_permittivity_has_exact_rank_one_fit() -> None:
     target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[1]
     model = _aqueous_model(target.component_order)
@@ -1590,6 +1595,7 @@ def test_solvent_relative_permittivity_rejects_a_mislabeled_observable_ion() -> 
         fit_parameters(mislabeled, model)
 
 
+@pytest.mark.campaign
 @pytest.mark.parametrize(
     ("target_index", "expected"),
     tuple(
@@ -1707,6 +1713,7 @@ def test_installed_provider_advertises_scalar_pure_parameter_contracts() -> None
     assert all(capability.state_coordinate_count == 2 for capability in capabilities)
 
 
+@pytest.mark.campaign
 def test_installed_provider_advertises_bounded_pure_association_contracts() -> None:
     capabilities = tuple(
         capability
@@ -1736,6 +1743,7 @@ def test_installed_provider_advertises_bounded_pure_association_contracts() -> N
     )
 
 
+@pytest.mark.campaign
 @pytest.mark.parametrize(
     "family",
     (
@@ -1776,6 +1784,7 @@ def test_exact_pure_density_association_jacobian_matches_directional_difference(
         assert exact == pytest.approx(finite_difference, rel=3.0e-6, abs=1.0e-9)
 
 
+@pytest.mark.campaign
 @pytest.mark.parametrize(
     "family",
     (
@@ -1888,11 +1897,11 @@ def test_native_general_engine_rejects_nonpositive_pure_residual_scale() -> None
     problem = _pure_problem(model, ParameterFamily.SEGMENT_COUNT)
     capability = _capability(model, ParameterFamily.SEGMENT_COUNT)
     payload = list(_native_payload(problem, capability))
-    rows = list(payload[16])
+    rows = list(payload[-3])
     row = list(rows[0])
     row[4] = 0.0
     rows[0] = tuple(row)
-    payload[16] = tuple(rows)
+    payload[-3] = tuple(rows)
 
     with pytest.raises(RuntimeError, match="positive and ordered"):
         parameter_regression._native.evaluate_general(
@@ -1905,11 +1914,11 @@ def test_native_general_engine_rejects_nonfinite_scaled_result() -> None:
     problem = _pure_problem(model, ParameterFamily.SEGMENT_COUNT)
     capability = _capability(model, ParameterFamily.SEGMENT_COUNT)
     payload = list(_native_payload(problem, capability))
-    rows = list(payload[16])
+    rows = list(payload[-3])
     row = list(rows[0])
     row[4] = 1.0e-320
     rows[0] = tuple(row)
-    payload[16] = tuple(rows)
+    payload[-3] = tuple(rows)
 
     with pytest.raises(RuntimeError, match="assembled residual or Jacobian"):
         parameter_regression._native.evaluate_general(
@@ -2410,6 +2419,18 @@ def test_may_methane_propane_source_identity_and_transform() -> None:
     assert observed == expected
     rows = _may_methane_propane_rows()
     problem = _may_methane_propane_problem(_methane_propane_model(), rows)
+    bundle = _methane_propane_bundle()
+    pair_records = tuple(
+        record
+        for record in bundle.records
+        if isinstance(record, PairParameterRecord)
+    )
+    assert bundle.purpose == "user-provided"
+    assert problem.observations[0].component_ids == ("methane", "propane")
+    assert len(pair_records) == 1
+    assert pair_records[0].component_id_a == "methane"
+    assert pair_records[0].component_id_b == "propane"
+    assert float(pair_records[0].value) == 0.0
     assert problem.sources[0].source_artifact_sha256 == (
         "53fd1bdd55dc6807ec76cf88626438d8dfceb3ec09149d4405ea36cfbe6b842a"
     )
@@ -2424,22 +2445,6 @@ def test_may_methane_propane_source_identity_and_transform() -> None:
         and record["u_y_propane"] and record["uc_y_propane"]
         for record in records
     )
-
-
-def test_may_methane_propane_bundle_is_user_provided_and_pair_initialized() -> None:
-    bundle = _methane_propane_bundle()
-    model = EPCSAFT(bundle.select(("methane", "propane")))
-    assert bundle.purpose == "user-provided"
-    assert model.component_ids == ("methane", "propane")
-    pair_records = tuple(
-        record
-        for record in bundle.records
-        if isinstance(record, PairParameterRecord)
-    )
-    assert len(pair_records) == 1
-    assert pair_records[0].component_id_a == "methane"
-    assert pair_records[0].component_id_b == "propane"
-    assert float(pair_records[0].value) == 0.0
 
 
 def test_exact_may_methane_propane_lifted_kij_jacobian_matches_directional_difference() -> None:

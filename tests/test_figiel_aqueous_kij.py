@@ -172,6 +172,7 @@ def test_aqueous_kij_runtime_is_one_private_native_owner() -> None:
     ] == "figiel-2025-aqueous-kij-v1"
 
 
+@pytest.mark.campaign
 def test_aqueous_kij_requires_only_the_bounded_batch_callback() -> None:
     specification = epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1
     models = _aqueous_kij_models(specification)
@@ -209,6 +210,7 @@ def test_aqueous_kij_rejects_provider_truncated_before_bounded_batch() -> None:
     assert keepalive
 
 
+@pytest.mark.campaign
 def test_aqueous_kij_residual_jacobian_maps_all_exact_provider_columns() -> None:
     specification = epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1
     models = _aqueous_kij_models(specification)
@@ -233,6 +235,7 @@ def test_aqueous_kij_residual_jacobian_maps_all_exact_provider_columns() -> None
         assert actual == pytest.approx(expected, rel=1.0e-14, abs=1.0e-14)
 
 
+@pytest.mark.campaign
 def test_aqueous_kij_exact_jacobian_matches_callback_value_direction() -> None:
     specification = epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1
     models = _aqueous_kij_models(specification)

@@ -24,7 +24,6 @@ from epcsaft_regression.records import (
     MEA_SATURATION_FIT_V1,
     METHANE_SATURATION_FIT_V1,
     PROPANE_SATURATION_FIT_V1,
-    PureSaturationFitSpecification,
     load_pure_saturation_dataset,
 )
 import epcsaft_regression.workflow as workflow
@@ -339,6 +338,7 @@ def test_mea_exact_jacobian_matches_directional_residual_difference() -> None:
     )
 
 
+@pytest.mark.campaign
 def test_mea_joint_fit_reproduces_the_source_correlation_targets(
     mea_fit_result: object,
 ) -> None:
@@ -400,6 +400,7 @@ def test_mea_joint_fit_reproduces_the_source_correlation_targets(
     )
 
 
+@pytest.mark.campaign
 def test_mea_terminal_smooth_objective_jacobian_is_directionally_stable(
     mea_fit_result: object,
 ) -> None:

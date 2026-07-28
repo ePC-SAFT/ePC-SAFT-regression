@@ -95,6 +95,7 @@ def test_public_surface_adds_only_the_closed_figiel_workflow() -> None:
         assert not hasattr(epcsaft_regression, excluded)
 
 
+@pytest.mark.campaign
 def test_installed_provider_born_derivatives_match_step_halved_value_differences() -> None:
     specification = FIGIEL_BORN_DIAMETER_TRACER_V1
     models = _models()
@@ -131,6 +132,7 @@ def test_installed_provider_born_derivatives_match_step_halved_value_differences
         )
 
 
+@pytest.mark.campaign
 def test_five_ion_born_fit_accepts_observable_recovery_and_reports_parameter_deltas() -> None:
     result = epcsaft_regression.fit_figiel_born_diameters(models=_models())
 

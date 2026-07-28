@@ -83,6 +83,7 @@ def test_water_factor_contract_is_one_parameter_over_all_nabr_rows() -> None:
     assert specification.rank_threshold_multiplier == 100.0
     assert specification.start_agreement_max_abs == 1.0e-5
 
+@pytest.mark.campaign
 def test_water_factor_fit_is_rank_one_and_start_confirmed() -> None:
     result = epcsaft_regression.fit_figiel_water_solvation_factor()
 
@@ -130,6 +131,7 @@ def test_water_factor_fit_is_rank_one_and_start_confirmed() -> None:
         )
 
 
+@pytest.mark.campaign
 def test_water_factor_exact_jacobian_matches_centered_callback_values() -> None:
     specification = epcsaft_regression.FIGIEL_WATER_SOLVATION_FACTOR_V1
     model = _fixed_water_factor_model(specification)
