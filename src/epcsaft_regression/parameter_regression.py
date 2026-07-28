@@ -373,6 +373,7 @@ class ParameterCoordinate:
         }
         model_units = {
             ParameterFamily.DIELECTRIC_ION_SUPPRESSION_COEFFICIENT: "1",
+            ParameterFamily.IONIC_REGION_RELATIVE_PERMITTIVITY: "1",
             ParameterFamily.ASSOCIATION_ENERGY_OVER_K: "K",
             ParameterFamily.ASSOCIATION_VOLUME: "1",
         }
@@ -401,7 +402,8 @@ class ParameterCoordinate:
                 "segment_count, segment_diameter, and "
                 "dispersion_energy_over_k, born_diameter, or "
                 "solvation_factor, or dielectric_ion_suppression_coefficient"
-                ", association_energy_over_k, or association_volume"
+                ", ionic_region_relative_permittivity, "
+                "association_energy_over_k, or association_volume"
             )
         _require_nonempty_string(self.capability_id, "capability_id")
         _require_sha256(
@@ -1427,6 +1429,18 @@ def _matched_capability(
                 raise ValueError(
                     "solvation-Gibbs observation does not match the Provider "
                     "direct-observable capability"
+                )
+            if (
+                capability.capability_id
+                == "ion_solvation_ionic_region_permittivity_v1"
+                and (
+                    len(capability.component_ids) < 2
+                    or row.active_component_id != capability.component_ids[1]
+                )
+            ):
+                raise ValueError(
+                    "solvation-Gibbs observation active ion does not match "
+                    "the Provider callback's fixed observable ion"
                 )
         elif isinstance(row, RelativePermittivityRatioObservation):
             if row.pressure_pa != 100_000.0:

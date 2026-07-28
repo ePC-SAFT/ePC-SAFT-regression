@@ -2,8 +2,8 @@
 
 Status: neutral-binary `k_ij`/`l_ij`, scalar pure
 `m`/`sigma`/`epsilon-k`, Born-diameter, solvation-factor, and model-level
-dielectric ion-suppression families fit-ready for their typed observation
-contracts; broader families pending
+dielectric ion-suppression and ionic-region-permittivity families fit-ready
+for their typed observation contracts; broader families pending
 
 Date: 2026-07-27
 
@@ -149,6 +149,7 @@ and rank gates.
 | `born_diameter` | ion component | source-defined single-ion solvation Gibbs energy under the advertised fixed-state reference path | fit-ready one ion at a time for caller-supplied solvation-Gibbs targets on an installed direct-observable capability; five Figiel ions are reference evidence |
 | `solvation_factor` | applicable component | MIAC under the advertised fixed-state reference path | fit-ready one component factor at a time for caller-supplied mean-ionic-activity rows on an installed direct-observable capability; 21 NaBr rows are reference evidence |
 | `dielectric_ion_suppression_coefficient` | model | salt-free-normalized relative permittivity over a rank-sufficient ion-mole-fraction range | fit-ready one coefficient at a time on an installed capability advertising the exact relative-permittivity value/first derivative; 36 digitized Figiel water/methanol rows are reference evidence |
+| `ionic_region_relative_permittivity` | model | source-defined single-ion solvation Gibbs energy under an advertised SSM+DS fixed-state reference path | fit-ready one model coordinate at a time on an installed value/first-derivative capability; the sodium Table S5 target gives a `1 x 1`, rank-1, non-bound capability fit at `7.624377291400448`, while Figiel's fixed value `8` is descriptive rather than a fitted reference target |
 | other dielectric and ion-suppression coefficients | component/model/correlation term | dielectric, MIAC, osmotic/activity, solvation, or phase observations over a rank-sufficient state range | represented families vary; exact active derivatives and Regression surface pending |
 | polar coefficients | component/correlation term | polar-mixture VLE, PVT, caloric, dielectric, or other source-defined polar observables | represented families vary; exact active derivatives and Regression surface pending |
 | temperature-dependent coefficients | named correlation term | observations spanning enough temperatures to identify every active coefficient | represented correlations vary; exact active derivatives and Regression surface pending |
@@ -595,13 +596,19 @@ prediction evidence, or Provider-catalog authority.
    non-bound training solve and recovers `7.067350349980952` versus the
    paper's descriptive `7.01`; the digitized rows define no scientific or
    predictive cutoff.
-7. **Partial for pure 2B association.** Exact Provider Hessians and the
+7. **Complete for model-level ionic-region relative permittivity.** Admit one
+   positive SSM+DS coordinate from source-bound solvation-Gibbs targets on an
+   installed model-bound callback. The sodium Table S5 capability check is
+   `1 x 1`, rank 1, non-bound, and confirmed from starts 4 and 12; its fitted
+   `7.624377291400448` is in-sample mechanics evidence, not recovery of a
+   parameter that Figiel fitted or a shared multi-model value.
+8. **Partial for pure 2B association.** Exact Provider Hessians and the
    Regression pure-density surface exist for the sole symmetric association
    pair. Recovery remains source-blocked until the original simultaneous
    vapor-pressure/liquid-density rows and objective are retained. General
    association endpoints and an explicit `k_hb_ij` combining-rule coordinate
    remain separate future capabilities.
-8. Add polar, remaining dielectric, and temperature-dependent families as
+9. Add polar, remaining dielectric, and temperature-dependent families as
    separately evidenced capabilities rather than new engines. Equilibrium-coupled
    observations remain blocked by the dependency doctrine and are not part of
    this sequence.

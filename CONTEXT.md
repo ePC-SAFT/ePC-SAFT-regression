@@ -52,7 +52,7 @@ with no added runtime test seam.
 
 `next_figiel_family_status: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED`
 
-`general_parameter_regression_status: EIGHT_PARAMETER_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
+`general_parameter_regression_status: NINE_PARAMETER_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
 
 Pure 2B `association_energy_over_k` and `association_volume` now have a
 model-bound exact Provider `(n,V,p)` Hessian and the shared Regression
@@ -65,7 +65,7 @@ objective are not retained, so status is
 
 The user-approved 2026-07-27 destination is general parameter-family
 regression, defined in `docs/science/general-parameter-regression.md`. The
-first eight families are implemented. Caller-supplied, source-bound
+first nine families are implemented. Caller-supplied, source-bound
 fixed-composition VLE rows may independently fit one shared `k_ij` or `l_ij`
 for any neutral, nonassociating binary model whose installed Provider
 descriptor advertises the corresponding exact `(n1,n2,V,pair_parameter)`
@@ -74,6 +74,15 @@ and target, one Ceres engine/result, exact derivatives, caller-declared
 bounds/scales/starts/volume policy, full and projected rank diagnostics, and
 isolated training/reporting partitions. Unknown Provider descriptor members
 are reported unsupported and cannot be requested dynamically.
+
+The ninth family is model-level
+`ionic_region_relative_permittivity`. On an installed Provider advertising
+the exact SSM+DS solvation-Gibbs value/first derivative, callers may fit one
+coordinate from source-bound single-ion solvation targets through the same
+direct-observable Ceres path. The sodium Table S5 capability check is
+full-rank, non-bound, and confirmed at `7.624377291400448`; Figiel reports
+`8` as fixed model input, so this is fit-mechanics evidence rather than
+recovery of a published fitted value or a shared multi-model parameter.
 
 Caller-supplied pure-saturation pressure and liquid-density rows may
 independently fit one component `segment_count`, `segment_diameter`, or

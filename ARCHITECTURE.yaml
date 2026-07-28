@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-eight-general-families-fit-ready
+status: authoritative-methane-and-ethane-with-nine-general-families-fit-ready
 
 authority:
   accepted_capabilities:
@@ -48,7 +48,7 @@ scope: >-
   liquid-density rows on a matching neutral pure capability.
 
 general_parameter_regression:
-  status: EIGHT_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
+  status: NINE_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
   design_owner: docs/science/general-parameter-regression.md
   objective: >-
     Fit any admitted continuous ePC-SAFT parameter for any Provider-supported
@@ -69,7 +69,7 @@ general_parameter_regression:
     observation_schema: finite-typed-source-bound
   reference_campaign_role: evidence-not-component-restriction
   forbidden_interpretation: every-provider-parameter-is-fit-ready-now
-  immediate_provider_gate: SATISFIED_FOR_EIGHT_FAMILIES
+  immediate_provider_gate: SATISFIED_FOR_NINE_FAMILIES
   provider_subject: 1e571ab0a84603a51ed6994b14286f683fb12b88
   provider_wheel_sha256: 6536edc63adaa13c5c6c67c185d82c9ae232048e99dc3dc3be502708eea4410f
   provider_header_sha256: b667379c2d7106d012c6b57f96b6f32dd23ef305fe6f15a87c22ab20029008f8
@@ -97,6 +97,10 @@ general_parameter_regression:
   organic_ion_kij_regression_wheel_sha256: efc3b421ad94f4448ffce630528911363cc5be7565de2a5fca0e7787a6e68f2d
   organic_ion_kij_validation_subject: 9857a1ac058038f8b7664cfe41ab06729f661715
   organic_ion_kij_validation_evidence_sha256: e34f0033de804afcc3390002dee2e153a1dd80a42b0fe01080d965257a1ba0f9
+  ionic_permittivity_provider_subject: 6ba60e9a652f16366a8c21ef1e09d160983d6570
+  ionic_permittivity_provider_tree: 9ff687960230bb2945cf0aad0c01935da7ffb0ee
+  ionic_permittivity_provider_wheel_sha256: 5a4da3ffe31432d210d589a76f8d8e3004b3af12a42cdec6060ce8a8380d567a
+  ionic_permittivity_provider_header_sha256: 11105a0fb34221226ab3aca01ad6fd101bbb6407c8ef544da61db845c924c453
   pair_reference_regression_subject: da7a44ce093201022aec2f3514d4e4fd9d8d2929
   pair_reference_regression_wheel_sha256: 3a59d2233fec51f949a7784937b54f7f66beae2476fa8e33976672a480b67137
   fit_ready_pair_families:
@@ -142,7 +146,7 @@ general_parameter_regression:
     authority_effect: none
     predictive_effect: none
   fit_ready_direct_observable_families:
-    families: [born_diameter, solvation_factor, dielectric_ion_suppression_coefficient]
+    families: [born_diameter, solvation_factor, dielectric_ion_suppression_coefficient, ionic_region_relative_permittivity]
     parameter_count_per_problem: 1
     nuisance_variables: 0
     provider_derivative_order: 1
@@ -156,6 +160,10 @@ general_parameter_regression:
     dielectric_reference_shape: 36x1
     dielectric_reference_fitted_parameter: 7.067350349980952
     dielectric_published_descriptive_comparison: 7.01
+    ionic_permittivity_observation_contract: solvation-gibbs-energy
+    ionic_permittivity_reference_shape: 1x1
+    ionic_permittivity_reference_fitted_parameter: 7.624377291400448
+    ionic_permittivity_published_fixed_comparison: 8
     reference_full_rank: 1
     reference_projected_parameter_rank: 1
     authority_effect: none

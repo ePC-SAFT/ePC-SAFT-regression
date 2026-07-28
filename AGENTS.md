@@ -94,7 +94,9 @@ supplied pure-saturation rows; one Born diameter for caller-supplied
 solvation-Gibbs targets; and one solvation factor for caller-supplied mean-
 ionic-activity rows; and one model-level dielectric ion-suppression
 coefficient for caller-supplied relative-permittivity-ratio rows on matching
-installed Provider capabilities. They remain authority-neutral and are not
+installed Provider capabilities; and one model-level ionic-region relative
+permittivity for caller-supplied solvation-Gibbs targets on a matching SSM+DS
+capability. They remain authority-neutral and are not
 restricted to the reference campaigns. The scalar pure and direct-observable
 paths are one-family-at-a-time and do not replace the accepted paper-specific
 workflows. All other general families retain their documented pending states;

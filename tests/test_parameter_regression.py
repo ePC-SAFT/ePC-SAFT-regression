@@ -596,6 +596,76 @@ def _born_diameter_problem(
     )
 
 
+def _ionic_region_permittivity_problem(model: EPCSAFT) -> RegressionProblem:
+    specification = FIGIEL_BORN_DIAMETER_TRACER_V1
+    target = specification.targets[1]
+    capability = _capability(
+        model, ParameterFamily.IONIC_REGION_RELATIVE_PERMITTIVITY
+    )
+    observation = SolvationGibbsObservation(
+        row_id=target.target_id,
+        source_id="figiel-2025-s5-reported-averages",
+        source_locator=f"{specification.source_locator}:{target.target_id}",
+        component_ids=target.component_order,
+        active_component_id=target.active_component_id,
+        temperature_k=specification.temperature_k,
+        pressure_pa=specification.pressure_pa,
+        observed_solvation_gibbs_j_per_mol=target.target_j_per_mol,
+        residual_scale_j_per_mol=abs(target.target_j_per_mol),
+        partition=ObservationPartition.TRAINING,
+    )
+    source = SourceDescriptor(
+        source_id="figiel-2025-s5-reported-averages",
+        citation=(
+            "Figiel, Yu, and Held (2025), SI Table S5 reported-average "
+            "water solvation Gibbs energies."
+        ),
+        durable_locator=specification.source_si_doi,
+        source_artifact_sha256=specification.packaged_targets_sha256,
+        canonical_dataset_sha256=canonical_dataset_sha256((observation,)),
+        transformation_record=(
+            "Converted the sodium reported average from kJ/mol to J/mol; "
+            "the 27 supporting rows are provenance, not residual duplication."
+        ),
+        units_and_bases=(
+            "T/K, P/Pa, solvation Gibbs energy/(J/mol), and dimensionless "
+            "ionic-region relative permittivity."
+        ),
+        use_basis=(
+            "One in-sample derivative and scalar-fit capability check; "
+            "Figiel reports the permittivity as fixed model input."
+        ),
+        residual_scale_rationale=(
+            "Scale the Gibbs-energy difference by the reported-target "
+            "magnitude; this is a numerical scale, not uncertainty."
+        ),
+    )
+    parameter = ParameterCoordinate(
+        family=ParameterFamily.IONIC_REGION_RELATIVE_PERMITTIVITY,
+        identity=ModelParameterIdentity(),
+        capability_id=capability.capability_id,
+        provider_parameter_fingerprint=capability.parameter_fingerprint,
+        provider_topology_fingerprint=capability.topology_fingerprint,
+        unit="1",
+        transform=AffineParameterTransform(origin=8.0, scale=2.0),
+        lower_bound=1.01,
+        upper_bound=50.0,
+        starts=(4.0, 12.0),
+    )
+    return RegressionProblem(
+        sources=(source,),
+        parameters=(parameter,),
+        observations=(observation,),
+        maximum_condition_number=1.0e10,
+        maximum_iterations=50,
+        function_tolerance=1.0e-12,
+        gradient_tolerance=1.0e-12,
+        parameter_tolerance=1.0e-12,
+        confirmation_parameter_scaled_max_delta=1.0e-5,
+        confirmation_cost_relative_delta=1.0e-8,
+    )
+
+
 def _dielectric_suppression_problem(model: EPCSAFT) -> RegressionProblem:
     capability = _capability(
         model,
@@ -899,6 +969,32 @@ def test_installed_provider_advertises_exact_direct_observable_contracts() -> No
         (),
     )
 
+    ionic_permittivity = _capability(
+        _aqueous_model(
+            ("water", "sodium-cation", "chloride-anion")
+        ),
+        ParameterFamily.IONIC_REGION_RELATIVE_PERMITTIVITY,
+    )
+    assert (
+        ionic_permittivity.capability_id,
+        ionic_permittivity.coordinate_kinds,
+        ionic_permittivity.coordinate_units,
+        ionic_permittivity.derivative_order,
+        ionic_permittivity.identity_shape,
+        ionic_permittivity.observation_contract,
+        ionic_permittivity.model_domain,
+        ionic_permittivity.active_component_ids,
+    ) == (
+        "ion_solvation_ionic_region_permittivity_v1",
+        ("ionic_region_relative_permittivity",),
+        ("dimensionless",),
+        1,
+        "model",
+        "ion_solvation_gibbs",
+        "figiel_water_single_ion",
+        (),
+    )
+
 
 def test_installed_provider_advertises_each_aqueous_kij_miac_contract() -> None:
     model = _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4]
@@ -1149,6 +1245,57 @@ def test_exact_born_diameter_jacobian_matches_directional_residual_difference() 
     assert jacobian[0] == pytest.approx(
         finite_difference, rel=2.0e-7, abs=2.0e-9
     )
+
+
+def test_ionic_region_permittivity_has_exact_rank_one_fit() -> None:
+    target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[1]
+    model = _aqueous_model(target.component_order)
+    problem = _ionic_region_permittivity_problem(model)
+    trial = problem.parameters[0].transform.to_solver(8.0)
+
+    residuals, jacobian = _evaluate_parameters(problem, model, (trial,))
+    step = 1.0e-5
+    plus = _evaluate_parameters(problem, model, (trial + step,))[0]
+    minus = _evaluate_parameters(problem, model, (trial - step,))[0]
+    finite_difference = (plus[0] - minus[0]) / (2.0 * step)
+    assert len(residuals) == len(jacobian) == 1
+    assert jacobian[0] == pytest.approx(
+        finite_difference, rel=2.0e-7, abs=2.0e-9
+    )
+
+    result = fit_parameters(problem, model)
+    assert result.solver_converged
+    assert result.numerically_converged
+    assert result.workflow_valid
+    assert result.parameter.active_bound is None
+    assert 1.01 < result.parameter.final < 50.0
+    assert result.jacobian.full_rank == 1
+    assert result.jacobian.projected_parameter_rank == 1
+    assert result.confirmations_usable
+    assert isinstance(result.rows[0], DirectObservationRowDiagnostic)
+    assert abs(result.rows[0].scaled_residual) <= 1.0e-10
+    assert result.rows[0].derivative_status == (
+        "EXACT_PROVIDER_FIRST_DERIVATIVE"
+    )
+
+
+def test_ionic_region_permittivity_rejects_a_mislabeled_observable_ion() -> None:
+    model = _aqueous_model(
+        ("water", "sodium-cation", "chloride-anion")
+    )
+    problem = _ionic_region_permittivity_problem(model)
+    mislabeled = _replace_observations(
+        problem,
+        (
+            replace(
+                problem.observations[0],
+                active_component_id="chloride-anion",
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="active ion"):
+        fit_parameters(mislabeled, model)
 
 
 @pytest.mark.parametrize(
