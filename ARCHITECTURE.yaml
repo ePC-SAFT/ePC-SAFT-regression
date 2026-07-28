@@ -71,48 +71,24 @@ general_parameter_regression:
   forbidden_interpretation: every-provider-parameter-is-fit-ready-now
   immediate_provider_gate: SATISFIED_FOR_TEN_FAMILIES
   pure_association_recovery:
-    status: BAYGI_EQ4_INSPIRED_CORRELATION_REFIT_PACKAGE_CANDIDATE
+    status: NOT_FIT_READY_SOURCE_CONTRACT_INCOMPLETE
     design_owner: docs/science/general-parameter-regression.md
     evidence_owners:
       - docs/research/gross-sadowski-2002-association-fitting.md
       - docs/research/association-regression-source-locator.md
-    first_campaign: baygi-pahlavanzadeh-2015-mea-2b-correlation-reconstruction-v1
-    fitted_coordinates:
+    intended_joint_coordinates:
       - segment_count
       - segment_diameter
       - dispersion_energy_over_k
       - association_energy_over_k
       - association_volume
-    regression_owner: existing-pure-saturation-ceres-engine-result-and-native-target
-    required_provider_coordinates:
-      - amount_mol
-      - volume_m3
-      - segment_count
-      - segment_diameter_angstrom
-      - dispersion_energy_over_k_kelvin
-      - association_energy_over_k_kelvin
-      - association_volume
-    required_provider_derivative_order: 2
-    development_provider_subject: c0e526b
-    provider_association_basis: baygi-2015-equation-4-temperature-dependent-diameter-cubed
-    standard_provider_association_basis_unchanged: sigma-cubed
-    regression_preflight:
-      residual_jacobian_shape: 30x5
-      full_rank: 5
-      parameter_rank: 5
-      primary_termination: CONVERGENCE
-      confirmation_termination: CONVERGENCE
-      confirmation_parameter_scaled_max_delta: 4.41369601431596e-05
-      confirmation_cost_relative_delta: 7.040276730647146e-08
-      reporting_rows_physically_valid: 15-of-15
-      pressure_aad_percent: 0.0223110056352493
-      liquid_density_aad_percent: 0.04588968414644012
-      published_tuple_pressure_aad_percent_on_frozen_grid: 3.4008154117537406
-      published_tuple_liquid_density_aad_percent_on_frozen_grid: 0.12882019477715204
-      smooth_absolute_relative_error_delta: 0.0001
-    required_source_rows: 15-predeclared-correlation-rows-from-303.15-to-443.15-k
-    comparison_role: published-mea-2b-tuple-and-aads-are-descriptive
-    forbidden_shortcut: independent-association-only-fit-from-one-density-row
+    retained_evidence_role: source-and-formulation-provenance-only
+    packaged_application_specific_runtime: none
+    missing_gate: source-complete-generic-joint-observation-contract
+    forbidden_shortcuts:
+      - association-only-fit-from-one-density-row
+      - paper-specific-component-dispatch
+      - regression-owned-equilibrium-solver
   provider_subject: 1e571ab0a84603a51ed6994b14286f683fb12b88
   provider_wheel_sha256: 6536edc63adaa13c5c6c67c185d82c9ae232048e99dc3dc3be502708eea4410f
   provider_header_sha256: b667379c2d7106d012c6b57f96b6f32dd23ef305fe6f15a87c22ab20029008f8
@@ -658,7 +634,7 @@ parameter_family_readiness:
   constant_methane_ethane_kij:
     status: NOT_READY_DEFERRED_NONPRODUCTION_UNDER_D023
     retained_evidence_authority: D-022
-  association_parameters: LOCAL_PACKAGE_CANDIDATE_JOINT_PURE_2B_SOURCE_REFIT
+  association_parameters: NOT_FIT_READY_SOURCE_CONTRACT_INCOMPLETE
   polar_parameters: EXCLUDED_FROM_REGRESSION_ROADMAP_BY_USER_DECISION
   electrolyte_born_parameters: FIT_READY_DIRECT_OBSERVABLE_AUTHORITY_NEUTRAL_NO_CATALOG_ADMISSION
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
@@ -673,7 +649,7 @@ parameter_family_readiness:
   model_dielectric_ion_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
   mixture_independent_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   model_ionic_region_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
-  mixture_independent_association: PARTIAL_PURE_2B_MODEL_BOUND_LOCAL_REFIT_CANDIDATE_NOT_YET_GENERAL_CALLER_DATA
+  mixture_independent_association: NOT_FIT_READY_SCALAR_DERIVATIVE_MECHANICS_ONLY
   khb_ij: NOT_READY_NOT_A_CURRENT_PROVIDER_PARAMETER_FAMILY
   next_engineering_investment_after_d026: EQUILIBRIUM_EXACT_IMPLICIT_PARAMETER_SENSITIVITY_FOR_MEA
   required_prior_gate: D026_INSTALLED_TWO_LIQUID_STAGE_II_III
@@ -774,26 +750,23 @@ manifest:
     temporary replay receipts, and wheels remain outside the repository.
   oversized_files:
     - path: src/epcsaft_regression/parameter_regression.py
-      physical_lines: 1750
+      physical_lines: 1757
       capability_delta: finite typed component identities and pure-saturation observations
     - path: src/epcsaft_regression/native/general_fit.cpp
-      physical_lines: 3215
+      physical_lines: 3229
       capability_delta: one exact Ceres owner for pair VLE and scalar pure saturation
     - path: tests/test_parameter_regression.py
-      physical_lines: 2049
+      physical_lines: 2670
       capability_delta: scalar pure derivative, rank, fit, and reference anchors
     - path: src/epcsaft_regression/native/pure_saturation_fit.cpp
-      physical_lines: 1560
+      physical_lines: 920
       capability_delta: >-
-        one shared Ceres cost/solve/diagnostic owner for accepted lifted pure
-        saturation and the bounded Baygi-inspired five-parameter refit; the
-        private two-state Newton evaluator is retained here because it shares
-        phase/result serialization and avoids a second target, EOS owner, or
-        Equilibrium dependency
+        one shared Ceres cost/solve/diagnostic owner for the accepted lifted
+        pure-saturation workflows
     - path: src/epcsaft_regression/records.py
-      physical_lines: 1955
+      physical_lines: 1751
     - path: src/epcsaft_regression/workflow.py
-      physical_lines: 1903
+      physical_lines: 1845
     - path: src/epcsaft_regression/native/figiel_kij_fit.cpp
       physical_lines: 1218
     - path: src/epcsaft_regression/native/born_diameter_fit.cpp
@@ -832,7 +805,7 @@ evidence_limits:
 excluded:
   # These are current runtime exclusions, not denials of the staged design goal.
   - runtime neutral methane/ethane binary interaction regression; the private dependency-gated contract grants no capability
-  - association regression beyond the bounded Baygi pure-2B reconstruction
+  - fit-ready association regression beyond scalar derivative/mechanics evidence
   - electrolyte regression beyond the bounded nonproduction Figiel Born-tracer candidate
   - reactive regression
   - arbitrary residual plugins or mutable runtime registries

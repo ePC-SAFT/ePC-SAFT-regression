@@ -102,31 +102,6 @@ constexpr std::array<double, 24> propane_liquid_densities{
     504.796, 489.465, 472.968, 454.951, 434.869, 411.772,
 };
 
-constexpr std::array<const char*, 15> mea_row_ids{
-    "baygi2015-mea-sat-303.15-k", "baygi2015-mea-sat-313.15-k",
-    "baygi2015-mea-sat-323.15-k", "baygi2015-mea-sat-333.15-k",
-    "baygi2015-mea-sat-343.15-k", "baygi2015-mea-sat-353.15-k",
-    "baygi2015-mea-sat-363.15-k", "baygi2015-mea-sat-373.15-k",
-    "baygi2015-mea-sat-383.15-k", "baygi2015-mea-sat-393.15-k",
-    "baygi2015-mea-sat-403.15-k", "baygi2015-mea-sat-413.15-k",
-    "baygi2015-mea-sat-423.15-k", "baygi2015-mea-sat-433.15-k",
-    "baygi2015-mea-sat-443.15-k",
-};
-constexpr std::array<double, 15> mea_pressures{
-    74.792493740508974, 163.97999489351787, 339.30527128181086,
-    666.26629412334603, 1247.5791022135913, 2237.2411393943948,
-    3856.8569216956735, 6413.5815236682529, 10318.754568431094,
-    16106.085685889297, 24448.143132772660, 36169.907116627015,
-    52258.278731963554, 73866.669747536580, 102314.11176181004,
-};
-constexpr std::array<double, 15> mea_liquid_densities{
-    1008.5071455136253, 1000.8636356661771, 993.11381298749507,
-    985.25276972827112, 977.27521943340707, 969.17545530799509,
-    960.94730255962747, 952.58406362301287, 944.07845493110938,
-    935.42253359161987, 926.60761193914118, 917.62415743491420,
-    908.46167474161575, 899.10856595946393, 889.55196390147012,
-};
-
 std::vector<std::string> expected_identity(const std::string& component_id) {
     if (component_id == "methane") {
         return {
@@ -209,45 +184,12 @@ std::vector<std::string> expected_identity(const std::string& component_id) {
             "DENSE_QR", "SILENT",
         };
     }
-    if (component_id == "monoethanolamine") {
-        return {
-            "baygi-2015-mea-2b-correlation-grid-v1",
-            "monoethanolamine", "K", "Pa", "kg/m3",
-            "baygi-pahlavanzadeh-2015-mea-saturation-correlations",
-            "Baygi and Pahlavanzadeh, Chemical Engineering Research and Design 93 (2015) 789-799, doi:10.1016/j.cherd.2014.07.017",
-            "Equation 8 objective; Equations 9-10 and Table 1 target correlations; Table 2 monoethanolamine 2B parameters",
-            "https://doi.org/10.1016/j.cherd.2014.07.017",
-            "2026-07-28",
-            "Primary-paper calculated correlation targets retained for a deterministic reconstruction; not direct experimental observations",
-            "Fifteen predeclared temperatures T_j=303.15+10j K for j=0,...,14. Pressure evaluated as exp(92.624-10367/T-9.4699 ln(T)+1.9e-18 T^6) Pa. DIPPR-105 liquid molar density evaluated as 1.0011/0.22523^[1+(1-T/678.2)^0.21515] mol/L and converted to kg/m3 with molar mass 0.0610831 kg/mol. Source PDF SHA-256: 7e8e77577a34bd9867489faee992dd192e8cbbc728c50a26e8264b0e09192365; packaged CSV SHA-256: b69b38e874a83121424af3e6981adae9e924b1d3a87de91fdd7d8bac47dc875a.",
-            "temperature", "K", "pressure", "Pa",
-            "saturated_liquid_mass_density", "kg/m3",
-            "7e8e77577a34bd9867489faee992dd192e8cbbc728c50a26e8264b0e09192365",
-            "b69b38e874a83121424af3e6981adae9e924b1d3a87de91fdd7d8bac47dc875a",
-            "baygi-2015-mea-2b-equilibrium-observables-v1",
-            "segment_count", "segment_diameter_angstrom",
-            "dispersion_energy_over_k_kelvin",
-            "association_energy_over_k_kelvin", "association_volume",
-            "1", "angstrom", "K", "K", "1",
-            "pressure_relative_error", "liquid_density_relative_error",
-            "mol", "m3/mol", "epcsaft.native_sdk.v1",
-            "sha256:aa1a3afb4e95a96b1863fa7930434ec6a552f93d3dbdb13be81f8bb43d1b489a",
-            "p_j = start_j + parameter_scale_j * z_j",
-            "H = ((P_L-P_V)/P_obs, mu_L/RT-mu_V/RT) = 0",
-            "du/dz = -H_u^{-1} H_z",
-            "rho(e)=sqrt(e^2+1e-8)-1e-4 for pressure and liquid density",
-            "equilibrium-newton-max-iterations=60",
-            "equilibrium-line-search-max-backtracks=16",
-            "equilibrium-relative-rank-threshold=1e-12",
-            "DENSE_QR", "SILENT",
-        };
-    }
-    throw std::invalid_argument("component identity is not admitted");
+    throw std::invalid_argument("component identity must be methane, ethane, or propane");
 }
 
 bool component_specific_contract_matches(const Payload& payload) {
     if (payload.identity[1] == "methane") {
-        return payload.start == std::vector<double>{1.08, 3.555744, 157.5315}
+        return payload.start == std::array<double, 3>{1.08, 3.555744, 157.5315}
             && payload.molar_mass == 0.016043
             && payload.liquid_volume_bounds == std::array<double, 2>{2.0e-5, 1.0e-4}
             && payload.vapor_volume_bounds == std::array<double, 2>{1.5e-4, 0.1}
@@ -255,7 +197,7 @@ bool component_specific_contract_matches(const Payload& payload) {
             && payload.reporting_pressure_bounds == std::array<double, 2>{1.0e3, 1.0e7};
     }
     if (payload.identity[1] == "ethane") {
-        return payload.start == std::vector<double>{1.6069, 3.5206, 191.42}
+        return payload.start == std::array<double, 3>{1.6069, 3.5206, 191.42}
             && payload.molar_mass == 0.030070
             && payload.liquid_volume_bounds == std::array<double, 2>{2.0e-5, 1.0e-4}
             && payload.vapor_volume_bounds == std::array<double, 2>{1.5e-4, 100.0}
@@ -263,34 +205,12 @@ bool component_specific_contract_matches(const Payload& payload) {
             && payload.reporting_pressure_bounds == std::array<double, 2>{1.0, 1.0e7};
     }
     if (payload.identity[1] == "propane") {
-        return payload.start == std::vector<double>{2.002, 3.6184, 208.11}
+        return payload.start == std::array<double, 3>{2.002, 3.6184, 208.11}
             && payload.molar_mass == 0.044096
             && payload.liquid_volume_bounds == std::array<double, 2>{2.0e-5, 1.2e-4}
             && payload.vapor_volume_bounds == std::array<double, 2>{1.5e-4, 2.0e3}
             && payload.max_iterations == 5000
             && payload.reporting_pressure_bounds == std::array<double, 2>{0.1, 1.0e7};
-    }
-    if (payload.identity[1] == "monoethanolamine") {
-        return payload.start
-                == std::vector<double>{2.5, 3.5, 225.0, 2000.0, 0.05}
-            && payload.confirmation_start
-                == std::vector<double>{
-                    2.9997, 3.2522, 233.40, 2276.8, 0.015268
-                }
-            && payload.lower
-                == std::vector<double>{0.5, 2.0, 50.0, 250.0, 0.001}
-            && payload.upper
-                == std::vector<double>{5.0, 5.0, 400.0, 5000.0, 0.25}
-            && payload.parameter_scale
-                == std::vector<double>{0.5, 0.5, 50.0, 500.0, 0.05}
-            && payload.molar_mass == 0.0610831
-            && payload.liquid_volume_bounds
-                == std::array<double, 2>{2.0e-5, 1.2e-4}
-            && payload.vapor_volume_bounds
-                == std::array<double, 2>{1.5e-4, 100.0}
-            && payload.max_iterations == 500
-            && payload.reporting_pressure_bounds
-                == std::array<double, 2>{1.0, 1.0e6};
     }
     return false;
 }
@@ -324,8 +244,7 @@ std::size_t reporting_row_count(const Payload& payload) {
     if (payload.identity[1] == "methane") return methane_row_ids.size();
     if (payload.identity[1] == "ethane") return ethane_row_ids.size();
     if (payload.identity[1] == "propane") return propane_row_ids.size();
-    if (payload.identity[1] == "monoethanolamine") return mea_row_ids.size();
-    throw std::invalid_argument("component identity is not admitted");
+    throw std::invalid_argument("component identity must be methane, ethane, or propane");
 }
 
 Row parse_row(PyObject* object, const std::string& component_id, std::size_t source_index) {
@@ -364,17 +283,6 @@ Row parse_row(PyObject* object, const std::string& component_id, std::size_t sou
             && row.pressure == propane_pressures[source_index]
             && row.liquid_density == propane_liquid_densities[source_index]
             && row.source_id == "glos-2004-propane-coexistence-experiment";
-    } else if (
-        component_id == "monoethanolamine" && source_index < mea_row_ids.size()
-    ) {
-        matches = row.row_id == mea_row_ids[source_index]
-            && row.component_id == "monoethanolamine"
-            && row.temperature
-                == 303.15 + 10.0 * static_cast<double>(source_index)
-            && row.pressure == mea_pressures[source_index]
-            && row.liquid_density == mea_liquid_densities[source_index]
-            && row.source_id
-                == "baygi-pahlavanzadeh-2015-mea-saturation-correlations";
     }
     if (PyErr_Occurred() != nullptr || !matches) {
         throw std::invalid_argument("source row violates the exact retained identity and values");
@@ -389,71 +297,46 @@ Payload parse_payload(PyObject* object) {
     if (sequence == nullptr) {
         throw std::invalid_argument("pure-saturation fit payload must be a sequence");
     }
-    if (PySequence_Fast_GET_SIZE(sequence.get()) != 25) {
-        throw std::invalid_argument("pure-saturation fit payload must contain exactly 25 fields");
+    if (PySequence_Fast_GET_SIZE(sequence.get()) != 24) {
+        throw std::invalid_argument("pure-saturation fit payload must contain exactly 24 fields");
     }
     PyObject** items = PySequence_Fast_ITEMS(sequence.get());
     Payload payload{};
-    OwnedPyObject identity_sequence{
-        PySequence_Fast(items[0], "compiled problem identity must be a sequence")
-    };
-    if (identity_sequence == nullptr
-        || PySequence_Fast_GET_SIZE(identity_sequence.get()) < 2) {
-        throw std::invalid_argument("compiled problem identity is incomplete");
+    payload.identity = texts(items[0], 41, "compiled problem identity");
+    if (payload.identity[1] != "methane" && payload.identity[1] != "ethane"
+        && payload.identity[1] != "propane") {
+        throw std::invalid_argument("component identity must be methane, ethane, or propane");
     }
-    const std::string component_id = text(
-        PySequence_Fast_GET_ITEM(identity_sequence.get(), 1), "component identity"
-    );
-    const std::vector<std::string> expected = expected_identity(component_id);
-    payload.identity = texts(items[0], expected.size(), "compiled problem identity");
-    if (payload.identity != expected) {
+    if (payload.identity != expected_identity(payload.identity[1])) {
         throw std::invalid_argument("compiled problem identity does not match an admitted component");
     }
     OwnedPyObject rows{PySequence_Fast(items[1], "training rows must be a sequence")};
-    const std::size_t expected_rows =
-        component_id == "monoethanolamine" ? 15u : 4u;
-    if (rows == nullptr || PySequence_Fast_GET_SIZE(rows.get())
-            != static_cast<Py_ssize_t>(expected_rows)) {
-        throw std::invalid_argument("training row count does not match the component");
+    if (rows == nullptr
+        || PySequence_Fast_GET_SIZE(rows.get()) != static_cast<Py_ssize_t>(row_count)) {
+        throw std::invalid_argument("training rows must contain exactly four rows");
     }
-    std::vector<std::size_t> source_indices;
+    std::array<std::size_t, row_count> source_indices{};
     if (payload.identity[1] == "methane") {
         source_indices = {1, 3, 5, 7};
     } else if (payload.identity[1] == "ethane") {
         source_indices = {2, 4, 6, 8};
-    } else if (payload.identity[1] == "propane") {
-        source_indices = {4, 10, 16, 22};
     } else {
-        source_indices.resize(expected_rows);
-        for (std::size_t index = 0; index < expected_rows; ++index) {
-            source_indices[index] = index;
-        }
+        source_indices = {4, 10, 16, 22};
     }
-    payload.rows.reserve(expected_rows);
-    for (std::size_t index = 0; index < expected_rows; ++index) {
-        payload.rows.push_back(parse_row(
+    for (std::size_t index = 0; index < row_count; ++index) {
+        payload.rows[index] = parse_row(
             PySequence_Fast_GET_ITEM(rows.get(), static_cast<Py_ssize_t>(index)),
             payload.identity[1],
             source_indices[index]
-        ));
+        );
     }
-    const std::size_t expected_parameters =
-        component_id == "monoethanolamine" ? 5u : 3u;
-    payload.start = doubles(items[2], expected_parameters, "parameter start");
-    payload.lower = doubles(
-        items[3], expected_parameters, "parameter lower bounds"
-    );
-    payload.upper = doubles(
-        items[4], expected_parameters, "parameter upper bounds"
-    );
-    payload.parameter_scale = doubles(
-        items[5], expected_parameters, "parameter scales"
-    );
+    payload.start = fixed_doubles<3>(items[2], "parameter start");
+    payload.lower = fixed_doubles<3>(items[3], "parameter lower bounds");
+    payload.upper = fixed_doubles<3>(items[4], "parameter upper bounds");
+    payload.parameter_scale = fixed_doubles<3>(items[5], "parameter scales");
     payload.amount = PyFloat_AsDouble(items[6]);
     payload.molar_mass = PyFloat_AsDouble(items[7]);
-    const std::size_t expected_residuals =
-        component_id == "monoethanolamine" ? 2u : 4u;
-    payload.weights = doubles(items[8], expected_residuals, "residual weights");
+    payload.weights = fixed_doubles<4>(items[8], "residual weights");
     payload.liquid_volume_bounds = fixed_doubles<2>(items[9], "liquid volume bounds");
     payload.vapor_volume_bounds = fixed_doubles<2>(items[10], "vapor volume bounds");
     payload.topology_separation = PyFloat_AsDouble(items[11]);
@@ -469,43 +352,25 @@ Payload parse_payload(PyObject* object) {
     payload.reporting_pressure_closure = PyFloat_AsDouble(items[21]);
     payload.reporting_mu_closure = PyFloat_AsDouble(items[22]);
     const long num_threads = PyLong_AsLong(items[23]);
-    payload.confirmation_start = doubles(
-        items[24], expected_parameters, "confirmation parameter start"
-    );
     if (PyErr_Occurred() != nullptr) {
         throw std::invalid_argument("pure-saturation fit payload contains a nonnumeric scalar");
     }
     payload.max_iterations = static_cast<int>(max_iterations);
     payload.num_threads = static_cast<int>(num_threads);
-    const bool legacy_parameters = component_id != "monoethanolamine";
     if (!component_specific_contract_matches(payload)
-        || (legacy_parameters
-            && payload.confirmation_start != payload.start)
-        || (legacy_parameters
-            && payload.lower != std::vector<double>{0.5, 2.0, 50.0})
-        || (legacy_parameters
-            && payload.upper != std::vector<double>{3.5, 5.0, 400.0})
-        || (legacy_parameters
-            && payload.parameter_scale != std::vector<double>{0.1, 0.1, 10.0})
+        || payload.lower != std::array<double, 3>{0.5, 2.0, 50.0}
+        || payload.upper != std::array<double, 3>{3.5, 5.0, 400.0}
+        || payload.parameter_scale != std::array<double, 3>{0.1, 0.1, 10.0}
         || payload.amount != 1.0
-        || payload.weights
-            != (
-                component_id == "monoethanolamine"
-                ? std::vector<double>{1.0, 1.0}
-                : std::vector<double>{0.25, 0.25, 0.25, 0.25}
-            )
+        || payload.weights != std::array<double, 4>{0.25, 0.25, 0.25, 0.25}
         || payload.topology_separation != 1.0e-3
         || payload.function_tolerance != 1.0e-10
         || payload.gradient_tolerance != 1.0e-10
         || payload.parameter_tolerance != 1.0e-10
-        || payload.confirmation_liquid_start_multiplier
-            != (component_id == "monoethanolamine" ? 1.0 : 1.01)
-        || payload.confirmation_vapor_start_multiplier
-            != (component_id == "monoethanolamine" ? 1.0 : 0.98)
-        || payload.confirmation_parameter_delta
-            != (component_id == "monoethanolamine" ? 0.05 : 1.0e-5)
-        || payload.confirmation_cost_delta
-            != (component_id == "monoethanolamine" ? 0.01 : 1.0e-8)
+        || payload.confirmation_liquid_start_multiplier != 1.01
+        || payload.confirmation_vapor_start_multiplier != 0.98
+        || payload.confirmation_parameter_delta != 1.0e-5
+        || payload.confirmation_cost_delta != 1.0e-8
         || payload.reporting_pressure_closure != 1.0e-8
         || payload.reporting_mu_closure != 1.0e-8
         || payload.num_threads != 1) {

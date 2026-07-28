@@ -11,11 +11,11 @@
 
 namespace epcsaft_regression::internal {
 
+constexpr std::size_t row_count = 4;
 constexpr std::size_t residuals_per_row = 4;
-constexpr std::size_t baygi_equilibrium_max_iterations = 60;
-constexpr std::size_t baygi_equilibrium_max_backtracks = 16;
-constexpr double baygi_equilibrium_relative_rank_threshold = 1.0e-12;
-constexpr double baygi_smooth_absolute_delta = 1.0e-4;
+constexpr std::size_t parameter_count = 3;
+constexpr std::size_t variable_count = parameter_count + 2 * row_count;
+constexpr std::size_t residual_count = residuals_per_row * row_count;
 
 struct PyObjectDeleter final {
     void operator()(PyObject* object) const noexcept { Py_XDECREF(object); }
@@ -33,15 +33,14 @@ struct Row final {
 
 struct Payload final {
     std::vector<std::string> identity;
-    std::vector<Row> rows;
-    std::vector<double> start;
-    std::vector<double> confirmation_start;
-    std::vector<double> lower;
-    std::vector<double> upper;
-    std::vector<double> parameter_scale;
+    std::array<Row, row_count> rows;
+    std::array<double, parameter_count> start;
+    std::array<double, parameter_count> lower;
+    std::array<double, parameter_count> upper;
+    std::array<double, parameter_count> parameter_scale;
     double amount;
     double molar_mass;
-    std::vector<double> weights;
+    std::array<double, residuals_per_row> weights;
     std::array<double, 2> liquid_volume_bounds;
     std::array<double, 2> vapor_volume_bounds;
     double topology_separation;
@@ -58,25 +57,6 @@ struct Payload final {
     double reporting_mu_closure;
     int num_threads;
 };
-
-inline std::size_t parameter_count(const Payload& payload) {
-    return payload.start.size();
-}
-inline std::size_t row_count(const Payload& payload) {
-    return payload.rows.size();
-}
-inline std::size_t variable_count(const Payload& payload) {
-    if (payload.identity[1] == "monoethanolamine") {
-        return parameter_count(payload);
-    }
-    return parameter_count(payload) + 2 * row_count(payload);
-}
-inline std::size_t residual_count(const Payload& payload) {
-    if (payload.identity[1] == "monoethanolamine") {
-        return 2 * row_count(payload);
-    }
-    return residuals_per_row * row_count(payload);
-}
 
 bool positive_finite(double value);
 std::vector<double> doubles(PyObject* object, std::size_t expected, const char* label);

@@ -97,8 +97,8 @@ class TrainingRowDiagnostic:
     vapor_chemical_potential_over_rt: float
     liquid_stability_slope: float
     vapor_stability_slope: float
-    raw_residuals: tuple[float, ...]
-    scaled_residuals: tuple[float, ...]
+    raw_residuals: tuple[float, float, float, float]
+    scaled_residuals: tuple[float, float, float, float]
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,7 +144,7 @@ class PureSaturationFitResult:
     initial_cost: float
     final_cost: float
     iterations: int
-    parameters: tuple[ParameterDiagnostic, ...]
+    parameters: tuple[ParameterDiagnostic, ParameterDiagnostic, ParameterDiagnostic]
     jacobian: JacobianDiagnostics
     training_rows: tuple[TrainingRowDiagnostic, ...]
     reporting_rows: tuple[ReportingRowDiagnostic, ...]
@@ -152,10 +152,6 @@ class PureSaturationFitResult:
     confirmation_solution_usable: bool
     confirmation_parameter_scaled_max_delta: float
     confirmation_cost_relative_delta: float
-    scientific_comparison_status: str
-    pressure_aad_percent: float
-    liquid_density_aad_percent: float
-    published_parameter_max_relative_difference: float
     failure_reasons: tuple[str, ...]
 
 
@@ -432,24 +428,6 @@ def _native_payload(
     specification: PureSaturationFitSpecification,
     provider_fingerprint: str,
 ) -> tuple[object, ...]:
-    transforms = (
-        (
-            PARAMETER_TRANSFORM,
-            "H = ((P_L-P_V)/P_obs, mu_L/RT-mu_V/RT) = 0",
-            "du/dz = -H_u^{-1} H_z",
-            "rho(e)=sqrt(e^2+1e-8)-1e-4 for pressure and liquid density",
-            "equilibrium-newton-max-iterations=60",
-            "equilibrium-line-search-max-backtracks=16",
-            "equilibrium-relative-rank-threshold=1e-12",
-        )
-        if dataset.component_id == "monoethanolamine"
-        else (
-            PARAMETER_TRANSFORM,
-            LIQUID_VOLUME_TRANSFORM,
-            VAPOR_VOLUME_TRANSFORM,
-            REPORTING_PRESSURE_TRANSFORM,
-        )
-    )
     identity = (
         dataset.dataset_id,
         dataset.component_id,
@@ -479,7 +457,10 @@ def _native_payload(
         "m3/mol",
         PROVIDER_CAPSULE,
         provider_fingerprint,
-        *transforms,
+        PARAMETER_TRANSFORM,
+        LIQUID_VOLUME_TRANSFORM,
+        VAPOR_VOLUME_TRANSFORM,
+        REPORTING_PRESSURE_TRANSFORM,
         specification.ceres_linear_solver,
         specification.ceres_logging,
     )
@@ -508,7 +489,6 @@ def _native_payload(
         specification.reporting_pressure_scaled_residual_max,
         specification.reporting_chemical_potential_residual_max,
         specification.ceres_num_threads,
-        specification.confirmation_start,
     )
 
 
@@ -700,7 +680,7 @@ def fit_pure_saturation(
         for start, scale, transformed in zip(
             specification.start,
             specification.parameter_scales,
-            variables[: len(specification.start)],
+            variables[:3],
             strict=True,
         )
     )
@@ -801,7 +781,6 @@ def fit_pure_saturation(
         item.lower_bound <= item.final <= item.upper_bound for item in parameters
     )
     fitted_parameter_count = len(parameters)
-    full_columns_rank = jacobian.full_rank == len(variables)
     parameter_columns_full_rank = jacobian.parameter_rank == fitted_parameter_count
     solver_converged = (
         termination == "CONVERGENCE"
@@ -810,7 +789,6 @@ def fit_pure_saturation(
         and math.isfinite(final_cost)
         and final_cost <= initial_cost
         and jacobian.complete_columns
-        and full_columns_rank
         and parameter_columns_full_rank
         and bounds_respected
         and not native_failure_reason
@@ -830,31 +808,6 @@ def fit_pure_saturation(
     acceptance_reporting_rows = tuple(
         row for row in reporting_tuple if row.partition != "stress"
     )
-    pressure_aad_percent = math.nan
-    liquid_density_aad_percent = math.nan
-    published_parameter_max_relative_difference = math.nan
-    scientific_comparison_status = "NOT_APPLICABLE"
-    if dataset.component_id == "monoethanolamine" and reporting_tuple:
-        pressure_aad_percent = 100.0 * math.fsum(
-            abs(row.pressure_relative_error) for row in reporting_tuple
-        ) / len(reporting_tuple)
-        liquid_density_aad_percent = 100.0 * math.fsum(
-            abs(row.liquid_density_relative_error) for row in reporting_tuple
-        ) / len(reporting_tuple)
-        published = (3.0353, 3.0435, 277.174, 2586.3, 0.037470)
-        published_parameter_max_relative_difference = max(
-            abs(parameter.final / reference - 1.0)
-            for parameter, reference in zip(parameters, published, strict=True)
-        )
-        scientific_comparison_status = (
-            "PASSED_BOUNDED_BAYGI_INSPIRED_COMPARISON"
-            if (
-                published_parameter_max_relative_difference <= 0.15
-                and pressure_aad_percent <= 0.62
-                and liquid_density_aad_percent <= 0.12
-            )
-            else "FAILED_BOUNDED_BAYGI_INSPIRED_COMPARISON"
-        )
     physical_valid = (
         solver_converged
         and all(row.liquid_volume_m3 < row.vapor_volume_m3 for row in training_rows)
@@ -874,11 +827,6 @@ def fit_pure_saturation(
         failure_reasons.append(
             "training parameter Jacobian is rank deficient: "
             f"{jacobian.parameter_rank} of {fitted_parameter_count} fitted parameter columns"
-        )
-    if not full_columns_rank:
-        failure_reasons.append(
-            "training full Jacobian is rank deficient: "
-            f"{jacobian.full_rank} of {len(variables)} variable columns"
         )
     if not solver_converged:
         failure_reasons.append("training solver convergence gate failed")
@@ -919,12 +867,6 @@ def fit_pure_saturation(
         confirmation_solution_usable=confirmation_usable,
         confirmation_parameter_scaled_max_delta=parameter_delta,
         confirmation_cost_relative_delta=cost_delta,
-        scientific_comparison_status=scientific_comparison_status,
-        pressure_aad_percent=pressure_aad_percent,
-        liquid_density_aad_percent=liquid_density_aad_percent,
-        published_parameter_max_relative_difference=(
-            published_parameter_max_relative_difference
-        ),
         failure_reasons=tuple(failure_reasons),
     )
 

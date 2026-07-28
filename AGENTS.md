@@ -110,19 +110,13 @@ organic-solvent/ion pair callback. The four retained Figiel rows are
 constructed nearest-pure endpoint implementation evidence, not exact
 reproduction of the paper's pure-organic fitting data or mixed-solvent
 prediction evidence.
-Pure 2B association energy and volume have one local package candidate through
-the joint Baygi--Pahlavanzadeh 2015-inspired MEA refit frozen in
-`docs/science/general-parameter-regression.md`. Gross and Sadowski fitted them
-with `m`, `sigma`, and `epsilon/k`; Regression therefore retains one
-five-parameter pure-saturation owner, not an association-only fitter.
-Provider subject `c0e526b` exposes the explicit Baygi Eq. 4 `d_ij^3` joint
-Hessian while leaving the ordinary `sigma_ij^3` EOS unchanged. The source-
-bound `30 x 5` refit uses a predeclared smooth-L1 approximation to Eq. 8 and
-passes both source-backed starts, rank, interior-bound, and 15-row physical
-gates. Baygi's printed tuple does not reproduce its printed AADs under the
-implemented model convention, so this is not source-faithful validation,
-an exact replay of the unpublished grid/optimizer, a general caller-data
-association surface, predictive evidence, or catalog authority.
+Pure 2B association energy and volume retain exact scalar Provider-derivative
+and generic Regression-mechanics evidence. They are not fit-ready: the
+available literature fits them jointly with `m`, `sigma`, and `epsilon/k`,
+while the exact author grids, starts, bounds, and optimizer contracts needed
+for source-faithful replay are absent. The Baygi--Pahlavanzadeh source analysis
+is provenance only; no MEA-specific dataset, dispatch branch, equilibrium
+solver, or result contract is packaged.
 Polar parameter regression is excluded from this repository's roadmap by user
 decision. The selected next engineering investment is the exact installed
 Equilibrium reactive-state value and implicit parameter-sensitivity contract
