@@ -310,7 +310,7 @@ def test_conditional_campaign_evidence_retains_separate_statuses() -> None:
     )
     evidence_bytes = evidence_path.read_bytes()
     assert hashlib.sha256(evidence_bytes).hexdigest() == (
-        "226290455e676c85b53de9a79b0d36ac592280df77511dc5068e9b355bb8774b"
+        "448a3d48e661a2a40e01833147a3b0842edd4436663b953cf2c90dde178d0417"
     )
     evidence = json.loads(evidence_bytes)
 
@@ -338,10 +338,10 @@ def test_conditional_campaign_evidence_retains_separate_statuses() -> None:
     assert evidence["derivative_checks"]["passed_entries"] == 1804
     assert evidence["derivative_checks"]["total_entries"] == 1804
     assert evidence["regression_artifact"]["implementation_commit"] == (
-        "ae4b4a925556272293abd09a1a6e44c7e8d967d8"
+        "846c3671a437f961f92c20300c4cb3c874ff6009"
     )
     assert evidence["regression_artifact"]["wheel_sha256"] == (
-        "2fa4af83cc9784bd0f16b3d4d6ca59db47338e75e82539a4141c81178550f728"
+        "0fe3ddfe6a31993c7859609d2bdc13cb6b69bd037b276671cbee2b1ded32a365"
     )
     assert evidence["comparison"]["start_max_abs_delta"] <= 1.0e-5
     assert evidence["comparison"]["published_max_abs_delta"] > 0.05

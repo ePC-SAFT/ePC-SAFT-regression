@@ -268,7 +268,7 @@ figiel_aqueous_kij_design:
     input_rows: 164
     evaluated_rows: 164
     failed_rows: 0
-    evidence_sha256: 226290455e676c85b53de9a79b0d36ac592280df77511dc5068e9b355bb8774b
+    evidence_sha256: 448a3d48e661a2a40e01833147a3b0842edd4436663b953cf2c90dde178d0417
     fitted_coordinates_within_0_05: 2
     fitted_coordinates_outside_0_05: 9
     worst_coordinate: Li+-Br-
@@ -280,16 +280,17 @@ figiel_aqueous_kij_design:
     exact_jacobian_entries_passed: 1804
     scientific_status: SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE
     regression_artifact:
-      implementation_commit: ae4b4a925556272293abd09a1a6e44c7e8d967d8
-      implementation_tree: b7f0be34afea3a410ad4e03a9a4cb8c94d94f7c9
-      source_date_epoch: 1785197144
-      local_wheel: ../artifacts/regression-figiel-aqueous-kij-v1/ae4b4a9/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl
-      wheel_sha256: 2fa4af83cc9784bd0f16b3d4d6ca59db47338e75e82539a4141c81178550f728
+      implementation_commit: 846c3671a437f961f92c20300c4cb3c874ff6009
+      implementation_tree: e524dc61c692a0c962f5818fbeccdc6de206d83d
+      source_date_epoch: 1785198578
+      local_wheel: ../artifacts/regression-figiel-aqueous-kij-v1/846c367/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl
+      wheel_sha256: 0fe3ddfe6a31993c7859609d2bdc13cb6b69bd037b276671cbee2b1ded32a365
       wheel_members: 14
       installed_non_record_members_verified: 13
-      installed_stage_c_tests: 6-passed
+      installed_stage_c_routine_tests: 7-passed-1-campaign-deselected-42.39-seconds
+      installed_public_campaign: 1-passed-272.45-seconds
       accepted_provider_legacy_tests: 49-passed
-      cross_artifact_diagnostic_only: 61-passed-3-failed-known-legacy-numerical-compatibility
+      cross_artifact_diagnostic_only: not-repeated-final-artifact-prior-review-subject-had-61-passed-3-failed-known-legacy-numerical-compatibility
   provider_result: >-
     Stage B uses the model-bound NaBr ln(gamma_pm^m) value and exact total
     fixed-T,P water-solvation-factor derivative from fa766e5. Conditional
