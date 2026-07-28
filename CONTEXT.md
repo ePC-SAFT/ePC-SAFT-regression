@@ -52,11 +52,11 @@ with no added runtime test seam.
 
 `next_figiel_family_status: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED`
 
-`general_parameter_regression_status: NINE_PARAMETER_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
+`general_parameter_regression_status: TEN_PARAMETER_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
 
 Pure 2B `association_energy_over_k` and `association_volume` now have a
 model-bound exact Provider `(n,V,p)` Hessian and the shared Regression
-pressure/density `2 x 2` lifted surface. They are not counted among the eight
+pressure/density `2 x 2` lifted surface. They are not counted among the ten
 fit-ready families: the retained Held-2012 ethanol row is one direct density
 anchor, while Gross--Sadowski fitted all five pure parameters simultaneously
 to vapor-pressure and liquid-density series. Those source rows and their exact
@@ -65,7 +65,7 @@ objective are not retained, so status is
 
 The user-approved 2026-07-27 destination is general parameter-family
 regression, defined in `docs/science/general-parameter-regression.md`. The
-first nine families are implemented. Caller-supplied, source-bound
+first ten families are implemented. Caller-supplied, source-bound
 fixed-composition VLE rows may independently fit one shared `k_ij` or `l_ij`
 for any neutral, nonassociating binary model whose installed Provider
 descriptor advertises the corresponding exact `(n1,n2,V,pair_parameter)`
@@ -86,6 +86,34 @@ non-bound, confirmed from starts 4 and 12, and returns
 `7.99999999787946` through `7.999999997884154`. Figiel reports `8` as fixed
 model input, so this establishes fit-ready mechanics rather than recovery of
 a paper-fitted parameter or a shared multi-model parameter.
+
+The tenth family is component `relative_permittivity` on an installed
+single-ion solvation callback that identifies the active solvent separately
+from the observed ion. Provider subject `7cadaad` supplies the exact total
+first derivative through bulk dielectric, Debye--Huckel, Born,
+reference-state, and fixed-pressure density paths. Regression subject
+`177890a` reuses the same direct-observable Ceres owner. Corrected Validation
+subject `e4cb7af` fits water independently against all five Table S5
+reported-average solvation targets with the paper's Born diameters fixed.
+Every `1 x 1` problem is full-rank, non-bound, and confirmed from starts 50
+and 110, returning `78.0899937514462` through `78.08999375166104`. The fixed
+input `78.09` and its `0.005` reporting half-increment are descriptive
+comparison evidence, not uncertainty or scientific acceptance.
+
+Polar parameter families are outside the Regression roadmap by user decision.
+They remain representable Provider inputs where applicable, but no Regression
+derivative, residual, fit, or validation work is planned for them. This does
+not relabel them unsupported Provider physics.
+
+The selected next engineering investment, after Migration's required D-026
+installed two-liquid Stage-II/III gate, is the exact installed Equilibrium
+reactive-state value plus implicit parameter-sensitivity contract required by
+MEA, paired with exact Provider partials for MEA's application-selected
+parameter block. Only after both prerequisites exist may Regression add the
+reduced two-row mixed-observable Ceres tracer. Acquiring the missing
+Gross--Sadowski/Cameretti pure-association series or a standalone
+cross-association recovery dataset remains useful optional evidence, but it is
+not the MEA critical path.
 
 Caller-supplied pure-saturation pressure and liquid-density rows may
 independently fit one component `segment_count`, `segment_diameter`, or

@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-nine-general-families-fit-ready
+status: authoritative-methane-and-ethane-with-ten-general-families-fit-ready
 
 authority:
   accepted_capabilities:
@@ -48,7 +48,7 @@ scope: >-
   liquid-density rows on a matching neutral pure capability.
 
 general_parameter_regression:
-  status: NINE_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
+  status: TEN_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
   design_owner: docs/science/general-parameter-regression.md
   objective: >-
     Fit any admitted continuous ePC-SAFT parameter for any Provider-supported
@@ -69,7 +69,7 @@ general_parameter_regression:
     observation_schema: finite-typed-source-bound
   reference_campaign_role: evidence-not-component-restriction
   forbidden_interpretation: every-provider-parameter-is-fit-ready-now
-  immediate_provider_gate: SATISFIED_FOR_NINE_FAMILIES
+  immediate_provider_gate: SATISFIED_FOR_TEN_FAMILIES
   provider_subject: 1e571ab0a84603a51ed6994b14286f683fb12b88
   provider_wheel_sha256: 6536edc63adaa13c5c6c67c185d82c9ae232048e99dc3dc3be502708eea4410f
   provider_header_sha256: b667379c2d7106d012c6b57f96b6f32dd23ef305fe6f15a87c22ab20029008f8
@@ -105,6 +105,16 @@ general_parameter_regression:
   ionic_permittivity_regression_wheel_sha256: 2aefd50f7aa418c6af6676a9964f030d1be70b4c0c0694f03f8943482eb4dce6
   ionic_permittivity_validation_subject: 81e9a3f3f24d4c01f1381e6fabbf1c03308a1ec4
   ionic_permittivity_validation_evidence_sha256: 800dafb3675b48804d9e6d42c4ce619c2c921b073e7ad67d52b26dcf5d23f846
+  solvent_permittivity_provider_subject: 7cadaad2f60433078f76812d951e4244ee32a899
+  solvent_permittivity_provider_tree: 227709b017926175e2f3cfd7ed4394cd91cb9ec8
+  solvent_permittivity_provider_wheel_sha256: 0388ed5d5c1327ca2bef819d96e9a8633b0a77d2a8d70c8fab8bc9630eb48470
+  solvent_permittivity_provider_header_sha256: dc7c52056c4bd1d3f00200f0fbb1ee081d979a0a74c5addc5ec78d476f53e52d
+  solvent_permittivity_regression_subject: 177890a80ca043eec4d563c59697541152073cd7
+  solvent_permittivity_regression_tree: 1830cd59578be20ffa1167ef3dc4d837661a674f
+  solvent_permittivity_regression_wheel_sha256: 6d228d2f4c54913643d565ac069d4bf3ab2c94150018e8216425b59bad5ae5ad
+  solvent_permittivity_validation_subject: e4cb7af46b6a0852b21c9159ea3e8d1782ee6689
+  solvent_permittivity_validation_tree: cee6acf25c2e971eef95d3bb685797dcd8e07826
+  solvent_permittivity_validation_evidence_sha256: b88b11f74ebd682ff9fd641f44a93cdca21b61bc0ccdc54be08af1c51c8d19a6
   pair_reference_regression_subject: da7a44ce093201022aec2f3514d4e4fd9d8d2929
   pair_reference_regression_wheel_sha256: 3a59d2233fec51f949a7784937b54f7f66beae2476fa8e33976672a480b67137
   fit_ready_pair_families:
@@ -150,7 +160,7 @@ general_parameter_regression:
     authority_effect: none
     predictive_effect: none
   fit_ready_direct_observable_families:
-    families: [born_diameter, solvation_factor, dielectric_ion_suppression_coefficient, ionic_region_relative_permittivity]
+    families: [born_diameter, solvation_factor, dielectric_ion_suppression_coefficient, ionic_region_relative_permittivity, relative_permittivity]
     parameter_count_per_problem: 1
     nuisance_variables: 0
     provider_derivative_order: 1
@@ -166,8 +176,14 @@ general_parameter_regression:
     dielectric_published_descriptive_comparison: 7.01
     ionic_permittivity_observation_contract: solvation-gibbs-energy
     ionic_permittivity_reference_shape: 1x1
-    ionic_permittivity_reference_fitted_parameter: 7.624377291400448
+    ionic_permittivity_reference_fitted_range: [7.99999999787946, 7.999999997884154]
     ionic_permittivity_published_fixed_comparison: 8
+    solvent_permittivity_observation_contract: solvation-gibbs-energy
+    solvent_permittivity_reference_problem_count: 5
+    solvent_permittivity_reference_shape_per_problem: 1x1
+    solvent_permittivity_reference_fitted_range: [78.0899937514462, 78.08999375166104]
+    solvent_permittivity_published_fixed_comparison: 78.09
+    solvent_permittivity_published_reporting_half_increment: 0.005
     reference_full_rank: 1
     reference_projected_parameter_rank: 1
     authority_effect: none
@@ -568,20 +584,26 @@ parameter_family_readiness:
     status: NOT_READY_DEFERRED_NONPRODUCTION_UNDER_D023
     retained_evidence_authority: D-022
   association_parameters: DERIVATIVE_AND_REGRESSION_SURFACE_READY_PURE_2B_SOURCE_SERIES_NOT_READY
-  polar_parameters: NOT_READY
+  polar_parameters: EXCLUDED_FROM_REGRESSION_ROADMAP_BY_USER_DECISION
   electrolyte_born_parameters: FIT_READY_DIRECT_OBSERVABLE_AUTHORITY_NEUTRAL_NO_CATALOG_ADMISSION
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
   figiel_current_catalog_aqueous_kij: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED
   reactive_or_temperature_dependent_parameters: NOT_READY
-  general_parameter_regression: PARTIAL_EIGHT_FAMILIES_FIT_READY
+  general_parameter_regression: TEN_NONPOLAR_ELECTROLYTE_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
   mixture_independent_scalar_pure: FIT_READY_PURE_SATURATION_PRESSURE_AND_LIQUID_DENSITY
   mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_VLE_ADVERTISED_AQUEOUS_MIAC_AND_ADVERTISED_ORGANIC_ION_SOLVATION
   mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
   mixture_independent_born_diameter: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_solvation_factor: FIT_READY_ADVERTISED_MEAN_IONIC_ACTIVITY_DOMAIN
   model_dielectric_ion_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
+  mixture_independent_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
+  model_ionic_region_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_association: PARTIAL_PURE_2B_MODEL_BOUND_DERIVATIVE_AND_DENSITY_SURFACE_READY_SOURCE_SERIES_NOT_READY
   khb_ij: NOT_READY_NOT_A_CURRENT_PROVIDER_PARAMETER_FAMILY
+  next_engineering_investment_after_d026: EQUILIBRIUM_EXACT_IMPLICIT_PARAMETER_SENSITIVITY_FOR_MEA
+  required_prior_gate: D026_INSTALLED_TWO_LIQUID_STAGE_II_III
+  optional_standalone_association_source_acquisition: DEFERRED_NOT_MEA_CRITICAL_PATH
+  mea_mixed_observable_regression: WAITING_D026_THEN_EXACT_INSTALLED_EQUILIBRIUM_VALUE_AND_PARAMETER_SENSITIVITY_CONTRACT
   full_parameter_family_coverage: NOT_READY
 
 accepted_ethane_artifact:

@@ -96,7 +96,9 @@ ionic-activity rows; and one model-level dielectric ion-suppression
 coefficient for caller-supplied relative-permittivity-ratio rows on matching
 installed Provider capabilities; and one model-level ionic-region relative
 permittivity for caller-supplied solvation-Gibbs targets on a matching SSM+DS
-capability. They remain authority-neutral and are not
+capability; and one component solvent relative permittivity for caller-supplied
+single-ion solvation-Gibbs targets on a matching Provider capability. These
+ten families remain authority-neutral and are not
 restricted to the reference campaigns. The scalar pure and direct-observable
 paths are one-family-at-a-time and do not replace the accepted paper-specific
 workflows. All other general families retain their documented pending states;
@@ -113,3 +115,10 @@ Hessian and a shared Regression pure-density surface, but remain source-series
 blocked rather than fit-ready. The single Held-2012 ethanol density anchor is
 not a substitute for the simultaneous vapor-pressure/liquid-density series
 used by Gross and Sadowski.
+Polar parameter regression is excluded from this repository's roadmap by user
+decision. The selected next engineering investment is the exact installed
+Equilibrium reactive-state value and implicit parameter-sensitivity contract
+needed by MEA, but Migration's D-026 installed two-liquid Stage-II/III gate
+must pass first. The reduced mixed-observable tracer follows both
+prerequisites. Missing pure or cross-association recovery sources remain
+optional standalone work and do not block that MEA path.

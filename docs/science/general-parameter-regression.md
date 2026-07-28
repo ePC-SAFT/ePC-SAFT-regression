@@ -1,11 +1,10 @@
 # General ePC-SAFT Parameter Regression
 
-Status: neutral-binary `k_ij`/`l_ij`, scalar pure
-`m`/`sigma`/`epsilon-k`, Born-diameter, solvation-factor, and model-level
-dielectric ion-suppression and ionic-region-permittivity families fit-ready
-for their typed observation contracts; broader families pending
+Status: ten nonpolar/electrolyte parameter families fit-ready for their typed
+observation contracts; pure 2B association derivative/surface-ready but
+source-series blocked; polar regression excluded
 
-Date: 2026-07-27
+Date: 2026-07-28
 
 ## Objective
 
@@ -120,7 +119,7 @@ derivative readiness:
 | `relative_permittivity`, `born_diameter`, `solvation_factor` | continuous component coordinates when an exact observation derivative is advertised |
 | `schreckenberg_dielectric_volume`, `schreckenberg_dielectric_temperature` | continuous component/correlation coordinates when exact derivatives are advertised |
 | `zuber_ion_suppression_coefficient` | continuous component coordinate when exact derivatives are advertised |
-| `rueben_dipole_scaling`, `rueben_polarizability_scaling`, `rueben_correlation_integral_parameter` | continuous polar-model coordinates when exact derivatives are advertised |
+| `rueben_dipole_scaling`, `rueben_polarizability_scaling`, `rueben_correlation_integral_parameter` | Provider-represented polar-model inputs explicitly excluded from the Regression roadmap by user decision; no Regression capability is planned |
 | `k_ij`, `l_ij` | continuous unordered component-pair coordinates |
 | `association_energy_over_k`, `association_volume` | continuous model-bound coordinates only for an advertised pure 2B model with one symmetric association pair; general association-endpoint identity remains pending |
 | `dielectric_ion_suppression_coefficient`, `ionic_region_relative_permittivity` | continuous model coordinates when exact derivatives are advertised |
@@ -130,33 +129,93 @@ New Provider record families require an explicit schema revision in both
 packages. Regression must never infer fit support merely because a record can
 be resolved.
 
-## Parameter and data map
+## Definitive parameter-family and data-requirement matrix
 
-The data column names below describe observation families, not guaranteed
-identifiability. Every submitted problem must still pass numerical sensitivity
-and rank gates.
+`FIT_READY` below means that caller-supplied rows can execute today when the
+installed Provider advertises the named exact capability. It does not mean
+that every dataset is informative, that a reference value will be reproduced,
+or that the result is predictive. Every problem still needs declared units,
+source identity, partitions, residual scales, parameter bounds/scales/starts,
+complete row accounting, full projected parameter rank, acceptable
+conditioning, non-bound diagnostics, and confirmation-start agreement.
 
-| Parameter family | Identity | Candidate informative observations | Current state |
-|---|---|---|---|
-| `segment_count` (`m`) | component | pure saturation pressure/density, PVT density, phase-equilibrium and caloric observations | fit-ready one-family-at-a-time for caller-supplied pure-saturation pressure/liquid-density rows on an advertised neutral pure capability; other observations pending |
-| `segment_diameter` (`sigma`) | component or declared correlation coefficient | liquid density/PVT, saturation density, phase equilibrium | fit-ready one-family-at-a-time for caller-supplied pure-saturation pressure/liquid-density rows on an advertised neutral pure capability; correlation coefficients and other observations pending |
-| `dispersion_energy_over_k` (`epsilon/k`) | component | vapor pressure, phase equilibrium, caloric and PVT observations | fit-ready one-family-at-a-time for caller-supplied pure-saturation pressure/liquid-density rows on an advertised neutral pure capability; other observations pending |
-| `k_ij` | unordered component pair | fixed-composition VLE/LLE, activity/fugacity coefficients, MIAC when the electrolyte formulation makes that pair active, single-ion solvation Gibbs endpoints | fit-ready for caller-supplied fixed-composition VLE rows on an advertised neutral nonassociating binary capability, one-at-a-time aqueous MIAC fits on an advertised water/cation/anion capability, and one-at-a-time solvation-Gibbs fits on an advertised organic-solvent/ion capability; other observation/model domains remain pending |
-| `l_ij` | unordered component pair | density, excess volume, and phase-equilibrium data sensitive to cross-size mixing | fit-ready for caller-supplied fixed-composition VLE rows on any installed Provider model advertising the neutral, nonassociating binary capability; other observation/model domains remain pending |
-| `association_energy_over_k` | sole symmetric pair of an advertised pure 2B model | simultaneous pure vapor-pressure and liquid-density series; other hydrogen-bond-sensitive observations require separately advertised contracts | exact Provider Hessian and Regression pure-density surface implemented; source series needed for recovery are not retained |
-| `association_volume` | sole symmetric pair of an advertised pure 2B model | simultaneous pure vapor-pressure and liquid-density series; other hydrogen-bond-sensitive observations require separately advertised contracts | exact Provider Hessian and Regression pure-density surface implemented; source series needed for recovery are not retained |
-| `k_hb_ij` | source-defined cross-association combining-rule coordinate | the same cross-association-sensitive observations, with enough composition/temperature variation to separate it from pure association parameters | not a current Provider record family; requires an explicit active combining-rule coordinate or a declared transform to resolved cross-association energy |
-| `born_diameter` | ion component | source-defined single-ion solvation Gibbs energy under the advertised fixed-state reference path | fit-ready one ion at a time for caller-supplied solvation-Gibbs targets on an installed direct-observable capability; five Figiel ions are reference evidence |
-| `solvation_factor` | applicable component | MIAC under the advertised fixed-state reference path | fit-ready one component factor at a time for caller-supplied mean-ionic-activity rows on an installed direct-observable capability; 21 NaBr rows are reference evidence |
-| `dielectric_ion_suppression_coefficient` | model | salt-free-normalized relative permittivity over a rank-sufficient ion-mole-fraction range | fit-ready one coefficient at a time on an installed capability advertising the exact relative-permittivity value/first derivative; 36 digitized Figiel water/methanol rows are reference evidence |
-| `ionic_region_relative_permittivity` | model | source-defined single-ion solvation Gibbs energy under an advertised SSM+DS fixed-state reference path | fit-ready one model coordinate at a time on an installed value/first-derivative capability; five independent Table S5 `1 x 1` fits with the paper's Born diameters fixed are rank-1, non-bound, confirmed, and return `7.99999999787946` through `7.999999997884154`; Figiel's `8` is a fixed model input, not a fitted reference target |
-| other dielectric and ion-suppression coefficients | component/model/correlation term | dielectric, MIAC, osmotic/activity, solvation, or phase observations over a rank-sufficient state range | represented families vary; exact active derivatives and Regression surface pending |
-| polar coefficients | component/correlation term | polar-mixture VLE, PVT, caloric, dielectric, or other source-defined polar observables | represented families vary; exact active derivatives and Regression surface pending |
-| temperature-dependent coefficients | named correlation term | observations spanning enough temperatures to identify every active coefficient | represented correlations vary; exact active derivatives and Regression surface pending |
+| Parameter family | Identity | Minimum source-bound data contract | Exact executable contract | Current state and MEA role |
+|---|---|---|---|---|
+| `segment_count` (`m`) | component | Multiple pure rows with `T`, observed saturation pressure and liquid density, molar mass, phase-volume bounds/starts, partitions, and scales | Provider `(n,V,m)` value/gradient/Hessian; Regression lifted liquid/vapor volumes with pressure, chemical-potential, and density residuals | `FIT_READY`, one family at a time. Standalone recovery is optional for MEA unless `m` is selected in MEA's application-owned parameter block. |
+| `segment_diameter` (`sigma`) | component | Same pure saturation pressure/liquid-density contract, over a range that gives nonzero independent sensitivity | Provider `(n,V,sigma)` value/gradient/Hessian; same lifted Ceres owner | `FIT_READY` for a constant coordinate. Named temperature-correlation coefficients are separately `NOT_READY`. Optional for MEA unless selected. |
+| `dispersion_energy_over_k` (`epsilon/k`) | component | Same pure saturation pressure/liquid-density contract with enough vapor-pressure sensitivity | Provider `(n,V,epsilon/k)` value/gradient/Hessian; same lifted Ceres owner | `FIT_READY`, one family at a time. Optional for MEA unless selected. |
+| `k_ij` | unordered component pair | One supported domain: fixed measured `T,P,x,y` VLE rows; source-bound MIAC rows with formula molality; or single-ion solvation-Gibbs targets. Rows must vary enough to identify the selected pair. | Exact Provider Hessian for lifted neutral VLE or exact first derivative for the admitted aqueous/solvation direct observable; one typed pair coordinate | `FIT_READY` in the advertised neutral-VLE, aqueous-MIAC, and organic-ion-solvation domains. MEA needs only the exact pair derivatives for pairs actually selected in its 12-parameter block. |
+| `l_ij` | unordered component pair | Fixed measured `T,P,x,y` VLE rows sensitive to cross diameter, with explicit source sign convention | Exact Provider `(n1,n2,V,l_ij)` Hessian for the currently admitted neutral nonassociating binary domain | `FIT_READY` only for fixed-composition neutral VLE. Density, excess-volume, associating, and electrolyte observation domains are `NOT_READY`; standalone expansion is not an MEA prerequisite unless selected. |
+| `born_diameter` | ion component | One or more source-defined single-ion solvation-Gibbs targets with exact x-process convention, state, component order, and numerical scale | Exact Provider solvation-Gibbs value/first derivative for the active ion; direct-observable Ceres row | `FIT_READY`; five Figiel ions are reference evidence. It is parallel parameter groundwork, not coupled-MEA readiness. |
+| `solvation_factor` | component | Source-bound MIAC rows at declared `T,P` and formula-unit molality, with solvent/ion identities and scale | Exact Provider MIAC value/first derivative for one active factor; direct-observable Ceres rows | `FIT_READY` for the advertised constant factor. A temperature correlation is separately `NOT_READY`; not on the MEA critical path unless selected. |
+| `relative_permittivity` | solvent component | Source-bound single-ion solvation-Gibbs targets with fixed other model inputs, exact solvent identity, x-process convention, state, and scale | Exact Provider solvation-Gibbs value/first derivative for the active solvent permittivity; direct-observable Ceres rows | `FIT_READY`. Corrected Validation subject `e4cb7af` gives five independent rank-1 water fits returning `78.0899937514462` through `78.08999375166104` versus fixed `78.09`. This is implementation evidence, not a paper-fitted target or MEA prerequisite. |
+| `dielectric_ion_suppression_coefficient` | model | Salt-free-normalized relative-permittivity observations spanning enough total-ion mole fraction to identify one coefficient | Exact Provider relative-permittivity ratio and first derivative; direct-observable Ceres rows | `FIT_READY`; 36 digitized Figiel water/methanol rows are reference evidence. Optional standalone recovery. |
+| `ionic_region_relative_permittivity` | model | Source-defined single-ion solvation-Gibbs targets with fixed Born diameters and other inputs | Exact Provider SSM+DS solvation-Gibbs value/first derivative; direct-observable Ceres rows | `FIT_READY`; five independent Figiel fits recover fixed `8` within `2.2e-9`. Parallel groundwork, not coupled-MEA readiness. |
+| `association_energy_over_k` | association endpoints; currently one model-bound symmetric pure 2B pair | Original simultaneous multi-temperature vapor-pressure and liquid-density rows plus the source objective/weights; one density point is insufficient | Exact Provider `(n,V,p)` Hessian and Regression `2 x 2` pure pressure/density surface exist only for one neutral pure 2B topology | `DERIVATIVE_READY_REGRESSION_SURFACE_READY_SOURCE_SERIES_NOT_READY`. Obtaining the Gross--Sadowski/Cameretti source series is optional standalone recovery, not the next MEA investment. |
+| `association_volume` | association endpoints; currently one model-bound symmetric pure 2B pair | Same simultaneous vapor-pressure/liquid-density series and objective needed to separate it from energy and the three pure PC-SAFT parameters | Same exact pure-2B Hessian and lifted surface | `DERIVATIVE_READY_REGRESSION_SURFACE_READY_SOURCE_SERIES_NOT_READY`; optional standalone recovery. |
+| `k_hb_ij` | source-defined cross-association combining-rule coordinate | A source-defined combining rule and sign convention plus composition/temperature-varying association-sensitive observations that separate cross from pure association | New Provider record/transform identity, versioned fingerprint, exact chain-rule derivative, and an association-endpoint Regression identity are required | `NOT_READY`. Ascani's fixed `0.026` is provenance, not a recovery dataset. Do not alias it to resolved association energy or invent zero defaults. Not the next MEA investment. |
+| `schreckenberg_dielectric_volume`, `schreckenberg_dielectric_temperature` | component/correlation coordinates | Multi-temperature electrolyte relative-permittivity or other source observables that independently identify the selected coefficient | New exact Provider active-parameter callback and Regression correlation identity/surface | `REPRESENTED_NOT_DERIVATIVE_READY`; no retained rank-sufficient recovery series. Optional, not on the MEA critical path. |
+| `zuber_ion_suppression_coefficient` | ion component | Relative-permittivity, MIAC, osmotic/activity, or solvation observations spanning ion fraction/molality and preferably temperature | New exact Provider active-parameter callback and matching typed Regression observation contract | `REPRESENTED_NOT_DERIVATIVE_READY`; the retained one-row osmotic oracle is insufficient. Optional. |
+| Named correlation coefficients for `segment_diameter`, `relative_permittivity`, or `solvation_factor` | component, correlation family, coefficient kind, and term index | Multi-temperature rows covering a range sufficient to distinguish constant, amplitude, and exponent coefficients | New closed correlation-coordinate descriptor, exact Provider derivative including the correlation chain rule, and Regression identity | `REPRESENTED_NOT_DERIVATIVE_READY`; current constant-parameter evidence does not validate coefficient recovery. |
+| Temperature-dependent `k_ij(T)` coefficients | pair plus named correlation coefficient | Multi-temperature mixture observations and the exact source correlation form, reference temperature, units, and sign convention | New Provider pair-correlation record/capability and exact derivative; Regression correlation identity | `NOT_REPRESENTED_NOT_READY`. Ascani provides a source law but the retained bounded case is only 298.15 K. |
+| Polar parameter families | source-specific | none in this roadmap | none in Regression | `EXCLUDED_FROM_REGRESSION_ROADMAP_BY_USER_DECISION`. Provider may still represent and evaluate polar physics for other owners. |
 
-The table describes physically relevant evidence, not an automatic weighting
-policy. Experimental uncertainty may define a weight only when the source
-actually reports it and the request declares that interpretation.
+`molar_mass`, `charge_number`, component identity, association-site topology,
+association scheme, and electrolyte formulation remain fixed measured or
+discrete model inputs. They are not continuous Regression coordinates.
+Experimental uncertainty may define a residual weight only when the source
+reports it and the submitted contract declares that interpretation.
+
+## Downstream decision: MEA before optional family recovery
+
+Standalone parameter recovery and coupled reactive regression are different
+deliverables. The Figiel/Born, pure-association, dielectric, and correlation
+campaigns can demonstrate individual Provider/Regression contracts, but they
+do not establish the coupled state sensitivities needed by
+MEA-Thermodynamics.
+
+MEA's critical Regression path is:
+
+1. Migration's D-026 installed two-liquid Stage-II/III gate passes. This
+   remains the required public prerequisite; the MEA sequence must not infer
+   admission from private reacting-phase foundations or skip the installed
+   two-liquid evidence.
+2. Provider exposes exact parameter partials for only the parameter identities
+   selected by the MEA application. Regression must not infer a broader
+   chemistry block or persist fitted values to the Provider catalog.
+3. Equilibrium returns converged reactive-liquid and reactive-bubble values
+   together with exact implicit sensitivities to those parameters. The value
+   solve remains outside the tape and the sensitivity contract follows
+   `u_z = -H_u^{-1} H_z`, with conditioning and failure diagnostics. Regression
+   must not copy reaction/EOS equations, run a second equilibrium formulation,
+   or finite-difference a black-box solve.
+4. Regression reuses its one native Ceres engine/result/target and adds only
+   the schema-driven parameter sharing plus three observation semantics that
+   real MEA evidence requires: positive equality, linear aggregate, and
+   one-sided censored observations. Every row retains its ID, provenance,
+   partition, scale/weight or censor policy, and evaluated/skipped/failed
+   accounting with complete Jacobian columns.
+5. The first installed falsification slice is the reduced two-row MEA fit: one
+   accepted reactive-liquid CO2-loading equality and one accepted
+   reactive-bubble heat-of-absorption/enthalpy equality. It must pass exact
+   Jacobian, rank/conditioning, bound/KKT, solver, numerical, equilibrium
+   physical-validity, and row-accounting gates before broadening.
+6. Only then may the application-owned frozen campaign use MEA's 9 species,
+   5 reactions, 12-parameter block, starts/bounds/regularization, 147-state
+   training partition with 297 observations, and untouched 220-state reserved
+   partition with 435 observations. Reserved states are evaluated without
+   refitting; application-owned promotion cutoffs remain separate.
+
+Therefore:
+
+`NEXT_ENGINEERING_INVESTMENT_AFTER_D026: EQUILIBRIUM_EXACT_IMPLICIT_PARAMETER_SENSITIVITY_FOR_MEA`
+
+This is chosen over acquiring the missing pure/cross-association recovery
+series. Those sources remain useful for optional standalone validation, but
+they do not unblock the first coupled MEA tracer. The immediate implementation
+must still wait for D-026, an exact installed Equilibrium value/sensitivity
+artifact, and the matching Provider parameter-partial contract; this document
+does not authorize speculative Regression runtime.
 
 ### `k_hb_ij` rule
 
@@ -603,20 +662,35 @@ prediction evidence, or Provider-catalog authority.
    1, non-bound, and confirmed from starts 4 and 12, recovering the fixed
    input `8` within `2.2e-9`. This is in-sample mechanics evidence, not
    recovery of a parameter that Figiel fitted or a shared multi-model value.
-8. **Partial for pure 2B association.** Exact Provider Hessians and the
+8. **Complete for component solvent relative permittivity.** Admit one
+   positive solvent coordinate from source-bound single-ion solvation-Gibbs
+   targets. Provider subject `7cadaad`, Regression subject `177890a`, and
+   corrected Validation subject `e4cb7af` bind the exact installed-artifact
+   path. Five
+   independent `1 x 1` fits are rank 1, non-bound, and confirmed from starts
+   50 and 110. Recovery of fixed `78.09` is mechanics evidence, not a
+   paper-fitted or predictive result.
+9. **Partial for pure 2B association.** Exact Provider Hessians and the
    Regression pure-density surface exist for the sole symmetric association
    pair. Recovery remains source-blocked until the original simultaneous
    vapor-pressure/liquid-density rows and objective are retained. General
    association endpoints and an explicit `k_hb_ij` combining-rule coordinate
    remain separate future capabilities.
-9. Add polar, remaining dielectric, and temperature-dependent families as
-   separately evidenced capabilities rather than new engines. Equilibrium-coupled
-   observations remain blocked by the dependency doctrine and are not part of
-   this sequence.
+10. **Deferred optional standalone recovery.** Remaining nonpolar dielectric,
+    ion-suppression, association, and temperature-correlation families require
+    their own source series plus exact Provider derivative seams. They do not
+    justify speculative Regression implementation. Polar families are
+    excluded from this roadmap.
+11. **Selected next investment: coupled MEA prerequisite.** After the required
+    D-026 installed two-liquid Stage-II/III gate, obtain an exact installed
+    Equilibrium reactive-state value/implicit-parameter-sensitivity contract,
+    paired with exact Provider parameter partials, before adding the reduced
+    two-row mixed-observable Ceres tracer.
 
-Each step must be independently fit-ready and reference-validated. The final
-goal is broad parameter-family coverage; sequencing controls scientific risk
-and provider prerequisites, not the component domain of completed families.
+Every standalone family admitted in steps 1--10 must be independently
+fit-ready and reference-validated. Step 11 is a separate coupled capability:
+it does not promote optional standalone families and cannot use their evidence
+as a substitute for exact Equilibrium sensitivities.
 
 ## Explicit exclusions
 
@@ -627,5 +701,6 @@ and provider prerequisites, not the component domain of completed families.
 - hidden bounds, scales, starts, units, chemistry, or source defaults;
 - automatic experimental-uncertainty interpretation;
 - parameter-catalog persistence;
+- polar parameter regression;
 - claims of global uniqueness, uncertainty, predictive validity, or
   downstream readiness without their separate evidence.
