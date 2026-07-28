@@ -53,7 +53,7 @@ general_parameter_regression:
     - FIT_READY
     - REFERENCE_VALIDATED
     - ADMITTED
-  runtime_shape:
+  target_runtime_shape:
     engines: 1
     result_families: 1
     native_modules: 1
@@ -62,6 +62,8 @@ general_parameter_regression:
     observation_schema: finite-typed-source-bound
   reference_campaign_role: evidence-not-component-restriction
   forbidden_interpretation: every-provider-parameter-is-fit-ready-now
+  immediate_provider_gate: RUNTIME_PENDING_PROVIDER_CAPABILITY_DESCRIPTOR
+  equilibrium_dependency: FORBIDDEN_BY_CURRENT_DOCTRINE
 
 owners:
   immutable_sources_and_specifications: src/epcsaft_regression/records.py
@@ -588,6 +590,7 @@ evidence_limits:
   uncertainty: not-claimed
 
 excluded:
+  # These are current runtime exclusions, not denials of the staged design goal.
   - runtime neutral methane/ethane binary interaction regression; the private dependency-gated contract grants no capability
   - association regression
   - electrolyte regression beyond the bounded nonproduction Figiel Born-tracer candidate

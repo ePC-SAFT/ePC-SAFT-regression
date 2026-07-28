@@ -55,12 +55,13 @@ with no added runtime test seam.
 `general_parameter_regression_status: USER_APPROVED_ARCHITECTURE_RUNTIME_PENDING`
 
 The user-approved 2026-07-27 destination is general parameter-family
-regression, defined in `docs/science/general-parameter-regression.md`.
-Caller-supplied source-bound data selects Provider-supported components,
-parameters, and typed observations. Exact Provider derivatives feed one Ceres
-engine and one result family. Published methane, ethane, Figiel, and later
-campaigns are validation evidence, not hard-coded mixture limits. The finite
-typed schema is not an arbitrary residual plugin or mutable registry, and the
+regression, defined in `docs/science/general-parameter-regression.md`. The
+design requires caller-supplied source-bound data to select Provider-supported
+components, parameters, and typed observations, with exact Provider
+derivatives feeding one canonical Ceres engine and result. Published methane,
+ethane, Figiel, and later campaigns are positive or negative evidence, not
+hard-coded mixture limits. This runtime is not implemented. The finite typed
+schema is not an arbitrary residual plugin or mutable registry, and the
 architecture decision does not make unsupported families fit-ready.
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
