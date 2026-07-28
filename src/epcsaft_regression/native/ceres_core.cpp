@@ -28,6 +28,19 @@ public:
     ) const override {
         const bool jacobian_requested =
             jacobians != nullptr && jacobians[0] != nullptr;
+        std::fill(
+            residuals,
+            residuals + shape_.residual_count,
+            std::numeric_limits<double>::quiet_NaN()
+        );
+        if (jacobian_requested) {
+            std::fill(
+                jacobians[0],
+                jacobians[0]
+                    + shape_.residual_count * shape_.variable_count(),
+                std::numeric_limits<double>::quiet_NaN()
+            );
+        }
         std::string failure;
         const bool usable = evaluator_(
             parameters[0],
@@ -38,7 +51,29 @@ public:
             failure
         );
         failure_reason_ = std::move(failure);
-        return usable;
+        if (!usable) {
+            return false;
+        }
+        const bool complete_residuals = std::all_of(
+            residuals,
+            residuals + shape_.residual_count,
+            [](double value) { return std::isfinite(value); }
+        );
+        const bool complete_jacobian =
+            !jacobian_requested
+            || std::all_of(
+                jacobians[0],
+                jacobians[0]
+                    + shape_.residual_count * shape_.variable_count(),
+                [](double value) { return std::isfinite(value); }
+            );
+        if (!complete_residuals || !complete_jacobian) {
+            failure_reason_ =
+                "exact evaluator left a nonfinite or incomplete residual "
+                "or Jacobian buffer";
+            return false;
+        }
+        return true;
     }
 
     const std::string& failure_reason() const noexcept {
@@ -218,6 +253,16 @@ SolveResult solve(
     result.jacobian.resize(
         shape.residual_count * shape.variable_count()
     );
+    std::fill(
+        result.residuals.begin(),
+        result.residuals.end(),
+        std::numeric_limits<double>::quiet_NaN()
+    );
+    std::fill(
+        result.jacobian.begin(),
+        result.jacobian.end(),
+        std::numeric_limits<double>::quiet_NaN()
+    );
     std::string final_failure;
     if (!evaluator(
             result.variables.data(),
@@ -231,6 +276,26 @@ SolveResult solve(
             result.failure_reason = std::move(final_failure);
         }
         return result;
+    }
+    if (!std::all_of(
+            result.residuals.cbegin(),
+            result.residuals.cend(),
+            [](double value) { return std::isfinite(value); }
+        )
+        || !std::all_of(
+            result.jacobian.cbegin(),
+            result.jacobian.cend(),
+            [](double value) { return std::isfinite(value); }
+        )) {
+        if (result.failure_reason.empty()) {
+            result.failure_reason =
+                "exact evaluator left a nonfinite or incomplete final "
+                "residual or Jacobian buffer";
+        }
+        return result;
+    }
+    if (result.summary.IsSolutionUsable()) {
+        result.failure_reason.clear();
     }
     diagnose_jacobian(shape, result.jacobian, result);
     return result;

@@ -665,12 +665,19 @@ Performance evidence cannot relax derivative, rank, or physical-validity
 gates.
 
 The native generalized core is one contiguous `[N fitted | Q lifted]`
-parameter block. Its build-testing-only closed-form fixture has `N = 2`,
+parameter block. Starts supplied by the public general problem are complete
+ordered fitted-parameter vectors of length `N`; lifted starts remain owned by
+the source-bound observation rows and their declared confirmation policy.
+Confirmation agreement gates the fitted vector and relative cost, not equality
+of nuisance coordinates that may legitimately converge to different
+representations of the same closure. Its build-testing-only closed-form
+fixture has `N = 2`,
 `Q = 1`, `R = 4`, full rank 3, and nuisance-projected parameter rank 2; it
 recovers the same solution from two complete starts, observes value-only and
-Jacobian requests separately, rejects `R < N + Q`, and reports a missing
-parameter column as rank deficient. It is neither installed nor exposed as a
-Provider capability.
+Jacobian requests separately, exercises the slot-sharing map `(0,1,0)`,
+rejects `R < N + Q`, rejects an incompletely written exact Jacobian, and
+reports a zero parameter column as rank deficient. It is neither installed
+nor exposed as a Provider capability.
 
 Accepted methane and ethane training are the first installed multi-active
 cutover. Each four-row campaign uses `N = 3`, `Q = 8`, `R = 16`, the Provider
@@ -682,6 +689,22 @@ projection; the duplicate pure training Ceres loop has been deleted. The
 three-coordinate common-pressure reporting solve remains intentionally
 separate from training because it owns reporting closure rather than fitted
 parameters.
+
+The public `fit_parameters` transport now admits exactly one multi-active
+block: the three ordered pure parameters
+`(m,sigma,epsilon/k)` on pure-saturation observations. This closed
+Provider-backed adapter maps the identity sharing order
+`(m,sigma,epsilon/k)` to the Provider's
+`(n,V,m,sigma,epsilon/k)` callback and delegates training to the same
+generalized core. A later mixture or reactive block must provide its own
+reviewed exact multi-active evaluator contract and remains fail-closed until
+then; this implementation does not pretend that several independent scalar
+callbacks are one coupled derivative.
+The current installed pure callback returns value, gradient, and Hessian in
+one inseparable ABI call. The core propagates Ceres's residual-only request and
+does not copy the assembled Regression Jacobian for that call, but the adapter
+still receives Provider derivatives. This is an artifact limitation, not a
+claim that pure trial evaluations are sensitivity-free.
 
 The installed pair-family campaigns evaluate all 17 audited May 2015
 methane/ethane rows as training data. Each `68 x 35` solve converges with full

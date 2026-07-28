@@ -346,8 +346,8 @@ def _mock_general_native_result() -> tuple[object, ...]:
         "",
         (0.0,) * 4,
         (0.0,) * 12,
-        (2.0, 1.0),
-        2,
+        (2.0, 1.0, 0.5),
+        3,
         2.0,
         (0.1,),
         1,
@@ -483,6 +483,29 @@ def _pure_problem(
         parameter_tolerance=1.0e-10,
         confirmation_parameter_scaled_max_delta=1.0e-5,
         confirmation_cost_relative_delta=1.0e-8,
+    )
+
+
+def _joint_pure_problem(model: EPCSAFT) -> RegressionProblem:
+    families = (
+        ParameterFamily.SEGMENT_COUNT,
+        ParameterFamily.SEGMENT_DIAMETER,
+        ParameterFamily.DISPERSION_ENERGY_OVER_K,
+    )
+    scalar_problems = tuple(
+        _pure_problem(model, family, all_training_rows=True)
+        for family in families
+    )
+    return replace(
+        scalar_problems[0],
+        parameters=tuple(
+            problem.parameters[0] for problem in scalar_problems
+        ),
+        parameter_slot_indices=(0, 1, 2),
+        start_vectors=(
+            (1.08, 3.555744, 157.5315),
+            (1.0, 3.7, 150.0),
+        ),
     )
 
 
@@ -1662,6 +1685,36 @@ def test_general_engine_fits_one_pure_component_parameter(
     )
 
 
+def test_general_engine_fits_joint_pure_parameter_vector() -> None:
+    model = _pure_model()
+    result = fit_parameters(_joint_pure_problem(model), model)
+
+    assert result.solver_converged
+    assert result.numerically_converged
+    assert result.workflow_valid
+    assert tuple(parameter.family for parameter in result.parameters) == (
+        ParameterFamily.SEGMENT_COUNT,
+        ParameterFamily.SEGMENT_DIAMETER,
+        ParameterFamily.DISPERSION_ENERGY_OVER_K,
+    )
+    assert tuple(parameter.final for parameter in result.parameters) == pytest.approx(
+        (0.9932081279826167, 3.717121437945618, 150.4888402511307),
+        rel=2.0e-9,
+        abs=2.0e-9,
+    )
+    assert not any(parameter.active_bound for parameter in result.parameters)
+    assert result.jacobian.residual_count == 16
+    assert result.jacobian.variable_count == 11
+    assert result.jacobian.full_rank == 11
+    assert result.jacobian.projected_parameter_rank == 3
+    assert result.confirmation_count == 1
+    assert result.confirmations_usable
+    assert all(
+        isinstance(row, PureSaturationRowDiagnostic) and row.evaluated
+        for row in result.rows
+    )
+
+
 def test_native_general_engine_rejects_nonpositive_pure_residual_scale() -> None:
     model = _pure_model()
     problem = _pure_problem(model, ParameterFamily.SEGMENT_COUNT)
@@ -1775,12 +1828,13 @@ def test_general_lij_fit_reuses_the_exact_lifted_pair_engine() -> None:
 @pytest.mark.parametrize(
     ("diagnostic_index", "diagnostic_value"),
     (
+        pytest.param(11, 2, id="full-rank-deficient"),
         pytest.param(14, 0, id="projected-rank-zero"),
         pytest.param(12, 1.0e11, id="full-conditioning-over-limit"),
         pytest.param(15, 1.0e11, id="projected-conditioning-over-limit"),
     ),
 )
-def test_status_requires_converged_termination_but_not_full_lifted_rank(
+def test_numerical_status_requires_complete_rank_and_conditioning(
     monkeypatch: pytest.MonkeyPatch,
     diagnostic_index: int,
     diagnostic_value: float,
@@ -1795,7 +1849,7 @@ def test_status_requires_converged_termination_but_not_full_lifted_rank(
     converged = fit_parameters(problem, model)
     assert converged.solver_converged
     assert converged.numerically_converged
-    assert converged.jacobian.full_rank == 2
+    assert converged.jacobian.full_rank == 3
 
     degraded = list(native)
     degraded[diagnostic_index] = diagnostic_value

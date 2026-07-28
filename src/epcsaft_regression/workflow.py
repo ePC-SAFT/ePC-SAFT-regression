@@ -791,6 +791,7 @@ def fit_pure_saturation(
         and math.isfinite(final_cost)
         and final_cost <= initial_cost
         and jacobian.complete_columns
+        and jacobian.full_rank == 11
         and parameter_columns_full_rank
         and bounds_respected
         and not native_failure_reason

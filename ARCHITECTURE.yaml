@@ -644,7 +644,8 @@ parameter_family_readiness:
   multi_parameter_core:
     status: IMPLEMENTED_ACCEPTED_PURE_WORKFLOWS_CUT_OVER_LOCAL
     canonical_variable_order: [fitted_solver_coordinates, lifted_coordinates]
-    full_vector_starts: required-no-cartesian-products
+    fitted_parameter_start_vectors: complete-ordered-no-cartesian-products
+    lifted_starts: observation-owned-with-declared-confirmation-policy
     evaluator_slot_sharing: explicit-immutable-sparse-map
     jacobian:
       full: "W [H_y Y_theta S D | H_y Y_q + H_q]"

@@ -1356,18 +1356,13 @@ def _row_payload(row: RegressionObservation) -> tuple[object, ...]:
 def _native_payload(
     problem: RegressionProblem, capability: ParameterCapability
 ) -> tuple[object, ...]:
-    if len(problem.parameters) != 1:
-        raise ValueError(
-            "the installed capability does not expose a multi-active "
-            "parameter evaluator"
-        )
     parameter = problem.parameters[0]
     observation_shape = (
         "pure_density"
         if isinstance(problem.observations[0], PureDensityObservation)
         else "phase_or_direct"
     )
-    return (
+    payload = (
         parameter.capability_id,
         parameter.provider_parameter_fingerprint,
         parameter.provider_topology_fingerprint,
@@ -1391,6 +1386,17 @@ def _native_payload(
             for row in (*problem.held_out_observations, *problem.stress_observations)
         ),
         observation_shape,
+    )
+    if len(problem.parameters) == 1:
+        return payload
+    return (
+        *payload,
+        tuple(item.transform.origin for item in problem.parameters),
+        tuple(item.transform.scale for item in problem.parameters),
+        tuple(item.lower_bound for item in problem.parameters),
+        tuple(item.upper_bound for item in problem.parameters),
+        problem.start_vectors,
+        problem.parameter_slot_indices,
     )
 
 
@@ -1545,11 +1551,49 @@ def _matched_capabilities(
     )
 
 
+def _supported_capability_block(
+    problem: RegressionProblem,
+    capabilities: tuple[ParameterCapability, ...],
+) -> bool:
+    if len(capabilities) == 1:
+        return True
+    expected_families = (
+        ParameterFamily.SEGMENT_COUNT,
+        ParameterFamily.SEGMENT_DIAMETER,
+        ParameterFamily.DISPERSION_ENERGY_OVER_K,
+    )
+    return (
+        tuple(parameter.family for parameter in problem.parameters)
+        == expected_families
+        and problem.parameter_slot_indices == (0, 1, 2)
+        and all(
+            isinstance(row, PureSaturationObservation)
+            for row in problem.observations
+        )
+        and len(capabilities) == 3
+        and len({capability.component_ids for capability in capabilities}) == 1
+        and len(
+            {
+                capability.parameter_fingerprint
+                for capability in capabilities
+            }
+        )
+        == 1
+        and len(
+            {
+                capability.topology_fingerprint
+                for capability in capabilities
+            }
+        )
+        == 1
+    )
+
+
 def _evaluate_parameters(
     problem: RegressionProblem, model: object, variables: tuple[float, ...]
 ) -> tuple[tuple[float, ...], tuple[float, ...]]:
     capabilities = _matched_capabilities(problem, model)
-    if len(capabilities) != 1:
+    if not _supported_capability_block(problem, capabilities):
         raise ValueError(
             "the installed capabilities do not expose one compatible "
             "multi-active evaluator"
@@ -1563,7 +1607,7 @@ def _evaluate_parameters(
 
 def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResult:
     capabilities = _matched_capabilities(problem, model)
-    if len(capabilities) != 1:
+    if not _supported_capability_block(problem, capabilities):
         raise ValueError(
             "the installed capabilities do not expose one compatible "
             "multi-active evaluator"
@@ -1572,7 +1616,21 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
     native = _native.solve_general(
         native_sdk(model), _native_payload(problem, capability)
     )
-    parameter_coordinate = problem.parameters[0]
+    physical_parameters = (
+        (float(native[5]),)
+        if len(problem.parameters) == 1
+        else tuple(float(value) for value in native[5])
+    )
+    bound_distances = (
+        (float(native[6]),)
+        if len(problem.parameters) == 1
+        else tuple(float(value) for value in native[6])
+    )
+    active_bounds = (
+        (str(native[7]),)
+        if len(problem.parameters) == 1
+        else tuple(str(value) for value in native[7])
+    )
     observations = {row.row_id: row for row in problem.observations}
     rows: tuple[
         GeneralRowDiagnostic
@@ -1740,20 +1798,25 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         )
         for row in native[20]
     )
-    active_bound = native[7] or None
-    parameter = FittedParameterDiagnostic(
-        family=parameter_coordinate.family,
-        component_ids=parameter_coordinate.identity.canonical_component_ids,
-        unit=parameter_coordinate.unit,
-        transform_origin=parameter_coordinate.transform.origin,
-        transform_scale=parameter_coordinate.transform.scale,
-        start=problem.start_vectors[0][0],
-        final=native[5],
-        movement=native[5] - problem.start_vectors[0][0],
-        lower_bound=parameter_coordinate.lower_bound,
-        upper_bound=parameter_coordinate.upper_bound,
-        active_bound_distance=native[6],
-        active_bound=active_bound,
+    parameter_diagnostics = tuple(
+        FittedParameterDiagnostic(
+            family=coordinate.family,
+            component_ids=coordinate.identity.canonical_component_ids,
+            unit=coordinate.unit,
+            transform_origin=coordinate.transform.origin,
+            transform_scale=coordinate.transform.scale,
+            start=problem.start_vectors[0][index],
+            final=physical_parameters[index],
+            movement=(
+                physical_parameters[index]
+                - problem.start_vectors[0][index]
+            ),
+            lower_bound=coordinate.lower_bound,
+            upper_bound=coordinate.upper_bound,
+            active_bound_distance=bound_distances[index],
+            active_bound=active_bounds[index] or None,
+        )
+        for index, coordinate in enumerate(problem.parameters)
     )
     jacobian = GeneralJacobianDiagnostics(
         residual_count=native[23],
@@ -1774,6 +1837,7 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         and confirmations_usable
         and native[17] <= problem.confirmation_parameter_scaled_max_delta
         and native[18] <= problem.confirmation_cost_relative_delta
+        and jacobian.full_rank == jacobian.variable_count
         and jacobian.projected_parameter_rank == len(problem.parameters)
         and math.isfinite(jacobian.full_condition_number)
         and jacobian.full_condition_number <= problem.maximum_condition_number
@@ -1815,7 +1879,7 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         iterations=native[4],
         residual_evaluation_count=native[24],
         jacobian_evaluation_count=native[25],
-        parameters=(parameter,),
+        parameters=parameter_diagnostics,
         jacobian=jacobian,
         rows=rows,
         confirmation_count=native[16],

@@ -83,6 +83,42 @@ def _capsule(component_id: str) -> object:
     return native_sdk(_model(component_id))
 
 
+def _provider_table(capsule: object) -> _NativeSdkTable:
+    capsule_pointer = ctypes.pythonapi.PyCapsule_GetPointer
+    capsule_pointer.argtypes = (ctypes.py_object, ctypes.c_char_p)
+    capsule_pointer.restype = ctypes.c_void_p
+    pointer = capsule_pointer(
+        capsule, b"epcsaft.native_sdk.v1"
+    )
+    assert pointer
+    return ctypes.cast(
+        pointer, ctypes.POINTER(_NativeSdkTable)
+    ).contents
+
+
+def _provider_phase(
+    table: _NativeSdkTable,
+    temperature_k: float,
+    volume_m3: float,
+    parameters: tuple[float, float, float],
+) -> _ParameterizedResult:
+    callback = _ParameterizedCallback(
+        table.evaluate_pure_phase_parameters
+    )
+    result = _ParameterizedResult()
+    result.struct_size = ctypes.sizeof(_ParameterizedResult)
+    status = callback(
+        table.model_context,
+        temperature_k,
+        1.0,
+        volume_m3,
+        *parameters,
+        ctypes.byref(result),
+    )
+    assert status == result.status == 0
+    return result
+
+
 def _payload(component_id: str) -> tuple[object, ...]:
     dataset = load_pure_saturation_dataset(component_id)
     specification = SPECIFICATIONS[component_id]
@@ -136,6 +172,90 @@ def test_methane_start_residuals_match_accepted_provider_anchor() -> None:
     assert len(jacobian) == 16 * 11
     assert len(diagnostics) == 4
     assert fingerprint.startswith("sha256:")
+
+
+@pytest.mark.parametrize("component_id", ("methane", "ethane"))
+def test_joint_pure_jacobian_is_the_exact_provider_hessian_chain_rule(
+    component_id: str,
+) -> None:
+    specification = SPECIFICATIONS[component_id]
+    dataset = load_pure_saturation_dataset(component_id)
+    capsule = _capsule(component_id)
+    residuals, jacobian, _, fingerprint = native.evaluate(
+        capsule, _payload(component_id), (0.0,) * 11
+    )
+    table = _provider_table(capsule)
+
+    expected = [0.0] * (16 * 11)
+    for row_index, row in enumerate(dataset.training_rows):
+        liquid_volume = (
+            specification.molar_mass_kg_per_mol
+            / row.liquid_density_kg_m3
+        )
+        vapor_volume = (
+            8.31446261815324 * row.temperature_k / row.pressure_pa
+        )
+        liquid = _provider_phase(
+            table, row.temperature_k, liquid_volume, specification.start
+        )
+        vapor = _provider_phase(
+            table, row.temperature_k, vapor_volume, specification.start
+        )
+        assert liquid.fingerprint.decode() == vapor.fingerprint.decode()
+        assert liquid.fingerprint.decode() == fingerprint
+        pressure_factor = 0.5 / row.pressure_pa
+        residual_offset = 4 * row_index
+        liquid_column = 3 + 2 * row_index
+        vapor_column = liquid_column + 1
+        for parameter, scale in enumerate(
+            specification.parameter_scales
+        ):
+            coordinate = 2 + parameter
+            expected[(residual_offset + 0) * 11 + parameter] = (
+                pressure_factor
+                * -8.31446261815324
+                * row.temperature_k
+                * liquid.hessian[5 + coordinate]
+                * scale
+            )
+            expected[(residual_offset + 1) * 11 + parameter] = (
+                pressure_factor
+                * -8.31446261815324
+                * row.temperature_k
+                * vapor.hessian[5 + coordinate]
+                * scale
+            )
+            expected[(residual_offset + 2) * 11 + parameter] = (
+                0.5
+                * (liquid.hessian[coordinate] - vapor.hessian[coordinate])
+                * scale
+            )
+        expected[(residual_offset + 0) * 11 + liquid_column] = (
+            pressure_factor
+            * -8.31446261815324
+            * row.temperature_k
+            * liquid.hessian[6]
+            * liquid_volume
+        )
+        expected[(residual_offset + 1) * 11 + vapor_column] = (
+            pressure_factor
+            * -8.31446261815324
+            * row.temperature_k
+            * vapor.hessian[6]
+            * vapor_volume
+        )
+        expected[(residual_offset + 2) * 11 + liquid_column] = (
+            0.5 * liquid.hessian[1] * liquid_volume
+        )
+        expected[(residual_offset + 2) * 11 + vapor_column] = (
+            -0.5 * vapor.hessian[1] * vapor_volume
+        )
+        expected[(residual_offset + 3) * 11 + liquid_column] = -0.5
+
+    assert residuals
+    assert tuple(jacobian) == pytest.approx(
+        expected, rel=2.0e-14, abs=2.0e-14
+    )
 
 
 @pytest.mark.parametrize("component_id", ("methane", "ethane"))
@@ -270,6 +390,29 @@ def test_rank_deficient_parameter_jacobian_cannot_be_accepted(
         "training parameter Jacobian is rank deficient: 2 of 3 fitted parameter columns"
         in result.failure_reasons
     )
+
+
+def test_rank_deficient_full_jacobian_cannot_be_accepted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    native_solve = native.solve
+
+    def return_rank_deficient_result(*args: object) -> tuple[object, ...]:
+        transport = list(native_solve(*args))
+        transport[10] = 10
+        return tuple(transport)
+
+    monkeypatch.setattr(native, "solve", return_rank_deficient_result)
+    result = fit_pure_saturation(
+        model=_model("methane"),
+        dataset=load_pure_saturation_dataset("methane"),
+        specification=METHANE_SATURATION_FIT_V1,
+    )
+
+    assert result.jacobian.full_rank == 10
+    assert not result.solver_converged
+    assert not result.numerically_converged
+    assert not result.physically_valid
 
 
 def test_low_cost_confirmation_agreement_uses_symmetric_relative_difference() -> None:

@@ -22,12 +22,22 @@ int main() {
     using epcsaft_regression::internal::ProblemShape;
     using epcsaft_regression::internal::SolverControls;
 
-    constexpr std::array<std::array<double, 3>, 4> jacobian{{
-        {{1.0, 0.0, 1.0}},
-        {{0.0, 1.0, 2.0}},
-        {{1.0, 1.0, 3.0}},
-        {{2.0, -1.0, 1.0}},
+    constexpr std::array<std::size_t, 3> slot_to_parameter{{0, 1, 0}};
+    constexpr std::array<std::array<double, 3>, 4> slot_jacobian{{
+        {{0.5, 0.0, 0.5}},
+        {{0.0, 1.0, 0.0}},
+        {{0.5, 1.0, 0.5}},
+        {{1.0, -1.0, 1.0}},
     }};
+    constexpr std::array<double, 4> lifted_jacobian{{1.0, 2.0, 3.0, 1.0}};
+    std::array<std::array<double, 3>, 4> jacobian{};
+    for (std::size_t row = 0; row < jacobian.size(); ++row) {
+        for (std::size_t slot = 0; slot < slot_to_parameter.size(); ++slot) {
+            jacobian[row][slot_to_parameter[slot]] +=
+                slot_jacobian[row][slot];
+        }
+        jacobian[row][2] = lifted_jacobian[row];
+    }
     constexpr std::array<double, 3> expected{{1.0, -2.0, 0.5}};
     std::array<double, 4> target{};
     for (std::size_t row = 0; row < target.size(); ++row) {
@@ -136,5 +146,37 @@ int main() {
     );
     require(deficient.full_jacobian.rank == 1);
     require(deficient.projected_parameter_jacobian.rank == 1);
+
+    const auto incomplete = [](
+        const double* variables,
+        std::size_t variable_count,
+        bool jacobian_requested,
+        double* residuals,
+        double* row_major_jacobian,
+        std::string& failure_reason
+    ) {
+        if (variable_count != 1) {
+            failure_reason = "unexpected variable count";
+            return false;
+        }
+        residuals[0] = variables[0] - 1.0;
+        if (jacobian_requested) {
+            static_cast<void>(row_major_jacobian);
+        }
+        failure_reason.clear();
+        return true;
+    };
+    const auto incomplete_result = epcsaft_regression::internal::solve(
+        ProblemShape{1, 0, 1},
+        {0.0},
+        std::vector<CoordinateBound>(1, {-10.0, 10.0}),
+        controls,
+        incomplete
+    );
+    require(!incomplete_result.summary.IsSolutionUsable());
+    require(
+        incomplete_result.failure_reason.find("incomplete")
+        != std::string::npos
+    );
     return 0;
 }
