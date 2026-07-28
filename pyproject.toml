@@ -24,3 +24,7 @@ sdist.include = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-m 'not campaign'"
+markers = [
+  "campaign: expensive installed-artifact scientific replay run explicitly",
+]

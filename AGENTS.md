@@ -66,11 +66,15 @@ implemented: one water solvation factor against all 21 audited NaBr rows
 (`21x1`, rank 1). The two declared starts converge to
 `1.5590515389548207`; the paper's one-decimal `1.5` is a sufficiently close
 descriptive comparison under the user's engineering judgment, not a numeric
-acceptance gate. The 11 Table 4/5 interactions over all 164 Hamer--Wu rows
-(`164x11`, rank 11) remain a separate next checkpoint and are not implemented
-by this package surface. Provider artifact `fa766e5` supplies the exact
-installed batch derivative used by the water-factor fit and the Stage-C
-callback.
+acceptance gate. The 11 Table 4/5 interactions over all 164 Hamer--Wu rows are
+implemented as eleven conditional scalar Ceres fits with an assembled
+`164x11`, rank-11 diagnostic. Both starts converge, but nine coordinates miss
+the approved `0.05` printed-value comparison; worst is Li+--Br- at
+`0.26079436319380545`, and Li+--Cl- reaches its upper bound. This is retained as
+`SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE`, not a
+catalog candidate. Provider artifact `fa766e5` supplies Stage B; bounded
+artifact `8af6e54` supplies the exact Stage-C batch derivative/cancellation
+contract.
 The retained exact isolated log and relative fits are falsification evidence,
 not proof that the staged route is impossible. Keep the user-approved Table
 4/5 maximum parameter difference at `0.05`; do not tune rows, weights, bounds,

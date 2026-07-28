@@ -50,7 +50,7 @@ with no added runtime test seam.
 
 `runtime_status: AUTHORITY_NEUTRAL_PACKAGE_IMPLEMENTED_VALIDATION_NOT_STARTED`
 
-`next_figiel_family_status: WATER_SOLVATION_FACTOR_PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_STAGE_C_NOT_STARTED`
+`next_figiel_family_status: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED`
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint
@@ -178,14 +178,17 @@ Every row is training evidence and predictive status remains
 `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
 Provider artifact `fa766e5` supplies the exact installed NaBr batch value and
-water-solvation-factor derivative used by this checkpoint. The separately
-approved 11-parameter Table 4/5 interaction fit remains unimplemented. Its
-existing callback preflight has a full-rank `164x11` Jacobian and all 492
-derivative checks pass, while isolated fixed-family fits retain their boundary
-solutions as falsification evidence. Those results do not invalidate the
-source-described staged route. The Table 4/5 recovery gate remains the
-user-approved maximum parameter delta `0.05`; no rows, weights, bounds, starts,
-cycles, or tolerances may be tuned to the answer.
+water-solvation-factor derivative used by Stage B. Bounded Provider artifact
+`8af6e54` supplies Stage C's exact installed batch derivatives and cancellation
+contract. Stage C fits each of the eleven Table 4/5 interactions conditionally
+against all affected Hamer--Wu rows while holding the other ten at the printed
+tuple. Both starts converge and agree within `1.3809200687386891e-6`; the
+assembled Jacobian remains full rank. Nine coordinates miss the user-approved
+`0.05` comparison, with worst Li+--Br- difference `0.26079436319380545`;
+Li+--Cl- reaches the upper bound.
+Status is
+`SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE`. No rows,
+weights, bounds, starts, or tolerances were tuned to the answer.
 
 The eventual direction is a staged, family-by-family recovery campaign for
 Figiel Tables 2–5. That later intent does not broaden the first Born-diameter

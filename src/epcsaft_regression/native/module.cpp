@@ -1,4 +1,5 @@
 #include "born_diameter_fit.hpp"
+#include "figiel_kij_fit.hpp"
 #include "figiel_water_factor_fit.hpp"
 #include "pure_saturation_fit.hpp"
 
@@ -193,6 +194,48 @@ PyObject* py_evaluate_figiel_water_factor(PyObject*, PyObject* args) {
     );
 }
 
+PyObject* py_solve_figiel_kij(PyObject*, PyObject* args) {
+    PyObject* capsules = nullptr;
+    PyObject* payload = nullptr;
+    Py_ssize_t schedule_index = 0;
+    if (!PyArg_ParseTuple(
+            args,
+            "OOn:solve_figiel_kij",
+            &capsules,
+            &payload,
+            &schedule_index
+        )) {
+        return nullptr;
+    }
+    if (schedule_index < 0) {
+        PyErr_SetString(PyExc_ValueError, "schedule index must be nonnegative");
+        return nullptr;
+    }
+    return epcsaft_regression::solve_figiel_kij_python(
+        capsules,
+        payload,
+        static_cast<std::size_t>(schedule_index)
+    );
+}
+
+PyObject* py_evaluate_figiel_kij(PyObject*, PyObject* args) {
+    PyObject* capsules = nullptr;
+    PyObject* payload = nullptr;
+    PyObject* parameters = nullptr;
+    if (!PyArg_ParseTuple(
+            args,
+            "OOO:evaluate_figiel_kij",
+            &capsules,
+            &payload,
+            &parameters
+        )) {
+        return nullptr;
+    }
+    return epcsaft_regression::evaluate_figiel_kij_python(
+        capsules, payload, parameters
+    );
+}
+
 PyMethodDef methods[] = {
     {"transport_info", py_transport_info, METH_O, "Validate the installed provider capsule."},
     {
@@ -227,6 +270,18 @@ PyMethodDef methods[] = {
         py_evaluate_figiel_water_factor,
         METH_VARARGS,
         "Evaluate Figiel NaBr water-factor residuals and Jacobian."
+    },
+    {
+        "solve_figiel_kij",
+        py_solve_figiel_kij,
+        METH_VARARGS,
+        "Fit the eleven Figiel aqueous interaction parameters."
+    },
+    {
+        "evaluate_figiel_kij",
+        py_evaluate_figiel_kij,
+        METH_VARARGS,
+        "Evaluate exact Figiel aqueous interaction residuals and Jacobian."
     },
     {nullptr, nullptr, 0, nullptr},
 };

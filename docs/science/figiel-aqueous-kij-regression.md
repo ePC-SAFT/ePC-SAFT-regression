@@ -1,12 +1,12 @@
 # Figiel Staged Aqueous Current-Catalog Recovery
 
 Status:
-`WATER_SOLVATION_FACTOR_PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_STAGE_C_NOT_STARTED`.
-The source contract remains frozen. The standalone Stage-B workflow consumes
-the exact installed Provider batch value/derivative seam and fits one water
-solvation factor to the 21 audited NaBr rows. No Stage-C runtime, confirmation
-cycle, Validation campaign, catalog admission, prediction, or authority
-transfer exists.
+`CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED`.
+Stage B remains unchanged. Stage C now has one source-bound conditional Ceres
+owner and one retained campaign result. Every conditional coordinate converged
+from both declared starts, but nine of eleven fitted values missed the
+user-approved `0.05` printed-value comparison. This is a valid negative
+scientific result, not catalog admission, prediction, or authority transfer.
 
 This document is the sole design and science owner for the staged Figiel
 current-catalog recovery. It replaces the falsified assumption that one
@@ -23,19 +23,19 @@ The smallest source-backed sequence is:
    the five SI Table S5 reported-average water-solvation targets.
 2. **Stage B — water solvation factor (`21 x 1`, rank 1).** Fit one
    ion-independent `f_water` to all 21 audited Hamer--Wu NaBr MIAC rows.
-3. **Stage C — aqueous interactions (`164 x 11`, rank 11).** Fit the eleven
-   Table 4/5 interactions to all 164 audited Hamer--Wu rows.
-4. **Future confirmation.** After Stage C is separately implemented, replay
-   A-B-C with the preceding stage outputs fixed. Run at most three confirmation
-   cycles and require the maximum scaled coordinate change between consecutive
-   cycles to be at most `1e-5`.
+3. **Stage C — conditional aqueous interactions (eleven scalar fits).** For
+   each Table 4/5 coordinate, hold the other ten interactions at the printed
+   tuple and fit the active coordinate to every Hamer--Wu row whose salt
+   contains that interaction. Assemble the eleven fitted values and evaluate
+   all 164 rows with the exact `164 x 11` Jacobian.
+4. **Confirmation.** Repeat every scalar fit from the displaced start and
+   require maximum parameter disagreement at most `1e-5`.
 
 The final candidate either reproduces the printed Table 4/5 tuple within the
 frozen `0.05` maximum parameter difference and passes the in-sample observable
 gates, or retains
 `SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE`. Failure
-does not authorize changing rows, weights, bounds, starts, cycle limits, or
-tolerances.
+does not authorize changing rows, weights, bounds, starts, or tolerances.
 
 The eleven immutable Stage-C coordinates are:
 
@@ -72,8 +72,10 @@ Durable line locators are 277, 279, and 281:
   iteration whose parameter changes were small.
 
 The paper does **not** disclose an exact MIAC objective, weights, row subset,
-bounds, starts, or cycle termination. Those are Regression-owned choices below,
-not reconstructed author choices.
+bounds, starts, optimizer, or cycle termination. The primary-source audit in
+`docs/research/figiel-table-4-5-fitting-method.md` records those unknowns.
+Every numerical choice below is Regression-owned and is not attributed to the
+authors.
 
 Held et al. (2014), retained Markdown SHA-256
 `b8b1e46bf870224de5de68b5989f9cb377d17445d87109a5462a94f1efaafbda`,
@@ -98,6 +100,10 @@ The approved Validation packet is commit
   and
 - Hamer--Wu CSV SHA-256
   `2f63e13f06a5b0f4e8bca2980b6a8d9d7fb0f839153c43e3a71952daf9796595`.
+
+Stage C consumes only the hash-bound Hamer--Wu CSV rows; the ledger,
+parameter-packet, metadata, and SI identities remain packet-level provenance
+and support rather than additional residual inputs.
 
 All states are aqueous molality-scale observations at `298.15 K` and
 `100000 Pa`. Stage A uses exactly the five SI Table S5 reported averages
@@ -124,14 +130,20 @@ Regression choice because the packet has no rowwise uncertainty.
 
 Stage B has one dimensionless variable `f_water = z`, scale `1`, bounds
 `[1,2]`, and starts `1.2` and `1.8`. Published `1.5` is comparison-only and is
-not a seed. Stage C has eleven dimensionless variables `k_j = z_j`, each scale
-`1`, bounds `[-1,1]`, and starts all `0`, all `-0.5`, and all `+0.5`. The
-published tuple is comparison-only and is not a seed, prior, or regularizer.
+not a seed. Stage C carries forward the exact fitted Stage-A diameters and the
+primary Stage-B value `f_water = 1.5590515389548207`; their evidence subjects
+are part of the immutable Stage-C specification. Each Stage-C scalar problem
+has one dimensionless variable `k_j = z_j`, scale `1`, bounds `[-1,1]`, and
+starts `0` and `0.25`. The other ten interactions are fixed to the published
+tuple as the explicit conditional context. The active published value is
+comparison-only and is not a seed, target, prior, or regularizer.
 
 Every stage uses the existing Ceres owner with `DENSE_QR`, one thread, silent
-logging, at most 500 iterations, and function, gradient, and parameter
-tolerances `1e-10`. No second Ceres engine, result family, native module, or
-CMake target is admitted.
+logging. Stage C uses at most 50 iterations and function, gradient, and parameter
+tolerances `1e-10`. The `180 s` operational deadline applies independently to
+each scalar Ceres solve, not to the eleven-coordinate schedule as a whole.
+Stage C has one closed result contract in the existing workflow and reuses the
+sole Ceres engine, native module, and CMake target.
 
 ## Exact Provider derivative contracts
 
@@ -152,14 +164,14 @@ gamma_model = exp(log_gamma_model)
 dr/df_water = -(gamma_model/gamma_observed) * dlog_gamma_model/df_water.
 ```
 
-Stage C consumes the existing Provider callback from correction
-`06d21af0334a22bafd31d617f3c8535b53711140` (merged as
-`39b39d9d7831a8da943372df019f5a9d7d388b44`). Its retained wheel SHA-256 is
-`3bacac6818708091629a79ce9a7a320a07f87093f0697508060aa1aee7368cb6` and
-installed-header SHA-256 is
-`01568808f48c8cf0cd5fd0eb0b3d038349a319251eb8a9f9053b028ed35e5a36`.
-For each ordered `(water,cation,anion)` row it returns `ln(gamma_pm^m)` and
-exact total fixed-pressure derivatives with respect to
+Stage C consumes the bounded installed Provider callback from commit
+`8af6e5467cba70ade226cb28f93688ce88048c29`, tree
+`2ec243429600de75ccaeb51955044bf2e7557fbe`. The retained wheel SHA-256 is
+`1d77a46aca369269fd97b32a722e8b548617a4ae840e07645040a138f63863db`;
+the installed-header SHA-256 is
+`555ebde7aa2dcfc7a41a1a8f14af8a7ede678caafd24aa93cd165d291325fb4d`.
+For each ordered `(water,cation,anion)` row it returns bounded
+`ln(gamma_pm^m)` and exact total fixed-pressure derivatives with respect to
 `(k_water_cation,k_water_anion,k_cation_anion)`. Regression maps those three
 entries into the global eleven-column Jacobian and computes
 
@@ -183,24 +195,22 @@ abs(J_exact - J_h/2)
 
 Finite differences are evidence only. They are not a runtime backend.
 
-For each stage, SVD rank uses
+For each assembled result, SVD rank uses
 
 ```text
 s_max * max(residual_count, parameter_count) * epsilon_binary64 * 100.
 ```
 
-Required ranks are exactly `5`, `1`, and `11`. Results retain singular values,
-condition number, complete/nonzero columns, active bounds, and the
-least-sensitive direction. Rank failure stops; Regression does not add priors,
-regularization, parameter tying, or fixed published values to manufacture
-rank.
+The assembled Stage-C `164 x 11` Jacobian must have rank 11, and each scalar
+problem must have a finite nonzero active column over its affected rows.
+Results retain singular values, condition number, complete/nonzero columns,
+active bounds, and the least-sensitive direction. The fixed published context
+defines the approved conditional question; it is not used to manufacture the
+assembled rank.
 
-Each declared start must converge to the same stage solution within `1e-5` in
-scaled infinity norm. A primary A-B-C pass is followed by at most three
-confirmation A-B-C cycles. Each stage starts from the preceding cycle's value,
-not a published seed. The campaign is numerically cycle-converged only when the
-largest scaled change across all 17 coordinates is at most `1e-5`. Failure
-after three cycles is retained without tuning.
+Both declared Stage-C starts must converge to the same eleven-coordinate
+assembled result within `1e-5` in infinity norm. There is no coordinate sweep,
+outer A-B-C cycle, or published-value initialization.
 
 ## Retained rejected alternatives
 
@@ -232,13 +242,40 @@ The fitted difference `0.05905153895482074` is sufficiently close for the
 user's engineering comparison. This is descriptive adjudication, not a newly
 invented acceptance tolerance and not experimental uncertainty.
 
+## Conditional Stage-C result
+
+The bounded Provider subject is commit
+`8af6e5467cba70ade226cb28f93688ce88048c29`, tree
+`2ec243429600de75ccaeb51955044bf2e7557fbe`. Its wheel and installed-header
+SHA-256 values are
+`1d77a46aca369269fd97b32a722e8b548617a4ae840e07645040a138f63863db`
+and `555ebde7aa2dcfc7a41a1a8f14af8a7ede678caafd24aa93cd165d291325fb4d`.
+The primary fitted tuple is
+
+```text
+(-0.5364822745, -0.3292520491, -0.1579732178,
+ -0.4055029787, -0.3743902294,  1.0000000000,
+  0.9394025030,  0.1342006022,  0.7607943632,
+  0.6520078999, -0.1743688955)
+```
+
+All eleven primary and confirmation scalar solves terminated with usable Ceres
+convergence. The maximum start disagreement is
+`1.3809200687386891e-6`. Two printed parameters are within `0.05`; nine are
+not. The largest difference is Li+--Br- (`0.2607944`), and Li+--Cl- reaches
+the declared upper bound at `1.0`. The assembled Jacobian has rank 11 and
+condition number `40784.83209599819`; all 1,804 entries pass the retained
+two-step centered derivative check.
+Consequently the retained status is
+`SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE`.
+
 ## Result and status semantics
 
 The standalone Stage-B result retains source/artifact identities, input and
 evaluated row IDs, both starts, the fitted coordinate, row residuals,
 objectives, rank, active bounds, Provider diagnostics, and ordered failure
-reasons. A future Stage-C result must remain separately reviewable until a
-confirmation workflow is explicitly authorized.
+reasons. The Stage-C result remains separately reviewable and makes no
+catalog-authority claim.
 
 Statuses remain independent:
 
@@ -246,16 +283,16 @@ Statuses remain independent:
 2. For standalone Stage B, `numerically_converged` requires finite diagnostics,
    rank 1, and declared-start agreement within `1e-5`; the installed-artifact
    test separately checks the exact Jacobian at both declared centered-
-   difference steps. A future combined result must additionally pass its
-   confirmation-cycle gate.
+   difference steps. Stage C separately requires its two-start conditional
+   agreement gate.
 3. `physically_valid` requires every fixed-pressure state to be Provider-usable
    with positive finite MIAC. Born-tracer physical gates remain owned by Stage
    A and are not silently re-run by the standalone Stage-B result.
 4. `workflow_valid` additionally requires exact source hashes, row membership,
    units/basis, state, salt/component order, Provider artifacts/fingerprints,
    fixed-family inputs, and complete input/evaluated/failed accounting.
-5. The standalone Stage-B comparison is descriptive and user-adjudicated. A
-   future Stage-C `scientifically_valid` status additionally requires every
+5. The standalone Stage-B comparison is descriptive and user-adjudicated.
+   Stage-C `scientifically_valid` additionally requires every
    frozen in-sample observable gate and
    `max_j abs(k_j_fit-k_j_published) <= 0.05`.
 6. `predictive_status` remains
@@ -271,24 +308,30 @@ catalog candidate.
 ## Ownership, next gate, and negative space
 
 Regression owns targets, residuals, Ceres execution, diagnostics, and the
-standalone Stage-B result. Provider owns values, exact derivatives, model
-records, reference sequences, and density closure. Provider implementation
-`fa766e5af86f70ae92870247b1801d7681255e98`, tree
-`962b00eac3fac18d98d9eea3c56eb137031d4b4f`, supplies the installed batch
-seam. Its retained wheel and installed-header SHA-256 values are
-`ee9842889a82251d5d7b501d30d235b63c727cfcd15419f3c5970730870e5286`
-and `7b08de2a57dfd9eb0ed0546a368f65b09d6fe7d921f2df086e70b8738e872914`.
+Stage-B and conditional Stage-C results. Provider owns values, exact
+derivatives, model records, reference sequences, density closure, and bounded
+callback cancellation. Provider implementation `8af6e5467cba70ade226cb28f93688ce88048c29`
+supplies the installed bounded batch seam used by Stage C.
 
-The next checkpoint is the separately bounded `164x11` Stage-C Table 4/5
-interaction fit. It must consume the installed Provider derivative seam,
-retain the `0.05` comparison gate, and prove rank 11 and declared-start
-agreement without broadening the standalone Stage-B surface. Regression may
-author a later installed-artifact Validation campaign; its own evidence cannot
-self-promote.
+The package checkpoint retains the failed comparison without tuning. A later
+installed-artifact Validation campaign may replay the exact conditional result;
+Regression evidence cannot self-promote. Recovering the historical printed
+tuple from experimental rows remains unresolved because the paper omits the
+objective, weights, exact rows, optimizer, bounds, starts, and sub-staging.
+Artifact validation is intentionally a matrix: the Stage-C wheel with Provider
+`8af6e54` passes seven routine Stage-C tests plus the explicit public-fit
+campaign, while the accepted legacy Provider artifact preserves the 49
+accepted pure-workflow tests. The public campaign is replayed with
+`python -m pytest -o addopts='' -q
+tests/test_figiel_aqueous_kij.py::test_public_aqueous_kij_fit_replays_retained_negative_result`;
+it is excluded from the routine suite because it executes all 22 scalar Ceres
+solves. Running the entire historical suite against `8af6e54` is diagnostic
+only; its three known pure-workflow numerical differences are not Stage-C
+acceptance failures.
 
 Excluded: generic registries, mutable parameter overlays, Provider catalog
 writes, compatibility shims, simultaneous all-table solves, organic-solvent or
 expanded-ion scope, density/osmotic targets, association/polar/reactive/MEA
-scope, uncertainty, prediction, global identifiability, a second solver/result/
-module/target, and any runtime dependency on Zotero, Validation source trees,
+scope, uncertainty, prediction, global identifiability, an alternate solver,
+result, module, or target, and any runtime dependency on Zotero, Validation source trees,
 Migration, or lab code.
