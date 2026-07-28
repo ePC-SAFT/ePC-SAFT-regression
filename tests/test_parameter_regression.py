@@ -19,6 +19,7 @@ from epcsaft_regression import (
     FIGIEL_AQUEOUS_KIJ_V1,
     FIGIEL_WATER_SOLVATION_FACTOR_V1,
     MeanIonicActivityObservation,
+    ModelParameterIdentity,
     ObservationPartition,
     PairParameterIdentity,
     ParameterCoordinate,
@@ -27,6 +28,7 @@ from epcsaft_regression import (
     PureSaturationRowDiagnostic,
     RegressionProblem,
     RegressionResult,
+    RelativePermittivityObservation,
     SourceDescriptor,
     SolvationGibbsObservation,
     UnsupportedParameterCapability,
@@ -489,6 +491,81 @@ def _born_diameter_problem(
     )
 
 
+def _dielectric_suppression_problem(model: EPCSAFT) -> RegressionProblem:
+    capability = _capability(
+        model,
+        ParameterFamily.DIELECTRIC_ION_SUPPRESSION_COEFFICIENT,
+    )
+    source_rows = (
+        ("figiel2025-dielectric-water-008", 0.010880829, 71.61417323),
+        ("figiel2025-dielectric-water-009", 0.022927461, 66.65354331),
+        ("figiel2025-dielectric-water-010", 0.033808290, 62.87401575),
+    )
+    observations = tuple(
+        RelativePermittivityObservation(
+            row_id=row_id,
+            source_id="retained-lab-figiel-figure-2",
+            source_locator=f"validation:figiel-ledger:{row_id}",
+            component_ids=capability.component_ids,
+            temperature_k=298.15,
+            pressure_pa=100_000.0,
+            total_ion_mole_fraction=ion_fraction,
+            observed_relative_permittivity=permittivity,
+            residual_scale=1.0,
+            partition=ObservationPartition.TRAINING,
+        )
+        for row_id, ion_fraction, permittivity in source_rows
+    )
+    source = SourceDescriptor(
+        source_id="retained-lab-figiel-figure-2",
+        citation=(
+            "Figiel, Yu, and Held (2025), Figure 2 water dielectric "
+            "correlation; retained digitization."
+        ),
+        durable_locator="validation:data/figiel-2025-regression-target-ledger.csv",
+        source_artifact_sha256=(
+            "09e1e820a55861b835fdab27df5134451ecc9329c6d512dcf26565b267b387a6"
+        ),
+        canonical_dataset_sha256=canonical_dataset_sha256(observations),
+        transformation_record=(
+            "Selected three NaBr rows without response transformation."
+        ),
+        units_and_bases=(
+            "T/K, P/Pa, total ion mole fraction, dimensionless static "
+            "relative dielectric constant."
+        ),
+        use_basis="Digitized in-sample implementation evidence only.",
+        residual_scale_rationale=(
+            "Equal raw dimensionless relative-permittivity residuals; no "
+            "pointwise uncertainty is available."
+        ),
+    )
+    parameter = ParameterCoordinate(
+        family=ParameterFamily.DIELECTRIC_ION_SUPPRESSION_COEFFICIENT,
+        identity=ModelParameterIdentity(),
+        capability_id=capability.capability_id,
+        provider_parameter_fingerprint=capability.parameter_fingerprint,
+        provider_topology_fingerprint=capability.topology_fingerprint,
+        unit="1",
+        transform=AffineParameterTransform(origin=7.0, scale=1.0),
+        lower_bound=0.01,
+        upper_bound=30.0,
+        starts=(2.0, 12.0),
+    )
+    return RegressionProblem(
+        sources=(source,),
+        parameters=(parameter,),
+        observations=observations,
+        maximum_condition_number=1.0e10,
+        maximum_iterations=50,
+        function_tolerance=1.0e-12,
+        gradient_tolerance=1.0e-12,
+        parameter_tolerance=1.0e-12,
+        confirmation_parameter_scaled_max_delta=1.0e-5,
+        confirmation_cost_relative_delta=1.0e-8,
+    )
+
+
 def _replace_observations(
     problem: RegressionProblem, observations: tuple[object, ...]
 ) -> RegressionProblem:
@@ -610,6 +687,30 @@ def test_installed_provider_advertises_exact_direct_observable_contracts() -> No
         ("sodium-cation",),
     )
 
+    dielectric = _capability(
+        _aqueous_model(),
+        ParameterFamily.DIELECTRIC_ION_SUPPRESSION_COEFFICIENT,
+    )
+    assert (
+        dielectric.capability_id,
+        dielectric.coordinate_kinds,
+        dielectric.coordinate_units,
+        dielectric.derivative_order,
+        dielectric.identity_shape,
+        dielectric.observation_contract,
+        dielectric.model_domain,
+        dielectric.active_component_ids,
+    ) == (
+        "figiel_dielectric_suppression_v1",
+        ("dielectric_ion_suppression_coefficient",),
+        ("dimensionless",),
+        1,
+        "model",
+        "relative_permittivity",
+        "figiel_dielectric",
+        (),
+    )
+
 
 def test_installed_provider_advertises_each_aqueous_kij_miac_contract() -> None:
     model = _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4]
@@ -704,6 +805,49 @@ def test_exact_aqueous_kij_jacobian_matches_directional_residual_difference() ->
     assert len(residuals) == len(jacobian) == 21
     assert jacobian == pytest.approx(
         finite_difference, rel=2.0e-6, abs=2.0e-8
+    )
+
+
+def test_exact_dielectric_jacobian_matches_directional_residual_difference() -> None:
+    model = _aqueous_model()
+    problem = _dielectric_suppression_problem(model)
+    trial = problem.parameters[0].transform.to_solver(7.01)
+
+    residuals, jacobian = _evaluate_parameters(problem, model, (trial,))
+    step = 1.0e-5
+    plus = _evaluate_parameters(problem, model, (trial + step,))[0]
+    minus = _evaluate_parameters(problem, model, (trial - step,))[0]
+    finite_difference = tuple(
+        (upper - lower) / (2.0 * step)
+        for upper, lower in zip(plus, minus, strict=True)
+    )
+
+    assert len(residuals) == len(jacobian) == 3
+    assert jacobian == pytest.approx(
+        finite_difference, rel=2.0e-9, abs=2.0e-10
+    )
+
+
+def test_general_engine_fits_dielectric_suppression_from_user_rows() -> None:
+    model = _aqueous_model()
+    result = fit_parameters(_dielectric_suppression_problem(model), model)
+
+    assert result.solver_converged
+    assert result.numerically_converged
+    assert result.workflow_valid
+    assert result.parameter.active_bound is None
+    assert result.jacobian.residual_count == 3
+    assert result.jacobian.variable_count == 1
+    assert result.jacobian.full_rank == 1
+    assert result.jacobian.projected_parameter_rank == 1
+    assert result.confirmations_usable
+    assert all(
+        isinstance(row, DirectObservationRowDiagnostic)
+        and row.observable == "relative_permittivity"
+        and row.observable_unit == "1"
+        and row.evaluated
+        and row.derivative_status == "EXACT_PROVIDER_FIRST_DERIVATIVE"
+        for row in result.rows
     )
 
 

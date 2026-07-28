@@ -11,11 +11,13 @@ from epcsaft_regression.parameter_regression import (
     ComponentParameterIdentity,
     FixedCompositionVleObservation,
     MeanIonicActivityObservation,
+    ModelParameterIdentity,
     ObservationPartition,
     PairParameterIdentity,
     ParameterCoordinate,
     ParameterFamily,
     RegressionProblem,
+    RelativePermittivityObservation,
     SolvationGibbsObservation,
     SourceDescriptor,
     canonical_dataset_sha256,
@@ -204,6 +206,41 @@ def test_aqueous_kij_observation_binds_active_pair_and_fixed_context() -> None:
 
     assert row.active_pair_component_ids == ("sodium-cation", "water")
     assert row.canonical_active_pair_component_ids == ("sodium-cation", "water")
+    assert canonical_dataset_sha256((row,))
+
+
+def test_relative_permittivity_observation_binds_one_model_parameter() -> None:
+    row = RelativePermittivityObservation(
+        row_id="figiel-water-001",
+        source_id="doi:example",
+        source_locator="figure-s1:water:001",
+        component_ids=("water", "sodium-cation", "bromide-anion"),
+        temperature_k=298.15,
+        pressure_pa=100_000.0,
+        total_ion_mole_fraction=0.05,
+        observed_relative_permittivity=58.4,
+        residual_scale=1.0,
+        partition=ObservationPartition.TRAINING,
+    )
+    coordinate = ParameterCoordinate(
+        family=ParameterFamily.DIELECTRIC_ION_SUPPRESSION_COEFFICIENT,
+        identity=ModelParameterIdentity(),
+        capability_id="figiel_dielectric_suppression_v1",
+        provider_parameter_fingerprint=PARAMETER_HASH,
+        provider_topology_fingerprint=TOPOLOGY_HASH,
+        unit="1",
+        transform=AffineParameterTransform(origin=7.0, scale=1.0),
+        lower_bound=0.01,
+        upper_bound=30.0,
+        starts=(2.0, 12.0),
+    )
+
+    assert coordinate.identity.canonical_component_ids == ()
+    assert row.component_ids == (
+        "water",
+        "sodium-cation",
+        "bromide-anion",
+    )
     assert canonical_dataset_sha256((row,))
 
 
