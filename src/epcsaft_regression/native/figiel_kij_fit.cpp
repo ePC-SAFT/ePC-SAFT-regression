@@ -183,7 +183,7 @@ Payload parse_payload(PyObject* object) {
     PyObject* sequence = PySequence_Fast(
         object, "Figiel interaction payload must be a sequence"
     );
-    if (sequence == nullptr || PySequence_Fast_GET_SIZE(sequence) != 13) {
+    if (sequence == nullptr || PySequence_Fast_GET_SIZE(sequence) != 14) {
         Py_XDECREF(sequence);
         throw std::invalid_argument(
             "Figiel interaction payload has the wrong length"
@@ -383,6 +383,10 @@ Payload parse_payload(PyObject* object) {
     payload.rank_multiplier = number(
         PySequence_Fast_GET_ITEM(sequence, 12), "rank multiplier"
     );
+    const std::string specification_id = text(
+        PySequence_Fast_GET_ITEM(sequence, 13),
+        "specification identity"
+    );
     Py_DECREF(sequence);
     constexpr std::array<double, parameter_count> published_parameters{
         -0.4, -0.3, -0.1, -0.3, -0.3, 0.8, 0.8, 0.0, 0.5, 0.65, -0.35
@@ -408,6 +412,7 @@ Payload parse_payload(PyObject* object) {
         || payload.gradient_tolerance != 1.0e-10
         || payload.parameter_tolerance != 1.0e-10
         || payload.rank_multiplier != 100.0
+        || specification_id != "figiel-2025-aqueous-kij-v1"
     ) {
         throw std::invalid_argument(
             "Figiel interaction numerical contract does not match the design"
@@ -829,9 +834,6 @@ SolveOutcome solve_one(
     SolveOutcome outcome{};
     outcome.name = schedule.name;
     outcome.coordinate_order = schedule.reverse ? "reverse" : "forward";
-    const std::uint64_t deadline_ns = deadline_after(
-        payload.max_solver_time_seconds
-    );
     outcome.parameters = payload.published_parameters;
     bool schedule_usable = true;
     outcome.initial_cost = 0.0;
@@ -849,7 +851,7 @@ SolveOutcome solve_one(
             payload,
             schedule,
             coordinate,
-            deadline_ns
+            deadline_after(payload.max_solver_time_seconds)
         );
         outcome.coordinate_solves[solved.coordinate] = solved;
         outcome.parameters[solved.coordinate] = solved.parameter;
@@ -877,7 +879,10 @@ SolveOutcome solve_one(
     }
     try {
         outcome.evaluation = evaluate(
-            tables, payload, outcome.parameters, deadline_ns
+            tables,
+            payload,
+            outcome.parameters,
+            deadline_after(payload.max_solver_time_seconds)
         );
     } catch (const std::exception& error) {
         schedule_usable = false;

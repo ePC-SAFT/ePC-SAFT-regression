@@ -211,6 +211,13 @@ figiel_aqueous_kij_design:
       bounds: [-1.0, 1.0]
       scales: all-1.0
       starts: [active-zero, active-positive-0.25]
+      scalar_start_deadline_seconds: 180.0
+      native_boundary_contract: >-
+        Python records are the canonical specification/result owners. The
+        payload carries the specification id; C++ repeats only fail-closed
+        dimensions and frozen numerical controls at the capsule boundary and
+        marshals the native tuple consumed by workflow.py. It is not a second
+        target or result owner.
       fixed_born_source: fitted-stage-a-evidence-subject-55ea2cd69af62c45b26179cfab6939760de23058b5a7e8c880a79f67faa417ed
       fixed_water_factor_source: fitted-stage-b-commit-882e0735ed1b5586a591682da1fd3d78f46636d4
       fitted_primary: [-0.5364822745121732, -0.3292520490662036, -0.15797321784955046, -0.40550297873440694, -0.37439022939723743, 1.0, 0.9394025030399381, 0.13420060218999108, 0.7607943631938054, 0.6520078999238217, -0.17436889546934506]
@@ -496,8 +503,8 @@ manifest:
   retained_binary_input_evidence_files: 1
   retained_binary_result_evidence_files: 1
   ide_project_files: 7
-  physical_production_lines: 8053
-  physical_package_test_lines: 1442
+  physical_production_lines: 7984
+  physical_package_test_lines: 1606
   tracked_generated_evidence_files_after_figiel_candidate: 7
   generated_file_policy: >-
     The accepted methane and ethane fit receipts bind deterministic
@@ -514,9 +521,9 @@ manifest:
     - path: src/epcsaft_regression/records.py
       physical_lines: 1751
     - path: src/epcsaft_regression/workflow.py
-      physical_lines: 1844
+      physical_lines: 1845
     - path: src/epcsaft_regression/native/figiel_kij_fit.cpp
-      physical_lines: 1246
+      physical_lines: 1218
     - path: src/epcsaft_regression/native/born_diameter_fit.cpp
       physical_lines: 710
     - path: src/epcsaft_regression/native/figiel_water_factor_fit.cpp

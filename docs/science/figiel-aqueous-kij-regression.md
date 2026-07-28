@@ -140,8 +140,10 @@ comparison-only and is not a seed, target, prior, or regularizer.
 
 Every stage uses the existing Ceres owner with `DENSE_QR`, one thread, silent
 logging. Stage C uses at most 50 iterations and function, gradient, and parameter
-tolerances `1e-10`. Stage C has one closed result contract in the existing
-workflow and reuses the sole Ceres engine, native module, and CMake target.
+tolerances `1e-10`. The `180 s` operational deadline applies independently to
+each scalar Ceres solve, not to the eleven-coordinate schedule as a whole.
+Stage C has one closed result contract in the existing workflow and reuses the
+sole Ceres engine, native module, and CMake target.
 
 ## Exact Provider derivative contracts
 
@@ -317,10 +319,15 @@ Regression evidence cannot self-promote. Recovering the historical printed
 tuple from experimental rows remains unresolved because the paper omits the
 objective, weights, exact rows, optimizer, bounds, starts, and sub-staging.
 Artifact validation is intentionally a matrix: the Stage-C wheel with Provider
-`8af6e54` passes the six focused Stage-C tests, while the accepted legacy
-Provider artifact preserves the 49 accepted pure-workflow tests. Running the
-entire historical suite against `8af6e54` is diagnostic only; its three known
-pure-workflow numerical differences are not Stage-C acceptance failures.
+`8af6e54` passes seven routine Stage-C tests plus the explicit public-fit
+campaign, while the accepted legacy Provider artifact preserves the 49
+accepted pure-workflow tests. The public campaign is replayed with
+`python -m pytest -o addopts='' -q
+tests/test_figiel_aqueous_kij.py::test_public_aqueous_kij_fit_replays_retained_negative_result`;
+it is excluded from the routine suite because it executes all 22 scalar Ceres
+solves. Running the entire historical suite against `8af6e54` is diagnostic
+only; its three known pure-workflow numerical differences are not Stage-C
+acceptance failures.
 
 Excluded: generic registries, mutable parameter overlays, Provider catalog
 writes, compatibility shims, simultaneous all-table solves, organic-solvent or

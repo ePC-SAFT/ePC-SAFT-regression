@@ -166,6 +166,9 @@ def test_aqueous_kij_runtime_is_one_private_native_owner() -> None:
     assert hasattr(epcsaft_regression, "fit_figiel_aqueous_kij")
     assert not hasattr(epcsaft_regression, "persist_provider_parameters")
     assert not hasattr(epcsaft_regression, "fit_generic_parameters")
+    assert _aqueous_kij_native_payload(epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1)[
+        -1
+    ] == "figiel-2025-aqueous-kij-v1"
 
 
 def test_aqueous_kij_requires_only_the_bounded_batch_callback() -> None:
@@ -227,6 +230,76 @@ def test_aqueous_kij_residual_jacobian_maps_all_exact_provider_columns() -> None
             expected[column] = -(modeled / observed) * derivative
         actual = jacobian[row_index * 11 : (row_index + 1) * 11]
         assert actual == pytest.approx(expected, rel=1.0e-14, abs=1.0e-14)
+
+
+def test_aqueous_kij_exact_jacobian_matches_callback_value_direction() -> None:
+    specification = epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1
+    models = _aqueous_kij_models(specification)
+    capsules = tuple(native_sdk(model) for model in models)
+    payload = _aqueous_kij_native_payload(specification)
+    parameters = specification.published_parameters
+    direction = tuple(
+        (-1.0 if index % 2 else 1.0) * (index + 1.0) / 11.0
+        for index in range(11)
+    )
+    _, jacobian_native, _ = _native.evaluate_figiel_kij(
+        capsules, payload, parameters
+    )
+    jacobian = tuple(float(value) for value in jacobian_native)
+    differences: list[tuple[float, ...]] = []
+    for step in (1.0e-4, 5.0e-5):
+        plus = tuple(
+            value + step * component
+            for value, component in zip(parameters, direction, strict=True)
+        )
+        minus = tuple(
+            value - step * component
+            for value, component in zip(parameters, direction, strict=True)
+        )
+        residuals_plus, _, _ = _native.evaluate_figiel_kij(capsules, payload, plus)
+        residuals_minus, _, _ = _native.evaluate_figiel_kij(
+            capsules, payload, minus
+        )
+        differences.append(
+            tuple(
+                (float(plus_value) - float(minus_value)) / (2.0 * step)
+                for plus_value, minus_value in zip(
+                    residuals_plus, residuals_minus, strict=True
+                )
+            )
+        )
+    for row in range(164):
+        exact = sum(
+            jacobian[row * 11 + column] * direction[column]
+            for column in range(11)
+        )
+        coarse = differences[0][row]
+        fine = differences[1][row]
+        tolerance = max(
+            1.0e-8,
+            20.0 * abs(coarse - fine),
+            2.0e-8 * abs(exact),
+        )
+        assert abs(exact - fine) <= tolerance
+
+
+@pytest.mark.campaign
+def test_public_aqueous_kij_fit_replays_retained_negative_result() -> None:
+    result = epcsaft_regression.fit_figiel_aqueous_kij()
+
+    assert result.solver_converged
+    assert result.numerically_converged
+    assert result.physically_valid
+    assert result.workflow_valid
+    assert not result.scientifically_valid
+    assert result.recovery_status == (
+        "SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE"
+    )
+    assert result.input_row_ids == result.evaluated_row_ids
+    assert result.failed_row_ids == ()
+    assert tuple(start.rank for start in result.starts) == (11, 11)
+    assert result.start_parameter_max_abs_delta <= 1.0e-5
+    assert result.published_parameter_max_abs_delta > 0.05
 
 
 def test_conditional_campaign_evidence_retains_separate_statuses() -> None:
