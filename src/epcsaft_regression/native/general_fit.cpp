@@ -146,7 +146,8 @@ bool pure_density_observation(const Payload& payload) {
 }
 
 bool joint_pure_observation(const Payload& payload) {
-    return payload.parameter_origins.size() == 3
+    return payload.capability_id == "neutral_pure_segment_count_v1"
+        && payload.parameter_origins.size() == 3
         && payload.component_ids.size() == 1
         && payload.observation_shape == "phase_or_direct";
 }
@@ -524,6 +525,13 @@ Payload parse_payload(PyObject* object) {
                 "two full starts, and three slot indices"
             );
         }
+        if (payload.parameter_slot_indices
+            != std::vector<std::size_t>{0, 1, 2}) {
+            throw std::invalid_argument(
+                "joint-pure adapter requires the declared m, sigma, "
+                "epsilon/k slot order"
+            );
+        }
         for (std::size_t index = 0; index < 3; ++index) {
             if (!std::isfinite(payload.parameter_origins[index])
                 || !std::isfinite(payload.parameter_scales[index])
@@ -845,14 +853,27 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
                                 == sizeof(
                                     epcsaft_ion_solvation_solvent_permittivity_result_v1
                                 )
-                    : (table.table_size
-                    >= offsetof(
-                        epcsaft_native_sdk_v1,
-                        evaluate_pure_phase_parameter
-                    ) + sizeof(table.evaluate_pure_phase_parameter)
-                && (joint_pure_observation(payload)
-                    ? table.evaluate_pure_phase_parameters != nullptr
-                    : table.evaluate_pure_phase_parameter != nullptr));
+                    : joint_pure_observation(payload)
+                        ? table.table_size
+                                >= offsetof(
+                                    epcsaft_native_sdk_v1,
+                                    evaluate_pure_phase_parameters
+                                ) + sizeof(
+                                    table.evaluate_pure_phase_parameters
+                                )
+                            && table.evaluate_pure_phase_parameters != nullptr
+                            && table.parameterized_result_size
+                                == sizeof(
+                                    epcsaft_parameterized_phase_block_result_v1
+                                )
+                        : table.table_size
+                                >= offsetof(
+                                    epcsaft_native_sdk_v1,
+                                    evaluate_pure_phase_parameter
+                                ) + sizeof(
+                                    table.evaluate_pure_phase_parameter
+                                )
+                            && table.evaluate_pure_phase_parameter != nullptr;
     const std::size_t expected_component_count =
         direct ? 3u : binary ? 2u : 1u;
     const bool components_match =

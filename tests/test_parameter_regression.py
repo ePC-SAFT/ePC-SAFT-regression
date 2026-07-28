@@ -1715,6 +1715,22 @@ def test_general_engine_fits_joint_pure_parameter_vector() -> None:
     )
 
 
+def test_native_joint_pure_adapter_rejects_reordered_slots() -> None:
+    model = _pure_model()
+    problem = _joint_pure_problem(model)
+    capabilities = tuple(
+        _capability(model, parameter.family)
+        for parameter in problem.parameters
+    )
+    payload = list(_native_payload(problem, capabilities[0]))
+    payload[-1] = (0, 2, 1)
+
+    with pytest.raises(RuntimeError, match="declared m, sigma"):
+        parameter_regression._native.evaluate_general(
+            native_sdk(model), tuple(payload), (0.0,) * 11
+        )
+
+
 def test_native_general_engine_rejects_nonpositive_pure_residual_scale() -> None:
     model = _pure_model()
     problem = _pure_problem(model, ParameterFamily.SEGMENT_COUNT)
