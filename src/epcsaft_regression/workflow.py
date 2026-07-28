@@ -15,6 +15,20 @@ from epcsaft.records import (
 )
 
 from . import _native
+from .parameter_regression import (
+    AffineParameterTransform,
+    ComponentParameterIdentity,
+    ObservationPartition,
+    ParameterCapability,
+    ParameterCoordinate,
+    ParameterFamily,
+    PureSaturationObservation,
+    RegressionProblem,
+    SourceDescriptor,
+    canonical_dataset_sha256,
+    fit_parameters,
+    parameter_capabilities,
+)
 from .records import (
     FIGIEL_AQUEOUS_KIJ_V1,
     FIGIEL_BORN_DIAMETER_TRACER_V1,
@@ -501,6 +515,140 @@ def _active_bound(value: float, lower: float, upper: float) -> str | None:
     return None
 
 
+def _general_pure_saturation_problem(
+    model: object,
+    dataset: PureSaturationDataset,
+    specification: PureSaturationFitSpecification,
+) -> RegressionProblem:
+    observations = tuple(
+        PureSaturationObservation(
+            row_id=row.row_id,
+            source_id=row.source_id,
+            source_locator=f"{dataset.source.locator}:{row.row_id}",
+            component_id=dataset.component_id,
+            temperature_k=row.temperature_k,
+            pressure_pa=row.pressure_pa,
+            liquid_density_kg_per_m3=row.liquid_density_kg_m3,
+            molar_mass_kg_per_mol=specification.molar_mass_kg_per_mol,
+            pressure_scale_pa=2.0 * row.pressure_pa,
+            chemical_potential_scale=2.0,
+            liquid_density_scale_kg_per_m3=(
+                2.0 * row.liquid_density_kg_m3
+            ),
+            liquid_volume_origin_m3_per_mol=(
+                specification.molar_mass_kg_per_mol
+                / row.liquid_density_kg_m3
+            ),
+            liquid_volume_start_m3_per_mol=(
+                specification.molar_mass_kg_per_mol
+                / row.liquid_density_kg_m3
+            ),
+            liquid_volume_bounds_m3_per_mol=(
+                specification.liquid_volume_bounds_m3
+            ),
+            vapor_volume_origin_m3_per_mol=(
+                8.31446261815324 * row.temperature_k / row.pressure_pa
+            ),
+            vapor_volume_start_m3_per_mol=(
+                8.31446261815324 * row.temperature_k / row.pressure_pa
+            ),
+            vapor_volume_bounds_m3_per_mol=(
+                specification.vapor_volume_bounds_m3
+            ),
+            partition=ObservationPartition.TRAINING,
+        )
+        for row in dataset.training_rows
+    )
+    families = (
+        ParameterFamily.SEGMENT_COUNT,
+        ParameterFamily.SEGMENT_DIAMETER,
+        ParameterFamily.DISPERSION_ENERGY_OVER_K,
+    )
+    advertised_capabilities = parameter_capabilities(model)
+    capabilities = tuple(
+        capability
+        for family in families
+        for capability in advertised_capabilities
+        if isinstance(capability, ParameterCapability)
+        and capability.family is family
+        and capability.component_ids == (dataset.component_id,)
+    )
+    if len(capabilities) != len(families):
+        raise ValueError(
+            "installed Provider does not advertise the complete pure-parameter block"
+        )
+    parameters = tuple(
+        ParameterCoordinate(
+            family=family,
+            identity=ComponentParameterIdentity(dataset.component_id),
+            capability_id=capability.capability_id,
+            provider_parameter_fingerprint=capability.parameter_fingerprint,
+            provider_topology_fingerprint=capability.topology_fingerprint,
+            unit=unit,
+            transform=AffineParameterTransform(origin=start, scale=scale),
+            lower_bound=lower,
+            upper_bound=upper,
+        )
+        for family, capability, unit, start, scale, lower, upper in zip(
+            families,
+            capabilities,
+            specification.parameter_units,
+            specification.start,
+            specification.parameter_scales,
+            specification.lower_bounds,
+            specification.upper_bounds,
+            strict=True,
+        )
+    )
+    confirmation_start = tuple(
+        min(upper, max(lower, start + 0.1 * scale))
+        for start, scale, lower, upper in zip(
+            specification.start,
+            specification.parameter_scales,
+            specification.lower_bounds,
+            specification.upper_bounds,
+            strict=True,
+        )
+    )
+    source = SourceDescriptor(
+        source_id=dataset.source.source_id,
+        citation=dataset.source.citation,
+        durable_locator=dataset.source.locator,
+        source_artifact_sha256=dataset.source.data_sha256,
+        canonical_dataset_sha256=canonical_dataset_sha256(observations),
+        transformation_record=dataset.source.transformation,
+        units_and_bases=(
+            "Temperature/K, pressure/Pa, saturated liquid density/(kg/m3)."
+        ),
+        use_basis=dataset.source.use_basis,
+        residual_scale_rationale=(
+            "The accepted equal four-residual weighting is represented by "
+            "scales 2P, 2 for mu/RT, and twice observed liquid density."
+        ),
+    )
+    return RegressionProblem(
+        sources=(source,),
+        parameters=parameters,
+        parameter_slot_indices=(0, 1, 2),
+        start_vectors=(specification.start, confirmation_start),
+        observations=observations,
+        maximum_condition_number=float.fromhex("0x1.fffffffffffffp+1023"),
+        maximum_iterations=specification.max_num_iterations,
+        maximum_solver_time_seconds=float.fromhex(
+            "0x1.fffffffffffffp+1023"
+        ),
+        function_tolerance=specification.function_tolerance,
+        gradient_tolerance=specification.gradient_tolerance,
+        parameter_tolerance=specification.parameter_tolerance,
+        confirmation_parameter_scaled_max_delta=(
+            specification.confirmation_parameter_scaled_max_delta
+        ),
+        confirmation_cost_relative_delta=(
+            specification.confirmation_cost_relative_delta
+        ),
+    )
+
+
 def _reporting_row_diagnostic(
     source: SaturationObservation,
     training_ids: frozenset[str],
@@ -644,46 +792,54 @@ def fit_pure_saturation(
         )
     payload = _native_payload(dataset, specification, provider_fingerprint)
     reporting_payload = tuple(_row_payload(row) for row in dataset.rows)
+    general_result = fit_parameters(
+        _general_pure_saturation_problem(model, dataset, specification),
+        model,
+    )
+    final_parameters = tuple(
+        parameter.final for parameter in general_result.parameters
+    )
+    variables = tuple(
+        (final - start) / scale
+        for final, start, scale in zip(
+            final_parameters,
+            specification.start,
+            specification.parameter_scales,
+            strict=True,
+        )
+    ) + tuple(
+        coordinate
+        for source, diagnostic in zip(
+            dataset.training_rows, general_result.rows, strict=True
+        )
+        for coordinate in (
+            math.log(
+                diagnostic.liquid_volume_m3_per_mol
+                / (
+                    specification.molar_mass_kg_per_mol
+                    / source.liquid_density_kg_m3
+                )
+            ),
+            math.log(
+                diagnostic.vapor_volume_m3_per_mol
+                / (
+                    8.31446261815324
+                    * source.temperature_k
+                    / source.pressure_pa
+                )
+            ),
+        )
+    )
     (
-        termination_native,
-        solution_usable_native,
-        initial_cost_native,
-        final_cost_native,
-        iterations_native,
-        variables_native,
         _residuals_native,
         _jacobian_native,
         training_rows_native,
-        full_singular_values_native,
-        full_rank_native,
-        full_condition_native,
-        parameter_singular_values_native,
-        parameter_rank_native,
-        parameter_condition_native,
-        complete_columns_native,
-        parameter_delta_native,
-        cost_delta_native,
-        confirmation_termination_native,
-        confirmation_usable_native,
-        reporting_rows_native,
         observed_fingerprint_native,
-        compiled_identity_native,
-        native_failure_reason_native,
-    ) = _native.solve(capsule, payload, reporting_payload)
-    if tuple(compiled_identity_native) != payload[0]:
-        raise RuntimeError(
-            "compiled problem identity did not round-trip from the native solve"
-        )
-    variables = tuple(float(value) for value in variables_native)
-    final_parameters = tuple(
-        start + scale * transformed
-        for start, scale, transformed in zip(
-            specification.start,
-            specification.parameter_scales,
-            variables[:3],
-            strict=True,
-        )
+    ) = _native.evaluate(capsule, payload, variables)
+    reporting_rows_native = _native.report_pure_saturation(
+        capsule, payload, reporting_payload, final_parameters
     )
+    compiled_identity_native = payload[0]
     parameters = tuple(
         ParameterDiagnostic(
             name=name,
@@ -705,7 +861,7 @@ def fit_pure_saturation(
             strict=True,
         )
     )
-    native_failure_reason = str(native_failure_reason_native).strip()
+    native_failure_reason = "; ".join(general_result.failure_reasons)
     training_rows = tuple(
         TrainingRowDiagnostic(
             row_id=str(native_row[0]),
@@ -761,22 +917,29 @@ def fit_pure_saturation(
             "native reporting row identity did not match the immutable dataset"
         )
     jacobian = JacobianDiagnostics(
-        complete_columns=bool(complete_columns_native),
-        full_singular_values=tuple(
-            float(value) for value in full_singular_values_native
+        complete_columns=(
+            len(_jacobian_native)
+            == general_result.jacobian.residual_count
+            * general_result.jacobian.variable_count
+            and all(math.isfinite(float(value)) for value in _jacobian_native)
         ),
-        full_rank=int(full_rank_native),
-        full_condition_number=float(full_condition_native),
+        full_singular_values=general_result.jacobian.full_singular_values,
+        full_rank=general_result.jacobian.full_rank,
+        full_condition_number=general_result.jacobian.full_condition_number,
         projected_parameter_singular_values=tuple(
-            float(value) for value in parameter_singular_values_native
+            general_result.jacobian.projected_parameter_singular_values
         ),
-        projected_parameter_rank=int(parameter_rank_native),
-        projected_parameter_condition_number=float(parameter_condition_native),
+        projected_parameter_rank=(
+            general_result.jacobian.projected_parameter_rank
+        ),
+        projected_parameter_condition_number=(
+            general_result.jacobian.projected_parameter_condition_number
+        ),
     )
-    termination = str(termination_native)
-    usable = bool(solution_usable_native)
-    initial_cost = float(initial_cost_native)
-    final_cost = float(final_cost_native)
+    termination = general_result.termination
+    usable = general_result.solution_usable
+    initial_cost = general_result.initial_cost
+    final_cost = general_result.final_cost
     bounds_respected = all(
         item.lower_bound <= item.final <= item.upper_bound for item in parameters
     )
@@ -796,10 +959,14 @@ def fit_pure_saturation(
         and bounds_respected
         and not native_failure_reason
     )
-    confirmation_termination = str(confirmation_termination_native)
-    confirmation_usable = bool(confirmation_usable_native)
-    parameter_delta = float(parameter_delta_native)
-    cost_delta = float(cost_delta_native)
+    confirmation_termination = (
+        "CONVERGENCE" if general_result.confirmations_usable else "FAILURE"
+    )
+    confirmation_usable = general_result.confirmations_usable
+    parameter_delta = (
+        general_result.confirmation_parameter_scaled_max_delta
+    )
+    cost_delta = general_result.confirmation_cost_relative_max_delta
     numerically_converged = (
         solver_converged
         and confirmation_termination == "CONVERGENCE"
@@ -862,7 +1029,7 @@ def fit_pure_saturation(
         solution_usable=usable,
         initial_cost=initial_cost,
         final_cost=final_cost,
-        iterations=int(iterations_native),
+        iterations=general_result.iterations,
         parameters=parameters,
         jacobian=jacobian,
         training_rows=training_rows,

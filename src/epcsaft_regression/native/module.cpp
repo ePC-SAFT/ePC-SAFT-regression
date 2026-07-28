@@ -132,14 +132,24 @@ PyObject* py_evaluate(PyObject*, PyObject* args) {
     return epcsaft_regression::evaluate_python(capsule, payload, variables);
 }
 
-PyObject* py_solve(PyObject*, PyObject* args) {
+PyObject* py_report_pure_saturation(PyObject*, PyObject* args) {
     PyObject* capsule = nullptr;
     PyObject* payload = nullptr;
     PyObject* reporting_rows = nullptr;
-    if (!PyArg_ParseTuple(args, "OOO:solve", &capsule, &payload, &reporting_rows)) {
+    PyObject* parameters = nullptr;
+    if (!PyArg_ParseTuple(
+            args,
+            "OOOO:report_pure_saturation",
+            &capsule,
+            &payload,
+            &reporting_rows,
+            &parameters
+        )) {
         return nullptr;
     }
-    return epcsaft_regression::solve_python(capsule, payload, reporting_rows);
+    return epcsaft_regression::report_python(
+        capsule, payload, reporting_rows, parameters
+    );
 }
 
 PyObject* py_evaluate_born(PyObject*, PyObject* args) {
@@ -285,7 +295,12 @@ PyMethodDef methods[] = {
         "Return the required parameterized result size."
     },
     {"evaluate", py_evaluate, METH_VARARGS, "Evaluate exact pure-saturation residuals and Jacobian."},
-    {"solve", py_solve, METH_VARARGS, "Fit pure-saturation parameters and evaluate reporting rows."},
+    {
+        "report_pure_saturation",
+        py_report_pure_saturation,
+        METH_VARARGS,
+        "Evaluate pure-saturation reporting closure at fixed fitted parameters."
+    },
     {
         "evaluate_born",
         py_evaluate_born,

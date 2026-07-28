@@ -3424,6 +3424,8 @@ PyObject* solve_general_python(
             const SolveOutcome& confirmation = outcomes[index];
             confirmations_usable =
                 confirmations_usable
+                && confirmation.summary.termination_type
+                    == ceres::CONVERGENCE
                 && confirmation.summary.IsSolutionUsable()
                 && confirmation.failure_reason.empty()
                 && complete_evaluation(confirmation, payload);

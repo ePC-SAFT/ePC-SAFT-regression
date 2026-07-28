@@ -690,6 +690,14 @@ three-coordinate common-pressure reporting solve remains intentionally
 separate from training because it owns reporting closure rather than fitted
 parameters.
 
+For this cutover, the primary fitted-parameter vector is the immutable
+component specification start. The deterministic confirmation vector adds
+`0.1` solver unit to each fitted coordinate (equivalently `0.1` times its
+declared physical transform scale, clamped to the existing bounds). Both runs
+use the observation-declared lifted-volume starts. This is a start
+perturbation only; it changes no source row, weight, bound, scale, or
+acceptance threshold.
+
 The public `fit_parameters` transport now admits exactly one multi-active
 block: the three ordered pure parameters
 `(m,sigma,epsilon/k)` on pure-saturation observations. This closed
@@ -820,8 +828,9 @@ prediction evidence, or Provider-catalog authority.
    and admit it through the same phase observation contract and Ceres owner.
 4. **Complete for independent scalar pure saturation.** Admit `m`, `sigma`,
    and `epsilon/k` component coordinates through the same contract, result,
-   Ceres owner, and native target. The accepted joint methane/ethane workflow
-   remains unchanged.
+   Ceres owner, and native target. The accepted joint methane/ethane public
+   result and reporting presentation remain unchanged while their training
+   now uses the same ordered three-parameter Ceres owner.
 5. **Complete for the advertised direct-observable domains.** Admit one Born
    diameter from one or more solvation-Gibbs targets, or one solvation factor
    from one or more mean-ionic-activity targets. Each problem remains one
