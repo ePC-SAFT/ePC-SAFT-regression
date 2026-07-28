@@ -858,6 +858,53 @@ This is in-sample reproduction evidence only; the retained pressure-closure
 result remains negative under its historical gate and predictive status remains
 `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
+### Constant-`k_ij` maturity hardening
+
+Constant `k_ij` is the priority pair family. Maturity work stays inside the
+existing one-active-pair contract and does not add a second fitter, a generic
+target registry, simultaneous multi-pair recovery, or a temperature-dependent
+`k_ij(T)` coordinate.
+
+One compact campaign matrix shall exercise each currently admitted observation
+domain:
+
+1. neutral fixed-composition VLE through the lifted-volume Hessian path;
+2. aqueous mean ionic activity through the exact first-derivative path; and
+3. single-ion solvation Gibbs energy through the exact first-derivative path.
+
+For every applicable case the campaign must verify the exact Provider
+derivative against a bounded directional difference, projected parameter rank
+one, the declared conditioning gate, active-bound reporting, agreement of the
+primary and perturbed starts, complete row accounting, and deterministic
+results. Neutral VLE also verifies invariance to row order and to the caller's
+ordering of the unordered pair identity. Direct aqueous cases verify that the
+two inactive pair values supplied by each row remain fixed context rather than
+additional fitted coordinates. Negative controls must fail closed for an
+unsupported Provider fingerprint or observation domain, a missing or
+structurally zero active derivative, incomplete Provider row evaluation, and a
+terminal rank or conditioning failure.
+
+The 17-row methane/ethane solve is the performance sentinel. On the current
+development host it completes in `0.55 s` wall time under the explicit campaign
+command; this measurement is diagnostic, not a portable acceptance cutoff.
+The campaign shall retain iteration and Provider-evaluation accounting so a
+future slowdown can be diagnosed without adding a user-selectable backend.
+Ceres remains single-threaded `DENSE_QR` for this `68 x 35` problem because the
+measured solve is small and fast. A bounded native solver-time budget is
+required so a malformed or unexpectedly expensive case returns a diagnostic
+result instead of running indefinitely; the budget does not interrupt an
+individual Provider callback and cannot replace Provider-side evaluation
+deadlines.
+
+An additional literature reference may be admitted only when its raw
+observations, component order, units, `k_ij` convention, fitted comparison
+value, and installed Provider capability are all independently available.
+Published parameters without their fitting rows remain comparison provenance,
+not a regression benchmark. A second neutral VLE case is preferred because it
+would test component and state transfer beyond methane/ethane; an already
+source-bound aqueous case remains valid cross-domain evidence but is not a
+substitute for missing neutral rows.
+
 The scalar pure implementation replays the four accepted methane training
 rows independently for each family. Every `16 x 9` solve has full rank 9 and
 projected parameter rank 1, with a non-bound result and confirmation-start
