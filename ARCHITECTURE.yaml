@@ -551,7 +551,7 @@ evidence_limits:
   uncertainty: not-claimed
 
 excluded:
-  - runtime binary interaction regression; the private dependency-gated contract grants no capability
+  - runtime neutral methane/ethane binary interaction regression; the private dependency-gated contract grants no capability
   - association regression
   - electrolyte regression beyond the bounded nonproduction Figiel Born-tracer candidate
   - reactive regression

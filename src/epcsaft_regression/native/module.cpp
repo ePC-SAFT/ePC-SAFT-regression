@@ -218,36 +218,6 @@ PyObject* py_solve_figiel_kij(PyObject*, PyObject* args) {
     );
 }
 
-PyObject* py_solve_figiel_kij_coordinate(PyObject*, PyObject* args) {
-    PyObject* capsules = nullptr;
-    PyObject* payload = nullptr;
-    Py_ssize_t schedule_index = 0;
-    Py_ssize_t coordinate_index = 0;
-    if (!PyArg_ParseTuple(
-            args,
-            "OOnn:solve_figiel_kij_coordinate",
-            &capsules,
-            &payload,
-            &schedule_index,
-            &coordinate_index
-        )) {
-        return nullptr;
-    }
-    if (schedule_index < 0 || coordinate_index < 0) {
-        PyErr_SetString(
-            PyExc_ValueError,
-            "schedule and coordinate indices must be nonnegative"
-        );
-        return nullptr;
-    }
-    return epcsaft_regression::solve_figiel_kij_coordinate_python(
-        capsules,
-        payload,
-        static_cast<std::size_t>(schedule_index),
-        static_cast<std::size_t>(coordinate_index)
-    );
-}
-
 PyObject* py_evaluate_figiel_kij(PyObject*, PyObject* args) {
     PyObject* capsules = nullptr;
     PyObject* payload = nullptr;
@@ -306,12 +276,6 @@ PyMethodDef methods[] = {
         py_solve_figiel_kij,
         METH_VARARGS,
         "Fit the eleven Figiel aqueous interaction parameters."
-    },
-    {
-        "solve_figiel_kij_coordinate",
-        py_solve_figiel_kij_coordinate,
-        METH_VARARGS,
-        "Fit one conditional Figiel aqueous interaction parameter."
     },
     {
         "evaluate_figiel_kij",

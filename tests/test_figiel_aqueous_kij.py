@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+import ctypes
 import hashlib
 import json
 from pathlib import Path
@@ -13,6 +14,76 @@ from epcsaft_regression.workflow import (
     _aqueous_kij_models,
     _aqueous_kij_native_payload,
 )
+
+
+class _NativeSdkV1(ctypes.Structure):
+    _fields_ = [
+        ("abi_version", ctypes.c_uint32),
+        ("table_size", ctypes.c_size_t),
+        ("result_size", ctypes.c_size_t),
+        ("model_context", ctypes.c_void_p),
+        ("evaluate_pure_phase", ctypes.c_void_p),
+        ("parameterized_result_size", ctypes.c_size_t),
+        ("evaluate_pure_phase_parameters", ctypes.c_void_p),
+        ("component_count", ctypes.c_size_t),
+        ("mixture_result_size", ctypes.c_size_t),
+        ("evaluate_mixture_phase", ctypes.c_void_p),
+        ("evaluate_mixture_phase_kij", ctypes.c_void_p),
+        ("component_ids", ctypes.c_void_p),
+        ("component_charges", ctypes.c_void_p),
+        ("evaluate_electrolyte_phase", ctypes.c_void_p),
+        ("evaluate_molar_volume_bounds", ctypes.c_void_p),
+        ("evaluate_packing_fraction", ctypes.c_void_p),
+        ("source_temperature_min_k", ctypes.c_double),
+        ("source_temperature_max_k", ctypes.c_double),
+        ("total_ion_mole_fraction_max", ctypes.c_double),
+        ("ion_solvation_born_result_size", ctypes.c_size_t),
+        ("evaluate_ion_solvation_born", ctypes.c_void_p),
+        ("aqueous_miac_kij_result_size", ctypes.c_size_t),
+        ("evaluate_aqueous_miac_kij", ctypes.c_void_p),
+        ("neutral_reference_basis_row_count", ctypes.c_size_t),
+        ("neutral_reference_result_size", ctypes.c_size_t),
+        ("evaluate_neutral_reference", ctypes.c_void_p),
+        ("aqueous_miac_solvation_factor_result_size", ctypes.c_size_t),
+        ("evaluate_aqueous_miac_solvation_factor", ctypes.c_void_p),
+        ("evaluate_aqueous_miac_kij_batch", ctypes.c_void_p),
+        ("evaluate_aqueous_miac_solvation_factor_batch", ctypes.c_void_p),
+        ("evaluation_budget_size", ctypes.c_size_t),
+        ("evaluate_aqueous_miac_kij_batch_bounded", ctypes.c_void_p),
+        (
+            "evaluate_aqueous_miac_solvation_factor_batch_bounded",
+            ctypes.c_void_p,
+        ),
+    ]
+
+
+def _copied_provider_capsules(
+    capsules: tuple[object, ...],
+    *,
+    clear_scalar: bool = False,
+    truncate_before_bounded_batch: bool = False,
+) -> tuple[tuple[object, ...], tuple[_NativeSdkV1, ...]]:
+    get_pointer = ctypes.pythonapi.PyCapsule_GetPointer
+    get_pointer.argtypes = (ctypes.py_object, ctypes.c_char_p)
+    get_pointer.restype = ctypes.c_void_p
+    new_capsule = ctypes.pythonapi.PyCapsule_New
+    new_capsule.argtypes = (ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p)
+    new_capsule.restype = ctypes.py_object
+    name = b"epcsaft.native_sdk.v1"
+    tables: list[_NativeSdkV1] = []
+    copied_capsules: list[object] = []
+    for capsule in capsules:
+        pointer = get_pointer(capsule, name)
+        table = _NativeSdkV1()
+        ctypes.memmove(ctypes.addressof(table), pointer, ctypes.sizeof(table))
+        assert table.table_size == ctypes.sizeof(table)
+        if clear_scalar:
+            table.evaluate_aqueous_miac_kij = None
+        if truncate_before_bounded_batch:
+            table.table_size = _NativeSdkV1.evaluate_aqueous_miac_kij_batch_bounded.offset
+        tables.append(table)
+        copied_capsules.append(new_capsule(ctypes.addressof(table), name, None))
+    return tuple(copied_capsules), tuple(tables)
 
 
 def test_aqueous_kij_contract_is_eleven_parameters_over_all_rows() -> None:
@@ -97,21 +168,41 @@ def test_aqueous_kij_runtime_is_one_private_native_owner() -> None:
     assert not hasattr(epcsaft_regression, "fit_generic_parameters")
 
 
-def test_libr_interaction_fit_is_start_confirmed_but_misses_printed_value() -> None:
+def test_aqueous_kij_requires_only_the_bounded_batch_callback() -> None:
     specification = epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1
     models = _aqueous_kij_models(specification)
     capsules = tuple(native_sdk(model) for model in models)
     payload = _aqueous_kij_native_payload(specification)
+    copied_capsules, keepalive = _copied_provider_capsules(
+        capsules, clear_scalar=True
+    )
 
-    primary = _native.solve_figiel_kij_coordinate(capsules, payload, 0, 8)
-    confirmation = _native.solve_figiel_kij_coordinate(capsules, payload, 1, 8)
+    residuals, jacobian, rows = _native.evaluate_figiel_kij(
+        copied_capsules, payload, specification.published_parameters
+    )
 
-    assert primary[5:8] == ("CONVERGENCE", True, "")
-    assert confirmation[5:8] == ("CONVERGENCE", True, "")
-    assert primary[1] == pytest.approx(0.7607943631938054, rel=0.0, abs=1.0e-9)
-    assert confirmation[1] == pytest.approx(0.7607929822737367, rel=0.0, abs=1.0e-9)
-    assert abs(primary[1] - confirmation[1]) <= 1.0e-5
-    assert abs(primary[1] - specification.published_parameters[8]) > 0.05
+    assert keepalive
+    assert len(residuals) == 164
+    assert len(jacobian) == 164 * 11
+    assert len(rows) == 164
+
+
+def test_aqueous_kij_rejects_provider_truncated_before_bounded_batch() -> None:
+    specification = epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1
+    models = _aqueous_kij_models(specification)
+    capsules = tuple(native_sdk(model) for model in models)
+    payload = _aqueous_kij_native_payload(specification)
+    copied_capsules, keepalive = _copied_provider_capsules(
+        capsules, truncate_before_bounded_batch=True
+    )
+
+    with pytest.raises(
+        RuntimeError, match="provider aqueous-kij capability unavailable"
+    ):
+        _native.evaluate_figiel_kij(
+            copied_capsules, payload, specification.published_parameters
+        )
+    assert keepalive
 
 
 def test_aqueous_kij_residual_jacobian_maps_all_exact_provider_columns() -> None:

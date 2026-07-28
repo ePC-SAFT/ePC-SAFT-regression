@@ -1210,37 +1210,4 @@ PyObject* solve_figiel_kij_python(
     }
 }
 
-PyObject* solve_figiel_kij_coordinate_python(
-    PyObject* capsules,
-    PyObject* payload_object,
-    std::size_t schedule_index,
-    std::size_t coordinate_index
-) {
-    try {
-        const Payload payload = parse_payload(payload_object);
-        const auto tables = parse_tables(capsules);
-        if (
-            schedule_index >= payload.schedules.size()
-            || coordinate_index >= parameter_count
-        ) {
-            throw std::invalid_argument(
-                "schedule or coordinate index is outside the frozen contract"
-            );
-        }
-        return coordinate_solution_to_tuple(solve_coordinate(
-            tables,
-            payload,
-            payload.schedules[schedule_index],
-            coordinate_index,
-            deadline_after(payload.max_solver_time_seconds)
-        ));
-    } catch (const std::exception& error) {
-        if (PyErr_Occurred() != nullptr) {
-            PyErr_Clear();
-        }
-        PyErr_SetString(PyExc_RuntimeError, error.what());
-        return nullptr;
-    }
-}
-
 }  // namespace epcsaft_regression
