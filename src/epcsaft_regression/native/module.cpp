@@ -1,6 +1,7 @@
 #include "born_diameter_fit.hpp"
 #include "figiel_kij_fit.hpp"
 #include "figiel_water_factor_fit.hpp"
+#include "general_fit.hpp"
 #include "pure_saturation_fit.hpp"
 
 #include <epcsaft/native_sdk_v1.h>
@@ -236,6 +237,39 @@ PyObject* py_evaluate_figiel_kij(PyObject*, PyObject* args) {
     );
 }
 
+PyObject* py_parameter_capabilities(PyObject*, PyObject* capsule) {
+    return epcsaft_regression::parameter_capabilities_python(capsule);
+}
+
+PyObject* py_evaluate_general(PyObject*, PyObject* args) {
+    PyObject* capsule = nullptr;
+    PyObject* payload = nullptr;
+    PyObject* variables = nullptr;
+    if (!PyArg_ParseTuple(
+            args,
+            "OOO:evaluate_general",
+            &capsule,
+            &payload,
+            &variables
+        )) {
+        return nullptr;
+    }
+    return epcsaft_regression::evaluate_general_python(
+        capsule, payload, variables
+    );
+}
+
+PyObject* py_solve_general(PyObject*, PyObject* args) {
+    PyObject* capsule = nullptr;
+    PyObject* payload = nullptr;
+    if (!PyArg_ParseTuple(
+            args, "OO:solve_general", &capsule, &payload
+        )) {
+        return nullptr;
+    }
+    return epcsaft_regression::solve_general_python(capsule, payload);
+}
+
 PyMethodDef methods[] = {
     {"transport_info", py_transport_info, METH_O, "Validate the installed provider capsule."},
     {
@@ -282,6 +316,24 @@ PyMethodDef methods[] = {
         py_evaluate_figiel_kij,
         METH_VARARGS,
         "Evaluate exact Figiel aqueous interaction residuals and Jacobian."
+    },
+    {
+        "parameter_capabilities",
+        py_parameter_capabilities,
+        METH_O,
+        "Read exact model-bound Provider parameter capabilities."
+    },
+    {
+        "evaluate_general",
+        py_evaluate_general,
+        METH_VARARGS,
+        "Evaluate exact general neutral-binary residuals and Jacobian."
+    },
+    {
+        "solve_general",
+        py_solve_general,
+        METH_VARARGS,
+        "Fit one shared neutral-binary interaction parameter."
     },
     {nullptr, nullptr, 0, nullptr},
 };

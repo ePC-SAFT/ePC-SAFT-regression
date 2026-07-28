@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-nonproduction-figiel-born-candidate
+status: authoritative-methane-and-ethane-with-ten-general-families-fit-ready
 
 authority:
   accepted_capabilities:
@@ -38,7 +38,220 @@ scope: >-
   candidate fits five current-catalog Born diameters to five reported-average
   targets through the installed Provider first-derivative callback. It passes
   its local gates after the user-approved descriptive-comparison correction
-  and has no production authority.
+  and has no production authority. The authority-neutral general surface also
+  independently fits one shared k_ij or l_ij from caller-supplied
+  fixed-composition VLE rows for any
+  neutral, nonassociating binary model whose installed Provider capability
+  descriptor supplies the exact active Hessian contract. The same general
+  surface independently fits one active segment count, segment diameter, or
+  dispersion energy over k from caller-supplied pure-saturation pressure and
+  liquid-density rows on a matching neutral pure capability.
+
+general_parameter_regression:
+  status: TEN_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
+  design_owner: docs/science/general-parameter-regression.md
+  objective: >-
+    Fit any admitted continuous ePC-SAFT parameter for any Provider-supported
+    component set when the caller supplies source-bound typed observations and
+    a complete numerical contract.
+  capability_states:
+    - REPRESENTED
+    - DERIVATIVE_READY
+    - FIT_READY
+    - REFERENCE_VALIDATED
+    - ADMITTED
+  target_runtime_shape:
+    engines: 1
+    result_families: 1
+    native_modules: 1
+    native_targets: 1
+    parameter_schema: finite-typed-provider-negotiated
+    observation_schema: finite-typed-source-bound
+  reference_campaign_role: evidence-not-component-restriction
+  forbidden_interpretation: every-provider-parameter-is-fit-ready-now
+  immediate_provider_gate: SATISFIED_FOR_TEN_FAMILIES
+  pure_association_recovery:
+    status: NOT_FIT_READY_SOURCE_CONTRACT_INCOMPLETE
+    design_owner: docs/science/general-parameter-regression.md
+    evidence_owners:
+      - docs/research/gross-sadowski-2002-association-fitting.md
+      - docs/research/association-regression-source-locator.md
+    intended_joint_coordinates:
+      - segment_count
+      - segment_diameter
+      - dispersion_energy_over_k
+      - association_energy_over_k
+      - association_volume
+    retained_evidence_role: source-and-formulation-provenance-only
+    packaged_application_specific_runtime: none
+    missing_gate: source-complete-generic-joint-observation-contract
+    forbidden_shortcuts:
+      - association-only-fit-from-one-density-row
+      - paper-specific-component-dispatch
+      - regression-owned-equilibrium-solver
+  provider_subject: 1e571ab0a84603a51ed6994b14286f683fb12b88
+  provider_wheel_sha256: 6536edc63adaa13c5c6c67c185d82c9ae232048e99dc3dc3be502708eea4410f
+  provider_header_sha256: b667379c2d7106d012c6b57f96b6f32dd23ef305fe6f15a87c22ab20029008f8
+  scalar_pure_provider_subject: 86983ff
+  scalar_pure_provider_tree: cecdfddde1c29f6d33fc1106d0662e0376981e4a
+  scalar_pure_provider_wheel_sha256: 9df62965f55876104585504f0f9170fefffbbaa9e94b23f90ac1da582cf5cb4c
+  scalar_pure_provider_header_sha256: feadc42414188cd9fa50708dff5e7815f9eec85bf868f080e65e07a4c70b461d
+  direct_observable_provider_subject: 2d1816cf376294156684fee85611a93fc41d0970
+  direct_observable_provider_tree: 0a36f875fe75cc90cece5144373ab031c8724ccc
+  direct_observable_provider_wheel_sha256: bc40a9ac2c217afe163cf0bed36159e8f3387d6a1bd09a24665b4a952d84a8d3
+  direct_observable_provider_header_sha256: 568381308595713a60ee0b24b1ca357956b51b7cbbf759cc13404108eeac8780
+  dielectric_provider_subject: e063f32f6e2b975af11ae7e65c1a12cd3076941c
+  dielectric_provider_tree: b7020b51b8ce57086517b1722b8b8847f9193a88
+  dielectric_provider_wheel_sha256: d090fa92d86ea91ab40df24aa96fc18c1821eaf636e9a03e01346a6bef8e31bd
+  dielectric_provider_header_sha256: 5dccb80d0d64a24bb8070bd5a0d7f27c3b55173253b1637f9a8a7e03e4e6f82c
+  dielectric_regression_subject: 77a94c215d3dadb52a4f0ed90968631949b612f4
+  dielectric_regression_tree: 24ef9ade76c6e68639548905ec1401ff96b526ff
+  dielectric_regression_wheel_sha256: f3d9f1a728a6e4b6e2f9cc2f0286d5d8ecbad46ababbc0201f59ab7b205f0b06
+  dielectric_validation_subject: 7782b8d
+  dielectric_validation_evidence_sha256: 04425a6a3e303cb7b5bf7032f34c3efbf47a5c422d7dfd66931b0f2639cc7f85
+  organic_ion_kij_provider_subject: 621adbf9f60c75a1f108256c51eb1ae14161d6b9
+  organic_ion_kij_provider_wheel_sha256: 8c942e9177bec1502345b5193642460166d27fcee840663a18d19d7ea3d823e2
+  organic_ion_kij_provider_header_sha256: 16c1996e592808ed2764de7b17bead6ed06789182fe8c0e649e049e83fe9a348
+  organic_ion_kij_regression_subject: e9ce5a6c4441cd8ecc6cd18be2bb4d8614e741a1
+  organic_ion_kij_regression_wheel_sha256: efc3b421ad94f4448ffce630528911363cc5be7565de2a5fca0e7787a6e68f2d
+  organic_ion_kij_validation_subject: 9857a1ac058038f8b7664cfe41ab06729f661715
+  organic_ion_kij_validation_evidence_sha256: e34f0033de804afcc3390002dee2e153a1dd80a42b0fe01080d965257a1ba0f9
+  ionic_permittivity_provider_subject: 6ba60e9a652f16366a8c21ef1e09d160983d6570
+  ionic_permittivity_provider_tree: 9ff687960230bb2945cf0aad0c01935da7ffb0ee
+  ionic_permittivity_provider_wheel_sha256: 5a4da3ffe31432d210d589a76f8d8e3004b3af12a42cdec6060ce8a8380d567a
+  ionic_permittivity_provider_header_sha256: 11105a0fb34221226ab3aca01ad6fd101bbb6407c8ef544da61db845c924c453
+  ionic_permittivity_regression_subject: 62a7c94edcdc585dbe02a6d8f9443ea03154d69e
+  ionic_permittivity_regression_wheel_sha256: 2aefd50f7aa418c6af6676a9964f030d1be70b4c0c0694f03f8943482eb4dce6
+  ionic_permittivity_validation_subject: 81e9a3f3f24d4c01f1381e6fabbf1c03308a1ec4
+  ionic_permittivity_validation_evidence_sha256: 800dafb3675b48804d9e6d42c4ce619c2c921b073e7ad67d52b26dcf5d23f846
+  solvent_permittivity_provider_subject: 7cadaad2f60433078f76812d951e4244ee32a899
+  solvent_permittivity_provider_tree: 227709b017926175e2f3cfd7ed4394cd91cb9ec8
+  solvent_permittivity_provider_wheel_sha256: 0388ed5d5c1327ca2bef819d96e9a8633b0a77d2a8d70c8fab8bc9630eb48470
+  solvent_permittivity_provider_header_sha256: dc7c52056c4bd1d3f00200f0fbb1ee081d979a0a74c5addc5ec78d476f53e52d
+  solvent_permittivity_regression_subject: 177890a80ca043eec4d563c59697541152073cd7
+  solvent_permittivity_regression_tree: 1830cd59578be20ffa1167ef3dc4d837661a674f
+  solvent_permittivity_regression_wheel_sha256: 6d228d2f4c54913643d565ac069d4bf3ab2c94150018e8216425b59bad5ae5ad
+  solvent_permittivity_validation_subject: e4cb7af46b6a0852b21c9159ea3e8d1782ee6689
+  solvent_permittivity_validation_tree: cee6acf25c2e971eef95d3bb685797dcd8e07826
+  solvent_permittivity_validation_evidence_sha256: b88b11f74ebd682ff9fd641f44a93cdca21b61bc0ccdc54be08af1c51c8d19a6
+  pair_reference_regression_subject: da7a44ce093201022aec2f3514d4e4fd9d8d2929
+  pair_reference_regression_wheel_sha256: 3a59d2233fec51f949a7784937b54f7f66beae2476fa8e33976672a480b67137
+  fit_ready_pair_families:
+    families: [k_ij, l_ij]
+    model_domain: neutral-nonassociating-binary
+    observation_contract: fixed-composition-vle-lifted-volumes
+    provider_coordinates: [n1_mol, n2_mol, volume_m3, active_pair_parameter]
+    provider_derivative_order: 2
+    parameter_count: 1
+    residuals_per_row: 4
+    nuisance_variables_per_row: 2
+    authority_effect: none
+    predictive_effect: none
+    additional_direct_observable_domain:
+      family: k_ij
+      model_domain: figiel-single-ion-solvation
+      observation_contract: ion-solvation-gibbs-energy
+      provider_derivative_order: 1
+      parameter_count_per_problem: 1
+      nuisance_variables: 0
+      admitted_pair_coordinates: [solvent-cation, solvent-anion, cation-anion]
+      reference_shape: four-independent-1x1-problems
+      reference_source_classification: constructed-nearest-pure-endpoints
+      exact_paper_method_recovery: false
+  fit_ready_scalar_pure_families:
+    families: [segment_count, segment_diameter, dispersion_energy_over_k]
+    identity: component
+    model_domain: neutral-nonassociating-constant-diameter-pure
+    observation_contract: pure-saturation-pressure-liquid-density-lifted-volumes
+    provider_coordinates: [amount_mol, volume_m3, active_component_parameter]
+    provider_derivative_order: 2
+    parameter_count: 1
+    residuals_per_row: 4
+    nuisance_variables_per_row: 2
+    reference_rows: 4
+    reference_variables: 9
+    reference_residuals: 16
+    reference_full_rank: 9
+    reference_projected_parameter_rank: 1
+    fitted_segment_count: 1.0001569260577763
+    fitted_segment_diameter_angstrom: 3.7063548743836034
+    fitted_dispersion_energy_over_k_kelvin: 150.00325287725062
+    authority_effect: none
+    predictive_effect: none
+  fit_ready_direct_observable_families:
+    families: [born_diameter, solvation_factor, dielectric_ion_suppression_coefficient, ionic_region_relative_permittivity, relative_permittivity]
+    parameter_count_per_problem: 1
+    nuisance_variables: 0
+    provider_derivative_order: 1
+    born_observation_contract: solvation-gibbs-energy
+    born_reference_problem_count: 5
+    born_reference_shape_per_problem: 1x1
+    solvation_factor_observation_contract: mean-ionic-activity
+    solvation_factor_reference_shape: 21x1
+    dielectric_observation_contract: relative-permittivity-ratio
+    dielectric_reference_source: figiel-2025-figures-2-3-water-methanol-digitization
+    dielectric_reference_shape: 36x1
+    dielectric_reference_fitted_parameter: 7.067350349980952
+    dielectric_published_descriptive_comparison: 7.01
+    ionic_permittivity_observation_contract: solvation-gibbs-energy
+    ionic_permittivity_reference_shape: 1x1
+    ionic_permittivity_reference_fitted_range: [7.99999999787946, 7.999999997884154]
+    ionic_permittivity_published_fixed_comparison: 8
+    solvent_permittivity_observation_contract: solvation-gibbs-energy
+    solvent_permittivity_reference_problem_count: 5
+    solvent_permittivity_reference_shape_per_problem: 1x1
+    solvent_permittivity_reference_fitted_range: [78.0899937514462, 78.08999375166104]
+    solvent_permittivity_published_fixed_comparison: 78.09
+    solvent_permittivity_published_reporting_half_increment: 0.005
+    reference_full_rank: 1
+    reference_projected_parameter_rank: 1
+    authority_effect: none
+    predictive_effect: none
+  installed_reference_smoke:
+    source_rows: 17
+    source_sha256: 5cd1e74925a3c6504f5106dcf911f2cae2d6e99a5133fccc20454d8991bdbc7f
+    variables: 35
+    residuals: 68
+    full_rank: 35
+    projected_parameter_rank: 1
+    fitted_kij: -0.00843032298906253
+    fitted_lij: -0.002774426668544412
+    active_bound: false
+    predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
+    interpretation: in-sample-runtime-evidence-not-scientific-admission
+  may_methane_propane_reference:
+    source_citation: May-2015-JCED-60-3606-3620-Table-6
+    source_pdf_sha256: 53fd1bdd55dc6807ec76cf88626438d8dfceb3ec09149d4405ea36cfbe6b842a
+    dataset_csv: evidence/may-2015-methane-propane-vle.csv
+    dataset_csv_sha256: 97a07b274dc4da6a281614f3fd39c520ebd6678776413746b13bc8665113c529
+    source_rows: 22
+    bundle_purpose: user-provided
+    selected_components: [methane, propane]
+    active_pair: [methane, propane]
+    fitted_parameter: k_ij
+    variables: 45
+    residuals: 88
+    full_rank: 45
+    projected_parameter_rank: 1
+    full_condition_number: 3894.3041379063716
+    fitted_kij: 0.0038919335722629794
+    final_cost: 0.03734758119771876
+    confirmation_runs: 2
+    active_bound: false
+    evaluated_rows: 22
+    failed_rows: 0
+    provider_derivative_status: EXACT_PROVIDER_HESSIAN
+    solver_status: CONVERGENCE
+    numerical_status: CONVERGED
+    workflow_status: VALID
+    physical_status: NOT_ADJUDICATED_NO_ROW_ACCEPTANCE_CRITERIA
+    scientific_status: NOT_ADJUDICATED_NO_APPROVED_SCIENTIFIC_CUTOFF
+    predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
+    interpretation: >-
+      May supplies direct VLE observations, not this fitted parameter. This is
+      in-sample Regression evidence only; it has no prediction, catalog,
+      production, or scientific-authority effect.
+  equilibrium_dependency: FORBIDDEN_BY_CURRENT_DOCTRINE
 
 owners:
   immutable_sources_and_specifications: src/epcsaft_regression/records.py
@@ -48,11 +261,14 @@ owners:
   born_residual_jacobian_and_ceres: src/epcsaft_regression/native/born_diameter_fit.cpp
   water_factor_residual_jacobian_and_ceres: src/epcsaft_regression/native/figiel_water_factor_fit.cpp
   aqueous_kij_residual_jacobian_and_ceres: src/epcsaft_regression/native/figiel_kij_fit.cpp
+  general_parameter_contract_and_result: src/epcsaft_regression/parameter_regression.py
+  general_parameter_capability_residual_jacobian_and_ceres: src/epcsaft_regression/native/general_fit.cpp
   provider_capsule_gate: src/epcsaft_regression/native/module.cpp
   component_receipt_runner: tools/run_candidate.py
   figiel_candidate_evidence_runner: tools/run_figiel_born_candidate.py
   next_slice_equations_and_numerical_contract: docs/science/neutral-hydrocarbon-next-slice.md
   figiel_born_tracer_design: docs/science/figiel-born-diameter-tracer.md
+  general_parameter_regression_design: docs/science/general-parameter-regression.md
 
 preparatory_contracts:
   neutral_hydrocarbon_next_slice_v1:
@@ -414,16 +630,32 @@ parameter_family_readiness:
   pure_m_sigma_epsilon_over_k:
     methane_ethane: accepted-exact-workflows
     propane: NOT_READY_DEFERRED_NONPRODUCTION_UNDER_D023
+    general_scalar_pure_saturation: FIT_READY_AUTHORITY_NEUTRAL
   constant_methane_ethane_kij:
     status: NOT_READY_DEFERRED_NONPRODUCTION_UNDER_D023
     retained_evidence_authority: D-022
-  association_parameters: NOT_READY
-  polar_parameters: NOT_READY
-  electrolyte_born_parameters: NOT_READY_NO_CATALOG_ADMISSION
+  association_parameters: NOT_FIT_READY_SOURCE_CONTRACT_INCOMPLETE
+  polar_parameters: EXCLUDED_FROM_REGRESSION_ROADMAP_BY_USER_DECISION
+  electrolyte_born_parameters: FIT_READY_DIRECT_OBSERVABLE_AUTHORITY_NEUTRAL_NO_CATALOG_ADMISSION
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
   figiel_current_catalog_aqueous_kij: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED
   reactive_or_temperature_dependent_parameters: NOT_READY
-  full_breadth_regression: NOT_READY_NO_GENERIC_REGISTRY_OR_UNIVERSAL_SURFACE
+  general_parameter_regression: TEN_NONPOLAR_ELECTROLYTE_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
+  mixture_independent_scalar_pure: FIT_READY_PURE_SATURATION_PRESSURE_AND_LIQUID_DENSITY
+  mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_VLE_ADVERTISED_AQUEOUS_MIAC_AND_ADVERTISED_ORGANIC_ION_SOLVATION
+  mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
+  mixture_independent_born_diameter: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
+  mixture_independent_solvation_factor: FIT_READY_ADVERTISED_MEAN_IONIC_ACTIVITY_DOMAIN
+  model_dielectric_ion_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
+  mixture_independent_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
+  model_ionic_region_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
+  mixture_independent_association: NOT_FIT_READY_SCALAR_DERIVATIVE_MECHANICS_ONLY
+  khb_ij: NOT_READY_NOT_A_CURRENT_PROVIDER_PARAMETER_FAMILY
+  next_engineering_investment_after_d026: EQUILIBRIUM_EXACT_IMPLICIT_PARAMETER_SENSITIVITY_FOR_MEA
+  required_prior_gate: D026_INSTALLED_TWO_LIQUID_STAGE_II_III
+  optional_standalone_association_source_acquisition: DEFERRED_NOT_MEA_CRITICAL_PATH
+  mea_mixed_observable_regression: WAITING_D026_THEN_EXACT_INSTALLED_EQUILIBRIUM_VALUE_AND_PARAMETER_SENSITIVITY_CONTRACT
+  full_parameter_family_coverage: NOT_READY
 
 accepted_ethane_artifact:
   implementation_commit: 50a488b91686388432fd50a0d6bfc5b15825e4f1
@@ -496,16 +728,16 @@ propane_candidate_artifact:
     test_receipt_sha256: 07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480
 
 manifest:
-  tracked_files_after_stage_c_candidate: 67
-  production_python_files: 3
-  native_source_files: 11
-  installed_data_files: 6
-  package_test_files: 6
+  tracked_files_after_stage_c_candidate: 79
+  production_python_files: 4
+  native_source_files: 13
+  installed_data_files: 7
+  package_test_files: 8
   retained_binary_input_evidence_files: 1
   retained_binary_result_evidence_files: 1
   ide_project_files: 7
-  physical_production_lines: 7984
-  physical_package_test_lines: 1606
+  physical_production_lines: 14130
+  physical_package_test_lines: 4466
   tracked_generated_evidence_files_after_figiel_candidate: 7
   generated_file_policy: >-
     The accepted methane and ethane fit receipts bind deterministic
@@ -517,8 +749,20 @@ manifest:
     one runtime owner and one compact evidence record. Build trees, caches,
     temporary replay receipts, and wheels remain outside the repository.
   oversized_files:
+    - path: src/epcsaft_regression/parameter_regression.py
+      physical_lines: 1757
+      capability_delta: finite typed component identities and pure-saturation observations
+    - path: src/epcsaft_regression/native/general_fit.cpp
+      physical_lines: 3229
+      capability_delta: one exact Ceres owner for pair VLE and scalar pure saturation
+    - path: tests/test_parameter_regression.py
+      physical_lines: 2670
+      capability_delta: scalar pure derivative, rank, fit, and reference anchors
     - path: src/epcsaft_regression/native/pure_saturation_fit.cpp
       physical_lines: 920
+      capability_delta: >-
+        one shared Ceres cost/solve/diagnostic owner for the accepted lifted
+        pure-saturation workflows
     - path: src/epcsaft_regression/records.py
       physical_lines: 1751
     - path: src/epcsaft_regression/workflow.py
@@ -559,11 +803,12 @@ evidence_limits:
   uncertainty: not-claimed
 
 excluded:
+  # These are current runtime exclusions, not denials of the staged design goal.
   - runtime neutral methane/ethane binary interaction regression; the private dependency-gated contract grants no capability
-  - association regression
+  - fit-ready association regression beyond scalar derivative/mechanics evidence
   - electrolyte regression beyond the bounded nonproduction Figiel Born-tracer candidate
   - reactive regression
-  - generic regression families or target registries
+  - arbitrary residual plugins or mutable runtime registries
   - alternate or numerical production derivative backends
   - provider source, private headers, or copied EOS equations
   - provider catalog persistence

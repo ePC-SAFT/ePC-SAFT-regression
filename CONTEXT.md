@@ -1,9 +1,9 @@
 # Regression Repository Context
 
-This repository owns one strict pure-saturation regression workflow. Methane
-and ethane are accepted. The propane Checkpoint A and constant methane/ethane
-`kij` subjects are retained authority-neutral, non-production provenance; D-023
-removes both from the active migration sequence.
+This repository owns ePC-SAFT target contracts, Ceres parameter fitting,
+diagnostics, and results. Methane and ethane pure-saturation workflows are the
+accepted production capabilities. Other completed campaigns remain
+authority-neutral evidence unless separately admitted.
 
 `governance_doctrine_revision: 4`
 
@@ -52,6 +52,172 @@ with no added runtime test seam.
 
 `next_figiel_family_status: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED`
 
+`general_parameter_regression_status: TEN_PARAMETER_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
+
+Pure 2B `association_energy_over_k` and `association_volume` have exact scalar
+Provider-derivative and generic Regression-mechanics evidence, but they are
+not counted among the ten fit-ready families. The inspected sources fit them
+jointly with `m`, `sigma`, and `epsilon/k`, and do not provide the exact row,
+start, bound, and optimizer contract needed for source-faithful replay.
+Baygi--Pahlavanzadeh and Gross--Sadowski analysis remains provenance only.
+Regression packages no MEA-specific dataset, dispatch branch, equilibrium
+solver, or result contract. Status is
+`ASSOCIATION_SOURCE_CONTRACT_INCOMPLETE_NOT_FIT_READY`.
+
+The user-approved 2026-07-27 destination is general parameter-family
+regression, defined in `docs/science/general-parameter-regression.md`. The
+first ten families are implemented. Caller-supplied, source-bound
+fixed-composition VLE rows may independently fit one shared `k_ij` or `l_ij`
+for any neutral, nonassociating binary model whose installed Provider
+descriptor advertises the corresponding exact `(n1,n2,V,pair_parameter)`
+Hessian callback. The runtime uses the existing native module
+and target, one Ceres engine/result, exact derivatives, caller-declared
+bounds/scales/starts/volume policy, full and projected rank diagnostics, and
+isolated training/reporting partitions. Unknown Provider descriptor members
+are reported unsupported and cannot be requested dynamically.
+
+The ninth family is model-level
+`ionic_region_relative_permittivity`. On an installed Provider advertising
+the exact SSM+DS solvation-Gibbs value/first derivative, callers may fit one
+coordinate from source-bound single-ion solvation targets through the same
+direct-observable Ceres path. Validation subject `81e9a3f` independently
+fits all five admitted ion models against the Table S5 reported averages
+while holding the paper's Born diameters fixed. Each `1 x 1` fit is full-rank,
+non-bound, confirmed from starts 4 and 12, and returns
+`7.99999999787946` through `7.999999997884154`. Figiel reports `8` as fixed
+model input, so this establishes fit-ready mechanics rather than recovery of
+a paper-fitted parameter or a shared multi-model parameter.
+
+The tenth family is component `relative_permittivity` on an installed
+single-ion solvation callback that identifies the active solvent separately
+from the observed ion. Provider subject `7cadaad` supplies the exact total
+first derivative through bulk dielectric, Debye--Huckel, Born,
+reference-state, and fixed-pressure density paths. Regression subject
+`177890a` reuses the same direct-observable Ceres owner. Corrected Validation
+subject `e4cb7af` fits water independently against all five Table S5
+reported-average solvation targets with the paper's Born diameters fixed.
+Every `1 x 1` problem is full-rank, non-bound, and confirmed from starts 50
+and 110, returning `78.0899937514462` through `78.08999375166104`. The fixed
+input `78.09` and its `0.005` reporting half-increment are descriptive
+comparison evidence, not uncertainty or scientific acceptance.
+
+Polar parameter families are outside the Regression roadmap by user decision.
+They remain representable Provider inputs where applicable, but no Regression
+derivative, residual, fit, or validation work is planned for them. This does
+not relabel them unsupported Provider physics.
+
+The selected next engineering investment, after Migration's required D-026
+installed two-liquid Stage-II/III gate, is the exact installed Equilibrium
+reactive-state value plus implicit parameter-sensitivity contract required by
+MEA, paired with exact Provider partials for MEA's application-selected
+parameter block. Only after both prerequisites exist may Regression add the
+reduced two-row mixed-observable Ceres tracer. Acquiring the missing
+Gross--Sadowski/Cameretti pure-association series or a standalone
+cross-association recovery dataset remains useful optional evidence, but it is
+not the MEA critical path.
+
+Caller-supplied pure-saturation pressure and liquid-density rows may
+independently fit one component `segment_count`, `segment_diameter`, or
+`dispersion_energy_over_k` coordinate for a neutral, nonassociating,
+constant-diameter pure model. The same general Ceres owner uses two lifted log
+volumes per row and four scaled residuals: liquid and vapor pressure closure,
+chemical-potential equality, and liquid-density reproduction. Its exact
+Jacobian consumes the Provider `(n,V,active_parameter)` Hessian, reports full
+and nuisance-projected rank, checks mechanical stability and phase-volume
+ordering, and reruns every declared start. This independent-family surface
+does not replace the accepted joint `(m,sigma,epsilon/k)` workflow.
+
+Provider commit `1e571ab0a84603a51ed6994b14286f683fb12b88` retains those
+compatibility and parity corrections and appends the exact active-`l_ij`
+capability beside active `k_ij`. The retained Provider wheel has SHA-256
+`6536edc63adaa13c5c6c67c185d82c9ae232048e99dc3dc3be502708eea4410f`;
+its installed public header has SHA-256
+`b667379c2d7106d012c6b57f96b6f32dd23ef305fe6f15a87c22ab20029008f8`.
+Regression commit `da7a44ce093201022aec2f3514d4e4fd9d8d2929` extends the same
+bounded public surface and Ceres owner to the distinct `l_ij` identity.
+The retained Regression wheel has SHA-256
+`3a59d2233fec51f949a7784937b54f7f66beae2476fa8e33976672a480b67137`.
+
+Provider commit `86983ff` (tree
+`cecdfddde1c29f6d33fc1106d0662e0376981e4a`) appends the scalar pure
+capabilities without another EOS tape. Its retained wheel SHA-256 is
+`9df62965f55876104585504f0f9170fefffbbaa9e94b23f90ac1da582cf5cb4c`
+and installed header SHA-256 is
+`feadc42414188cd9fa50708dff5e7815f9eec85bf868f080e65e07a4c70b461d`.
+The four accepted methane training rows give full lifted rank 9 and projected
+parameter rank 1 for each independent fit. The fitted values are
+`m = 1.0001569260577763`, `sigma = 3.7063548743836034 angstrom`, and
+`epsilon/k = 150.00325287725062 K`, all non-bound with confirmation-start
+agreement. These are local in-sample implementation anchors, not fitted
+catalog values or predictive acceptance.
+
+Provider commit `2d1816cf376294156684fee85611a93fc41d0970` (tree
+`0a36f875fe75cc90cece5144373ab031c8724ccc`) advertises the existing
+active-Born and aqueous-solvation-factor callbacks through the same typed
+capability negotiation, including model-topology fingerprints. Its exact wheel
+SHA-256 is
+`bc40a9ac2c217afe163cf0bed36159e8f3387d6a1bd09a24665b4a952d84a8d3`
+and installed-header SHA-256 is
+`568381308595713a60ee0b24b1ca357956b51b7cbbf759cc13404108eeac8780`.
+The shared Regression surface now fits one Born diameter from source-bound
+solvation-Gibbs observations or one solvation factor from source-bound mean-
+ionic-activity observations. The Figiel reference evidence consists of five
+independent `1x1`, rank-1 Born problems and the existing `21x1`, rank-1 NaBr
+water-factor problem. All starts converge to the prior paper-specific
+reference values with no active bounds. This is fit readiness only for the
+advertised fixed-state reference paths, not general electrolyte, catalog, or
+predictive authority.
+
+Provider commit `e063f32f6e2b975af11ae7e65c1a12cd3076941c` exposes the
+model-bound Figiel dielectric ion-suppression coefficient through an exact
+relative-permittivity value/first-derivative capability. Its retained wheel
+SHA-256 is
+`d090fa92d86ea91ab40df24aa96fc18c1821eaf636e9a03e01346a6bef8e31bd`;
+the installed public-header SHA-256 is
+`5dccb80d0d64a24bb8070bd5a0d7f27c3b55173253b1637f9a8a7e03e4e6f82c`.
+Regression commit `77a94c215d3dadb52a4f0ed90968631949b612f4`
+fits one coefficient from caller-supplied salt-free-normalized relative-
+permittivity rows through the existing engine/result/native target. The
+36-row Figiel Figures 2-3 water/methanol reference campaign is rank 1,
+non-bound, and converges from both declared starts to
+`7.067350349980952`, compared descriptively with the paper's `7.01`.
+These digitized training rows establish fit-ready execution only.
+
+Provider commit `621adbf9f60c75a1f108256c51eb1ae14161d6b9`
+fail-closed advertises exact first derivatives of infinite-dilution
+ion-solvation Gibbs energy with respect to the three pair coordinates for the
+source-bound methanol/K+/Br- and ethanol/Na+/Cl- selections. Its wheel SHA-256
+is `8c942e9177bec1502345b5193642460166d27fcee840663a18d19d7ea3d823e2`;
+the installed header SHA-256 remains
+`16c1996e592808ed2764de7b17bead6ed06789182fe8c0e649e049e83fe9a348`.
+The shared Regression path independently fits one advertised pair from one or
+more caller-supplied solvation-Gibbs endpoints. The four retained Figiel
+near-pure endpoints are constructed, rank-1 implementation evidence. Their
+differences from the rounded Table 5 values are descriptive and do not claim
+exact recovery of the paper's unavailable pure-organic fitting targets.
+Regression subject `e9ce5a6c4441cd8ecc6cd18be2bb4d8614e741a1`
+produced wheel SHA-256
+`efc3b421ad94f4448ffce630528911363cc5be7565de2a5fca0e7787a6e68f2d`.
+Validation subject `9857a1ac058038f8b7664cfe41ab06729f661715`
+retains the byte-stable installed-artifact record with SHA-256
+`e34f0033de804afcc3390002dee2e153a1dd80a42b0fe01080d965257a1ba0f9`.
+
+All 17 audited May rows reproduce the frozen `68 x 35` formulation with
+convergence, full rank 35, projected parameter rank 1, a non-bound
+`k_ij = -0.00843032298906253`, and declared-start confirmation. The same
+rows independently fit `l_ij = -0.002774426668544412` with the same ranks,
+no active bound, and two confirmation starts. This remains in-sample,
+authority-neutral evidence. It does not reinterpret the retained negative
+pressure-closure evidence, establish prediction, or admit fitted values to a
+Provider catalog.
+
+Published methane, ethane, Figiel, and later campaigns remain positive or
+negative evidence rather than hard-coded mixture limits. The finite typed
+schema is not an arbitrary residual plugin or mutable registry. All parameter
+families other than these exact neutral-binary fixed-composition, scalar pure-
+saturation, advertised ion-solvation, solvation-Gibbs, and mean-ionic-activity
+contracts retain their prior readiness states.
+
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint
 `3a4ef0a0c6b98c43405d3cafc1ac4f5f87afa68d`, tree
@@ -59,8 +225,9 @@ Canonical Migration checkpoint
 design as a useful parallel, deferred Provider-dependent track while HELD2
 retains Provider implementation priority. The frozen neutral-hydrocarbon
 equations and numerical contract remain in
-`docs/science/neutral-hydrocarbon-next-slice.md`; no packaged planning
-framework, binary executable owner, or runtime API exists. Validation's direct-
+`docs/science/neutral-hydrocarbon-next-slice.md`; its rejected replay harness
+and packaged planning framework remain absent. The new source-bound general
+runtime does not promote or reinterpret that old evidence. Validation's direct-
 experimental propane packet remains accepted source evidence at
 `7e51590757f1cb85f51df98e9fe1f88cd4255a88`, but it no longer authorizes active
 Checkpoint A work.
@@ -190,8 +357,15 @@ Status is
 `SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE`. No rows,
 weights, bounds, starts, or tolerances were tuned to the answer.
 
-The eventual direction is a staged, family-by-family recovery campaign for
-Figiel Tables 2–5. That later intent does not broaden the first Born-diameter
-tracer into a simultaneous all-table fit or generic registry. Validation's
-future exact ledger alone will classify each value as fitted, inherited,
-fixed, or blank; Regression makes none of those assignments in advance.
+The authority-neutral general API now consumes the same installed batch
+derivative as three closed scalar aqueous capabilities: water--cation,
+water--anion, and cation--anion. A caller can fit one unordered `k_ij` from
+source-bound aqueous MIAC rows while supplying the other two interactions
+explicitly. This expands the observation domain of `k_ij`; it does not
+reinterpret the retained Stage-C comparison, infer catalog defaults, or admit
+a simultaneous electrolyte parameter overlay.
+
+The Figiel Tables 2–5 recovery remains a staged reference campaign. It does
+not define the component domain of a completed parameter family. Validation's
+exact ledger alone classifies each value as fitted, inherited, fixed, or
+blank; Regression makes none of those assignments in advance.

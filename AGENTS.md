@@ -79,6 +79,48 @@ The retained exact isolated log and relative fits are falsification evidence,
 not proof that the staged route is impossible. Keep the user-approved Table
 4/5 maximum parameter difference at `0.05`; do not tune rows, weights, bounds,
 starts, cycles, or tolerances to the answer.
-Independent subagent review replaces any permanent-lab approval gate. Do not
-broaden this sequence to a generic registry or full electrolyte, reactive,
-uncertainty, organic-solvent, expanded-ion, or global-identifiability surface.
+Independent subagent review replaces any permanent-lab approval gate.
+The user-approved 2026-07-27 direction is general parameter-family regression:
+source-bound caller datasets, typed Provider-owned parameter identities, exact
+Provider derivatives, one Ceres engine/result/target, and reference campaigns
+used as evidence rather than mixture restrictions. Its sole architecture owner
+is `docs/science/general-parameter-regression.md`. This is a finite typed
+capability schema, not an arbitrary plugin or mutable registry. Do not claim a
+family is fit-ready until its exact derivative, observation, rank, and
+installed-artifact gates pass. The fit-ready families are one shared `k_ij`
+or `l_ij` for caller-supplied fixed-composition VLE rows; one active
+`segment_count`, `segment_diameter`, or `dispersion_energy_over_k` for caller-
+supplied pure-saturation rows; one Born diameter for caller-supplied
+solvation-Gibbs targets; and one solvation factor for caller-supplied mean-
+ionic-activity rows; and one model-level dielectric ion-suppression
+coefficient for caller-supplied relative-permittivity-ratio rows on matching
+installed Provider capabilities; and one model-level ionic-region relative
+permittivity for caller-supplied solvation-Gibbs targets on a matching SSM+DS
+capability; and one component solvent relative permittivity for caller-supplied
+single-ion solvation-Gibbs targets on a matching Provider capability. These
+ten families remain authority-neutral and are not
+restricted to the reference campaigns. The scalar pure and direct-observable
+paths are one-family-at-a-time and do not replace the accepted paper-specific
+workflows. All other general families retain their documented pending states;
+do not broaden them to uncertainty, catalog persistence, or global-
+identifiability authority.
+The shared `k_ij` family also accepts one source-bound ion-solvation Gibbs
+endpoint at a time when an installed Provider advertises the exact
+organic-solvent/ion pair callback. The four retained Figiel rows are
+constructed nearest-pure endpoint implementation evidence, not exact
+reproduction of the paper's pure-organic fitting data or mixed-solvent
+prediction evidence.
+Pure 2B association energy and volume retain exact scalar Provider-derivative
+and generic Regression-mechanics evidence. They are not fit-ready: the
+available literature fits them jointly with `m`, `sigma`, and `epsilon/k`,
+while the exact author grids, starts, bounds, and optimizer contracts needed
+for source-faithful replay are absent. The Baygi--Pahlavanzadeh source analysis
+is provenance only; no MEA-specific dataset, dispatch branch, equilibrium
+solver, or result contract is packaged.
+Polar parameter regression is excluded from this repository's roadmap by user
+decision. The selected next engineering investment is the exact installed
+Equilibrium reactive-state value and implicit parameter-sensitivity contract
+needed by MEA, but Migration's D-026 installed two-liquid Stage-II/III gate
+must pass first. The reduced mixed-observable tracer follows both
+prerequisites. Missing pure or cross-association recovery sources remain
+optional standalone work and do not block that MEA path.
