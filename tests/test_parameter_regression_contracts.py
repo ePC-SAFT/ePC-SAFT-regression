@@ -10,6 +10,7 @@ from epcsaft_regression.parameter_regression import (
     AffineParameterTransform,
     ComponentParameterIdentity,
     FixedCompositionVleObservation,
+    IonSolvationKijObservation,
     MeanIonicActivityObservation,
     ModelParameterIdentity,
     ObservationPartition,
@@ -206,6 +207,29 @@ def test_aqueous_kij_observation_binds_active_pair_and_fixed_context() -> None:
 
     assert row.active_pair_component_ids == ("sodium-cation", "water")
     assert row.canonical_active_pair_component_ids == ("sodium-cation", "water")
+    assert canonical_dataset_sha256((row,))
+
+
+def test_ion_solvation_kij_observation_binds_ion_pair_and_fixed_context() -> None:
+    row = IonSolvationKijObservation(
+        row_id="figiel-k-methanol-001",
+        source_id="doi:example",
+        source_locator="figure-6:k-methanol:001",
+        component_ids=("methanol", "potassium-cation", "bromide-anion"),
+        active_component_id="potassium-cation",
+        active_pair_component_ids=("methanol", "potassium-cation"),
+        fixed_k_ij=(0.32, 0.15, -0.35),
+        temperature_k=298.15,
+        pressure_pa=100_000.0,
+        observed_solvation_gibbs_j_per_mol=-308_287.10,
+        residual_scale_j_per_mol=300_000.0,
+        partition=ObservationPartition.TRAINING,
+    )
+
+    assert row.canonical_active_pair_component_ids == (
+        "methanol",
+        "potassium-cation",
+    )
     assert canonical_dataset_sha256((row,))
 
 

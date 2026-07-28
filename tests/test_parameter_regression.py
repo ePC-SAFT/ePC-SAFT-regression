@@ -18,6 +18,7 @@ from epcsaft_regression import (
     FIGIEL_BORN_DIAMETER_TRACER_V1,
     FIGIEL_AQUEOUS_KIJ_V1,
     FIGIEL_WATER_SOLVATION_FACTOR_V1,
+    IonSolvationKijObservation,
     MeanIonicActivityObservation,
     ModelParameterIdentity,
     ObservationPartition,
@@ -567,6 +568,79 @@ def _dielectric_suppression_problem(model: EPCSAFT) -> RegressionProblem:
     )
 
 
+def _ion_solvation_kij_problem(model: EPCSAFT) -> RegressionProblem:
+    capability = next(
+        capability
+        for capability in parameter_capabilities(model)
+        if not isinstance(capability, UnsupportedParameterCapability)
+        and capability.capability_id
+        == "ion_solvation_solvent_cation_kij_v1"
+    )
+    targets = (("figiel2025-constructed-gsolv-Kp-methanol-011", -298.25858),)
+    observations = tuple(
+        IonSolvationKijObservation(
+            row_id=row_id,
+            source_id="figiel-constructed-k-methanol",
+            source_locator=f"validation:figiel-ledger:{row_id}",
+            component_ids=capability.component_ids,
+            active_component_id="potassium-cation",
+            active_pair_component_ids=("methanol", "potassium-cation"),
+            fixed_k_ij=(0.32, 0.15, -0.35),
+            temperature_k=298.15,
+            pressure_pa=100_000.0,
+            observed_solvation_gibbs_j_per_mol=value * 1000.0,
+            residual_scale_j_per_mol=300_000.0,
+            partition=ObservationPartition.TRAINING,
+        )
+        for row_id, value in targets
+    )
+    source = SourceDescriptor(
+        source_id="figiel-constructed-k-methanol",
+        citation="Figiel, Yu, and Held (2025), equation 19 and Figure 6.",
+        durable_locator="validation:data/figiel-2025-regression-target-ledger.csv",
+        source_artifact_sha256=(
+            "f405a3e48d21cd979a8dd480d5f8cb3be40754f5d6babf368b505b5f305607f0"
+        ),
+        canonical_dataset_sha256=canonical_dataset_sha256(observations),
+        transformation_record=(
+            "Converted the retained constructed kJ/mol targets to J/mol."
+        ),
+        units_and_bases="T/K, P/Pa, x-process ion solvation Gibbs/J/mol.",
+        use_basis=(
+            "Nearest digitized pure-methanol endpoint used as constructed "
+            "in-sample implementation evidence only."
+        ),
+        residual_scale_rationale=(
+            "A declared common 300 kJ/mol magnitude scale; no pointwise "
+            "uncertainty is available."
+        ),
+    )
+    parameter = ParameterCoordinate(
+        family=ParameterFamily.K_IJ,
+        identity=PairParameterIdentity("methanol", "potassium-cation"),
+        capability_id=capability.capability_id,
+        provider_parameter_fingerprint=capability.parameter_fingerprint,
+        provider_topology_fingerprint=capability.topology_fingerprint,
+        unit="1",
+        transform=AffineParameterTransform(origin=0.3, scale=0.1),
+        lower_bound=-1.5,
+        upper_bound=1.5,
+        starts=(0.0, 0.7),
+    )
+    return RegressionProblem(
+        sources=(source,),
+        parameters=(parameter,),
+        observations=observations,
+        maximum_condition_number=1.0e10,
+        maximum_iterations=50,
+        function_tolerance=1.0e-12,
+        gradient_tolerance=1.0e-12,
+        parameter_tolerance=1.0e-12,
+        confirmation_parameter_scaled_max_delta=1.0e-5,
+        confirmation_cost_relative_delta=1.0e-8,
+    )
+
+
 def _replace_observations(
     problem: RegressionProblem, observations: tuple[object, ...]
 ) -> RegressionProblem:
@@ -826,6 +900,49 @@ def test_exact_dielectric_jacobian_matches_directional_residual_difference() -> 
     assert len(residuals) == len(jacobian) == 3
     assert jacobian == pytest.approx(
         finite_difference, rel=2.0e-9, abs=2.0e-10
+    )
+
+
+def test_exact_ion_solvation_kij_jacobian_matches_directional_difference() -> None:
+    model = _aqueous_model(
+        ("methanol", "potassium-cation", "bromide-anion")
+    )
+    problem = _ion_solvation_kij_problem(model)
+    trial = problem.parameters[0].transform.to_solver(0.32)
+
+    residuals, jacobian = _evaluate_parameters(problem, model, (trial,))
+    step = 1.0e-5
+    plus = _evaluate_parameters(problem, model, (trial + step,))[0]
+    minus = _evaluate_parameters(problem, model, (trial - step,))[0]
+    finite_difference = tuple(
+        (upper - lower) / (2.0 * step)
+        for upper, lower in zip(plus, minus, strict=True)
+    )
+
+    assert len(residuals) == len(jacobian) == 1
+    assert jacobian == pytest.approx(
+        finite_difference, rel=2.0e-6, abs=2.0e-8
+    )
+
+
+def test_general_engine_fits_organic_ion_solvation_kij_endpoint() -> None:
+    model = _aqueous_model(
+        ("methanol", "potassium-cation", "bromide-anion")
+    )
+    result = fit_parameters(_ion_solvation_kij_problem(model), model)
+
+    assert result.solver_converged
+    assert result.numerically_converged
+    assert result.workflow_valid
+    assert result.parameter.final == pytest.approx(
+        0.3467279724950645, rel=0.0, abs=2.0e-12
+    )
+    assert result.parameter.active_bound is None
+    assert result.jacobian.full_rank == 1
+    assert result.jacobian.projected_parameter_rank == 1
+    assert result.confirmations_usable
+    assert result.rows[0].derivative_status == (
+        "EXACT_PROVIDER_FIRST_DERIVATIVE"
     )
 
 

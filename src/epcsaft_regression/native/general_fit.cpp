@@ -28,6 +28,7 @@ enum class ObservationKind {
     pure_phase,
     mean_ionic_activity,
     aqueous_kij_activity,
+    ion_solvation_kij,
     solvation_gibbs,
     relative_permittivity_ratio,
 };
@@ -122,7 +123,13 @@ bool direct_observation(const Payload& payload) {
         || payload.capability_id == "aqueous_water_cation_kij_miac_v1"
         || payload.capability_id == "aqueous_water_anion_kij_miac_v1"
         || payload.capability_id == "aqueous_cation_anion_kij_miac_v1"
-        || payload.capability_id == "figiel_dielectric_suppression_v1";
+        || payload.capability_id == "figiel_dielectric_suppression_v1"
+        || payload.capability_id
+            == "ion_solvation_solvent_cation_kij_v1"
+        || payload.capability_id
+            == "ion_solvation_solvent_anion_kij_v1"
+        || payload.capability_id
+            == "ion_solvation_cation_anion_kij_v1";
 }
 
 std::size_t residual_count(const Payload& payload) {
@@ -196,10 +203,14 @@ Row parse_row(PyObject* object, ObservationKind kind) {
     };
     const bool direct = kind == ObservationKind::mean_ionic_activity
         || kind == ObservationKind::aqueous_kij_activity
+        || kind == ObservationKind::ion_solvation_kij
         || kind == ObservationKind::solvation_gibbs
         || kind == ObservationKind::relative_permittivity_ratio;
     const Py_ssize_t expected_size =
-        kind == ObservationKind::aqueous_kij_activity ? 10 : direct ? 7 : 17;
+        kind == ObservationKind::aqueous_kij_activity
+                || kind == ObservationKind::ion_solvation_kij
+            ? 10
+            : direct ? 7 : 17;
     if (!sequence
         || PySequence_Fast_GET_SIZE(sequence.get()) != expected_size) {
         PyErr_Clear();
@@ -220,7 +231,8 @@ Row parse_row(PyObject* object, ObservationKind kind) {
         row.direct_state = number(item(4), "direct observation state");
         row.observed_value = number(item(5), "observed value");
         row.direct_scale = number(item(6), "direct residual scale");
-        if (kind == ObservationKind::aqueous_kij_activity) {
+        if (kind == ObservationKind::aqueous_kij_activity
+            || kind == ObservationKind::ion_solvation_kij) {
             row.fixed_k_ij = {
                 number(item(7), "fixed water-cation k_ij"),
                 number(item(8), "fixed water-anion k_ij"),
@@ -367,8 +379,15 @@ Payload parse_payload(PyObject* object) {
         ? ObservationKind::solvation_gibbs
         : payload.capability_id == "aqueous_solvation_factor_miac_v1"
             ? ObservationKind::mean_ionic_activity
-            : payload.capability_id == "figiel_dielectric_suppression_v1"
+        : payload.capability_id == "figiel_dielectric_suppression_v1"
                 ? ObservationKind::relative_permittivity_ratio
+            : payload.capability_id
+                        == "ion_solvation_solvent_cation_kij_v1"
+                    || payload.capability_id
+                        == "ion_solvation_solvent_anion_kij_v1"
+                    || payload.capability_id
+                        == "ion_solvation_cation_anion_kij_v1"
+                ? ObservationKind::ion_solvation_kij
             : payload.capability_id == "aqueous_water_cation_kij_miac_v1"
                     || payload.capability_id
                         == "aqueous_water_anion_kij_miac_v1"
@@ -506,7 +525,13 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
             || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1
             || candidate.capability
-                == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1;
+                == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1
+            || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1
+            || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_ANION_KIJ_V1
+            || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_CATION_ANION_KIJ_V1;
         if (!supported) {
             continue;
         }
@@ -544,8 +569,16 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
             == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1;
     const bool dielectric = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1;
+    const bool ion_solvation_kij =
+        descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_ANION_KIJ_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_CATION_ANION_KIJ_V1;
     const bool binary = kij || lij;
-    const bool direct = born || solvation_factor || aqueous_kij || dielectric;
+    const bool direct = born || solvation_factor || aqueous_kij || dielectric
+        || ion_solvation_kij;
     const bool callback_available = kij
         ? table.evaluate_mixture_phase_kij != nullptr
         : lij
@@ -580,6 +613,17 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
                             && table.figiel_permittivity_result_size
                                 == sizeof(
                                     epcsaft_figiel_permittivity_result_v1
+                                )
+                    : ion_solvation_kij
+                        ? table.table_size
+                                >= offsetof(
+                                    epcsaft_native_sdk_v1,
+                                    evaluate_ion_solvation_kij
+                                ) + sizeof(table.evaluate_ion_solvation_kij)
+                            && table.evaluate_ion_solvation_kij != nullptr
+                            && table.ion_solvation_kij_result_size
+                                == sizeof(
+                                    epcsaft_ion_solvation_kij_result_v1
                                 )
                     : (table.table_size
                     >= offsetof(
@@ -662,6 +706,18 @@ const char* capability_id(std::uint32_t value) {
     if (value
         == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1) {
         return "figiel_dielectric_suppression_v1";
+    }
+    if (value
+        == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1) {
+        return "ion_solvation_solvent_cation_kij_v1";
+    }
+    if (value
+        == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_ANION_KIJ_V1) {
+        return "ion_solvation_solvent_anion_kij_v1";
+    }
+    if (value
+        == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_CATION_ANION_KIJ_V1) {
+        return "ion_solvation_cation_anion_kij_v1";
     }
     throw std::runtime_error("provider advertised an unknown capability");
 }
@@ -753,9 +809,17 @@ void validate_descriptor(
             == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1;
     const bool dielectric = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1;
+    const bool ion_solvation_kij =
+        descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_ANION_KIJ_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_CATION_ANION_KIJ_V1;
     const bool binary = kij || lij;
     const bool pure = segment_count || segment_diameter || dispersion_energy;
-    const bool direct = born || solvation_factor || aqueous_kij || dielectric;
+    const bool direct = born || solvation_factor || aqueous_kij || dielectric
+        || ion_solvation_kij;
     const bool matching_family =
         (kij
          && descriptor.parameter_family
@@ -781,10 +845,13 @@ void validate_descriptor(
         || (aqueous_kij
             && descriptor.parameter_family
                 == EPCSAFT_NATIVE_PARAMETER_FAMILY_BINARY_INTERACTION_KIJ_V1)
+        || (ion_solvation_kij
+            && descriptor.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_BINARY_INTERACTION_KIJ_V1)
         || (dielectric
             && descriptor.parameter_family
                 == EPCSAFT_NATIVE_PARAMETER_FAMILY_DIELECTRIC_ION_SUPPRESSION_V1);
-    const std::uint32_t expected_observation = born
+    const std::uint32_t expected_observation = born || ion_solvation_kij
         ? EPCSAFT_NATIVE_OBSERVATION_ION_SOLVATION_GIBBS_V1
         : solvation_factor || aqueous_kij
             ? EPCSAFT_NATIVE_OBSERVATION_AQUEOUS_MEAN_IONIC_ACTIVITY_V1
@@ -799,6 +866,8 @@ void validate_descriptor(
                 ? EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_WATER_SINGLE_ION_V1
                 : dielectric
                     ? EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_DIELECTRIC_V1
+                : ion_solvation_kij
+                    ? EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_SINGLE_ION_SOLVATION_V1
                 : EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_AQUEOUS_NABR_V1;
     const std::size_t expected_component_count =
         binary ? 2u : pure ? 1u : 3u;
@@ -815,7 +884,7 @@ void validate_descriptor(
         || descriptor.parameter_identity
             != (dielectric
                     ? EPCSAFT_NATIVE_PARAMETER_IDENTITY_MODEL_V1
-                : binary || aqueous_kij
+                : binary || aqueous_kij || ion_solvation_kij
                     ? EPCSAFT_NATIVE_PARAMETER_IDENTITY_UNORDERED_COMPONENT_PAIR_V1
                     : EPCSAFT_NATIVE_PARAMETER_IDENTITY_COMPONENT_V1)
         || descriptor.observation_contract != expected_observation
@@ -855,18 +924,22 @@ void validate_descriptor(
     std::vector<int> pair_a;
     std::vector<int> pair_b;
     std::vector<const char*> units;
-    if (aqueous_kij) {
+    if (aqueous_kij || ion_solvation_kij) {
         kinds.push_back(
             EPCSAFT_NATIVE_CAPABILITY_COORDINATE_BINARY_INTERACTION_KIJ_V1
         );
         components.push_back(-1);
         if (descriptor.capability
-            == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_CATION_KIJ_MIAC_V1) {
+                == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_CATION_KIJ_MIAC_V1
+            || descriptor.capability
+                == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1) {
             pair_a.push_back(0);
             pair_b.push_back(1);
         } else if (
             descriptor.capability
-            == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_ANION_KIJ_MIAC_V1
+                == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_ANION_KIJ_MIAC_V1
+            || descriptor.capability
+                == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_ANION_KIJ_V1
         ) {
             pair_a.push_back(0);
             pair_b.push_back(2);
@@ -1051,7 +1124,14 @@ PyObject* descriptor_to_python(
             == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1;
     const bool dielectric = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1;
-    const bool pair_coordinate = binary || aqueous_kij;
+    const bool ion_solvation_kij =
+        descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_ANION_KIJ_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_CATION_ANION_KIJ_V1;
+    const bool pair_coordinate = binary || aqueous_kij || ion_solvation_kij;
     const char* observation_contract =
         descriptor.observation_contract
                 == EPCSAFT_NATIVE_OBSERVATION_ION_SOLVATION_GIBBS_V1
@@ -1073,6 +1153,9 @@ PyObject* descriptor_to_python(
                 : descriptor.model_domain
                         == EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_DIELECTRIC_V1
                     ? "figiel_dielectric"
+                : descriptor.model_domain
+                        == EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_SINGLE_ION_SOLVATION_V1
+                    ? "figiel_single_ion_solvation"
                 : binary
                     ? "neutral_nonassociating_binary"
                     : "neutral_nonassociating_pure";
@@ -1361,6 +1444,66 @@ void evaluate_direct_problem(
             evaluation.provider_derivatives[index] = derivative;
             evaluation.residuals[index] =
                 (modeled - row.observed_value) / row.direct_scale;
+            evaluation.jacobian[index] =
+                derivative * payload.parameter_scale / row.direct_scale;
+        }
+        return;
+    }
+
+    const bool ion_solvation_kij =
+        payload.capability_id
+            == "ion_solvation_solvent_cation_kij_v1"
+        || payload.capability_id
+            == "ion_solvation_solvent_anion_kij_v1"
+        || payload.capability_id
+            == "ion_solvation_cation_anion_kij_v1";
+    if (ion_solvation_kij) {
+        const std::size_t active_index =
+            payload.capability_id
+                    == "ion_solvation_solvent_cation_kij_v1"
+                ? 0u
+                : payload.capability_id
+                          == "ion_solvation_solvent_anion_kij_v1"
+                    ? 1u
+                    : 2u;
+        for (std::size_t index = 0; index < row_count; ++index) {
+            const Row& row = payload.training_rows[index];
+            std::array<double, 3> k_ij = row.fixed_k_ij;
+            k_ij[active_index] = parameter;
+            epcsaft_ion_solvation_kij_result_v1 result{};
+            result.struct_size = sizeof(result);
+            const int status = table.evaluate_ion_solvation_kij(
+                table.model_context,
+                payload.parameter_fingerprint.c_str(),
+                row.temperature,
+                row.pressure,
+                static_cast<std::size_t>(row.direct_state),
+                k_ij.data(),
+                k_ij.size(),
+                &result
+            );
+            const double derivative = result.derivative[active_index];
+            if (status != EPCSAFT_NATIVE_STATUS_OK_V1
+                || result.status != status
+                || !bounded_field_equal(
+                    payload.parameter_fingerprint,
+                    result.parameter_fingerprint
+                )
+                || !std::isfinite(result.solvation_gibbs_j_per_mol)
+                || !std::isfinite(derivative)
+                || !std::isfinite(result.reference_molality_mol_per_kg)
+                || !std::isfinite(result.reference_convergence_error)) {
+                throw std::runtime_error(
+                    std::string("Provider ion-solvation k_ij evaluation failed: ")
+                    + result.error
+                );
+            }
+            evaluation.modeled_values[index] =
+                result.solvation_gibbs_j_per_mol;
+            evaluation.provider_derivatives[index] = derivative;
+            evaluation.residuals[index] =
+                (result.solvation_gibbs_j_per_mol - row.observed_value)
+                / row.direct_scale;
             evaluation.jacobian[index] =
                 derivative * payload.parameter_scale / row.direct_scale;
         }
@@ -2363,6 +2506,12 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
                     == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1
                 || descriptor.capability
                     == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_ANION_KIJ_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_CATION_ANION_KIJ_V1
             )
                 ? descriptor_to_python(descriptor)
                 : unsupported_descriptor_to_python(descriptor);
