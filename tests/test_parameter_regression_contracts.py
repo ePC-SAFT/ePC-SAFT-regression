@@ -7,6 +7,7 @@ import pytest
 
 from epcsaft_regression.parameter_regression import (
     AffineParameterTransform,
+    ComponentParameterIdentity,
     FixedCompositionVleObservation,
     ObservationPartition,
     PairParameterIdentity,
@@ -118,6 +119,34 @@ def test_pair_coordinate_accepts_the_distinct_lij_family() -> None:
     assert coordinate.family is ParameterFamily.L_IJ
     assert coordinate.identity.canonical_component_ids == ("ethane", "methane")
     assert coordinate.unit == "1"
+
+
+@pytest.mark.parametrize(
+    ("family", "unit"),
+    (
+        (ParameterFamily.SEGMENT_COUNT, "1"),
+        (ParameterFamily.SEGMENT_DIAMETER, "angstrom"),
+        (ParameterFamily.DISPERSION_ENERGY_OVER_K, "K"),
+    ),
+)
+def test_component_coordinate_accepts_scalar_pure_families(
+    family: ParameterFamily,
+    unit: str,
+) -> None:
+    base = _problem((_row("train-1"),)).parameters[0]
+    coordinate = replace(
+        base,
+        family=family,
+        identity=ComponentParameterIdentity("methane"),
+        capability_id=f"neutral_pure_{family.value}_v1",
+        unit=unit,
+        lower_bound=0.1,
+        upper_bound=500.0,
+        starts=(1.0, 1.1),
+    )
+
+    assert coordinate.identity.canonical_component_ids == ("methane",)
+    assert coordinate.unit == unit
 
 
 @pytest.mark.parametrize(

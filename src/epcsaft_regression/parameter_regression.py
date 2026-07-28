@@ -111,6 +111,25 @@ class GeneralRowDiagnostic:
 
 
 @dataclass(frozen=True, slots=True)
+class PureSaturationRowDiagnostic:
+    row_id: str
+    partition: str
+    liquid_volume_m3_per_mol: float
+    vapor_volume_m3_per_mol: float
+    scaled_residuals: tuple[float, float, float, float]
+    observed_pressure_pa: float
+    liquid_model_pressure_pa: float
+    vapor_model_pressure_pa: float
+    chemical_potential_difference_over_rt: float
+    observed_liquid_density_kg_per_m3: float
+    model_liquid_density_kg_per_m3: float
+    derivative_status: str
+    status: str
+    evaluated: bool
+    failure_reason: str
+
+
+@dataclass(frozen=True, slots=True)
 class RegressionResult:
     problem: RegressionProblem
     capability: ParameterCapability
@@ -129,7 +148,7 @@ class RegressionResult:
     iterations: int
     parameter: FittedParameterDiagnostic
     jacobian: GeneralJacobianDiagnostics
-    rows: tuple[GeneralRowDiagnostic, ...]
+    rows: tuple[GeneralRowDiagnostic | PureSaturationRowDiagnostic, ...]
     confirmation_count: int
     confirmation_parameter_scaled_max_delta: float
     confirmation_cost_relative_max_delta: float
@@ -238,6 +257,22 @@ class PairParameterIdentity:
 
 
 @dataclass(frozen=True, slots=True)
+class ComponentParameterIdentity:
+    component_id: str
+
+    def __post_init__(self) -> None:
+        _require_nonempty_string(self.component_id, "component_id")
+
+    @property
+    def component_ids(self) -> tuple[str]:
+        return (self.component_id,)
+
+    @property
+    def canonical_component_ids(self) -> tuple[str]:
+        return self.component_ids
+
+
+@dataclass(frozen=True, slots=True)
 class AffineParameterTransform:
     origin: float
     scale: float
@@ -260,7 +295,7 @@ class AffineParameterTransform:
 @dataclass(frozen=True, slots=True)
 class ParameterCoordinate:
     family: ParameterFamily
-    identity: PairParameterIdentity
+    identity: PairParameterIdentity | ComponentParameterIdentity
     capability_id: str
     provider_parameter_fingerprint: str
     provider_topology_fingerprint: str
@@ -273,12 +308,31 @@ class ParameterCoordinate:
     def __post_init__(self) -> None:
         if not isinstance(self.family, ParameterFamily):
             raise TypeError("family must be a ParameterFamily")
-        if self.family not in (ParameterFamily.K_IJ, ParameterFamily.L_IJ):
+        pair_families = (ParameterFamily.K_IJ, ParameterFamily.L_IJ)
+        component_units = {
+            ParameterFamily.SEGMENT_COUNT: "1",
+            ParameterFamily.SEGMENT_DIAMETER: "angstrom",
+            ParameterFamily.DISPERSION_ENERGY_OVER_K: "K",
+        }
+        if self.family in pair_families:
+            if not isinstance(self.identity, PairParameterIdentity):
+                raise TypeError(
+                    "pair-parameter identity must be a PairParameterIdentity"
+                )
+            expected_unit = "1"
+        elif self.family in component_units:
+            if not isinstance(self.identity, ComponentParameterIdentity):
+                raise TypeError(
+                    "component-parameter identity must be a "
+                    "ComponentParameterIdentity"
+                )
+            expected_unit = component_units[self.family]
+        else:
             raise ValueError(
-                "the v1 pair-coordinate contract supports only k_ij and l_ij"
+                "the v1 coordinate contract supports only k_ij, l_ij, "
+                "segment_count, segment_diameter, and "
+                "dispersion_energy_over_k"
             )
-        if not isinstance(self.identity, PairParameterIdentity):
-            raise TypeError("pair-parameter identity must be a PairParameterIdentity")
         _require_nonempty_string(self.capability_id, "capability_id")
         _require_sha256(
             self.provider_parameter_fingerprint,
@@ -291,8 +345,10 @@ class ParameterCoordinate:
             prefixed=True,
         )
         _require_nonempty_string(self.unit, "unit")
-        if self.unit != "1":
-            raise ValueError("pair-parameter unit must be '1'")
+        if self.unit != expected_unit:
+            raise ValueError(
+                f"{self.family.value} parameter unit must be {expected_unit!r}"
+            )
         if not isinstance(self.transform, AffineParameterTransform):
             raise TypeError("transform must be an AffineParameterTransform")
         _require_finite(self.lower_bound, "lower bound")
@@ -405,7 +461,105 @@ class FixedCompositionVleObservation:
             raise ValueError(f"{phase} volume start must lie within its bounds")
 
 
-def _canonical_row(row: FixedCompositionVleObservation) -> dict[str, object]:
+@dataclass(frozen=True, slots=True)
+class PureSaturationObservation:
+    row_id: str
+    source_id: str
+    source_locator: str
+    component_id: str
+    temperature_k: float
+    pressure_pa: float
+    liquid_density_kg_per_m3: float
+    molar_mass_kg_per_mol: float
+    pressure_scale_pa: float
+    chemical_potential_scale: float
+    liquid_density_scale_kg_per_m3: float
+    liquid_volume_origin_m3_per_mol: float
+    liquid_volume_start_m3_per_mol: float
+    liquid_volume_bounds_m3_per_mol: tuple[float, float]
+    vapor_volume_origin_m3_per_mol: float
+    vapor_volume_start_m3_per_mol: float
+    vapor_volume_bounds_m3_per_mol: tuple[float, float]
+    partition: ObservationPartition
+
+    def __post_init__(self) -> None:
+        for field in ("row_id", "source_id", "source_locator", "component_id"):
+            _require_nonempty_string(getattr(self, field), field)
+        for field in (
+            "temperature_k",
+            "pressure_pa",
+            "liquid_density_kg_per_m3",
+            "molar_mass_kg_per_mol",
+            "pressure_scale_pa",
+            "chemical_potential_scale",
+            "liquid_density_scale_kg_per_m3",
+        ):
+            _require_finite(getattr(self, field), field, positive=True)
+        self._validate_volume("liquid")
+        self._validate_volume("vapor")
+        if not isinstance(self.partition, ObservationPartition):
+            raise TypeError("partition must be an ObservationPartition")
+
+    @property
+    def component_ids(self) -> tuple[str]:
+        return (self.component_id,)
+
+    def _validate_volume(self, phase: str) -> None:
+        origin = getattr(self, f"{phase}_volume_origin_m3_per_mol")
+        start = getattr(self, f"{phase}_volume_start_m3_per_mol")
+        bounds = getattr(self, f"{phase}_volume_bounds_m3_per_mol")
+        _require_finite(origin, f"{phase} volume origin", positive=True)
+        _require_finite(start, f"{phase} volume start", positive=True)
+        if type(bounds) is not tuple or len(bounds) != 2:
+            raise ValueError(f"{phase} volume bounds must contain two values")
+        lower, upper = bounds
+        _require_finite(lower, f"{phase} volume lower bound", positive=True)
+        _require_finite(upper, f"{phase} volume upper bound", positive=True)
+        if lower >= upper:
+            raise ValueError(f"{phase} volume bounds must be strictly increasing")
+        if not lower <= start <= upper:
+            raise ValueError(f"{phase} volume start must lie within its bounds")
+
+
+RegressionObservation = FixedCompositionVleObservation | PureSaturationObservation
+
+
+def _canonical_row(row: RegressionObservation) -> dict[str, object]:
+    if isinstance(row, PureSaturationObservation):
+        return {
+            "row_id": row.row_id,
+            "source_id": row.source_id,
+            "source_locator": row.source_locator,
+            "component_ids": list(row.component_ids),
+            "temperature_k": row.temperature_k,
+            "pressure_pa": row.pressure_pa,
+            "liquid_density_kg_per_m3": row.liquid_density_kg_per_m3,
+            "molar_mass_kg_per_mol": row.molar_mass_kg_per_mol,
+            "pressure_scale_pa": row.pressure_scale_pa,
+            "chemical_potential_scale": row.chemical_potential_scale,
+            "liquid_density_scale_kg_per_m3": (
+                row.liquid_density_scale_kg_per_m3
+            ),
+            "liquid_volume_origin_m3_per_mol": (
+                row.liquid_volume_origin_m3_per_mol
+            ),
+            "liquid_volume_start_m3_per_mol": (
+                row.liquid_volume_start_m3_per_mol
+            ),
+            "liquid_volume_bounds_m3_per_mol": list(
+                row.liquid_volume_bounds_m3_per_mol
+            ),
+            "vapor_volume_origin_m3_per_mol": (
+                row.vapor_volume_origin_m3_per_mol
+            ),
+            "vapor_volume_start_m3_per_mol": (
+                row.vapor_volume_start_m3_per_mol
+            ),
+            "vapor_volume_bounds_m3_per_mol": list(
+                row.vapor_volume_bounds_m3_per_mol
+            ),
+            "partition": row.partition.value,
+        }
     return {
         "row_id": row.row_id,
         "source_id": row.source_id,
@@ -428,7 +582,7 @@ def _canonical_row(row: FixedCompositionVleObservation) -> dict[str, object]:
 
 
 def canonical_dataset_sha256(
-    observations: Iterable[FixedCompositionVleObservation],
+    observations: Iterable[RegressionObservation],
 ) -> str:
     rows = sorted((_canonical_row(row) for row in observations), key=lambda row: row["row_id"])
     payload = json.dumps(rows, sort_keys=True, separators=(",", ":"), allow_nan=False)
@@ -439,7 +593,7 @@ def canonical_dataset_sha256(
 class RegressionProblem:
     sources: tuple[SourceDescriptor, ...]
     parameters: tuple[ParameterCoordinate, ...]
-    observations: tuple[FixedCompositionVleObservation, ...]
+    observations: tuple[RegressionObservation, ...]
     maximum_condition_number: float
     maximum_iterations: int
     function_tolerance: float
@@ -485,7 +639,12 @@ class RegressionProblem:
             raise ValueError("the first implementation accepts exactly one shared parameter")
         identity = self.parameters[0].identity.canonical_component_ids
         for row in self.observations:
-            if tuple(sorted(row.component_ids)) != identity:
+            row_identity = (
+                tuple(sorted(row.component_ids))
+                if len(row.component_ids) == 2
+                else row.component_ids
+            )
+            if row_identity != identity:
                 raise ValueError(
                     f"observation {row.row_id!r} component pair does not match the parameter identity"
                 )
@@ -506,25 +665,45 @@ class RegressionProblem:
             _require_finite(getattr(self, field), field, positive=True)
 
     @property
-    def training_observations(self) -> tuple[FixedCompositionVleObservation, ...]:
+    def training_observations(self) -> tuple[RegressionObservation, ...]:
         return tuple(
             row for row in self.observations if row.partition is ObservationPartition.TRAINING
         )
 
     @property
-    def held_out_observations(self) -> tuple[FixedCompositionVleObservation, ...]:
+    def held_out_observations(self) -> tuple[RegressionObservation, ...]:
         return tuple(
             row for row in self.observations if row.partition is ObservationPartition.HELD_OUT
         )
 
     @property
-    def stress_observations(self) -> tuple[FixedCompositionVleObservation, ...]:
+    def stress_observations(self) -> tuple[RegressionObservation, ...]:
         return tuple(
             row for row in self.observations if row.partition is ObservationPartition.STRESS
         )
 
 
-def _row_payload(row: FixedCompositionVleObservation) -> tuple[object, ...]:
+def _row_payload(row: RegressionObservation) -> tuple[object, ...]:
+    if isinstance(row, PureSaturationObservation):
+        return (
+            row.row_id,
+            row.partition.value,
+            row.temperature_k,
+            row.pressure_pa,
+            row.pressure_scale_pa,
+            row.chemical_potential_scale,
+            row.molar_mass_kg_per_mol,
+            row.liquid_density_kg_per_m3,
+            row.liquid_density_scale_kg_per_m3,
+            row.liquid_volume_origin_m3_per_mol,
+            row.liquid_volume_start_m3_per_mol,
+            row.liquid_volume_bounds_m3_per_mol[0],
+            row.liquid_volume_bounds_m3_per_mol[1],
+            row.vapor_volume_origin_m3_per_mol,
+            row.vapor_volume_start_m3_per_mol,
+            row.vapor_volume_bounds_m3_per_mol[0],
+            row.vapor_volume_bounds_m3_per_mol[1],
+        )
     return (
         row.row_id,
         row.partition.value,
@@ -601,6 +780,16 @@ def _matched_capability(
         raise ValueError(
             "regression parameter does not match the installed Provider capability"
         )
+    provider_unit = {
+        "dimensionless": "1",
+        "angstrom": "angstrom",
+        "kelvin": "K",
+    }.get(capability.coordinate_units[-1])
+    if provider_unit != parameter.unit:
+        raise ValueError(
+            "regression parameter unit does not match the installed Provider "
+            "capability"
+        )
     for row in problem.observations:
         if row.component_ids != capability.component_ids:
             raise ValueError(
@@ -621,7 +810,7 @@ def _evaluate_parameters(
     problem: RegressionProblem, model: object, variables: tuple[float, ...]
 ) -> tuple[tuple[float, ...], tuple[float, ...]]:
     capability = _matched_capability(problem, model)
-    residuals, jacobian = _native.evaluate_general_pair(
+    residuals, jacobian = _native.evaluate_general(
         native_sdk(model), _native_payload(problem, capability), variables
     )
     return tuple(residuals), tuple(jacobian)
@@ -629,39 +818,74 @@ def _evaluate_parameters(
 
 def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResult:
     capability = _matched_capability(problem, model)
-    native = _native.solve_general_pair(
+    native = _native.solve_general(
         native_sdk(model), _native_payload(problem, capability)
     )
     parameter_coordinate = problem.parameters[0]
     observations = {row.row_id: row for row in problem.observations}
-    rows = tuple(
-        GeneralRowDiagnostic(
-            row_id=row[0],
-            partition=row[1],
-            liquid_volume_m3_per_mol=row[2],
-            vapor_volume_m3_per_mol=row[3],
-            scaled_residuals=tuple(row[4]),
-            observed_pressure_pa=observations[row[0]].pressure_pa,
-            liquid_model_pressure_pa=(
-                observations[row[0]].pressure_pa
-                + row[4][0] * observations[row[0]].pressure_scale_pa
-            ),
-            vapor_model_pressure_pa=(
-                observations[row[0]].pressure_pa
-                + row[4][1] * observations[row[0]].pressure_scale_pa
-            ),
-            chemical_potential_differences_over_rt=(
-                row[4][2]
-                * observations[row[0]].chemical_potential_scales[0],
-                row[4][3]
-                * observations[row[0]].chemical_potential_scales[1],
-            ),
-            derivative_status=(
-                "EXACT_PROVIDER_HESSIAN" if row[5] else "UNAVAILABLE"
-            ),
-            status="evaluated" if row[5] else "failed",
-            evaluated=row[5],
-            failure_reason=row[6],
+    rows: tuple[GeneralRowDiagnostic | PureSaturationRowDiagnostic, ...] = tuple(
+        (
+            PureSaturationRowDiagnostic(
+                row_id=row[0],
+                partition=row[1],
+                liquid_volume_m3_per_mol=row[2],
+                vapor_volume_m3_per_mol=row[3],
+                scaled_residuals=tuple(row[4]),
+                observed_pressure_pa=observation.pressure_pa,
+                liquid_model_pressure_pa=(
+                    observation.pressure_pa
+                    + row[4][0] * observation.pressure_scale_pa
+                ),
+                vapor_model_pressure_pa=(
+                    observation.pressure_pa
+                    + row[4][1] * observation.pressure_scale_pa
+                ),
+                chemical_potential_difference_over_rt=(
+                    row[4][2] * observation.chemical_potential_scale
+                ),
+                observed_liquid_density_kg_per_m3=(
+                    observation.liquid_density_kg_per_m3
+                ),
+                model_liquid_density_kg_per_m3=(
+                    observation.molar_mass_kg_per_mol / row[2]
+                ),
+                derivative_status=(
+                    "EXACT_PROVIDER_HESSIAN" if row[5] else "UNAVAILABLE"
+                ),
+                status="evaluated" if row[5] else "failed",
+                evaluated=row[5],
+                failure_reason=row[6],
+            )
+            if isinstance(
+                observation := observations[row[0]],
+                PureSaturationObservation,
+            )
+            else GeneralRowDiagnostic(
+                row_id=row[0],
+                partition=row[1],
+                liquid_volume_m3_per_mol=row[2],
+                vapor_volume_m3_per_mol=row[3],
+                scaled_residuals=tuple(row[4]),
+                observed_pressure_pa=observation.pressure_pa,
+                liquid_model_pressure_pa=(
+                    observation.pressure_pa
+                    + row[4][0] * observation.pressure_scale_pa
+                ),
+                vapor_model_pressure_pa=(
+                    observation.pressure_pa
+                    + row[4][1] * observation.pressure_scale_pa
+                ),
+                chemical_potential_differences_over_rt=(
+                    row[4][2] * observation.chemical_potential_scales[0],
+                    row[4][3] * observation.chemical_potential_scales[1],
+                ),
+                derivative_status=(
+                    "EXACT_PROVIDER_HESSIAN" if row[5] else "UNAVAILABLE"
+                ),
+                status="evaluated" if row[5] else "failed",
+                evaluated=row[5],
+                failure_reason=row[6],
+            )
         )
         for row in native[20]
     )

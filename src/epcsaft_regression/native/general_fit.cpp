@@ -24,6 +24,7 @@ namespace {
 constexpr double gas_constant = 8.31446261815324;
 
 struct Row final {
+    bool pure{false};
     std::string row_id;
     std::string partition;
     double temperature;
@@ -38,13 +39,16 @@ struct Row final {
     double vapor_volume_origin;
     double vapor_volume_start;
     std::array<double, 2> vapor_volume_bounds;
+    double molar_mass{0.0};
+    double liquid_density{0.0};
+    double liquid_density_scale{0.0};
 };
 
 struct Payload final {
     std::string capability_id;
     std::string parameter_fingerprint;
     std::string topology_fingerprint;
-    std::array<std::string, 2> component_ids;
+    std::vector<std::string> component_ids;
     double parameter_origin;
     double parameter_scale;
     double parameter_lower_bound;
@@ -65,6 +69,7 @@ struct Phase final {
     double pressure;
     std::array<double, 4> gradient;
     std::array<double, 16> hessian;
+    std::size_t coordinate_count;
 };
 
 struct Evaluation final {
@@ -150,7 +155,7 @@ std::vector<double> doubles(PyObject* object, const char* name) {
     return values;
 }
 
-Row parse_row(PyObject* object) {
+Row parse_row(PyObject* object, bool pure) {
     OwnedPyObject sequence{
         PySequence_Fast(object, "observation payload must be a sequence")
     };
@@ -164,17 +169,31 @@ Row parse_row(PyObject* object) {
         return PySequence_Fast_GET_ITEM(sequence.get(), index);
     };
     Row row{};
+    row.pure = pure;
     row.row_id = text(item(0), "row id");
     row.partition = text(item(1), "partition");
     row.temperature = number(item(2), "temperature");
     row.pressure = number(item(3), "pressure");
-    row.liquid_first = number(item(4), "liquid composition");
-    row.vapor_first = number(item(5), "vapor composition");
-    row.pressure_scale = number(item(6), "pressure scale");
-    row.chemical_potential_scales = {
-        number(item(7), "first chemical-potential scale"),
-        number(item(8), "second chemical-potential scale"),
-    };
+    if (pure) {
+        row.pressure_scale = number(item(4), "pressure scale");
+        row.chemical_potential_scales = {
+            number(item(5), "chemical-potential scale"),
+            number(item(8), "liquid-density scale"),
+        };
+        row.molar_mass = number(item(6), "molar mass");
+        row.liquid_density = number(item(7), "liquid density");
+        row.liquid_density_scale = row.chemical_potential_scales[1];
+        row.liquid_first = 1.0;
+        row.vapor_first = 1.0;
+    } else {
+        row.liquid_first = number(item(4), "liquid composition");
+        row.vapor_first = number(item(5), "vapor composition");
+        row.pressure_scale = number(item(6), "pressure scale");
+        row.chemical_potential_scales = {
+            number(item(7), "first chemical-potential scale"),
+            number(item(8), "second chemical-potential scale"),
+        };
+    }
     row.liquid_volume_origin = number(item(9), "liquid volume origin");
     row.liquid_volume_start = number(item(10), "liquid volume start");
     row.liquid_volume_bounds = {
@@ -187,10 +206,41 @@ Row parse_row(PyObject* object) {
         number(item(15), "vapor volume lower bound"),
         number(item(16), "vapor volume upper bound"),
     };
+    const auto valid_volume = [](double origin, double start, const auto& bounds) {
+        return origin > 0.0 && start > 0.0 && bounds[0] > 0.0
+            && bounds[0] < bounds[1] && start >= bounds[0]
+            && start <= bounds[1];
+    };
+    const bool common_valid = row.temperature > 0.0 && row.pressure > 0.0
+        && row.pressure_scale > 0.0
+        && valid_volume(
+            row.liquid_volume_origin,
+            row.liquid_volume_start,
+            row.liquid_volume_bounds
+        )
+        && valid_volume(
+            row.vapor_volume_origin,
+            row.vapor_volume_start,
+            row.vapor_volume_bounds
+        );
+    const bool observation_valid = pure
+        ? row.chemical_potential_scales[0] > 0.0
+            && row.molar_mass > 0.0 && row.liquid_density > 0.0
+            && row.liquid_density_scale > 0.0
+        : row.liquid_first > 0.0 && row.liquid_first < 1.0
+            && row.vapor_first > 0.0 && row.vapor_first < 1.0
+            && row.chemical_potential_scales[0] > 0.0
+            && row.chemical_potential_scales[1] > 0.0;
+    if (!common_valid || !observation_valid) {
+        throw std::invalid_argument(
+            "observation scales, state values, and volume contracts must be "
+            "positive and ordered"
+        );
+    }
     return row;
 }
 
-std::vector<Row> parse_rows(PyObject* object, const char* name) {
+std::vector<Row> parse_rows(PyObject* object, const char* name, bool pure) {
     OwnedPyObject sequence{PySequence_Fast(object, name)};
     if (!sequence) {
         PyErr_Clear();
@@ -201,7 +251,7 @@ std::vector<Row> parse_rows(PyObject* object, const char* name) {
     rows.reserve(static_cast<std::size_t>(count));
     for (Py_ssize_t index = 0; index < count; ++index) {
         rows.push_back(parse_row(
-            PySequence_Fast_GET_ITEM(sequence.get(), index)
+            PySequence_Fast_GET_ITEM(sequence.get(), index), pure
         ));
     }
     return rows;
@@ -223,18 +273,26 @@ Payload parse_payload(PyObject* object) {
     OwnedPyObject components{
         PySequence_Fast(item(3), "component ids must be a sequence")
     };
-    if (!components || PySequence_Fast_GET_SIZE(components.get()) != 2) {
+    if (!components
+        || (PySequence_Fast_GET_SIZE(components.get()) != 1
+            && PySequence_Fast_GET_SIZE(components.get()) != 2)) {
         PyErr_Clear();
-        throw std::invalid_argument("component ids must contain exactly two values");
+        throw std::invalid_argument(
+            "component ids must contain one or two values"
+        );
     }
     Payload payload{};
     payload.capability_id = text(item(0), "capability id");
     payload.parameter_fingerprint = text(item(1), "parameter fingerprint");
     payload.topology_fingerprint = text(item(2), "topology fingerprint");
-    payload.component_ids = {
-        text(PySequence_Fast_GET_ITEM(components.get(), 0), "first component id"),
-        text(PySequence_Fast_GET_ITEM(components.get(), 1), "second component id"),
-    };
+    const Py_ssize_t component_count = PySequence_Fast_GET_SIZE(components.get());
+    payload.component_ids.reserve(static_cast<std::size_t>(component_count));
+    for (Py_ssize_t index = 0; index < component_count; ++index) {
+        payload.component_ids.push_back(text(
+            PySequence_Fast_GET_ITEM(components.get(), index), "component id"
+        ));
+    }
+    const bool pure = component_count == 1;
     payload.parameter_origin = number(item(4), "parameter origin");
     payload.parameter_scale = number(item(5), "parameter scale");
     payload.parameter_lower_bound = number(item(6), "parameter lower bound");
@@ -259,10 +317,31 @@ Payload parse_payload(PyObject* object) {
     payload.confirmation_cost_delta = number(
         item(15), "confirmation cost delta"
     );
-    payload.training_rows = parse_rows(item(16), "training rows");
-    payload.reporting_rows = parse_rows(item(17), "reporting rows");
+    payload.training_rows = parse_rows(item(16), "training rows", pure);
+    payload.reporting_rows = parse_rows(item(17), "reporting rows", pure);
     if (payload.training_rows.empty()) {
         throw std::invalid_argument("at least one training row is required");
+    }
+    const bool starts_valid = payload.starts.size() >= 2
+        && std::all_of(
+            payload.starts.begin(),
+            payload.starts.end(),
+            [&](double start) {
+                return start >= payload.parameter_lower_bound
+                    && start <= payload.parameter_upper_bound;
+            }
+        );
+    if (payload.parameter_scale == 0.0
+        || payload.parameter_lower_bound >= payload.parameter_upper_bound
+        || !starts_valid || payload.maximum_condition_number <= 0.0
+        || payload.function_tolerance <= 0.0
+        || payload.gradient_tolerance <= 0.0
+        || payload.parameter_tolerance <= 0.0
+        || payload.confirmation_parameter_delta <= 0.0
+        || payload.confirmation_cost_delta <= 0.0) {
+        throw std::invalid_argument(
+            "parameter, solver, and confirmation contracts are invalid"
+        );
     }
     return payload;
 }
@@ -316,10 +395,18 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
     const epcsaft_native_capability_descriptor_v1* selected = nullptr;
     for (std::size_t index = 0; index < table.capability_count; ++index) {
         const auto& candidate = table.capabilities[index];
-        if (candidate.capability
-                != EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1
-            && candidate.capability
-                != EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_LIJ_HELMHOLTZ_V1) {
+        const bool supported =
+            candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1
+            || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_LIJ_HELMHOLTZ_V1
+            || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_PURE_SEGMENT_COUNT_HELMHOLTZ_V1
+            || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_PURE_SEGMENT_DIAMETER_HELMHOLTZ_V1
+            || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_PURE_DISPERSION_ENERGY_HELMHOLTZ_V1;
+        if (!supported) {
             continue;
         }
         validate_descriptor(candidate);
@@ -341,22 +428,37 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
     const auto& descriptor = *selected;
     const bool kij = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1;
+    const bool lij = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_LIJ_HELMHOLTZ_V1;
+    const bool binary = kij || lij;
     const bool callback_available = kij
         ? table.evaluate_mixture_phase_kij != nullptr
-        : table.table_size
-                >= offsetof(epcsaft_native_sdk_v1, evaluate_mixture_phase_lij)
-                    + sizeof(table.evaluate_mixture_phase_lij)
-            && table.evaluate_mixture_phase_lij != nullptr;
+        : lij
+            ? (table.table_size
+                    >= offsetof(
+                        epcsaft_native_sdk_v1,
+                        evaluate_mixture_phase_lij
+                    ) + sizeof(table.evaluate_mixture_phase_lij)
+                && table.evaluate_mixture_phase_lij != nullptr)
+            : (table.table_size
+                    >= offsetof(
+                        epcsaft_native_sdk_v1,
+                        evaluate_pure_phase_parameter
+                    ) + sizeof(table.evaluate_pure_phase_parameter)
+                && table.evaluate_pure_phase_parameter != nullptr);
     if (!bounded_field_equal(
             payload.parameter_fingerprint, descriptor.parameter_fingerprint
         )
         || !bounded_field_equal(
             payload.topology_fingerprint, descriptor.topology_fingerprint
         )
-        || descriptor.component_count != 2
+        || descriptor.component_count != (binary ? 2u : 1u)
         || descriptor.component_ids == nullptr
         || payload.component_ids[0] != descriptor.component_ids[0]
-        || payload.component_ids[1] != descriptor.component_ids[1]
+        || (binary
+            && (payload.component_ids.size() != 2
+                || payload.component_ids[1] != descriptor.component_ids[1]))
+        || (!binary && payload.component_ids.size() != 1)
         || !callback_available
         || table.mixture_result_size
             != sizeof(epcsaft_mixture_phase_block_result_v1)) {
@@ -376,6 +478,18 @@ const char* capability_id(std::uint32_t value) {
         == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_LIJ_HELMHOLTZ_V1) {
         return "neutral_binary_phase_lij_v1";
     }
+    if (value
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_SEGMENT_COUNT_HELMHOLTZ_V1) {
+        return "neutral_pure_segment_count_v1";
+    }
+    if (value
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_SEGMENT_DIAMETER_HELMHOLTZ_V1) {
+        return "neutral_pure_segment_diameter_v1";
+    }
+    if (value
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_DISPERSION_ENERGY_HELMHOLTZ_V1) {
+        return "neutral_pure_dispersion_energy_over_k_v1";
+    }
     throw std::runtime_error("provider advertised an unknown capability");
 }
 
@@ -387,6 +501,16 @@ const char* parameter_family(std::uint32_t value) {
     if (value
         == EPCSAFT_NATIVE_PARAMETER_FAMILY_BINARY_INTERACTION_LIJ_V1) {
         return "l_ij";
+    }
+    if (value == EPCSAFT_NATIVE_PARAMETER_FAMILY_SEGMENT_COUNT_V1) {
+        return "segment_count";
+    }
+    if (value == EPCSAFT_NATIVE_PARAMETER_FAMILY_SEGMENT_DIAMETER_V1) {
+        return "segment_diameter";
+    }
+    if (value
+        == EPCSAFT_NATIVE_PARAMETER_FAMILY_DISPERSION_ENERGY_OVER_K_V1) {
+        return "dispersion_energy_over_k";
     }
     throw std::runtime_error("provider advertised an unknown parameter family");
 }
@@ -401,6 +525,12 @@ const char* coordinate_kind(std::uint32_t value) {
             return "k_ij";
         case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_BINARY_INTERACTION_LIJ_V1:
             return "l_ij";
+        case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SEGMENT_COUNT_V1:
+            return "segment_count";
+        case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SEGMENT_DIAMETER_V1:
+            return "segment_diameter";
+        case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_DISPERSION_ENERGY_OVER_K_V1:
+            return "dispersion_energy_over_k";
         default:
             throw std::runtime_error(
                 "provider advertised an unknown capability coordinate"
@@ -415,25 +545,46 @@ void validate_descriptor(
         == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1;
     const bool lij = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_LIJ_HELMHOLTZ_V1;
+    const bool segment_count = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_SEGMENT_COUNT_HELMHOLTZ_V1;
+    const bool segment_diameter = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_SEGMENT_DIAMETER_HELMHOLTZ_V1;
+    const bool dispersion_energy = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_DISPERSION_ENERGY_HELMHOLTZ_V1;
+    const bool binary = kij || lij;
+    const bool pure = segment_count || segment_diameter || dispersion_energy;
     const bool matching_family =
         (kij
          && descriptor.parameter_family
              == EPCSAFT_NATIVE_PARAMETER_FAMILY_BINARY_INTERACTION_KIJ_V1)
         || (lij
             && descriptor.parameter_family
-                == EPCSAFT_NATIVE_PARAMETER_FAMILY_BINARY_INTERACTION_LIJ_V1);
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_BINARY_INTERACTION_LIJ_V1)
+        || (segment_count
+            && descriptor.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_SEGMENT_COUNT_V1)
+        || (segment_diameter
+            && descriptor.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_SEGMENT_DIAMETER_V1)
+        || (dispersion_energy
+            && descriptor.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_DISPERSION_ENERGY_OVER_K_V1);
     if (descriptor.struct_size
             != sizeof(epcsaft_native_capability_descriptor_v1)
         || descriptor.schema_version
             != EPCSAFT_NATIVE_CAPABILITY_SCHEMA_VERSION_V1
-        || (!kij && !lij)
+        || (!binary && !pure)
         || !matching_family
         || descriptor.parameter_identity
-            != EPCSAFT_NATIVE_PARAMETER_IDENTITY_UNORDERED_COMPONENT_PAIR_V1
+            != (binary
+                    ? EPCSAFT_NATIVE_PARAMETER_IDENTITY_UNORDERED_COMPONENT_PAIR_V1
+                    : EPCSAFT_NATIVE_PARAMETER_IDENTITY_COMPONENT_V1)
         || descriptor.observation_contract
             != EPCSAFT_NATIVE_OBSERVATION_FIXED_COMPOSITION_HELMHOLTZ_PHASE_V1
         || descriptor.model_domain
-            != EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_NONASSOCIATING_BINARY_V1
+            != (binary
+                    ? EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_NONASSOCIATING_BINARY_V1
+                    : EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_NONASSOCIATING_PURE_V1)
         || descriptor.tensor_layout
             != EPCSAFT_NATIVE_TENSOR_LAYOUT_ROW_MAJOR_V1
         || descriptor.derivative_order != 2
@@ -444,14 +595,14 @@ void validate_descriptor(
         || descriptor.unsupported_status
             != EPCSAFT_NATIVE_STATUS_UNSUPPORTED_MODEL_V1
         || descriptor.domain_status != EPCSAFT_NATIVE_STATUS_DOMAIN_ERROR_V1
-        || descriptor.state_coordinate_count != 3
+        || descriptor.state_coordinate_count != (binary ? 3u : 2u)
         || descriptor.active_parameter_count != 1
-        || descriptor.coordinate_count != 4
-        || descriptor.component_count != 2
+        || descriptor.coordinate_count != (binary ? 4u : 3u)
+        || descriptor.component_count != (binary ? 2u : 1u)
         || descriptor.coordinates == nullptr
         || descriptor.component_ids == nullptr
         || descriptor.component_ids[0] == nullptr
-        || descriptor.component_ids[1] == nullptr
+        || (binary && descriptor.component_ids[1] == nullptr)
         || !std::isfinite(descriptor.temperature_min_k)
         || !std::isfinite(descriptor.temperature_max_k)
         || descriptor.temperature_min_k >= descriptor.temperature_max_k
@@ -461,21 +612,50 @@ void validate_descriptor(
             "provider capability descriptor does not match the supported v1 contract"
         );
     }
-    const std::array<std::uint32_t, 4> kinds = {
-        EPCSAFT_NATIVE_CAPABILITY_COORDINATE_AMOUNT_V1,
-        EPCSAFT_NATIVE_CAPABILITY_COORDINATE_AMOUNT_V1,
-        EPCSAFT_NATIVE_CAPABILITY_COORDINATE_VOLUME_V1,
-        kij
+    std::vector<std::uint32_t> kinds{
+        EPCSAFT_NATIVE_CAPABILITY_COORDINATE_AMOUNT_V1
+    };
+    std::vector<int> components{0};
+    std::vector<int> pair_a{-1};
+    std::vector<int> pair_b{-1};
+    std::vector<const char*> units{"mol"};
+    if (binary) {
+        kinds.push_back(EPCSAFT_NATIVE_CAPABILITY_COORDINATE_AMOUNT_V1);
+        components.push_back(1);
+        pair_a.push_back(-1);
+        pair_b.push_back(-1);
+        units.push_back("mol");
+    }
+    kinds.push_back(EPCSAFT_NATIVE_CAPABILITY_COORDINATE_VOLUME_V1);
+    components.push_back(-1);
+    pair_a.push_back(-1);
+    pair_b.push_back(-1);
+    units.push_back("m3");
+    if (binary) {
+        kinds.push_back(kij
             ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_BINARY_INTERACTION_KIJ_V1
-            : EPCSAFT_NATIVE_CAPABILITY_COORDINATE_BINARY_INTERACTION_LIJ_V1,
-    };
-    const std::array<int, 4> components = {0, 1, -1, -1};
-    const std::array<int, 4> pair_a = {-1, -1, -1, 0};
-    const std::array<int, 4> pair_b = {-1, -1, -1, 1};
-    const std::array<const char*, 4> units = {
-        "mol", "mol", "m3", "dimensionless"
-    };
-    for (std::size_t index = 0; index < 4; ++index) {
+            : EPCSAFT_NATIVE_CAPABILITY_COORDINATE_BINARY_INTERACTION_LIJ_V1);
+        components.push_back(-1);
+        pair_a.push_back(0);
+        pair_b.push_back(1);
+        units.push_back("dimensionless");
+    } else {
+        kinds.push_back(
+            segment_count
+                ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SEGMENT_COUNT_V1
+                : segment_diameter
+                    ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SEGMENT_DIAMETER_V1
+                    : EPCSAFT_NATIVE_CAPABILITY_COORDINATE_DISPERSION_ENERGY_OVER_K_V1
+        );
+        components.push_back(0);
+        pair_a.push_back(-1);
+        pair_b.push_back(-1);
+        units.push_back(
+            segment_count ? "dimensionless"
+                          : segment_diameter ? "angstrom" : "kelvin"
+        );
+    }
+    for (std::size_t index = 0; index < kinds.size(); ++index) {
         const auto& coordinate = descriptor.coordinates[index];
         if (coordinate.struct_size
                 != sizeof(epcsaft_native_capability_coordinate_v1)
@@ -581,6 +761,7 @@ PyObject* descriptor_to_python(
         descriptor.helmholtz_basis_id,
         EPCSAFT_NATIVE_SDK_V1_FINGERPRINT_SIZE
     );
+    const bool binary = descriptor.component_count == 2;
     PyObject* result = Py_BuildValue(
         "(ssNNNs#s#issddssssnns#ss)",
         capability_id(descriptor.capability),
@@ -597,9 +778,10 @@ PyObject* descriptor_to_python(
         "NONE",
         descriptor.temperature_min_k,
         descriptor.temperature_max_k,
-        "unordered_component_pair",
+        binary ? "unordered_component_pair" : "component",
         "fixed_composition_helmholtz_phase",
-        "neutral_nonassociating_binary",
+        binary ? "neutral_nonassociating_binary"
+               : "neutral_nonassociating_pure",
         "row_major",
         static_cast<Py_ssize_t>(descriptor.state_coordinate_count),
         static_cast<Py_ssize_t>(descriptor.active_parameter_count),
@@ -636,36 +818,67 @@ Phase evaluate_phase(
     double volume,
     double parameter
 ) {
-    std::array<double, 2> amounts = {
-        first_fraction, 1.0 - first_fraction
-    };
     Phase phase{};
+    const bool pure = payload.component_ids.size() == 1;
+    phase.coordinate_count = pure ? 3 : 4;
+    phase.gradient.fill(std::numeric_limits<double>::quiet_NaN());
+    phase.hessian.fill(std::numeric_limits<double>::quiet_NaN());
     epcsaft_mixture_phase_block_result_v1 result{};
     result.struct_size = sizeof(result);
-    result.coordinate_count = phase.gradient.size();
+    result.coordinate_count = phase.coordinate_count;
     result.gradient_capacity = phase.gradient.size();
     result.hessian_capacity = phase.hessian.size();
     result.gradient = phase.gradient.data();
     result.hessian = phase.hessian.data();
-    const int status = payload.capability_id == "neutral_binary_phase_kij_v1"
-        ? table.evaluate_mixture_phase_kij(
-              table.model_context,
-              row.temperature,
-              amounts.data(),
-              amounts.size(),
-              volume,
-              parameter,
-              &result
-          )
-        : table.evaluate_mixture_phase_lij(
-              table.model_context,
-              row.temperature,
-              amounts.data(),
-              amounts.size(),
-              volume,
-              parameter,
-              &result
-          );
+    int status = EPCSAFT_NATIVE_STATUS_UNSUPPORTED_MODEL_V1;
+    if (pure) {
+        std::uint32_t family = 0;
+        if (payload.capability_id == "neutral_pure_segment_count_v1") {
+            family = EPCSAFT_NATIVE_PARAMETER_FAMILY_SEGMENT_COUNT_V1;
+        } else if (
+            payload.capability_id == "neutral_pure_segment_diameter_v1"
+        ) {
+            family = EPCSAFT_NATIVE_PARAMETER_FAMILY_SEGMENT_DIAMETER_V1;
+        } else if (
+            payload.capability_id
+            == "neutral_pure_dispersion_energy_over_k_v1"
+        ) {
+            family =
+                EPCSAFT_NATIVE_PARAMETER_FAMILY_DISPERSION_ENERGY_OVER_K_V1;
+        }
+        status = table.evaluate_pure_phase_parameter(
+            table.model_context,
+            row.temperature,
+            1.0,
+            volume,
+            family,
+            parameter,
+            &result
+        );
+    } else {
+        const std::array<double, 2> amounts = {
+            first_fraction, 1.0 - first_fraction
+        };
+        status = payload.capability_id == "neutral_binary_phase_kij_v1"
+            ? table.evaluate_mixture_phase_kij(
+                  table.model_context,
+                  row.temperature,
+                  amounts.data(),
+                  amounts.size(),
+                  volume,
+                  parameter,
+                  &result
+              )
+            : table.evaluate_mixture_phase_lij(
+                  table.model_context,
+                  row.temperature,
+                  amounts.data(),
+                  amounts.size(),
+                  volume,
+                  parameter,
+                  &result
+              );
+    }
     if (status != EPCSAFT_NATIVE_STATUS_OK_V1 || result.status != status) {
         const std::size_t error_length = strnlen(
             result.error, EPCSAFT_NATIVE_SDK_V1_ERROR_SIZE
@@ -673,6 +886,32 @@ Phase evaluate_phase(
         throw std::runtime_error(
             std::string("Provider phase evaluation failed: ")
             + std::string(result.error, error_length)
+        );
+    }
+    const bool finite_gradient = std::all_of(
+        phase.gradient.begin(),
+        phase.gradient.begin()
+            + static_cast<std::ptrdiff_t>(phase.coordinate_count),
+        [](double value) { return std::isfinite(value); }
+    );
+    const bool finite_hessian = std::all_of(
+        phase.hessian.begin(),
+        phase.hessian.begin()
+            + static_cast<std::ptrdiff_t>(
+                phase.coordinate_count * phase.coordinate_count
+            ),
+        [](double value) { return std::isfinite(value); }
+    );
+    if (result.coordinate_count != phase.coordinate_count
+        || result.gradient_capacity < phase.coordinate_count
+        || result.hessian_capacity
+            < phase.coordinate_count * phase.coordinate_count
+        || result.gradient != phase.gradient.data()
+        || result.hessian != phase.hessian.data()
+        || !std::isfinite(result.pressure_pa)
+        || !finite_gradient || !finite_hessian) {
+        throw std::runtime_error(
+            "Provider phase derivative result is incomplete or nonfinite"
         );
     }
     if (!bounded_field_equal(
@@ -716,6 +955,13 @@ void evaluate_problem(
     std::fill(evaluation.jacobian.begin(), evaluation.jacobian.end(), 0.0);
     const double parameter =
         payload.parameter_origin + payload.parameter_scale * variables[0];
+    if (!std::isfinite(parameter)
+        || parameter < payload.parameter_lower_bound
+        || parameter > payload.parameter_upper_bound) {
+        throw std::invalid_argument(
+            "active parameter is outside its declared bounds"
+        );
+    }
     for (std::size_t row_index = 0; row_index < row_count; ++row_index) {
         const Row& row = payload.training_rows[row_index];
         const std::size_t liquid_column = 1 + 2 * row_index;
@@ -724,23 +970,49 @@ void evaluate_problem(
             row.liquid_volume_origin * std::exp(variables[liquid_column]);
         const double vapor_volume =
             row.vapor_volume_origin * std::exp(variables[vapor_column]);
+        if (!std::isfinite(liquid_volume) || !std::isfinite(vapor_volume)
+            || liquid_volume < row.liquid_volume_bounds[0]
+            || liquid_volume > row.liquid_volume_bounds[1]
+            || vapor_volume < row.vapor_volume_bounds[0]
+            || vapor_volume > row.vapor_volume_bounds[1]
+            || liquid_volume >= vapor_volume) {
+            throw std::invalid_argument(
+                "phase volumes violate their declared bounds or topology"
+            );
+        }
         const Phase liquid = evaluate_phase(
             table, payload, row, row.liquid_first, liquid_volume, parameter
         );
         const Phase vapor = evaluate_phase(
             table, payload, row, row.vapor_first, vapor_volume, parameter
         );
+        const std::size_t phase_volume_coordinate = row.pure ? 1 : 2;
+        if (!(liquid.hessian[
+                  phase_volume_coordinate * liquid.coordinate_count
+                  + phase_volume_coordinate
+              ] > 0.0)
+            || !(vapor.hessian[
+                  phase_volume_coordinate * vapor.coordinate_count
+                  + phase_volume_coordinate
+              ] > 0.0)) {
+            throw std::runtime_error(
+                "phase state is not mechanically stable"
+            );
+        }
         const std::size_t residual_offset = 4 * row_index;
         evaluation.residuals[residual_offset] =
             (liquid.pressure - row.pressure) / row.pressure_scale;
         evaluation.residuals[residual_offset + 1] =
             (vapor.pressure - row.pressure) / row.pressure_scale;
+        const bool pure = row.pure;
         evaluation.residuals[residual_offset + 2] =
             (liquid.gradient[0] - vapor.gradient[0])
             / row.chemical_potential_scales[0];
-        evaluation.residuals[residual_offset + 3] =
-            (liquid.gradient[1] - vapor.gradient[1])
-            / row.chemical_potential_scales[1];
+        evaluation.residuals[residual_offset + 3] = pure
+            ? (row.molar_mass / liquid_volume - row.liquid_density)
+                / row.liquid_density_scale
+            : (liquid.gradient[1] - vapor.gradient[1])
+                / row.chemical_potential_scales[1];
 
         auto jacobian = [&](std::size_t residual, std::size_t column)
             -> double& {
@@ -748,36 +1020,82 @@ void evaluate_problem(
                 residual * variable_count + column
             ];
         };
+        const std::size_t coordinate_count = liquid.coordinate_count;
+        const std::size_t volume_coordinate = pure ? 1 : 2;
+        const std::size_t parameter_coordinate = pure ? 2 : 3;
         jacobian(residual_offset, 0) =
-            -gas_constant * row.temperature * liquid.hessian[2 * 4 + 3]
+            -gas_constant * row.temperature
+            * liquid.hessian[
+                volume_coordinate * coordinate_count + parameter_coordinate
+            ]
             * payload.parameter_scale / row.pressure_scale;
         jacobian(residual_offset, liquid_column) =
-            -gas_constant * row.temperature * liquid.hessian[2 * 4 + 2]
+            -gas_constant * row.temperature
+            * liquid.hessian[
+                volume_coordinate * coordinate_count + volume_coordinate
+            ]
             * liquid_volume / row.pressure_scale;
         jacobian(residual_offset + 1, 0) =
-            -gas_constant * row.temperature * vapor.hessian[2 * 4 + 3]
+            -gas_constant * row.temperature
+            * vapor.hessian[
+                volume_coordinate * coordinate_count + parameter_coordinate
+            ]
             * payload.parameter_scale / row.pressure_scale;
         jacobian(residual_offset + 1, vapor_column) =
-            -gas_constant * row.temperature * vapor.hessian[2 * 4 + 2]
+            -gas_constant * row.temperature
+            * vapor.hessian[
+                volume_coordinate * coordinate_count + volume_coordinate
+            ]
             * vapor_volume / row.pressure_scale;
-        for (std::size_t component = 0; component < 2; ++component) {
+        const std::size_t chemical_residual_count = pure ? 1 : 2;
+        for (
+            std::size_t component = 0;
+            component < chemical_residual_count;
+            ++component
+        ) {
             const std::size_t residual = residual_offset + 2 + component;
             const double scale = row.chemical_potential_scales[component];
             jacobian(residual, 0) =
-                (liquid.hessian[component * 4 + 3]
-                 - vapor.hessian[component * 4 + 3])
+                (liquid.hessian[
+                    component * coordinate_count + parameter_coordinate
+                 ] - vapor.hessian[
+                    component * coordinate_count + parameter_coordinate
+                 ])
                 * payload.parameter_scale / scale;
             jacobian(residual, liquid_column) =
-                liquid.hessian[component * 4 + 2] * liquid_volume / scale;
+                liquid.hessian[
+                    component * coordinate_count + volume_coordinate
+                ] * liquid_volume / scale;
             jacobian(residual, vapor_column) =
-                -vapor.hessian[component * 4 + 2] * vapor_volume / scale;
+                -vapor.hessian[
+                    component * coordinate_count + volume_coordinate
+                ] * vapor_volume / scale;
         }
+        if (pure) {
+            jacobian(residual_offset + 3, liquid_column) =
+                -(row.molar_mass / liquid_volume)
+                / row.liquid_density_scale;
+        }
+    }
+    if (!std::all_of(
+            evaluation.residuals.cbegin(),
+            evaluation.residuals.cend(),
+            [](double value) { return std::isfinite(value); }
+        )
+        || !std::all_of(
+            evaluation.jacobian.cbegin(),
+            evaluation.jacobian.cend(),
+            [](double value) { return std::isfinite(value); }
+        )) {
+        throw std::runtime_error(
+            "assembled residual or Jacobian is nonfinite"
+        );
     }
 }
 
-class GeneralPairCost final : public ceres::CostFunction {
+class GeneralCost final : public ceres::CostFunction {
 public:
-    GeneralPairCost(
+    GeneralCost(
         const epcsaft_native_sdk_v1* table, const Payload& payload
     ) : table_(table), payload_(payload), scratch_(make_evaluation(payload)) {
         set_num_residuals(static_cast<int>(4 * payload.training_rows.size()));
@@ -925,7 +1243,7 @@ SolveOutcome solve_training(
         outcome.variables[2 + 2 * index] =
             std::log(row.vapor_volume_start / row.vapor_volume_origin);
     }
-    GeneralPairCost cost(&table, payload);
+    GeneralCost cost(&table, payload);
     ceres::Problem::Options problem_options;
     problem_options.cost_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
     ceres::Problem problem(problem_options);
@@ -1288,6 +1606,12 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
                     == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1
                 || descriptor.capability
                     == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_LIJ_HELMHOLTZ_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_PURE_SEGMENT_COUNT_HELMHOLTZ_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_PURE_SEGMENT_DIAMETER_HELMHOLTZ_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_PURE_DISPERSION_ENERGY_HELMHOLTZ_V1
             )
                 ? descriptor_to_python(descriptor)
                 : unsupported_descriptor_to_python(descriptor);
@@ -1305,7 +1629,7 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
     }
 }
 
-PyObject* evaluate_general_pair_python(
+PyObject* evaluate_general_python(
     PyObject* capsule, PyObject* payload_object, PyObject* variables_object
 ) {
     try {
@@ -1346,7 +1670,7 @@ PyObject* evaluate_general_pair_python(
     }
 }
 
-PyObject* solve_general_pair_python(
+PyObject* solve_general_python(
     PyObject* capsule, PyObject* payload_object
 ) {
     try {

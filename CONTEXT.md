@@ -52,11 +52,11 @@ with no added runtime test seam.
 
 `next_figiel_family_status: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED`
 
-`general_parameter_regression_status: NEUTRAL_BINARY_KIJ_LIJ_FIT_READY_AUTHORITY_NEUTRAL`
+`general_parameter_regression_status: KIJ_LIJ_AND_SCALAR_PURE_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
 
 The user-approved 2026-07-27 destination is general parameter-family
 regression, defined in `docs/science/general-parameter-regression.md`. The
-first two pair families are implemented: caller-supplied, source-bound
+first five families are implemented. Caller-supplied, source-bound
 fixed-composition VLE rows may independently fit one shared `k_ij` or `l_ij`
 for any neutral, nonassociating binary model whose installed Provider
 descriptor advertises the corresponding exact `(n1,n2,V,pair_parameter)`
@@ -65,6 +65,17 @@ and target, one Ceres engine/result, exact derivatives, caller-declared
 bounds/scales/starts/volume policy, full and projected rank diagnostics, and
 isolated training/reporting partitions. Unknown Provider descriptor members
 are reported unsupported and cannot be requested dynamically.
+
+Caller-supplied pure-saturation pressure and liquid-density rows may
+independently fit one component `segment_count`, `segment_diameter`, or
+`dispersion_energy_over_k` coordinate for a neutral, nonassociating,
+constant-diameter pure model. The same general Ceres owner uses two lifted log
+volumes per row and four scaled residuals: liquid and vapor pressure closure,
+chemical-potential equality, and liquid-density reproduction. Its exact
+Jacobian consumes the Provider `(n,V,active_parameter)` Hessian, reports full
+and nuisance-projected rank, checks mechanical stability and phase-volume
+ordering, and reruns every declared start. This independent-family surface
+does not replace the accepted joint `(m,sigma,epsilon/k)` workflow.
 
 Provider commit `1e571ab0a84603a51ed6994b14286f683fb12b88` retains those
 compatibility and parity corrections and appends the exact active-`l_ij`
@@ -76,6 +87,19 @@ Regression commit `da7a44ce093201022aec2f3514d4e4fd9d8d2929` extends the same
 bounded public surface and Ceres owner to the distinct `l_ij` identity.
 The retained Regression wheel has SHA-256
 `3a59d2233fec51f949a7784937b54f7f66beae2476fa8e33976672a480b67137`.
+
+Provider commit `86983ff` (tree
+`cecdfddde1c29f6d33fc1106d0662e0376981e4a`) appends the scalar pure
+capabilities without another EOS tape. Its retained wheel SHA-256 is
+`9df62965f55876104585504f0f9170fefffbbaa9e94b23f90ac1da582cf5cb4c`
+and installed header SHA-256 is
+`feadc42414188cd9fa50708dff5e7815f9eec85bf868f080e65e07a4c70b461d`.
+The four accepted methane training rows give full lifted rank 9 and projected
+parameter rank 1 for each independent fit. The fitted values are
+`m = 1.0001569260577763`, `sigma = 3.7063548743836034 angstrom`, and
+`epsilon/k = 150.00325287725062 K`, all non-bound with confirmation-start
+agreement. These are local in-sample implementation anchors, not fitted
+catalog values or predictive acceptance.
 
 All 17 audited May rows reproduce the frozen `68 x 35` formulation with
 convergence, full rank 35, projected parameter rank 1, a non-bound
@@ -90,7 +114,8 @@ Published methane, ethane, Figiel, and later campaigns remain positive or
 negative evidence rather than hard-coded mixture limits. The finite typed
 schema is not an arbitrary residual plugin or mutable registry. All parameter
 families other than these exact neutral-binary fixed-composition `k_ij` and
-`l_ij` contracts retain their prior readiness states.
+`l_ij` contracts and scalar pure-saturation component contracts retain their
+prior readiness states.
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint

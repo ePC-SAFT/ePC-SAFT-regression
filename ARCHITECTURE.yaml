@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-neutral-binary-kij-lij-fit-ready
+status: authoritative-methane-and-ethane-with-kij-lij-and-scalar-pure-fit-ready
 
 authority:
   accepted_capabilities:
@@ -42,10 +42,13 @@ scope: >-
   independently fits one shared k_ij or l_ij from caller-supplied
   fixed-composition VLE rows for any
   neutral, nonassociating binary model whose installed Provider capability
-  descriptor supplies the exact active Hessian contract.
+  descriptor supplies the exact active Hessian contract. The same general
+  surface independently fits one active segment count, segment diameter, or
+  dispersion energy over k from caller-supplied pure-saturation pressure and
+  liquid-density rows on a matching neutral pure capability.
 
 general_parameter_regression:
-  status: NEUTRAL_BINARY_KIJ_LIJ_FIT_READY_AUTHORITY_NEUTRAL
+  status: KIJ_LIJ_AND_SCALAR_PURE_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
   design_owner: docs/science/general-parameter-regression.md
   objective: >-
     Fit any admitted continuous ePC-SAFT parameter for any Provider-supported
@@ -66,10 +69,14 @@ general_parameter_regression:
     observation_schema: finite-typed-source-bound
   reference_campaign_role: evidence-not-component-restriction
   forbidden_interpretation: every-provider-parameter-is-fit-ready-now
-  immediate_provider_gate: SATISFIED_FOR_NEUTRAL_BINARY_KIJ_AND_LIJ
+  immediate_provider_gate: SATISFIED_FOR_KIJ_LIJ_AND_SCALAR_PURE_FAMILIES
   provider_subject: 1e571ab0a84603a51ed6994b14286f683fb12b88
   provider_wheel_sha256: 6536edc63adaa13c5c6c67c185d82c9ae232048e99dc3dc3be502708eea4410f
   provider_header_sha256: b667379c2d7106d012c6b57f96b6f32dd23ef305fe6f15a87c22ab20029008f8
+  scalar_pure_provider_subject: 86983ff
+  scalar_pure_provider_tree: cecdfddde1c29f6d33fc1106d0662e0376981e4a
+  scalar_pure_provider_wheel_sha256: 9df62965f55876104585504f0f9170fefffbbaa9e94b23f90ac1da582cf5cb4c
+  scalar_pure_provider_header_sha256: feadc42414188cd9fa50708dff5e7815f9eec85bf868f080e65e07a4c70b461d
   regression_subject: da7a44ce093201022aec2f3514d4e4fd9d8d2929
   regression_wheel_sha256: 3a59d2233fec51f949a7784937b54f7f66beae2476fa8e33976672a480b67137
   fit_ready_pair_families:
@@ -81,6 +88,26 @@ general_parameter_regression:
     parameter_count: 1
     residuals_per_row: 4
     nuisance_variables_per_row: 2
+    authority_effect: none
+    predictive_effect: none
+  fit_ready_scalar_pure_families:
+    families: [segment_count, segment_diameter, dispersion_energy_over_k]
+    identity: component
+    model_domain: neutral-nonassociating-constant-diameter-pure
+    observation_contract: pure-saturation-pressure-liquid-density-lifted-volumes
+    provider_coordinates: [amount_mol, volume_m3, active_component_parameter]
+    provider_derivative_order: 2
+    parameter_count: 1
+    residuals_per_row: 4
+    nuisance_variables_per_row: 2
+    reference_rows: 4
+    reference_variables: 9
+    reference_residuals: 16
+    reference_full_rank: 9
+    reference_projected_parameter_rank: 1
+    fitted_segment_count: 1.0001569260577763
+    fitted_segment_diameter_angstrom: 3.7063548743836034
+    fitted_dispersion_energy_over_k_kelvin: 150.00325287725062
     authority_effect: none
     predictive_effect: none
   installed_reference_smoke:
@@ -474,6 +501,7 @@ parameter_family_readiness:
   pure_m_sigma_epsilon_over_k:
     methane_ethane: accepted-exact-workflows
     propane: NOT_READY_DEFERRED_NONPRODUCTION_UNDER_D023
+    general_scalar_pure_saturation: FIT_READY_AUTHORITY_NEUTRAL
   constant_methane_ethane_kij:
     status: NOT_READY_DEFERRED_NONPRODUCTION_UNDER_D023
     retained_evidence_authority: D-022
@@ -483,7 +511,8 @@ parameter_family_readiness:
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
   figiel_current_catalog_aqueous_kij: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED
   reactive_or_temperature_dependent_parameters: NOT_READY
-  general_parameter_regression: PARTIAL_TWO_PAIR_FAMILIES_FIT_READY
+  general_parameter_regression: PARTIAL_FIVE_FAMILIES_FIT_READY
+  mixture_independent_scalar_pure: FIT_READY_PURE_SATURATION_PRESSURE_AND_LIQUID_DENSITY
   mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
   mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
   mixture_independent_association: NOT_READY_PENDING_EXACT_TOPOLOGY_BOUND_PROVIDER_DERIVATIVES
@@ -582,6 +611,15 @@ manifest:
     one runtime owner and one compact evidence record. Build trees, caches,
     temporary replay receipts, and wheels remain outside the repository.
   oversized_files:
+    - path: src/epcsaft_regression/parameter_regression.py
+      physical_lines: 979
+      capability_delta: finite typed component identities and pure-saturation observations
+    - path: src/epcsaft_regression/native/general_fit.cpp
+      physical_lines: 1842
+      capability_delta: one exact Ceres owner for pair VLE and scalar pure saturation
+    - path: tests/test_parameter_regression.py
+      physical_lines: 720
+      capability_delta: scalar pure derivative, rank, fit, and reference anchors
     - path: src/epcsaft_regression/native/pure_saturation_fit.cpp
       physical_lines: 920
     - path: src/epcsaft_regression/records.py

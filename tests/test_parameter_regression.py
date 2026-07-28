@@ -11,26 +11,40 @@ import pytest
 import epcsaft_regression.parameter_regression as parameter_regression
 from epcsaft_regression import (
     AffineParameterTransform,
+    ComponentParameterIdentity,
     FixedCompositionVleObservation,
     ObservationPartition,
     PairParameterIdentity,
     ParameterCoordinate,
     ParameterFamily,
+    PureSaturationObservation,
+    PureSaturationRowDiagnostic,
     RegressionProblem,
     RegressionResult,
     SourceDescriptor,
     UnsupportedParameterCapability,
     canonical_dataset_sha256,
     fit_parameters,
+    load_pure_saturation_dataset,
     parameter_capabilities,
 )
-from epcsaft_regression.parameter_regression import _evaluate_parameters
+from epcsaft_regression.parameter_regression import (
+    _evaluate_parameters,
+    _native_payload,
+)
 
 
 def _model() -> EPCSAFT:
     parameters = ParameterBundle.from_catalog(
         "gross-2001-methane-ethane", version=1
     ).select(("methane", "ethane"))
+    return EPCSAFT(parameters)
+
+
+def _pure_model() -> EPCSAFT:
+    parameters = ParameterBundle.from_catalog(
+        "gross-2001-methane-ethane", version=1
+    ).select(("methane",))
     return EPCSAFT(parameters)
 
 
@@ -117,6 +131,108 @@ def _problem(
     )
 
 
+def _pure_problem(
+    model: EPCSAFT,
+    family: ParameterFamily,
+    *,
+    all_training_rows: bool = False,
+) -> RegressionProblem:
+    dataset = load_pure_saturation_dataset("methane")
+    source_rows = dataset.training_rows if all_training_rows else dataset.training_rows[:1]
+    observations = tuple(
+        PureSaturationObservation(
+            row_id=row.row_id,
+            source_id=row.source_id,
+            source_locator=f"{dataset.source.locator}:{row.row_id}",
+            component_id="methane",
+            temperature_k=row.temperature_k,
+            pressure_pa=row.pressure_pa,
+            liquid_density_kg_per_m3=row.liquid_density_kg_m3,
+            molar_mass_kg_per_mol=0.016043,
+            pressure_scale_pa=2.0 * row.pressure_pa,
+            chemical_potential_scale=2.0,
+            liquid_density_scale_kg_per_m3=(
+                2.0 * row.liquid_density_kg_m3
+            ),
+            liquid_volume_origin_m3_per_mol=(
+                0.016043 / row.liquid_density_kg_m3
+            ),
+            liquid_volume_start_m3_per_mol=(
+                0.016043 / row.liquid_density_kg_m3
+            ),
+            liquid_volume_bounds_m3_per_mol=(2.0e-5, 1.0e-4),
+            vapor_volume_origin_m3_per_mol=(
+                8.31446261815324 * row.temperature_k / row.pressure_pa
+            ),
+            vapor_volume_start_m3_per_mol=(
+                8.31446261815324 * row.temperature_k / row.pressure_pa
+            ),
+            vapor_volume_bounds_m3_per_mol=(1.5e-4, 0.1),
+            partition=ObservationPartition.TRAINING,
+        )
+        for row in source_rows
+    )
+    capability = _capability(model, family)
+    settings = {
+        ParameterFamily.SEGMENT_COUNT: (1.0, 0.1, 0.5, 3.5, (1.0, 1.1), "1"),
+        ParameterFamily.SEGMENT_DIAMETER: (
+            3.7039,
+            0.1,
+            2.0,
+            5.0,
+            (3.7039, 3.6),
+            "angstrom",
+        ),
+        ParameterFamily.DISPERSION_ENERGY_OVER_K: (
+            150.03,
+            10.0,
+            50.0,
+            400.0,
+            (150.03, 160.0),
+            "K",
+        ),
+    }
+    origin, scale, lower, upper, starts, unit = settings[family]
+    source = SourceDescriptor(
+        source_id=dataset.source.source_id,
+        citation=dataset.source.citation,
+        durable_locator=dataset.source.locator,
+        source_artifact_sha256=dataset.source.data_sha256,
+        canonical_dataset_sha256=canonical_dataset_sha256(observations),
+        transformation_record=dataset.source.transformation,
+        units_and_bases="T/K, P/Pa, saturated liquid density/(kg/m3).",
+        use_basis=dataset.source.use_basis,
+        residual_scale_rationale=(
+            "Preserve the accepted equal four-residual weighting: scales are "
+            "2P, 2 for mu/RT, and twice observed liquid density."
+        ),
+    )
+    parameter = ParameterCoordinate(
+        family=family,
+        identity=ComponentParameterIdentity("methane"),
+        capability_id=capability.capability_id,
+        provider_parameter_fingerprint=capability.parameter_fingerprint,
+        provider_topology_fingerprint=capability.topology_fingerprint,
+        unit=unit,
+        transform=AffineParameterTransform(origin=origin, scale=scale),
+        lower_bound=lower,
+        upper_bound=upper,
+        starts=starts,
+    )
+    return RegressionProblem(
+        sources=(source,),
+        parameters=(parameter,),
+        observations=observations,
+        maximum_condition_number=1.0e12,
+        maximum_iterations=500,
+        function_tolerance=1.0e-10,
+        gradient_tolerance=1.0e-10,
+        parameter_tolerance=1.0e-10,
+        confirmation_parameter_scaled_max_delta=1.0e-5,
+        confirmation_cost_relative_delta=1.0e-8,
+    )
+
+
 def test_installed_provider_advertises_exact_neutral_binary_kij_contract(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -172,6 +288,157 @@ def test_installed_provider_advertises_exact_neutral_binary_kij_contract(
         schema_version=1,
         parameter_family_code=998,
     )
+
+
+def test_installed_provider_advertises_scalar_pure_parameter_contracts() -> None:
+    model = _pure_model()
+    capabilities = tuple(
+        capability
+        for capability in parameter_capabilities(model)
+        if not isinstance(capability, UnsupportedParameterCapability)
+    )
+
+    assert tuple(capability.family for capability in capabilities) == (
+        ParameterFamily.SEGMENT_COUNT,
+        ParameterFamily.SEGMENT_DIAMETER,
+        ParameterFamily.DISPERSION_ENERGY_OVER_K,
+    )
+    assert tuple(capability.capability_id for capability in capabilities) == (
+        "neutral_pure_segment_count_v1",
+        "neutral_pure_segment_diameter_v1",
+        "neutral_pure_dispersion_energy_over_k_v1",
+    )
+    assert tuple(capability.coordinate_kinds for capability in capabilities) == (
+        ("amount", "volume", "segment_count"),
+        ("amount", "volume", "segment_diameter"),
+        ("amount", "volume", "dispersion_energy_over_k"),
+    )
+    assert tuple(capability.coordinate_units[-1] for capability in capabilities) == (
+        "dimensionless",
+        "angstrom",
+        "kelvin",
+    )
+    assert all(capability.component_ids == ("methane",) for capability in capabilities)
+    assert all(capability.identity_shape == "component" for capability in capabilities)
+    assert all(
+        capability.model_domain == "neutral_nonassociating_pure"
+        for capability in capabilities
+    )
+    assert all(capability.state_coordinate_count == 2 for capability in capabilities)
+
+
+@pytest.mark.parametrize(
+    "family",
+    (
+        ParameterFamily.SEGMENT_COUNT,
+        ParameterFamily.SEGMENT_DIAMETER,
+        ParameterFamily.DISPERSION_ENERGY_OVER_K,
+    ),
+)
+def test_exact_lifted_pure_scalar_jacobian_matches_directional_residual_difference(
+    family: ParameterFamily,
+) -> None:
+    model = _pure_model()
+    problem = _pure_problem(model, family)
+    variables = (0.0, math.log(1.01), math.log(0.98))
+    direction = (0.20, -0.10, 0.15)
+
+    _, jacobian = _evaluate_parameters(problem, model, variables)
+    step = 1.0e-6
+    plus = tuple(
+        value + step * delta
+        for value, delta in zip(variables, direction, strict=True)
+    )
+    minus = tuple(
+        value - step * delta
+        for value, delta in zip(variables, direction, strict=True)
+    )
+    residuals_plus = _evaluate_parameters(problem, model, plus)[0]
+    residuals_minus = _evaluate_parameters(problem, model, minus)[0]
+    finite_difference = tuple(
+        (upper - lower) / (2.0 * step)
+        for upper, lower in zip(residuals_plus, residuals_minus, strict=True)
+    )
+    exact_product = tuple(
+        math.fsum(
+            jacobian[row * 3 + column] * direction[column]
+            for column in range(3)
+        )
+        for row in range(4)
+    )
+
+    assert exact_product == pytest.approx(
+        finite_difference, rel=2.0e-6, abs=2.0e-8
+    )
+
+
+@pytest.mark.parametrize(
+    "family",
+    (
+        ParameterFamily.SEGMENT_COUNT,
+        ParameterFamily.SEGMENT_DIAMETER,
+        ParameterFamily.DISPERSION_ENERGY_OVER_K,
+    ),
+)
+def test_general_engine_fits_one_pure_component_parameter(
+    family: ParameterFamily,
+) -> None:
+    model = _pure_model()
+    result = fit_parameters(
+        _pure_problem(model, family, all_training_rows=True), model
+    )
+
+    assert result.solver_converged
+    assert result.numerically_converged
+    assert result.workflow_valid
+    assert result.parameter.family is family
+    assert result.parameter.active_bound is None
+    assert result.jacobian.full_rank == result.jacobian.variable_count == 9
+    assert result.jacobian.projected_parameter_rank == 1
+    expected = {
+        ParameterFamily.SEGMENT_COUNT: 1.0001569260577763,
+        ParameterFamily.SEGMENT_DIAMETER: 3.7063548743836034,
+        ParameterFamily.DISPERSION_ENERGY_OVER_K: 150.00325287725062,
+    }
+    assert result.parameter.final == pytest.approx(expected[family], abs=2.0e-10)
+    assert all(
+        isinstance(row, PureSaturationRowDiagnostic) and row.evaluated
+        for row in result.rows
+    )
+
+
+def test_native_general_engine_rejects_nonpositive_pure_residual_scale() -> None:
+    model = _pure_model()
+    problem = _pure_problem(model, ParameterFamily.SEGMENT_COUNT)
+    capability = _capability(model, ParameterFamily.SEGMENT_COUNT)
+    payload = list(_native_payload(problem, capability))
+    rows = list(payload[16])
+    row = list(rows[0])
+    row[4] = 0.0
+    rows[0] = tuple(row)
+    payload[16] = tuple(rows)
+
+    with pytest.raises(RuntimeError, match="positive and ordered"):
+        parameter_regression._native.evaluate_general(
+            native_sdk(model), tuple(payload), (0.0, 0.0, 0.0)
+        )
+
+
+def test_native_general_engine_rejects_nonfinite_scaled_result() -> None:
+    model = _pure_model()
+    problem = _pure_problem(model, ParameterFamily.SEGMENT_COUNT)
+    capability = _capability(model, ParameterFamily.SEGMENT_COUNT)
+    payload = list(_native_payload(problem, capability))
+    rows = list(payload[16])
+    row = list(rows[0])
+    row[4] = 1.0e-320
+    rows[0] = tuple(row)
+    payload[16] = tuple(rows)
+
+    with pytest.raises(RuntimeError, match="assembled residual or Jacobian"):
+        parameter_regression._native.evaluate_general(
+            native_sdk(model), tuple(payload), (0.0, 0.0, 0.0)
+        )
 
 
 @pytest.mark.parametrize("family", (ParameterFamily.K_IJ, ParameterFamily.L_IJ))
@@ -316,7 +583,7 @@ def test_status_requires_converged_termination_but_not_full_lifted_rank(
         4,
     )
     monkeypatch.setattr(
-        parameter_regression._native, "solve_general_pair", lambda *_: native
+        parameter_regression._native, "solve_general", lambda *_: native
     )
 
     converged = fit_parameters(problem, model)
@@ -326,7 +593,7 @@ def test_status_requires_converged_termination_but_not_full_lifted_rank(
 
     monkeypatch.setattr(
         parameter_regression._native,
-        "solve_general_pair",
+        "solve_general",
         lambda *_: ("NO_CONVERGENCE", *native[1:]),
     )
     stopped = fit_parameters(problem, model)
@@ -343,7 +610,7 @@ def test_rows_outside_provider_temperature_domain_fail_before_ceres(
     problem = _problem(model, (outside,))
     monkeypatch.setattr(
         parameter_regression._native,
-        "solve_general_pair",
+        "solve_general",
         lambda *_: pytest.fail("Ceres must not start outside the Provider domain"),
     )
 

@@ -87,10 +87,12 @@ used as evidence rather than mixture restrictions. Its sole architecture owner
 is `docs/science/general-parameter-regression.md`. This is a finite typed
 capability schema, not an arbitrary plugin or mutable registry. Do not claim a
 family is fit-ready until its exact derivative, observation, rank, and
-installed-artifact gates pass. The first fit-ready pair families are one
-shared `k_ij` or one shared `l_ij` for caller-supplied fixed-composition VLE
-rows on an installed Provider-advertised neutral, nonassociating binary model.
+installed-artifact gates pass. The fit-ready families are one shared `k_ij`
+or `l_ij` for caller-supplied fixed-composition VLE rows and one active
+`segment_count`, `segment_diameter`, or `dispersion_energy_over_k` for caller-
+supplied pure-saturation rows on a matching installed Provider capability.
 They remain authority-neutral and are not restricted to the methane/ethane
-reference mixture. All other general families retain their documented pending
-states; do not broaden them to uncertainty, catalog persistence, or global-
-identifiability authority.
+reference campaigns. The scalar pure path is one-family-at-a-time and does not
+replace the accepted joint three-parameter workflow. All other general
+families retain their documented pending states; do not broaden them to
+uncertainty, catalog persistence, or global-identifiability authority.

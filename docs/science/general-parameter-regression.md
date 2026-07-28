@@ -1,6 +1,7 @@
 # General ePC-SAFT Parameter Regression
 
-Status: neutral-binary `k_ij` and `l_ij` families fit-ready; broader families pending
+Status: neutral-binary `k_ij`/`l_ij` and scalar pure
+`m`/`sigma`/`epsilon-k` families fit-ready; broader families pending
 
 Date: 2026-07-27
 
@@ -135,9 +136,9 @@ and rank gates.
 
 | Parameter family | Identity | Candidate informative observations | Current state |
 |---|---|---|---|
-| `segment_count` (`m`) | component | pure saturation pressure/density, PVT density, phase-equilibrium and caloric observations | fit-ready only through the current pure-saturation surface; general request pending |
-| `segment_diameter` (`sigma`) | component or declared correlation coefficient | liquid density/PVT, saturation density, phase equilibrium | fit-ready only through the current pure-saturation surface; general request pending |
-| `dispersion_energy_over_k` (`epsilon/k`) | component | vapor pressure, phase equilibrium, caloric and PVT observations | fit-ready only through the current pure-saturation surface; general request pending |
+| `segment_count` (`m`) | component | pure saturation pressure/density, PVT density, phase-equilibrium and caloric observations | fit-ready one-family-at-a-time for caller-supplied pure-saturation pressure/liquid-density rows on an advertised neutral pure capability; other observations pending |
+| `segment_diameter` (`sigma`) | component or declared correlation coefficient | liquid density/PVT, saturation density, phase equilibrium | fit-ready one-family-at-a-time for caller-supplied pure-saturation pressure/liquid-density rows on an advertised neutral pure capability; correlation coefficients and other observations pending |
+| `dispersion_energy_over_k` (`epsilon/k`) | component | vapor pressure, phase equilibrium, caloric and PVT observations | fit-ready one-family-at-a-time for caller-supplied pure-saturation pressure/liquid-density rows on an advertised neutral pure capability; other observations pending |
 | `k_ij` | unordered component pair | fixed-composition VLE/LLE, activity/fugacity coefficients, MIAC when the electrolyte formulation makes that pair active | fit-ready for caller-supplied fixed-composition VLE rows on any installed Provider model advertising the neutral, nonassociating binary capability; other observation/model domains remain pending |
 | `l_ij` | unordered component pair | density, excess volume, and phase-equilibrium data sensitive to cross-size mixing | fit-ready for caller-supplied fixed-composition VLE rows on any installed Provider model advertising the neutral, nonassociating binary capability; other observation/model domains remain pending |
 | `association_energy_over_k` | association endpoint pair | hydrogen-bond-sensitive VLE/LLE, solvation, enthalpy, and related phase-property observations | represented by Provider; exact active derivative and Regression surface pending |
@@ -230,11 +231,12 @@ advertise. In canonical value units, every scale must satisfy
 
 ## Exact derivative contract
 
-Provider `1e571ab0a84603a51ed6994b14286f683fb12b88` supplies the
-first two general model-bound capability descriptors. They advertise distinct
-neutral, nonassociating binary `k_ij` and `l_ij` coordinates when the resolved
-model supports the corresponding exact `(n1,n2,V,pair_parameter)`
-value/gradient/Hessian callback. Regression selects the requested known
+Provider `1e571ab0a84603a51ed6994b14286f683fb12b88` supplies the first two
+general model-bound capability descriptors for neutral binary `k_ij` and
+`l_ij`. Provider `86983ff` adds three component-identity descriptors for a
+neutral, nonassociating, constant-diameter pure model, backed by the exact
+`(n,V,active_parameter)` value/gradient/Hessian callback. Regression selects
+the requested known
 descriptor from that finite Provider capability set, reports unknown
 descriptors as unsupported, and rejects an unknown capability request. Later
 families must supply the same closed metadata:
@@ -282,6 +284,26 @@ and chemical-potential residuals with respect to lifted state variables and
 active parameters; the capability's coordinate order and row-major layout are
 authoritative. No third derivative is required for a Ceres Jacobian whose
 residuals are values or first gradients of that phase potential.
+
+For a scalar pure-saturation row with lifted
+`V_L = V_L,origin exp(u_L)` and `V_V = V_V,origin exp(u_V)`, the four
+residuals are
+
+```text
+r_P,L   = (P_L - P_observed) / s_P
+r_P,V   = (P_V - P_observed) / s_P
+r_mu    = (Phi_n,L - Phi_n,V) / s_mu
+r_rho,L = (M/V_L - rho_L,observed) / s_rho
+```
+
+The exact parameter column uses
+`dP/dtheta = -RT Phi_(V,theta)` and
+`d(Phi_n)/dtheta = Phi_(n,theta)`. The lifted-volume columns use the
+corresponding `Phi_(V,V)` and `Phi_(n,V)` entries times `V`; the density
+column is `-(M/V_L)/s_rho`. Thus the Provider Hessian is sufficient and no
+third derivative or density-root sensitivity is introduced. Regression rejects
+out-of-bound or inverted volumes and nonpositive mechanical-stability
+curvature before accepting an evaluation.
 
 Provider may use diagnosed density closure for a direct density/property
 contract. Branch identity, closure residual, and conditioning then remain
@@ -404,6 +426,15 @@ This is in-sample reproduction evidence only; the retained pressure-closure
 result remains negative under its historical gate and predictive status remains
 `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
+The scalar pure implementation replays the four accepted methane training
+rows independently for each family. Every `16 x 9` solve has full rank 9 and
+projected parameter rank 1, with a non-bound result and confirmation-start
+agreement. The local anchors are `m = 1.0001569260577763`,
+`sigma = 3.7063548743836034 angstrom`, and
+`epsilon/k = 150.00325287725062 K`. They are deterministic in-sample
+implementation evidence, not a replacement for the accepted joint fit,
+prediction evidence, or Provider-catalog authority.
+
 ## Implementation sequence
 
 1. **Complete.** Introduce the typed capability, parameter, observation,
@@ -415,9 +446,11 @@ result remains negative under its historical gate and predictive status remains
    phase-block domain and retaining reference campaigns as evidence.
 3. **Complete for fixed-composition VLE.** Add Provider active `l_ij` support
    and admit it through the same phase observation contract and Ceres owner.
-4. Migrate pure `m`, `sigma`, and `epsilon/k`, Born diameter, and solvation
-   factor workflows onto the shared contracts while preserving accepted
-   methane and ethane numerical behavior.
+4. **Complete for independent scalar pure saturation.** Admit `m`, `sigma`,
+   and `epsilon/k` component coordinates through the same contract, result,
+   Ceres owner, and native target. The accepted joint methane/ethane workflow
+   remains unchanged. Born diameter and solvation factor still require
+   migration onto the shared direct-observation path.
 5. Add association energy/volume and an explicit `k_hb_ij` combining-rule
    coordinate only after Provider supplies exact topology-bound derivatives
    and source-backed datasets establish rank.
