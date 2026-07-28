@@ -79,6 +79,13 @@ The retained exact isolated log and relative fits are falsification evidence,
 not proof that the staged route is impossible. Keep the user-approved Table
 4/5 maximum parameter difference at `0.05`; do not tune rows, weights, bounds,
 starts, cycles, or tolerances to the answer.
-Independent subagent review replaces any permanent-lab approval gate. Do not
-broaden this sequence to a generic registry or full electrolyte, reactive,
-uncertainty, organic-solvent, expanded-ion, or global-identifiability surface.
+Independent subagent review replaces any permanent-lab approval gate.
+The user-approved 2026-07-27 direction is general parameter-family regression:
+source-bound caller datasets, typed Provider-owned parameter identities, exact
+Provider derivatives, one Ceres engine/result/target, and reference campaigns
+used as evidence rather than mixture restrictions. Its sole architecture owner
+is `docs/science/general-parameter-regression.md`. This is a finite typed
+capability schema, not an arbitrary plugin or mutable registry. Do not claim a
+family is fit-ready until its exact derivative, observation, rank, and
+installed-artifact gates pass; do not broaden it to uncertainty,
+catalog-persistence, or global-identifiability authority.

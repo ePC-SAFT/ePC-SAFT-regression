@@ -1,9 +1,9 @@
 # Regression Repository Context
 
-This repository owns one strict pure-saturation regression workflow. Methane
-and ethane are accepted. The propane Checkpoint A and constant methane/ethane
-`kij` subjects are retained authority-neutral, non-production provenance; D-023
-removes both from the active migration sequence.
+This repository owns ePC-SAFT target contracts, Ceres parameter fitting,
+diagnostics, and results. Methane and ethane pure-saturation workflows are the
+accepted production capabilities. Other completed campaigns remain
+authority-neutral evidence unless separately admitted.
 
 `governance_doctrine_revision: 4`
 
@@ -51,6 +51,17 @@ with no added runtime test seam.
 `runtime_status: AUTHORITY_NEUTRAL_PACKAGE_IMPLEMENTED_VALIDATION_NOT_STARTED`
 
 `next_figiel_family_status: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED`
+
+`general_parameter_regression_status: USER_APPROVED_ARCHITECTURE_RUNTIME_PENDING`
+
+The user-approved 2026-07-27 destination is general parameter-family
+regression, defined in `docs/science/general-parameter-regression.md`.
+Caller-supplied source-bound data selects Provider-supported components,
+parameters, and typed observations. Exact Provider derivatives feed one Ceres
+engine and one result family. Published methane, ethane, Figiel, and later
+campaigns are validation evidence, not hard-coded mixture limits. The finite
+typed schema is not an arbitrary residual plugin or mutable registry, and the
+architecture decision does not make unsupported families fit-ready.
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint
@@ -190,8 +201,7 @@ Status is
 `SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE`. No rows,
 weights, bounds, starts, or tolerances were tuned to the answer.
 
-The eventual direction is a staged, family-by-family recovery campaign for
-Figiel Tables 2–5. That later intent does not broaden the first Born-diameter
-tracer into a simultaneous all-table fit or generic registry. Validation's
-future exact ledger alone will classify each value as fitted, inherited,
-fixed, or blank; Regression makes none of those assignments in advance.
+The Figiel Tables 2–5 recovery remains a staged reference campaign. It does
+not define the component domain of a completed parameter family. Validation's
+exact ledger alone classifies each value as fitted, inherited, fixed, or
+blank; Regression makes none of those assignments in advance.

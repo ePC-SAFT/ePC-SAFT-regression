@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-nonproduction-figiel-born-candidate
+status: authoritative-methane-and-ethane-with-general-parameter-architecture-pending
 
 authority:
   accepted_capabilities:
@@ -40,6 +40,29 @@ scope: >-
   its local gates after the user-approved descriptive-comparison correction
   and has no production authority.
 
+general_parameter_regression:
+  status: USER_APPROVED_ARCHITECTURE_RUNTIME_PENDING
+  design_owner: docs/science/general-parameter-regression.md
+  objective: >-
+    Fit any admitted continuous ePC-SAFT parameter for any Provider-supported
+    component set when the caller supplies source-bound typed observations and
+    a complete numerical contract.
+  capability_states:
+    - REPRESENTED
+    - DERIVATIVE_READY
+    - FIT_READY
+    - REFERENCE_VALIDATED
+    - ADMITTED
+  runtime_shape:
+    engines: 1
+    result_families: 1
+    native_modules: 1
+    native_targets: 1
+    parameter_schema: finite-typed-provider-negotiated
+    observation_schema: finite-typed-source-bound
+  reference_campaign_role: evidence-not-component-restriction
+  forbidden_interpretation: every-provider-parameter-is-fit-ready-now
+
 owners:
   immutable_sources_and_specifications: src/epcsaft_regression/records.py
   public_workflow_and_result: src/epcsaft_regression/workflow.py
@@ -53,6 +76,7 @@ owners:
   figiel_candidate_evidence_runner: tools/run_figiel_born_candidate.py
   next_slice_equations_and_numerical_contract: docs/science/neutral-hydrocarbon-next-slice.md
   figiel_born_tracer_design: docs/science/figiel-born-diameter-tracer.md
+  general_parameter_regression_design: docs/science/general-parameter-regression.md
 
 preparatory_contracts:
   neutral_hydrocarbon_next_slice_v1:
@@ -423,7 +447,12 @@ parameter_family_readiness:
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
   figiel_current_catalog_aqueous_kij: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED
   reactive_or_temperature_dependent_parameters: NOT_READY
-  full_breadth_regression: NOT_READY_NO_GENERIC_REGISTRY_OR_UNIVERSAL_SURFACE
+  general_parameter_regression: USER_APPROVED_ARCHITECTURE_RUNTIME_PENDING
+  mixture_independent_kij: NOT_READY_PENDING_TYPED_REQUEST_AND_GENERAL_PROVIDER_SEAM
+  mixture_independent_lij: NOT_READY_PENDING_EXACT_ACTIVE_PROVIDER_DERIVATIVE
+  mixture_independent_association: NOT_READY_PENDING_EXACT_TOPOLOGY_BOUND_PROVIDER_DERIVATIVES
+  khb_ij: NOT_READY_NOT_A_CURRENT_PROVIDER_PARAMETER_FAMILY
+  full_parameter_family_coverage: NOT_READY
 
 accepted_ethane_artifact:
   implementation_commit: 50a488b91686388432fd50a0d6bfc5b15825e4f1
@@ -563,7 +592,7 @@ excluded:
   - association regression
   - electrolyte regression beyond the bounded nonproduction Figiel Born-tracer candidate
   - reactive regression
-  - generic regression families or target registries
+  - arbitrary residual plugins or mutable runtime registries
   - alternate or numerical production derivative backends
   - provider source, private headers, or copied EOS equations
   - provider catalog persistence
