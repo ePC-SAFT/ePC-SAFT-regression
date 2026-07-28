@@ -506,6 +506,7 @@ def _dielectric_suppression_problem(model: EPCSAFT) -> RegressionProblem:
             row_id=row_id,
             source_id="retained-lab-figiel-figure-2",
             source_locator=f"validation:figiel-ledger:{row_id}",
+            solvent_id="water",
             component_ids=capability.component_ids,
             temperature_k=298.15,
             pressure_pa=100_000.0,

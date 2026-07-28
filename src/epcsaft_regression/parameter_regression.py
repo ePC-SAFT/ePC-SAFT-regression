@@ -714,6 +714,7 @@ class RelativePermittivityRatioObservation:
     row_id: str
     source_id: str
     source_locator: str
+    solvent_id: str
     component_ids: tuple[str, str, str]
     temperature_k: float
     pressure_pa: float
@@ -723,7 +724,7 @@ class RelativePermittivityRatioObservation:
     partition: ObservationPartition
 
     def __post_init__(self) -> None:
-        for field in ("row_id", "source_id", "source_locator"):
+        for field in ("row_id", "source_id", "source_locator", "solvent_id"):
             _require_nonempty_string(getattr(self, field), field)
         if type(self.component_ids) is not tuple or len(self.component_ids) != 3:
             raise ValueError(
@@ -770,6 +771,7 @@ def _canonical_row(row: RegressionObservation) -> dict[str, object]:
             "row_id": row.row_id,
             "source_id": row.source_id,
             "source_locator": row.source_locator,
+            "solvent_id": row.solvent_id,
             "component_ids": list(row.component_ids),
             "temperature_k": row.temperature_k,
             "pressure_pa": row.pressure_pa,

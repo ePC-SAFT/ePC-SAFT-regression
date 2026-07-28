@@ -214,6 +214,7 @@ def test_relative_permittivity_ratio_observation_binds_one_model_parameter() -> 
         row_id="figiel-water-001",
         source_id="doi:example",
         source_locator="figure-s1:water:001",
+        solvent_id="water",
         component_ids=("water", "sodium-cation", "bromide-anion"),
         temperature_k=298.15,
         pressure_pa=100_000.0,
