@@ -145,6 +145,12 @@ more caller-supplied solvation-Gibbs endpoints. The four retained Figiel
 near-pure endpoints are constructed, rank-1 implementation evidence. Their
 differences from the rounded Table 5 values are descriptive and do not claim
 exact recovery of the paper's unavailable pure-organic fitting targets.
+Regression subject `e9ce5a6c4441cd8ecc6cd18be2bb4d8614e741a1`
+produced wheel SHA-256
+`efc3b421ad94f4448ffce630528911363cc5be7565de2a5fca0e7787a6e68f2d`.
+Validation subject `9857a1ac058038f8b7664cfe41ab06729f661715`
+retains the byte-stable installed-artifact record with SHA-256
+`e34f0033de804afcc3390002dee2e153a1dd80a42b0fe01080d965257a1ba0f9`.
 
 All 17 audited May rows reproduce the frozen `68 x 35` formulation with
 convergence, full rank 35, projected parameter rank 1, a non-bound
