@@ -316,6 +316,11 @@ installed-artifact Validation campaign may replay the exact conditional result;
 Regression evidence cannot self-promote. Recovering the historical printed
 tuple from experimental rows remains unresolved because the paper omits the
 objective, weights, exact rows, optimizer, bounds, starts, and sub-staging.
+Artifact validation is intentionally a matrix: the Stage-C wheel with Provider
+`8af6e54` passes the six focused Stage-C tests, while the accepted legacy
+Provider artifact preserves the 49 accepted pure-workflow tests. Running the
+entire historical suite against `8af6e54` is diagnostic only; its three known
+pure-workflow numerical differences are not Stage-C acceptance failures.
 
 Excluded: generic registries, mutable parameter overlays, Provider catalog
 writes, compatibility shims, simultaneous all-table solves, organic-solvent or

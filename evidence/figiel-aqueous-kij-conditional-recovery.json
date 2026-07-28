@@ -550,16 +550,16 @@
     "wheel_sha256": "1d77a46aca369269fd97b32a722e8b548617a4ae840e07645040a138f63863db"
   },
   "regression_artifact": {
-    "implementation_commit": "1a594a537e632d902878ab4d6c76ce04ac580ebb",
-    "implementation_tree": "38540ef2d9a73100785f5da5ac0a739c92d3669b",
-    "source_date_epoch": 1785196214,
-    "wheel": "../artifacts/regression-figiel-aqueous-kij-v1/1a594a5/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl",
-    "wheel_sha256": "a9283603156edb6f564af50b320ba0807ccee2e37e0feee42851d00ea278e221",
+    "implementation_commit": "ae4b4a925556272293abd09a1a6e44c7e8d967d8",
+    "implementation_tree": "b7f0be34afea3a410ad4e03a9a4cb8c94d94f7c9",
+    "source_date_epoch": 1785197144,
+    "wheel": "../artifacts/regression-figiel-aqueous-kij-v1/ae4b4a9/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl",
+    "wheel_sha256": "2fa4af83cc9784bd0f16b3d4d6ca59db47338e75e82539a4141c81178550f728",
     "wheel_members": 14,
     "installed_non_record_members_verified": 13,
-    "installed_stage_c_tests": "5-passed",
+    "installed_stage_c_tests": "6-passed",
     "installed_accepted_provider_legacy_tests": "49-passed",
-    "assigned_provider_full_suite": "60-passed-3-failed-known-legacy-numerical-compatibility"
+    "cross_artifact_diagnostic_only": "61-passed-3-failed-known-legacy-numerical-compatibility"
   },
   "schema_version": 1,
   "source": {
