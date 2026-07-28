@@ -148,6 +148,40 @@ PROPANE_ROW_IDS = tuple(
     for temperature in PROPANE_TEMPERATURES_K
 )
 
+MEA_DATA_SHA256 = "7e8e77577a34bd9867489faee992dd192e8cbbc728c50a26e8264b0e09192365"
+MEA_PACKAGED_DATA_SHA256 = (
+    "b69b38e874a83121424af3e6981adae9e924b1d3a87de91fdd7d8bac47dc875a"
+)
+MEA_SOURCE_ID = "baygi-pahlavanzadeh-2015-mea-saturation-correlations"
+MEA_SOURCE_URL = "https://doi.org/10.1016/j.cherd.2014.07.017"
+MEA_SOURCE_CITATION = (
+    "Baygi and Pahlavanzadeh, Chemical Engineering Research and Design 93 "
+    "(2015) 789-799, doi:10.1016/j.cherd.2014.07.017"
+)
+MEA_SOURCE_LOCATOR = (
+    "Equation 8 objective; Equations 9-10 and Table 1 target correlations; "
+    "Table 2 monoethanolamine 2B parameters"
+)
+MEA_SOURCE_USE_BASIS = (
+    "Primary-paper calculated correlation targets retained for a deterministic "
+    "reconstruction; not direct experimental observations"
+)
+MEA_SOURCE_TRANSFORMATION = (
+    "Fifteen predeclared temperatures T_j=303.15+10j K for j=0,...,14. "
+    "Pressure evaluated as exp(92.624-10367/T-9.4699 ln(T)+1.9e-18 T^6) Pa. "
+    "DIPPR-105 liquid molar density evaluated as "
+    "1.0011/0.22523^[1+(1-T/678.2)^0.21515] mol/L and converted to kg/m3 "
+    "with molar mass 0.0610831 kg/mol. "
+    f"Source PDF SHA-256: {MEA_DATA_SHA256}; packaged CSV SHA-256: "
+    f"{MEA_PACKAGED_DATA_SHA256}."
+)
+MEA_TEMPERATURES_K = tuple(303.15 + 10.0 * index for index in range(15))
+MEA_TRAINING_TEMPERATURES_K = MEA_TEMPERATURES_K
+MEA_ROW_IDS = tuple(
+    f"baygi2015-mea-sat-{temperature:.2f}-k"
+    for temperature in MEA_TEMPERATURES_K
+)
+
 # Retained import names used only by the accepted methane receipt tooling.
 EXPECTED_DATA_SHA256 = METHANE_DATA_SHA256
 EXPECTED_PACKAGED_DATA_SHA256 = METHANE_PACKAGED_DATA_SHA256
@@ -1007,6 +1041,15 @@ def _source_fields(source_id: str) -> tuple[str, str, str, str, str, str]:
             PROPANE_PACKAGED_DATA_SHA256,
             PROPANE_PACKAGED_DATA_SHA256,
         )
+    if source_id == MEA_SOURCE_ID:
+        return (
+            MEA_SOURCE_CITATION,
+            MEA_SOURCE_LOCATOR,
+            MEA_SOURCE_URL,
+            MEA_SOURCE_TRANSFORMATION,
+            MEA_DATA_SHA256,
+            MEA_PACKAGED_DATA_SHA256,
+        )
     raise ValueError("source_id must identify an admitted pure-saturation table")
 
 
@@ -1015,6 +1058,8 @@ def _source_provenance(source_id: str) -> tuple[str, str, tuple[tuple[str, str],
         return SOURCE_RETRIEVED_ON, SOURCE_USE_BASIS, SOURCE_UNITS
     if source_id == PROPANE_SOURCE_ID:
         return SOURCE_RETRIEVED_ON, PROPANE_SOURCE_USE_BASIS, SOURCE_UNITS
+    if source_id == MEA_SOURCE_ID:
+        return "2026-07-28", MEA_SOURCE_USE_BASIS, SOURCE_UNITS
     raise ValueError("source_id must identify an admitted pure-saturation table")
 
 
@@ -1099,6 +1144,18 @@ PROPANE_SOURCE_V1 = SourceIdentity(
     data_sha256=PROPANE_PACKAGED_DATA_SHA256,
     packaged_data_sha256=PROPANE_PACKAGED_DATA_SHA256,
 )
+MEA_SOURCE_V1 = SourceIdentity(
+    source_id=MEA_SOURCE_ID,
+    citation=MEA_SOURCE_CITATION,
+    locator=MEA_SOURCE_LOCATOR,
+    url=MEA_SOURCE_URL,
+    retrieved_on="2026-07-28",
+    use_basis=MEA_SOURCE_USE_BASIS,
+    transformation=MEA_SOURCE_TRANSFORMATION,
+    units=SOURCE_UNITS,
+    data_sha256=MEA_DATA_SHA256,
+    packaged_data_sha256=MEA_PACKAGED_DATA_SHA256,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1117,8 +1174,13 @@ class SaturationObservation:
     def __post_init__(self) -> None:
         if not self.row_id.strip():
             raise ValueError("row_id must be nonblank")
-        if self.component_id not in ("methane", "ethane", "propane"):
-            raise ValueError("component_id must be 'methane', 'ethane', or 'propane'")
+        if self.component_id not in (
+            "methane",
+            "ethane",
+            "propane",
+            "monoethanolamine",
+        ):
+            raise ValueError("component_id is not an admitted pure component")
         _positive_finite(self.temperature_k, "temperature_k")
         _positive_finite(self.pressure_pa, "pressure_pa")
         _positive_finite(self.liquid_density_kg_m3, "liquid_density_kg_m3")
@@ -1126,6 +1188,7 @@ class SaturationObservation:
             "methane": METHANE_SOURCE_ID,
             "ethane": ETHANE_SOURCE_ID,
             "propane": PROPANE_SOURCE_ID,
+            "monoethanolamine": MEA_SOURCE_ID,
         }[self.component_id]
         if self.source_id != expected_source:
             raise ValueError("source_id does not match the pure component")
@@ -1197,8 +1260,17 @@ class PureSaturationDataset:
                 PROPANE_HELD_OUT_TEMPERATURES_K,
                 PROPANE_STRESS_TEMPERATURES_K,
             )
+        elif self.component_id == "monoethanolamine":
+            expected = (
+                "baygi-2015-mea-2b-correlation-grid-v1",
+                MEA_SOURCE_ID,
+                MEA_TEMPERATURES_K,
+                MEA_TRAINING_TEMPERATURES_K,
+                (),
+                (),
+            )
         else:
-            raise ValueError("component_id must be 'methane', 'ethane', or 'propane'")
+            raise ValueError("component_id is not an admitted pure component")
         dataset_id, source_id, temperatures, training, held_out, stress = expected
         if self.dataset_id != dataset_id:
             raise ValueError("dataset_id does not match the admitted component table")
@@ -1228,6 +1300,8 @@ class PureSaturationDataset:
         expected_row_ids = (
             PROPANE_ROW_IDS
             if self.component_id == "propane"
+            else MEA_ROW_IDS
+            if self.component_id == "monoethanolamine"
             else tuple(
                 f"nist-{self.component_id}-sat-{int(temperature)}-k"
                 for temperature in temperatures
@@ -1289,19 +1363,20 @@ class PureSaturationFitSpecification:
     dataset_id: str
     source_id: str
     expected_provider_fingerprint: str
-    parameter_names: tuple[str, str, str]
-    parameter_units: tuple[str, str, str]
-    start: tuple[float, float, float]
-    lower_bounds: tuple[float, float, float]
-    upper_bounds: tuple[float, float, float]
-    parameter_scales: tuple[float, float, float]
+    parameter_names: tuple[str, ...]
+    parameter_units: tuple[str, ...]
+    start: tuple[float, ...]
+    confirmation_start: tuple[float, ...]
+    lower_bounds: tuple[float, ...]
+    upper_bounds: tuple[float, ...]
+    parameter_scales: tuple[float, ...]
     fixed_amount_mol: float
     molar_mass_kg_per_mol: float
     residual_names: tuple[str, str, str, str]
     residual_weights: tuple[float, float, float, float]
     liquid_volume_bounds_m3: tuple[float, float]
     vapor_volume_bounds_m3: tuple[float, float]
-    training_temperatures_k: tuple[float, float, float, float]
+    training_temperatures_k: tuple[float, ...]
     max_num_iterations: int
     function_tolerance: float
     gradient_tolerance: float
@@ -1358,8 +1433,21 @@ class PureSaturationFitSpecification:
                 PROPANE_TRAINING_TEMPERATURES_K,
                 (0.1, 1.0e7),
             )
+        elif self.component_id == "monoethanolamine":
+            expected_identity = (
+                "baygi-2015-mea-2b-lifted-volumes-v1",
+                "baygi-2015-mea-2b-correlation-grid-v1",
+                MEA_SOURCE_ID,
+                "sha256:aa1a3afb4e95a96b1863fa7930434ec6a552f93d3dbdb13be81f8bb43d1b489a",
+                (2.5, 3.5, 225.0, 2000.0, 0.05),
+                0.0610831,
+                (2.0e-5, 1.2e-4),
+                (1.5e-4, 100.0),
+                MEA_TRAINING_TEMPERATURES_K,
+                (1.0, 1.0e6),
+            )
         else:
-            raise ValueError("component_id must be 'methane', 'ethane', or 'propane'")
+            raise ValueError("component_id is not an admitted pure component")
         if (
             self.specification_id,
             self.dataset_id,
@@ -1375,11 +1463,25 @@ class PureSaturationFitSpecification:
             raise ValueError(
                 "fit specification does not match the admitted component contract"
             )
-        if self.parameter_names != (
+        expected_parameter_names = (
             "segment_count",
             "segment_diameter_angstrom",
             "dispersion_energy_over_k_kelvin",
-        ) or self.parameter_units != ("1", "angstrom", "K"):
+        ) + (
+            (
+                "association_energy_over_k_kelvin",
+                "association_volume",
+            )
+            if self.component_id == "monoethanolamine"
+            else ()
+        )
+        expected_parameter_units = ("1", "angstrom", "K") + (
+            ("K", "1") if self.component_id == "monoethanolamine" else ()
+        )
+        if (
+            self.parameter_names != expected_parameter_names
+            or self.parameter_units != expected_parameter_units
+        ):
             raise ValueError(
                 "parameter names and units must match the provider coordinate contract"
             )
@@ -1387,6 +1489,7 @@ class PureSaturationFitSpecification:
             not math.isfinite(value)
             for group in (
                 self.start,
+                self.confirmation_start,
                 self.lower_bounds,
                 self.upper_bounds,
                 self.parameter_scales,
@@ -1403,15 +1506,33 @@ class PureSaturationFitSpecification:
             raise ValueError(
                 "every parameter start must lie strictly inside its bounds"
             )
-        if self.lower_bounds != (0.5, 2.0, 50.0) or self.upper_bounds != (
-            3.5,
-            5.0,
-            400.0,
+        if any(
+            not lower < start < upper
+            for lower, start, upper in zip(
+                self.lower_bounds,
+                self.confirmation_start,
+                self.upper_bounds,
+                strict=True,
+            )
         ):
+            raise ValueError(
+                "every confirmation start must lie strictly inside its bounds"
+            )
+        expected_bounds = (
+            ((0.5, 2.0, 50.0, 250.0, 0.001), (5.0, 5.0, 400.0, 5000.0, 0.25))
+            if self.component_id == "monoethanolamine"
+            else ((0.5, 2.0, 50.0), (3.5, 5.0, 400.0))
+        )
+        if (self.lower_bounds, self.upper_bounds) != expected_bounds:
             raise ValueError(
                 "parameter bounds do not match the pure-saturation contract"
             )
-        if self.parameter_scales != (0.1, 0.1, 10.0):
+        expected_scales = (
+            (0.5, 0.5, 50.0, 500.0, 0.05)
+            if self.component_id == "monoethanolamine"
+            else (0.1, 0.1, 10.0)
+        )
+        if self.parameter_scales != expected_scales:
             raise ValueError(
                 "parameter scales do not match the pure-saturation contract"
             )
@@ -1495,13 +1616,23 @@ def _fit_specification(
     dataset_id: str,
     source_id: str,
     expected_provider_fingerprint: str,
-    start: tuple[float, float, float],
+    start: tuple[float, ...],
     molar_mass_kg_per_mol: float,
     vapor_volume_bounds_m3: tuple[float, float],
-    training_temperatures_k: tuple[float, float, float, float],
+    training_temperatures_k: tuple[float, ...],
     reporting_pressure_bounds_pa: tuple[float, float],
     liquid_volume_bounds_m3: tuple[float, float] = (2.0e-5, 1.0e-4),
     max_num_iterations: int = 500,
+    parameter_names: tuple[str, ...] = (
+        "segment_count",
+        "segment_diameter_angstrom",
+        "dispersion_energy_over_k_kelvin",
+    ),
+    parameter_units: tuple[str, ...] = ("1", "angstrom", "K"),
+    confirmation_start: tuple[float, ...] | None = None,
+    lower_bounds: tuple[float, ...] = (0.5, 2.0, 50.0),
+    upper_bounds: tuple[float, ...] = (3.5, 5.0, 400.0),
+    parameter_scales: tuple[float, ...] = (0.1, 0.1, 10.0),
 ) -> PureSaturationFitSpecification:
     return PureSaturationFitSpecification(
         specification_id=specification_id,
@@ -1509,16 +1640,13 @@ def _fit_specification(
         dataset_id=dataset_id,
         source_id=source_id,
         expected_provider_fingerprint=expected_provider_fingerprint,
-        parameter_names=(
-            "segment_count",
-            "segment_diameter_angstrom",
-            "dispersion_energy_over_k_kelvin",
-        ),
-        parameter_units=("1", "angstrom", "K"),
+        parameter_names=parameter_names,
+        parameter_units=parameter_units,
         start=start,
-        lower_bounds=(0.5, 2.0, 50.0),
-        upper_bounds=(3.5, 5.0, 400.0),
-        parameter_scales=(0.1, 0.1, 10.0),
+        confirmation_start=start if confirmation_start is None else confirmation_start,
+        lower_bounds=lower_bounds,
+        upper_bounds=upper_bounds,
+        parameter_scales=parameter_scales,
         fixed_amount_mol=1.0,
         molar_mass_kg_per_mol=molar_mass_kg_per_mol,
         residual_names=(
@@ -1593,6 +1721,33 @@ PROPANE_SATURATION_FIT_V1 = _fit_specification(
     reporting_pressure_bounds_pa=(0.1, 1.0e7),
     max_num_iterations=5000,
 )
+MEA_SATURATION_FIT_V1 = _fit_specification(
+    component_id="monoethanolamine",
+    specification_id="baygi-2015-mea-2b-lifted-volumes-v1",
+    dataset_id="baygi-2015-mea-2b-correlation-grid-v1",
+    source_id=MEA_SOURCE_ID,
+    expected_provider_fingerprint=(
+        "sha256:aa1a3afb4e95a96b1863fa7930434ec6a552f93d3dbdb13be81f8bb43d1b489a"
+    ),
+    start=(2.5, 3.5, 225.0, 2000.0, 0.05),
+    confirmation_start=(3.25, 3.0, 300.0, 3000.0, 0.10),
+    lower_bounds=(0.5, 2.0, 50.0, 250.0, 0.001),
+    upper_bounds=(5.0, 5.0, 400.0, 5000.0, 0.25),
+    parameter_scales=(0.5, 0.5, 50.0, 500.0, 0.05),
+    parameter_names=(
+        "segment_count",
+        "segment_diameter_angstrom",
+        "dispersion_energy_over_k_kelvin",
+        "association_energy_over_k_kelvin",
+        "association_volume",
+    ),
+    parameter_units=("1", "angstrom", "K", "K", "1"),
+    molar_mass_kg_per_mol=0.0610831,
+    liquid_volume_bounds_m3=(2.0e-5, 1.2e-4),
+    vapor_volume_bounds_m3=(1.5e-4, 100.0),
+    training_temperatures_k=MEA_TRAINING_TEMPERATURES_K,
+    reporting_pressure_bounds_pa=(1.0, 1.0e6),
+)
 
 
 def _load_dataset(
@@ -1605,6 +1760,7 @@ def _load_dataset(
     training: tuple[float, ...],
     held_out: tuple[float, ...],
     stress: tuple[float, ...],
+    row_id_prefix: str = "nist",
 ) -> PureSaturationDataset:
     data = files("epcsaft_regression").joinpath(f"data/{filename}").read_bytes()
     if hashlib.sha256(data).hexdigest() != source.packaged_data_sha256:
@@ -1624,7 +1780,11 @@ def _load_dataset(
         temperature_k = float(temperature)
         rows.append(
             SaturationObservation(
-                row_id=f"nist-{component_id}-sat-{int(temperature_k)}-k",
+                row_id=(
+                    f"{row_id_prefix}-mea-sat-{temperature_k:.2f}-k"
+                    if component_id == "monoethanolamine"
+                    else f"{row_id_prefix}-{component_id}-sat-{int(temperature_k)}-k"
+                ),
                 component_id=component_id,
                 temperature_k=temperature_k,
                 pressure_pa=float(pressure),
@@ -1748,4 +1908,17 @@ def load_pure_saturation_dataset(component_id: str) -> PureSaturationDataset:
         )
     if component_id == "propane":
         return _load_propane_dataset()
-    raise ValueError("component_id must be 'methane', 'ethane', or 'propane'")
+    if component_id == "monoethanolamine":
+        return _load_dataset(
+            "mea_saturation.csv",
+            "monoethanolamine",
+            "Monoethanolamine",
+            MEA_SOURCE_V1,
+            "baygi-2015-mea-2b-correlation-grid-v1",
+            MEA_TEMPERATURES_K,
+            MEA_TRAINING_TEMPERATURES_K,
+            (),
+            (),
+            "baygi2015",
+        )
+    raise ValueError("component_id is not an admitted pure component")

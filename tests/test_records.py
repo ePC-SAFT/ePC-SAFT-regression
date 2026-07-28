@@ -10,6 +10,7 @@ from epcsaft_regression.records import (
     ETHANE_DATA_SHA256,
     ETHANE_PACKAGED_DATA_SHA256,
     ETHANE_SATURATION_FIT_V1,
+    MEA_SATURATION_FIT_V1,
     METHANE_DATA_SHA256,
     METHANE_PACKAGED_DATA_SHA256,
     METHANE_SATURATION_FIT_V1,
@@ -211,7 +212,7 @@ def test_component_specification_is_explicit_and_dimensionally_fixed(
 
 @pytest.mark.parametrize("value", ("Methane", "ETHANE", "Propane", "PROPANE", "butane", ""))
 def test_loader_rejects_aliases_case_variants_and_unknown_strings(value: str) -> None:
-    with pytest.raises(ValueError, match="'methane', 'ethane', or 'propane'"):
+    with pytest.raises(ValueError, match="not an admitted pure component"):
         load_pure_saturation_dataset(value)
 
 
@@ -321,4 +322,62 @@ def test_propane_packet_identity_and_uncertainties_are_retained_without_cutoffs(
     )
     assert dataset.source.use_basis.endswith(
         "source evidence, not model-acceptance cutoffs"
+    )
+
+
+def test_mea_reconstruction_rows_are_exactly_source_bound_and_all_training() -> None:
+    dataset = load_pure_saturation_dataset("monoethanolamine")
+
+    assert dataset.dataset_id == "baygi-2015-mea-2b-correlation-grid-v1"
+    assert dataset.source.data_sha256 == (
+        "7e8e77577a34bd9867489faee992dd192e8cbbc728c50a26e8264b0e09192365"
+    )
+    assert dataset.source.packaged_data_sha256 == (
+        "b69b38e874a83121424af3e6981adae9e924b1d3a87de91fdd7d8bac47dc875a"
+    )
+    assert tuple(row.temperature_k for row in dataset.rows) == tuple(
+        303.15 + 10.0 * index for index in range(15)
+    )
+    assert dataset.rows[0].pressure_pa == pytest.approx(
+        74.792493740508974, rel=0.0, abs=0.0
+    )
+    assert dataset.rows[-1].pressure_pa == pytest.approx(
+        102314.11176181004, rel=0.0, abs=0.0
+    )
+    assert dataset.rows[0].liquid_density_kg_m3 == pytest.approx(
+        1008.5071455136253, rel=0.0, abs=0.0
+    )
+    assert dataset.rows[-1].liquid_density_kg_m3 == pytest.approx(
+        889.55196390147012, rel=0.0, abs=0.0
+    )
+    assert dataset.training_rows == dataset.rows
+    assert dataset.held_out_rows == ()
+    assert dataset.stress_rows == ()
+
+
+def test_mea_joint_five_parameter_specification_is_frozen() -> None:
+    specification = MEA_SATURATION_FIT_V1
+
+    assert specification.component_id == "monoethanolamine"
+    assert specification.parameter_names == (
+        "segment_count",
+        "segment_diameter_angstrom",
+        "dispersion_energy_over_k_kelvin",
+        "association_energy_over_k_kelvin",
+        "association_volume",
+    )
+    assert specification.parameter_units == ("1", "angstrom", "K", "K", "1")
+    assert specification.start == (2.5, 3.5, 225.0, 2000.0, 0.05)
+    assert specification.confirmation_start == (
+        3.25,
+        3.0,
+        300.0,
+        3000.0,
+        0.10,
+    )
+    assert specification.lower_bounds == (0.5, 2.0, 50.0, 250.0, 0.001)
+    assert specification.upper_bounds == (5.0, 5.0, 400.0, 5000.0, 0.25)
+    assert specification.parameter_scales == (0.5, 0.5, 50.0, 500.0, 0.05)
+    assert specification.expected_provider_fingerprint == (
+        "sha256:aa1a3afb4e95a96b1863fa7930434ec6a552f93d3dbdb13be81f8bb43d1b489a"
     )
