@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-seven-general-families-fit-ready
+status: authoritative-methane-and-ethane-with-eight-general-families-fit-ready
 
 authority:
   accepted_capabilities:
@@ -48,7 +48,7 @@ scope: >-
   liquid-density rows on a matching neutral pure capability.
 
 general_parameter_regression:
-  status: SEVEN_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
+  status: EIGHT_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
   design_owner: docs/science/general-parameter-regression.md
   objective: >-
     Fit any admitted continuous ePC-SAFT parameter for any Provider-supported
@@ -69,7 +69,7 @@ general_parameter_regression:
     observation_schema: finite-typed-source-bound
   reference_campaign_role: evidence-not-component-restriction
   forbidden_interpretation: every-provider-parameter-is-fit-ready-now
-  immediate_provider_gate: SATISFIED_FOR_SEVEN_FAMILIES
+  immediate_provider_gate: SATISFIED_FOR_EIGHT_FAMILIES
   provider_subject: 1e571ab0a84603a51ed6994b14286f683fb12b88
   provider_wheel_sha256: 6536edc63adaa13c5c6c67c185d82c9ae232048e99dc3dc3be502708eea4410f
   provider_header_sha256: b667379c2d7106d012c6b57f96b6f32dd23ef305fe6f15a87c22ab20029008f8
@@ -81,6 +81,15 @@ general_parameter_regression:
   direct_observable_provider_tree: 0a36f875fe75cc90cece5144373ab031c8724ccc
   direct_observable_provider_wheel_sha256: bc40a9ac2c217afe163cf0bed36159e8f3387d6a1bd09a24665b4a952d84a8d3
   direct_observable_provider_header_sha256: 568381308595713a60ee0b24b1ca357956b51b7cbbf759cc13404108eeac8780
+  dielectric_provider_subject: e063f32f6e2b975af11ae7e65c1a12cd3076941c
+  dielectric_provider_tree: b7020b51b8ce57086517b1722b8b8847f9193a88
+  dielectric_provider_wheel_sha256: d090fa92d86ea91ab40df24aa96fc18c1821eaf636e9a03e01346a6bef8e31bd
+  dielectric_provider_header_sha256: 5dccb80d0d64a24bb8070bd5a0d7f27c3b55173253b1637f9a8a7e03e4e6f82c
+  dielectric_regression_subject: 77a94c215d3dadb52a4f0ed90968631949b612f4
+  dielectric_regression_tree: 24ef9ade76c6e68639548905ec1401ff96b526ff
+  dielectric_regression_wheel_sha256: f3d9f1a728a6e4b6e2f9cc2f0286d5d8ecbad46ababbc0201f59ab7b205f0b06
+  dielectric_validation_subject: 7782b8d
+  dielectric_validation_evidence_sha256: 04425a6a3e303cb7b5bf7032f34c3efbf47a5c422d7dfd66931b0f2639cc7f85
   pair_reference_regression_subject: da7a44ce093201022aec2f3514d4e4fd9d8d2929
   pair_reference_regression_wheel_sha256: 3a59d2233fec51f949a7784937b54f7f66beae2476fa8e33976672a480b67137
   fit_ready_pair_families:
@@ -115,7 +124,7 @@ general_parameter_regression:
     authority_effect: none
     predictive_effect: none
   fit_ready_direct_observable_families:
-    families: [born_diameter, solvation_factor]
+    families: [born_diameter, solvation_factor, dielectric_ion_suppression_coefficient]
     parameter_count_per_problem: 1
     nuisance_variables: 0
     provider_derivative_order: 1
@@ -124,6 +133,11 @@ general_parameter_regression:
     born_reference_shape_per_problem: 1x1
     solvation_factor_observation_contract: mean-ionic-activity
     solvation_factor_reference_shape: 21x1
+    dielectric_observation_contract: relative-permittivity-ratio
+    dielectric_reference_source: figiel-2025-figures-2-3-water-methanol-digitization
+    dielectric_reference_shape: 36x1
+    dielectric_reference_fitted_parameter: 7.067350349980952
+    dielectric_published_descriptive_comparison: 7.01
     reference_full_rank: 1
     reference_projected_parameter_rank: 1
     authority_effect: none
@@ -529,12 +543,13 @@ parameter_family_readiness:
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
   figiel_current_catalog_aqueous_kij: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED
   reactive_or_temperature_dependent_parameters: NOT_READY
-  general_parameter_regression: PARTIAL_SEVEN_FAMILIES_FIT_READY
+  general_parameter_regression: PARTIAL_EIGHT_FAMILIES_FIT_READY
   mixture_independent_scalar_pure: FIT_READY_PURE_SATURATION_PRESSURE_AND_LIQUID_DENSITY
   mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_VLE_AND_ADVERTISED_AQUEOUS_MIAC
   mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
   mixture_independent_born_diameter: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_solvation_factor: FIT_READY_ADVERTISED_MEAN_IONIC_ACTIVITY_DOMAIN
+  model_dielectric_ion_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
   mixture_independent_association: NOT_READY_PENDING_EXACT_TOPOLOGY_BOUND_PROVIDER_DERIVATIVES
   khb_ij: NOT_READY_NOT_A_CURRENT_PROVIDER_PARAMETER_FAMILY
   full_parameter_family_coverage: NOT_READY

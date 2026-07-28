@@ -52,11 +52,11 @@ with no added runtime test seam.
 
 `next_figiel_family_status: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED`
 
-`general_parameter_regression_status: SEVEN_PARAMETER_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
+`general_parameter_regression_status: EIGHT_PARAMETER_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
 
 The user-approved 2026-07-27 destination is general parameter-family
 regression, defined in `docs/science/general-parameter-regression.md`. The
-first seven families are implemented. Caller-supplied, source-bound
+first eight families are implemented. Caller-supplied, source-bound
 fixed-composition VLE rows may independently fit one shared `k_ij` or `l_ij`
 for any neutral, nonassociating binary model whose installed Provider
 descriptor advertises the corresponding exact `(n1,n2,V,pair_parameter)`
@@ -117,6 +117,21 @@ water-factor problem. All starts converge to the prior paper-specific
 reference values with no active bounds. This is fit readiness only for the
 advertised fixed-state reference paths, not general electrolyte, catalog, or
 predictive authority.
+
+Provider commit `e063f32f6e2b975af11ae7e65c1a12cd3076941c` exposes the
+model-bound Figiel dielectric ion-suppression coefficient through an exact
+relative-permittivity value/first-derivative capability. Its retained wheel
+SHA-256 is
+`d090fa92d86ea91ab40df24aa96fc18c1821eaf636e9a03e01346a6bef8e31bd`;
+the installed public-header SHA-256 is
+`5dccb80d0d64a24bb8070bd5a0d7f27c3b55173253b1637f9a8a7e03e4e6f82c`.
+Regression commit `77a94c215d3dadb52a4f0ed90968631949b612f4`
+fits one coefficient from caller-supplied salt-free-normalized relative-
+permittivity rows through the existing engine/result/native target. The
+36-row Figiel Figures 2-3 water/methanol reference campaign is rank 1,
+non-bound, and converges from both declared starts to
+`7.067350349980952`, compared descriptively with the paper's `7.01`.
+These digitized training rows establish fit-ready execution only.
 
 All 17 audited May rows reproduce the frozen `68 x 35` formulation with
 convergence, full rank 35, projected parameter rank 1, a non-bound

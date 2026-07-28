@@ -92,9 +92,11 @@ or `l_ij` for caller-supplied fixed-composition VLE rows; one active
 `segment_count`, `segment_diameter`, or `dispersion_energy_over_k` for caller-
 supplied pure-saturation rows; one Born diameter for caller-supplied
 solvation-Gibbs targets; and one solvation factor for caller-supplied mean-
-ionic-activity rows on matching installed Provider capabilities. They remain
-authority-neutral and are not restricted to the reference campaigns. The
-scalar pure and direct-observable paths are one-family-at-a-time and do not
-replace the accepted paper-specific workflows. All other general
-families retain their documented pending states; do not broaden them to
-uncertainty, catalog persistence, or global-identifiability authority.
+ionic-activity rows; and one model-level dielectric ion-suppression
+coefficient for caller-supplied relative-permittivity-ratio rows on matching
+installed Provider capabilities. They remain authority-neutral and are not
+restricted to the reference campaigns. The scalar pure and direct-observable
+paths are one-family-at-a-time and do not replace the accepted paper-specific
+workflows. All other general families retain their documented pending states;
+do not broaden them to uncertainty, catalog persistence, or global-
+identifiability authority.

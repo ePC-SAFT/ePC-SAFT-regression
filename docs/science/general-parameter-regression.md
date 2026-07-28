@@ -1,8 +1,9 @@
 # General ePC-SAFT Parameter Regression
 
 Status: neutral-binary `k_ij`/`l_ij`, scalar pure
-`m`/`sigma`/`epsilon-k`, Born-diameter, and solvation-factor families
-fit-ready for their typed observation contracts; broader families pending
+`m`/`sigma`/`epsilon-k`, Born-diameter, solvation-factor, and model-level
+dielectric ion-suppression families fit-ready for their typed observation
+contracts; broader families pending
 
 Date: 2026-07-27
 
@@ -147,7 +148,8 @@ and rank gates.
 | `k_hb_ij` | source-defined cross-association combining-rule coordinate | the same cross-association-sensitive observations, with enough composition/temperature variation to separate it from pure association parameters | not a current Provider record family; requires an explicit active combining-rule coordinate or a declared transform to resolved cross-association energy |
 | `born_diameter` | ion component | source-defined single-ion solvation Gibbs energy under the advertised fixed-state reference path | fit-ready one ion at a time for caller-supplied solvation-Gibbs targets on an installed direct-observable capability; five Figiel ions are reference evidence |
 | `solvation_factor` | applicable component | MIAC under the advertised fixed-state reference path | fit-ready one component factor at a time for caller-supplied mean-ionic-activity rows on an installed direct-observable capability; 21 NaBr rows are reference evidence |
-| dielectric and ion-suppression coefficients | component/model/correlation term | dielectric, MIAC, osmotic/activity, solvation, or phase observations over a rank-sufficient state range | represented families vary; exact active derivatives and Regression surface pending |
+| `dielectric_ion_suppression_coefficient` | model | salt-free-normalized relative permittivity over a rank-sufficient ion-mole-fraction range | fit-ready one coefficient at a time on an installed capability advertising the exact relative-permittivity value/first derivative; 36 digitized Figiel water/methanol rows are reference evidence |
+| other dielectric and ion-suppression coefficients | component/model/correlation term | dielectric, MIAC, osmotic/activity, solvation, or phase observations over a rank-sufficient state range | represented families vary; exact active derivatives and Regression surface pending |
 | polar coefficients | component/correlation term | polar-mixture VLE, PVT, caloric, dielectric, or other source-defined polar observables | represented families vary; exact active derivatives and Regression surface pending |
 | temperature-dependent coefficients | named correlation term | observations spanning enough temperatures to identify every active coefficient | represented correlations vary; exact active derivatives and Regression surface pending |
 
@@ -213,6 +215,21 @@ by Regression. Water--cation, water--anion, and cation--anion are separate
 closed Provider capabilities; fitting one does not silently activate the other
 two.
 
+For the model-level Figiel dielectric ion-suppression fit, every row supplies
+the total ion mole fraction and the observed dimensionless ratio to the
+salt-free solvent permittivity. The residual and exact Jacobian are
+
+```text
+r_i = (epsilon_model,i / epsilon_saltfree,i - y_i) / s_i
+dr_i/dz = (d epsilon_model,i / d alpha)
+           * (d alpha/dz) / (epsilon_saltfree,i * s_i).
+```
+
+Provider supplies both permittivities and the exact first derivative;
+Regression does not copy the dielectric equation. Solvent identity remains
+source provenance even where normalization makes the scalar model response
+independent of the salt-free solvent value.
+
 The canonical transformed-dataset hash binds every row to exactly one
 partition. Row IDs are globally unique, partitions are disjoint, and only
 `TRAINING` rows may create Ceres residual blocks. `HELD_OUT` and `STRESS` rows
@@ -229,6 +246,7 @@ Initial typed observation contracts are:
   lifted phase state variables;
 - activity, fugacity, osmotic, or mean-ionic-activity coefficient;
 - solvation Gibbs energy.
+- salt-free-normalized relative permittivity.
 
 Positive equality, linear aggregate, and one-sided censored observations may
 be added as typed contracts when a real source requires them. The current
@@ -488,11 +506,17 @@ prediction evidence, or Provider-catalog authority.
    from one or more mean-ionic-activity targets. Each problem remains one
    parameter at a time, consumes the Provider value/first derivative, and
    uses no lifted phase variables.
-6. Add association energy/volume and an explicit `k_hb_ij` combining-rule
+6. **Complete for the advertised model-level dielectric domain.** Admit one
+   ion-suppression coefficient from normalized relative-permittivity rows.
+   The 36-row Figiel water/methanol reference fit is a `36 x 1`, rank-1,
+   non-bound training solve and recovers `7.067350349980952` versus the
+   paper's descriptive `7.01`; the digitized rows define no scientific or
+   predictive cutoff.
+7. Add association energy/volume and an explicit `k_hb_ij` combining-rule
    coordinate only after Provider supplies exact topology-bound derivatives
    and source-backed datasets establish rank.
-7. Add polar, dielectric, and temperature-dependent families as separately
-   evidenced capabilities rather than new engines. Equilibrium-coupled
+8. Add polar, remaining dielectric, and temperature-dependent families as
+   separately evidenced capabilities rather than new engines. Equilibrium-coupled
    observations remain blocked by the dependency doctrine and are not part of
    this sequence.
 
