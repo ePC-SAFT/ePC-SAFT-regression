@@ -149,7 +149,7 @@ and rank gates.
 | `born_diameter` | ion component | source-defined single-ion solvation Gibbs energy under the advertised fixed-state reference path | fit-ready one ion at a time for caller-supplied solvation-Gibbs targets on an installed direct-observable capability; five Figiel ions are reference evidence |
 | `solvation_factor` | applicable component | MIAC under the advertised fixed-state reference path | fit-ready one component factor at a time for caller-supplied mean-ionic-activity rows on an installed direct-observable capability; 21 NaBr rows are reference evidence |
 | `dielectric_ion_suppression_coefficient` | model | salt-free-normalized relative permittivity over a rank-sufficient ion-mole-fraction range | fit-ready one coefficient at a time on an installed capability advertising the exact relative-permittivity value/first derivative; 36 digitized Figiel water/methanol rows are reference evidence |
-| `ionic_region_relative_permittivity` | model | source-defined single-ion solvation Gibbs energy under an advertised SSM+DS fixed-state reference path | fit-ready one model coordinate at a time on an installed value/first-derivative capability; the sodium Table S5 target gives a `1 x 1`, rank-1, non-bound capability fit at `7.624377291400448`, while Figiel's fixed value `8` is descriptive rather than a fitted reference target |
+| `ionic_region_relative_permittivity` | model | source-defined single-ion solvation Gibbs energy under an advertised SSM+DS fixed-state reference path | fit-ready one model coordinate at a time on an installed value/first-derivative capability; five independent Table S5 `1 x 1` fits with the paper's Born diameters fixed are rank-1, non-bound, confirmed, and return `7.99999999787946` through `7.999999997884154`; Figiel's `8` is a fixed model input, not a fitted reference target |
 | other dielectric and ion-suppression coefficients | component/model/correlation term | dielectric, MIAC, osmotic/activity, solvation, or phase observations over a rank-sufficient state range | represented families vary; exact active derivatives and Regression surface pending |
 | polar coefficients | component/correlation term | polar-mixture VLE, PVT, caloric, dielectric, or other source-defined polar observables | represented families vary; exact active derivatives and Regression surface pending |
 | temperature-dependent coefficients | named correlation term | observations spanning enough temperatures to identify every active coefficient | represented correlations vary; exact active derivatives and Regression surface pending |
@@ -598,10 +598,11 @@ prediction evidence, or Provider-catalog authority.
    predictive cutoff.
 7. **Complete for model-level ionic-region relative permittivity.** Admit one
    positive SSM+DS coordinate from source-bound solvation-Gibbs targets on an
-   installed model-bound callback. The sodium Table S5 capability check is
-   `1 x 1`, rank 1, non-bound, and confirmed from starts 4 and 12; its fitted
-   `7.624377291400448` is in-sample mechanics evidence, not recovery of a
-   parameter that Figiel fitted or a shared multi-model value.
+   installed model-bound callback. Validation subject `81e9a3f` fits all five
+   admitted Table S5 ion models independently; every `1 x 1` problem is rank
+   1, non-bound, and confirmed from starts 4 and 12, recovering the fixed
+   input `8` within `2.2e-9`. This is in-sample mechanics evidence, not
+   recovery of a parameter that Figiel fitted or a shared multi-model value.
 8. **Partial for pure 2B association.** Exact Provider Hessians and the
    Regression pure-density surface exist for the sole symmetric association
    pair. Recovery remains source-blocked until the original simultaneous

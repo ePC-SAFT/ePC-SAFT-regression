@@ -79,10 +79,13 @@ The ninth family is model-level
 `ionic_region_relative_permittivity`. On an installed Provider advertising
 the exact SSM+DS solvation-Gibbs value/first derivative, callers may fit one
 coordinate from source-bound single-ion solvation targets through the same
-direct-observable Ceres path. The sodium Table S5 capability check is
-full-rank, non-bound, and confirmed at `7.624377291400448`; Figiel reports
-`8` as fixed model input, so this is fit-mechanics evidence rather than
-recovery of a published fitted value or a shared multi-model parameter.
+direct-observable Ceres path. Validation subject `81e9a3f` independently
+fits all five admitted ion models against the Table S5 reported averages
+while holding the paper's Born diameters fixed. Each `1 x 1` fit is full-rank,
+non-bound, confirmed from starts 4 and 12, and returns
+`7.99999999787946` through `7.999999997884154`. Figiel reports `8` as fixed
+model input, so this establishes fit-ready mechanics rather than recovery of
+a paper-fitted parameter or a shared multi-model parameter.
 
 Caller-supplied pure-saturation pressure and liquid-density rows may
 independently fit one component `segment_count`, `segment_diameter`, or
