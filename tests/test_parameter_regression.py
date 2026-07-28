@@ -6,6 +6,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from epcsaft import EPCSAFT, ParameterBundle, native_sdk
+from epcsaft.records import PairParameterRecord, SingleParameterRecord
 import pytest
 
 import epcsaft_regression.parameter_regression as parameter_regression
@@ -52,6 +53,62 @@ def _model() -> EPCSAFT:
         "gross-2001-methane-ethane", version=1
     ).select(("methane", "ethane"))
     return EPCSAFT(parameters)
+
+
+def _methane_propane_bundle() -> ParameterBundle:
+    """Build the campaign's public user-provided two-component bundle."""
+    methane_catalog = ParameterBundle.from_catalog(
+        "gross-2001-methane-ethane", version=1
+    )
+    propane_catalog = ParameterBundle.from_catalog(
+        "gross-2001-propane", version=1
+    )
+    methane_records = tuple(
+        record
+        for record in methane_catalog.records
+        if isinstance(record, SingleParameterRecord)
+        and record.component_id == "methane"
+    )
+    propane_records = tuple(
+        record
+        for record in propane_catalog.records
+        if isinstance(record, SingleParameterRecord)
+        and record.component_id == "propane"
+    )
+    source = methane_catalog.sources[0]
+    domains = tuple(
+        {domain.domain_id: domain for domain in (*methane_catalog.domains, *propane_catalog.domains)}.values()
+    )
+    components = tuple(
+        component
+        for component in (*methane_catalog.components, *propane_catalog.components)
+        if component.component_id in {"methane", "propane"}
+    )
+    pair = PairParameterRecord(
+        "methane-propane-kij-initial",
+        "methane",
+        "propane",
+        "k_ij",
+        0.0,
+        source.source_id,
+        "test-only zero active-pair initialization",
+        "gross-pair-unknown",
+    )
+    bundle = ParameterBundle.from_records(
+        bundle_id="may-2015-methane-propane-kij-fixture",
+        bundle_version=1,
+        purpose="user-provided",
+        sources=(source,),
+        domains=domains,
+        components=components,
+        singles=(*methane_records, *propane_records),
+        pairs=(pair,),
+    )
+    return bundle
+
+
+def _methane_propane_model() -> EPCSAFT:
+    return EPCSAFT(_methane_propane_bundle().select(("methane", "propane")))
 
 
 def _pure_model() -> EPCSAFT:
@@ -2026,6 +2083,315 @@ def _audited_may_rows() -> tuple[FixedCompositionVleObservation, ...]:
         )
         for record in records
     )
+
+
+def _may_methane_propane_records() -> tuple[dict[str, str], ...]:
+    data_path = (
+        Path(__file__).parents[1]
+        / "evidence"
+        / "may-2015-methane-propane-vle.csv"
+    )
+    with data_path.open(newline="", encoding="utf-8") as stream:
+        return tuple(csv.DictReader(stream))
+
+
+def _may_methane_propane_rows() -> tuple[FixedCompositionVleObservation, ...]:
+    gas_constant = 8.31446261815324
+    data_path = (
+        Path(__file__).parents[1]
+        / "evidence"
+        / "may-2015-methane-propane-vle.csv"
+    )
+    return tuple(
+        FixedCompositionVleObservation(
+            row_id=record["row_id"],
+            source_id="may-2015-methane-propane",
+            source_locator=f"{data_path.name}:{record['row_id']}",
+            component_ids=("methane", "propane"),
+            temperature_k=float(record["T_K"]),
+            pressure_pa=1000.0 * float(record["p_kPa"]),
+            liquid_mole_fraction_first=float(record["x_methane"]),
+            vapor_mole_fraction_first=1.0 - float(record["y_propane"]),
+            pressure_scale_pa=1000.0 * float(record["p_kPa"]),
+            chemical_potential_scales=(1.0, 1.0),
+            liquid_volume_origin_m3_per_mol=4.0e-5,
+            liquid_volume_start_m3_per_mol=4.0e-5,
+            liquid_volume_bounds_m3_per_mol=(3.0e-5, 2.0e-4),
+            vapor_volume_origin_m3_per_mol=(
+                gas_constant
+                * float(record["T_K"])
+                / (1000.0 * float(record["p_kPa"]))
+            ),
+            vapor_volume_start_m3_per_mol=(
+                gas_constant
+                * float(record["T_K"])
+                / (1000.0 * float(record["p_kPa"]))
+            ),
+            vapor_volume_bounds_m3_per_mol=(5.0e-5, 1.0e-2),
+            partition=ObservationPartition.TRAINING,
+        )
+        for record in _may_methane_propane_records()
+    )
+
+
+def _may_methane_propane_problem(
+    model: EPCSAFT,
+    rows: tuple[FixedCompositionVleObservation, ...] | None = None,
+) -> RegressionProblem:
+    observations = rows or _may_methane_propane_rows()
+    capability = _capability(model, ParameterFamily.K_IJ)
+    source = SourceDescriptor(
+        source_id="may-2015-methane-propane",
+        citation=(
+            "May et al. (2015), Reference Quality Vapor--Liquid Equilibrium "
+            "Data for the Binary Systems Methane + Ethane, + Propane, "
+            "J. Chem. Eng. Data 60, 3606--3620, DOI 10.1021/acs.jced.5b00610."
+        ),
+        durable_locator="evidence/may-2015-methane-propane-vle.csv",
+        source_artifact_sha256=(
+            "53fd1bdd55dc6807ec76cf88626438d8dfceb3ec09149d4405ea36cfbe6b842a"
+        ),
+        canonical_dataset_sha256=canonical_dataset_sha256(observations),
+        transformation_record=(
+            "Transcribed Table 6 values unchanged; converted p/kPa to P/Pa "
+            "by multiplication by 1000 and derived methane vapor fraction as "
+            "1 - y_propane. Source uncertainties remain descriptive inputs "
+            "and are not fit weights or cutoffs."
+        ),
+        units_and_bases=(
+            "Source T/K, p/kPa, mole fractions, and standard/combined "
+            "uncertainties; model pressure/Pa and dimensionless mu/RT scales."
+        ),
+        use_basis=(
+            "Direct experimental binary VLE observations used for one "
+            "in-sample constant-k_ij reference fit."
+        ),
+        residual_scale_rationale=(
+            "Pressure residuals use the observed pressure magnitude; both "
+            "chemical-potential residuals use unit mu/RT scales."
+        ),
+    )
+    parameter = ParameterCoordinate(
+        family=ParameterFamily.K_IJ,
+        identity=PairParameterIdentity("methane", "propane"),
+        capability_id=capability.capability_id,
+        provider_parameter_fingerprint=capability.parameter_fingerprint,
+        provider_topology_fingerprint=capability.topology_fingerprint,
+        unit="1",
+        transform=AffineParameterTransform(origin=0.0, scale=0.01),
+        lower_bound=-0.15,
+        upper_bound=0.10,
+        starts=(0.0, -0.05, 0.05),
+    )
+    return RegressionProblem(
+        sources=(source,),
+        parameters=(parameter,),
+        observations=observations,
+        maximum_condition_number=1.0e10,
+        maximum_iterations=100,
+        maximum_solver_time_seconds=180.0,
+        function_tolerance=1.0e-12,
+        gradient_tolerance=1.0e-12,
+        parameter_tolerance=1.0e-12,
+        confirmation_parameter_scaled_max_delta=1.0e-5,
+        confirmation_cost_relative_delta=1.0e-8,
+    )
+
+
+def test_may_methane_propane_source_identity_and_transform() -> None:
+    data_path = (
+        Path(__file__).parents[1]
+        / "evidence"
+        / "may-2015-methane-propane-vle.csv"
+    )
+    assert canonical_dataset_sha256(_may_methane_propane_rows())
+    assert data_path.read_bytes() and __import__("hashlib").sha256(
+        data_path.read_bytes()
+    ).hexdigest() == "97a07b274dc4da6a281614f3fd39c520ebd6678776413746b13bc8665113c529"
+    records = _may_methane_propane_records()
+    assert len(records) == 22
+    assert len({record["row_id"] for record in records}) == 22
+    expected = (
+        (283.38, 7630, 0.4586, 0.0010, 0.0018, 0.2045, 0.0006, 0.0009),
+        (273.48, 7102, 0.4589, 0.0010, 0.0018, 0.1614, 0.0003, 0.0007),
+        (263.51, 6597, 0.4623, 0.0007, 0.0018, 0.1197, 0.0012, 0.0013),
+        (263.56, 6560, 0.4601, 0.0013, 0.0021, 0.1174, 0.0018, 0.0019),
+        (253.59, 6100, 0.4708, 0.0011, 0.0021, 0.0947, 0.0004, 0.0006),
+        (243.61, 5611, 0.4857, 0.0015, 0.0024, 0.0715, 0.0001, 0.0004),
+        (243.64, 5635, 0.4907, 0.0010, 0.0022, 0.0719, 0.0001, 0.0004),
+        (243.62, 5544, 0.4832, 0.0014, 0.0024, 0.0715, 0.0002, 0.0004),
+        (233.67, 5119, 0.5077, 0.0012, 0.0026, 0.0518, 0.0003, 0.0004),
+        (233.61, 5077, 0.5037, 0.0021, 0.0031, 0.0520, 0.0003, 0.0004),
+        (223.54, 4622, 0.5333, 0.0006, 0.0027, 0.0368, 0.0005, 0.0005),
+        (223.36, 4628, 0.5331, 0.0012, 0.0030, 0.0366, 0.0002, 0.0003),
+        (213.38, 4108, 0.5614, 0.0005, 0.0033, 0.0245, 0.0003, 0.0003),
+        (203.40, 3576, 0.5952, 0.0014, 0.0044, 0.0162, 0.0005, 0.0005),
+        (243.62, 891, 0.0710, 0.0005, 0.0019, 0.2076, 0.0003, 0.0041),
+        (243.62, 3909, 0.3442, 0.0003, 0.0019, 0.0743, 0.0004, 0.0006),
+        (243.63, 5500, 0.4788, 0.0014, 0.0024, 0.0704, 0.0002, 0.0004),
+        (243.61, 5544, 0.4764, 0.0015, 0.0025, 0.0734, 0.0002, 0.0004),
+        (243.62, 6402, 0.5565, 0.0006, 0.0022, 0.0726, 0.0006, 0.0007),
+        (243.63, 6989, 0.6082, 0.0015, 0.0026, 0.0768, 0.0005, 0.0006),
+        (243.62, 7530, 0.6572, 0.0010, 0.0025, 0.0779, 0.0016, 0.0016),
+        (243.62, 7943, 0.6961, 0.0013, 0.0027, 0.0855, 0.0005, 0.0007),
+    )
+    observed = tuple(
+        (
+            float(record["T_K"]),
+            int(record["p_kPa"]),
+            float(record["x_methane"]),
+            float(record["u_x_methane"]),
+            float(record["uc_x_methane"]),
+            float(record["y_propane"]),
+            float(record["u_y_propane"]),
+            float(record["uc_y_propane"]),
+        )
+        for record in records
+    )
+    assert observed == expected
+    rows = _may_methane_propane_rows()
+    assert tuple(row.pressure_pa for row in rows) == tuple(
+        1000.0 * values[1] for values in expected
+    )
+    assert tuple(row.vapor_mole_fraction_first for row in rows) == tuple(
+        1.0 - values[5] for values in expected
+    )
+    assert all(
+        record["u_x_methane"] and record["uc_x_methane"]
+        and record["u_y_propane"] and record["uc_y_propane"]
+        for record in records
+    )
+
+
+def test_may_methane_propane_bundle_is_user_provided_and_pair_initialized() -> None:
+    bundle = _methane_propane_bundle()
+    model = EPCSAFT(bundle.select(("methane", "propane")))
+    assert bundle.purpose == "user-provided"
+    assert model.component_ids == ("methane", "propane")
+    pair_records = tuple(
+        record
+        for record in bundle.records
+        if isinstance(record, PairParameterRecord)
+    )
+    assert len(pair_records) == 1
+    assert pair_records[0].component_id_a == "methane"
+    assert pair_records[0].component_id_b == "propane"
+    assert float(pair_records[0].value) == 0.0
+
+
+def test_exact_may_methane_propane_lifted_kij_jacobian_matches_directional_difference() -> None:
+    model = _methane_propane_model()
+    problem = _may_methane_propane_problem(model)
+    variables = (0.0,) + tuple(
+        value
+        for row in problem.observations
+        for value in (
+            math.log(
+                row.liquid_volume_start_m3_per_mol
+                / row.liquid_volume_origin_m3_per_mol
+            ),
+            math.log(
+                row.vapor_volume_start_m3_per_mol
+                / row.vapor_volume_origin_m3_per_mol
+            ),
+        )
+    )
+    direction = (0.20,) + tuple(
+        value
+        for _ in problem.observations
+        for value in (-0.10, 0.15)
+    )
+    residuals, jacobian = _evaluate_parameters(problem, model, variables)
+    step = 1.0e-6
+    plus = tuple(
+        value + step * delta
+        for value, delta in zip(variables, direction, strict=True)
+    )
+    minus = tuple(
+        value - step * delta
+        for value, delta in zip(variables, direction, strict=True)
+    )
+    finite_difference = tuple(
+        (upper - lower) / (2.0 * step)
+        for upper, lower in zip(
+            _evaluate_parameters(problem, model, plus)[0],
+            _evaluate_parameters(problem, model, minus)[0],
+            strict=True,
+        )
+    )
+    exact_product = tuple(
+        math.fsum(
+            jacobian[row * 45 + column] * direction[column]
+            for column in range(45)
+        )
+        for row in range(88)
+    )
+    assert len(residuals) == 88
+    assert len(jacobian) == 88 * 45
+    assert exact_product == pytest.approx(
+        finite_difference, rel=2.0e-7, abs=2.0e-8
+    )
+
+
+@pytest.mark.campaign
+def test_may_methane_propane_campaign_reproduces_reference_fit() -> None:
+    model = _methane_propane_model()
+    problem = _may_methane_propane_problem(model)
+
+    result = fit_parameters(problem, model)
+    repeat = fit_parameters(problem, _methane_propane_model())
+
+    assert len(problem.observations) == 22
+    assert problem.parameters[0].identity == PairParameterIdentity(
+        "methane", "propane"
+    )
+    assert problem.parameters[0].starts == (0.0, -0.05, 0.05)
+    assert result.solver_converged
+    assert result.numerically_converged
+    assert result.workflow_valid
+    assert result.solution_usable
+    assert result.termination == "CONVERGENCE"
+    assert result.jacobian.residual_count == 88
+    assert result.jacobian.variable_count == 45
+    assert result.jacobian.full_rank == 45
+    assert result.jacobian.projected_parameter_rank == 1
+    assert result.parameter.active_bound is None
+    assert result.confirmation_count == 2
+    assert result.confirmations_usable
+    assert result.training_row_count == 22
+    assert result.held_out_row_count == 0
+    assert result.stress_row_count == 0
+    assert result.evaluated_row_count == 22
+    assert result.skipped_row_count == 0
+    assert result.failed_row_count == 0
+    assert result.residual_evaluation_count > 0
+    assert isinstance(result.residual_evaluation_count, int)
+    assert result.jacobian_evaluation_count > 0
+    assert isinstance(result.jacobian_evaluation_count, int)
+    assert all(
+        row.derivative_status == "EXACT_PROVIDER_HESSIAN"
+        and row.evaluated
+        and row.status == "evaluated"
+        and not row.failure_reason
+        for row in result.rows
+    )
+    assert result.parameter.final == pytest.approx(
+        0.0038919335722629794, rel=0.0, abs=2.0e-15
+    )
+    assert result.final_cost == pytest.approx(
+        0.03734758119771876, rel=0.0, abs=2.0e-15
+    )
+
+    # A second complete run establishes the observed deterministic
+    # repeatability; no scientific or wall-time cutoff is inferred here.
+    repeatability_parameter_delta = abs(
+        result.parameter.final - repeat.parameter.final
+    )
+    repeatability_cost_delta = abs(result.final_cost - repeat.final_cost)
+    assert repeatability_parameter_delta <= 1.0e-14
+    assert repeatability_cost_delta <= 1.0e-14
+    assert result.parameter.final == repeat.parameter.final
+    assert result.final_cost == repeat.final_cost
 
 
 @pytest.mark.campaign

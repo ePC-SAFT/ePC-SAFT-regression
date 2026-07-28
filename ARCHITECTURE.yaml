@@ -243,6 +243,38 @@ general_parameter_regression:
     active_bound: false
     predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
     interpretation: in-sample-runtime-evidence-not-scientific-admission
+  may_methane_propane_reference:
+    source_citation: May-2015-JCED-60-3606-3620-Table-6
+    source_pdf_sha256: 53fd1bdd55dc6807ec76cf88626438d8dfceb3ec09149d4405ea36cfbe6b842a
+    dataset_csv: evidence/may-2015-methane-propane-vle.csv
+    dataset_csv_sha256: 97a07b274dc4da6a281614f3fd39c520ebd6678776413746b13bc8665113c529
+    source_rows: 22
+    bundle_purpose: user-provided
+    selected_components: [methane, propane]
+    active_pair: [methane, propane]
+    fitted_parameter: k_ij
+    variables: 45
+    residuals: 88
+    full_rank: 45
+    projected_parameter_rank: 1
+    full_condition_number: 3894.3041379063716
+    fitted_kij: 0.0038919335722629794
+    final_cost: 0.03734758119771876
+    confirmation_runs: 2
+    active_bound: false
+    evaluated_rows: 22
+    failed_rows: 0
+    provider_derivative_status: EXACT_PROVIDER_HESSIAN
+    solver_status: CONVERGENCE
+    numerical_status: CONVERGED
+    workflow_status: VALID
+    physical_status: NOT_ADJUDICATED_NO_ROW_ACCEPTANCE_CRITERIA
+    scientific_status: NOT_ADJUDICATED_NO_APPROVED_SCIENTIFIC_CUTOFF
+    predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
+    interpretation: >-
+      May supplies direct VLE observations, not this fitted parameter. This is
+      in-sample Regression evidence only; it has no prediction, catalog,
+      production, or scientific-authority effect.
   equilibrium_dependency: FORBIDDEN_BY_CURRENT_DOCTRINE
 
 owners:

@@ -896,6 +896,43 @@ result instead of running indefinitely; the budget does not interrupt an
 individual Provider callback and cannot replace Provider-side evaluation
 deadlines.
 
+### May methane/propane source-backed reference
+
+May et al. (2015), Table 6, supplies 22 direct methane/propane VLE rows in
+`evidence/may-2015-methane-propane-vle.csv`. The source PDF is retained by
+SHA-256 `53fd1bdd55dc6807ec76cf88626438d8dfceb3ec09149d4405ea36cfbe6b842a`;
+the exact CSV artifact is
+`97a07b274dc4da6a281614f3fd39c520ebd6678776413746b13bc8665113c529`.
+The source values are kept as `T/K`, `p/kPa`, methane liquid fraction, and
+propane vapor fraction with both standard and combined uncertainty columns.
+Regression converts pressure by `P_Pa = 1000 p_kPa` and derives the methane
+vapor fraction as `1 - y_propane`. Uncertainties are descriptive provenance;
+they are not residual weights or acceptance cutoffs.
+
+The test-only bundle is `purpose="user-provided"`: it copies the installed
+Gross--Sadowski methane and propane pure records, adds one explicit zero
+methane/propane active-pair initialization, and selects the canonical order
+`("methane", "propane")`. Provider remains the EOS and exact Hessian owner;
+no Provider catalog is changed. Every row uses the observed pressure scale,
+unit `mu/RT` scales, liquid start/origin `4.0e-5 m3/mol`, ideal-gas vapor
+start/origin `RT/P`, and the declared liquid `[3.0e-5, 2.0e-4]` and vapor
+`[5.0e-5, 1.0e-2]` bounds.
+
+The source-backed in-sample campaign fits exactly one unordered constant pair
+coordinate. Its lifted residual/Jacobian shape is `88 x 45`, with full rank
+`45/45`, projected parameter rank `1`, full condition number
+`3894.3041379063716`, no active bound, and two confirmation runs after the
+primary start. The three declared starts converge to the same fitted
+`k_ij = 0.0038919335722629794`; final cost is `0.03734758119771876`, all 22
+rows are evaluated, and every row reports `EXACT_PROVIDER_HESSIAN`. A complete
+second campaign rerun was bitwise identical for fitted value and cost (the
+observed repeatability deltas are zero; the test retains a `1e-14` diagnostic
+tolerance). Solver, numerical, workflow, and physical-validity statuses are
+reported separately. May supplies the observations, not this fitted
+parameter: the result is in-sample Regression evidence only, with no
+prediction, Provider-catalog persistence, production, or scientific authority
+claim.
+
 An additional literature reference may be admitted only when its raw
 observations, component order, units, `k_ij` convention, fitted comparison
 value, and installed Provider capability are all independently available.
