@@ -6,7 +6,8 @@ Date: 2026-07-27
 
 ## Implemented contract
 
-The first general family fits one shared, dimensionless `k_ij` for a
+The first general pair families independently fit one shared, dimensionless
+`k_ij` or `l_ij` for a
 caller-supplied neutral, nonassociating binary model and source-bound
 fixed-composition VLE rows. Each training row owns two lifted log-volume
 coordinates and four scaled residuals:
@@ -19,42 +20,39 @@ coordinates and four scaled residuals:
 ```
 
 The exact `4R x (1 + 2R)` Jacobian consumes the installed Provider's
-row-major value/gradient/Hessian contract in `(n1,n2,V,k_ij)`. No third
+row-major value/gradient/Hessian contract in
+`(n1,n2,V,active_pair_parameter)`. No third
 derivatives, density roots, copied EOS equations, numerical production
 derivatives, or Equilibrium dependency are present.
 
 ## Exact subjects
 
-- Provider commits:
-  `651b778de5b25199a9efe96ac67b89d2fd113a0a`,
-  `30f896df4f63a8b12dbc8047923306364c416966`,
-  `5d9065110dae1f2548fbf831e92bd5c3362d58d1`
-- Provider tree: `9badefc22bbb5d6736d77fc5bcd8524c2a73dc71`
+- Provider commit:
+  `1e571ab0a84603a51ed6994b14286f683fb12b88`
+- Provider tree: `910e01c1571d4d6128db60a30d6e1948f5c8ac4c`
 - Provider wheel:
-  `/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-general-parameter-sdk-v1/5d90651/epcsaft-0.1.0.dev0-cp313-cp313-linux_x86_64.whl`
+  `/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-general-parameter-sdk-v1/1e571ab/epcsaft-0.1.0.dev0-cp313-cp313-linux_x86_64.whl`
 - Provider wheel SHA-256:
-  `f5c06ee9e5dbe29bcca881378355672057283a69e59e3ec8561c0d1378c60d14`
+  `6536edc63adaa13c5c6c67c185d82c9ae232048e99dc3dc3be502708eea4410f`
 - Installed Provider header SHA-256:
-  `18d74d761290154dad3a336ced0d25c0b2badeab7e9462de3485a99e619fae1a`
-- Regression commits:
-  `626b62df1d7ba43275a3931748ad60458325609c`,
-  `dd45126095689d01110e1152ea27a90e4a82694e`,
-  `8816c3cd53e1f1b779e92ca43f669cc70d01fc78`, and
-  `c4523ef5ea770cb8d07bab7d06ac07c9f0f4316d`
-- Regression package tree: `f4af697cd3a6f85695c298be0beaa561573530ce`
+  `b667379c2d7106d012c6b57f96b6f32dd23ef305fe6f15a87c22ab20029008f8`
+- Regression commit:
+  `da7a44ce093201022aec2f3514d4e4fd9d8d2929`
+- Regression package tree: `2f4f82fbb5751317b8314309ff4246f0ebfde7ee`
 - Regression wheel:
-  `/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/regression-general-parameter-v1/c4523ef/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl`
+  `/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/regression-general-parameter-v1/da7a44c/epcsaft_regression-0.1.0.dev0-cp313-cp313-linux_x86_64.whl`
 - Regression wheel SHA-256:
-  `4ccc8caa8ee35ca15b2c5bc555abad7b91c1b5e38c2aaeb92b11016f5c1dfff2`
+  `3a59d2233fec51f949a7784937b54f7f66beae2476fa8e33976672a480b67137`
 
 ## Verification
 
 The exact installed wheels passed:
 
 ```text
-25 focused installed-artifact tests passed in 0.90 s
-87 full installed-artifact tests passed; 1 campaign deselected in 226.29 s
-1 explicit all-17-row campaign passed in 1.07 s
+90 full installed-artifact tests passed; 3 campaigns deselected in 228.92 s
+2 explicit all-17-row pair-family campaigns passed in 0.36 s
+115 Provider native-SDK/association/EOS tests passed in 309.47 s
+56 Validation tests passed in 0.88 s
 ```
 
 The explicit campaign consumes
@@ -70,9 +68,9 @@ Ceres termination            CONVERGENCE
 full lifted rank             35
 projected parameter rank     1
 fitted k_ij                  -0.00843032298906253
+fitted l_ij                  -0.002774426668544412
 active parameter bound       none
 declared confirmation starts 2
-native fit elapsed           0.083270 s
 ```
 
 Independent scientific and code reviews caught and closed false convergence
@@ -83,10 +81,10 @@ loading, and accepted pure-component numerical parity.
 
 ## Interpretation
 
-This evidence establishes a reusable, source-bound, exact-derivative
-fixed-composition neutral-binary `k_ij` runtime. It does not establish
-predictive validity, global uniqueness, uncertainty, catalog authority, or
-support for `l_ij`, association, `k_hb_ij`, polar, dielectric, reactive, or
-other parameter families. The May rows are all training data. The historical
-pressure-closure miss remains immutable negative evidence and is not relaxed
-or reinterpreted here.
+This evidence establishes reusable, source-bound, exact-derivative
+fixed-composition neutral-binary `k_ij` and `l_ij` runtimes. It does not
+establish predictive validity, global uniqueness, uncertainty, catalog
+authority, or support for association, `k_hb_ij`, polar, dielectric, reactive,
+or other parameter families. The May rows are all training data. The
+historical pressure-closure miss remains immutable negative evidence and is
+not relaxed or reinterpreted here.

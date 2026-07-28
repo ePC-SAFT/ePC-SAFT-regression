@@ -1,6 +1,6 @@
 # General ePC-SAFT Parameter Regression
 
-Status: first neutral-binary `k_ij` family fit-ready; broader families pending
+Status: neutral-binary `k_ij` and `l_ij` families fit-ready; broader families pending
 
 Date: 2026-07-27
 
@@ -139,7 +139,7 @@ and rank gates.
 | `segment_diameter` (`sigma`) | component or declared correlation coefficient | liquid density/PVT, saturation density, phase equilibrium | fit-ready only through the current pure-saturation surface; general request pending |
 | `dispersion_energy_over_k` (`epsilon/k`) | component | vapor pressure, phase equilibrium, caloric and PVT observations | fit-ready only through the current pure-saturation surface; general request pending |
 | `k_ij` | unordered component pair | fixed-composition VLE/LLE, activity/fugacity coefficients, MIAC when the electrolyte formulation makes that pair active | fit-ready for caller-supplied fixed-composition VLE rows on any installed Provider model advertising the neutral, nonassociating binary capability; other observation/model domains remain pending |
-| `l_ij` | unordered component pair | density, excess volume, and phase-equilibrium data sensitive to cross-size mixing | represented by Provider; exact active derivative and Regression surface pending |
+| `l_ij` | unordered component pair | density, excess volume, and phase-equilibrium data sensitive to cross-size mixing | fit-ready for caller-supplied fixed-composition VLE rows on any installed Provider model advertising the neutral, nonassociating binary capability; other observation/model domains remain pending |
 | `association_energy_over_k` | association endpoint pair | hydrogen-bond-sensitive VLE/LLE, solvation, enthalpy, and related phase-property observations | represented by Provider; exact active derivative and Regression surface pending |
 | `association_volume` | association endpoint pair | hydrogen-bond-sensitive VLE/LLE, density, solvation, and caloric observations | represented by Provider; exact active derivative and Regression surface pending |
 | `k_hb_ij` | source-defined cross-association combining-rule coordinate | the same cross-association-sensitive observations, with enough composition/temperature variation to separate it from pure association parameters | not a current Provider record family; requires an explicit active combining-rule coordinate or a declared transform to resolved cross-association energy |
@@ -230,13 +230,14 @@ advertise. In canonical value units, every scale must satisfy
 
 ## Exact derivative contract
 
-Provider `5d9065110dae1f2548fbf831e92bd5c3362d58d1` supplies the
-first general model-bound capability descriptor. It advertises only neutral,
-nonassociating binary `k_ij` when the resolved model actually supports the
-exact `(n1,n2,V,k_ij)` value/gradient/Hessian callback. Regression accepts that
-known descriptor, reports unknown descriptors as unsupported, and rejects a
-request for an unknown capability. Later families must supply the same closed
-metadata:
+Provider `1e571ab0a84603a51ed6994b14286f683fb12b88` supplies the
+first two general model-bound capability descriptors. They advertise distinct
+neutral, nonassociating binary `k_ij` and `l_ij` coordinates when the resolved
+model supports the corresponding exact `(n1,n2,V,pair_parameter)`
+value/gradient/Hessian callback. Regression selects the requested known
+descriptor from that finite Provider capability set, reports unknown
+descriptors as unsupported, and rejects an unknown capability request. Later
+families must supply the same closed metadata:
 
 - schema and capability identifiers;
 - parameter family and identity shape;
@@ -394,13 +395,13 @@ The implementation shall:
 Performance evidence cannot relax derivative, rank, or physical-validity
 gates.
 
-The installed first-slice campaign evaluates all 17 audited May 2015
-methane/ethane rows as training data. Its `68 x 35` solve converges with full
-rank 35, projected parameter rank 1, and a non-bound
-`k_ij = -0.00843032298906253`. The native fit itself completed in `0.083270 s`
-in the bounded development smoke. This is performance and in-sample
-reproduction evidence only; the retained pressure-closure result remains
-negative under its historical gate and predictive status remains
+The installed pair-family campaigns evaluate all 17 audited May 2015
+methane/ethane rows as training data. Each `68 x 35` solve converges with full
+rank 35 and projected parameter rank 1. The independent fitted values are
+non-bound `k_ij = -0.00843032298906253` and
+`l_ij = -0.002774426668544412`, each confirmed from two perturbed starts.
+This is in-sample reproduction evidence only; the retained pressure-closure
+result remains negative under its historical gate and predictive status remains
 `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
 ## Implementation sequence
@@ -412,8 +413,8 @@ negative under its historical gate and predictive status remains
    non-associating binary `k_ij` from paper-named input ownership to
    caller-supplied component pairs and rows, matching the advertised
    phase-block domain and retaining reference campaigns as evidence.
-3. Add Provider active `l_ij` support and admit it through the same phase and
-   property observation contracts.
+3. **Complete for fixed-composition VLE.** Add Provider active `l_ij` support
+   and admit it through the same phase observation contract and Ceres owner.
 4. Migrate pure `m`, `sigma`, and `epsilon/k`, Born diameter, and solvation
    factor workflows onto the shared contracts while preserving accepted
    methane and ethane numerical behavior.

@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-neutral-binary-kij-fit-ready
+status: authoritative-methane-and-ethane-with-neutral-binary-kij-lij-fit-ready
 
 authority:
   accepted_capabilities:
@@ -39,12 +39,13 @@ scope: >-
   targets through the installed Provider first-derivative callback. It passes
   its local gates after the user-approved descriptive-comparison correction
   and has no production authority. The authority-neutral general surface also
-  fits one shared k_ij from caller-supplied fixed-composition VLE rows for any
+  independently fits one shared k_ij or l_ij from caller-supplied
+  fixed-composition VLE rows for any
   neutral, nonassociating binary model whose installed Provider capability
   descriptor supplies the exact active Hessian contract.
 
 general_parameter_regression:
-  status: NEUTRAL_BINARY_KIJ_FIT_READY_AUTHORITY_NEUTRAL
+  status: NEUTRAL_BINARY_KIJ_LIJ_FIT_READY_AUTHORITY_NEUTRAL
   design_owner: docs/science/general-parameter-regression.md
   objective: >-
     Fit any admitted continuous ePC-SAFT parameter for any Provider-supported
@@ -65,17 +66,17 @@ general_parameter_regression:
     observation_schema: finite-typed-source-bound
   reference_campaign_role: evidence-not-component-restriction
   forbidden_interpretation: every-provider-parameter-is-fit-ready-now
-  immediate_provider_gate: SATISFIED_FOR_NEUTRAL_BINARY_KIJ
-  provider_subject: 5d9065110dae1f2548fbf831e92bd5c3362d58d1
-  provider_wheel_sha256: f5c06ee9e5dbe29bcca881378355672057283a69e59e3ec8561c0d1378c60d14
-  provider_header_sha256: 18d74d761290154dad3a336ced0d25c0b2badeab7e9462de3485a99e619fae1a
-  regression_subject: c4523ef5ea770cb8d07bab7d06ac07c9f0f4316d
-  regression_wheel_sha256: 4ccc8caa8ee35ca15b2c5bc555abad7b91c1b5e38c2aaeb92b11016f5c1dfff2
-  first_fit_ready_family:
-    family: k_ij
+  immediate_provider_gate: SATISFIED_FOR_NEUTRAL_BINARY_KIJ_AND_LIJ
+  provider_subject: 1e571ab0a84603a51ed6994b14286f683fb12b88
+  provider_wheel_sha256: 6536edc63adaa13c5c6c67c185d82c9ae232048e99dc3dc3be502708eea4410f
+  provider_header_sha256: b667379c2d7106d012c6b57f96b6f32dd23ef305fe6f15a87c22ab20029008f8
+  regression_subject: da7a44ce093201022aec2f3514d4e4fd9d8d2929
+  regression_wheel_sha256: 3a59d2233fec51f949a7784937b54f7f66beae2476fa8e33976672a480b67137
+  fit_ready_pair_families:
+    families: [k_ij, l_ij]
     model_domain: neutral-nonassociating-binary
     observation_contract: fixed-composition-vle-lifted-volumes
-    provider_coordinates: [n1_mol, n2_mol, volume_m3, k_ij]
+    provider_coordinates: [n1_mol, n2_mol, volume_m3, active_pair_parameter]
     provider_derivative_order: 2
     parameter_count: 1
     residuals_per_row: 4
@@ -90,8 +91,8 @@ general_parameter_regression:
     full_rank: 35
     projected_parameter_rank: 1
     fitted_kij: -0.00843032298906253
+    fitted_lij: -0.002774426668544412
     active_bound: false
-    native_fit_elapsed_seconds: 0.083270
     predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
     interpretation: in-sample-runtime-evidence-not-scientific-admission
   equilibrium_dependency: FORBIDDEN_BY_CURRENT_DOCTRINE
@@ -482,9 +483,9 @@ parameter_family_readiness:
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
   figiel_current_catalog_aqueous_kij: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED
   reactive_or_temperature_dependent_parameters: NOT_READY
-  general_parameter_regression: PARTIAL_FIRST_FAMILY_FIT_READY
+  general_parameter_regression: PARTIAL_TWO_PAIR_FAMILIES_FIT_READY
   mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
-  mixture_independent_lij: NOT_READY_PENDING_EXACT_ACTIVE_PROVIDER_DERIVATIVE
+  mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
   mixture_independent_association: NOT_READY_PENDING_EXACT_TOPOLOGY_BOUND_PROVIDER_DERIVATIVES
   khb_ij: NOT_READY_NOT_A_CURRENT_PROVIDER_PARAMETER_FAMILY
   full_parameter_family_coverage: NOT_READY
