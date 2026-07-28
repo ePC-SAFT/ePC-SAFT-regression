@@ -1,6 +1,6 @@
 # General ePC-SAFT Parameter Regression
 
-Status: user-approved architecture; runtime implementation pending
+Status: first neutral-binary `k_ij` family fit-ready; broader families pending
 
 Date: 2026-07-27
 
@@ -138,7 +138,7 @@ and rank gates.
 | `segment_count` (`m`) | component | pure saturation pressure/density, PVT density, phase-equilibrium and caloric observations | fit-ready only through the current pure-saturation surface; general request pending |
 | `segment_diameter` (`sigma`) | component or declared correlation coefficient | liquid density/PVT, saturation density, phase equilibrium | fit-ready only through the current pure-saturation surface; general request pending |
 | `dispersion_energy_over_k` (`epsilon/k`) | component | vapor pressure, phase equilibrium, caloric and PVT observations | fit-ready only through the current pure-saturation surface; general request pending |
-| `k_ij` | unordered component pair | fixed-composition VLE/LLE, activity/fugacity coefficients, MIAC when the electrolyte formulation makes that pair active | bounded Figiel and methane/ethane evidence exists; mixture-independent request pending |
+| `k_ij` | unordered component pair | fixed-composition VLE/LLE, activity/fugacity coefficients, MIAC when the electrolyte formulation makes that pair active | fit-ready for caller-supplied fixed-composition VLE rows on any installed Provider model advertising the neutral, nonassociating binary capability; other observation/model domains remain pending |
 | `l_ij` | unordered component pair | density, excess volume, and phase-equilibrium data sensitive to cross-size mixing | represented by Provider; exact active derivative and Regression surface pending |
 | `association_energy_over_k` | association endpoint pair | hydrogen-bond-sensitive VLE/LLE, solvation, enthalpy, and related phase-property observations | represented by Provider; exact active derivative and Regression surface pending |
 | `association_volume` | association endpoint pair | hydrogen-bond-sensitive VLE/LLE, density, solvation, and caloric observations | represented by Provider; exact active derivative and Regression surface pending |
@@ -230,10 +230,13 @@ advertise. In canonical value units, every scale must satisfy
 
 ## Exact derivative contract
 
-The current Provider SDK has fixed paper/domain-specific callback entries and
-no general capability descriptor. General fitting remains
-`RUNTIME_PENDING_PROVIDER_CAPABILITY_DESCRIPTOR` until a reviewed installed
-artifact supplies the following closed descriptor and model-bound evaluators:
+Provider `5d9065110dae1f2548fbf831e92bd5c3362d58d1` supplies the
+first general model-bound capability descriptor. It advertises only neutral,
+nonassociating binary `k_ij` when the resolved model actually supports the
+exact `(n1,n2,V,k_ij)` value/gradient/Hessian callback. Regression accepts that
+known descriptor, reports unknown descriptors as unsupported, and rejects a
+request for an unknown capability. Later families must supply the same closed
+metadata:
 
 - schema and capability identifiers;
 - parameter family and identity shape;
@@ -255,6 +258,10 @@ artifact supplies the following closed descriptor and model-bound evaluators:
 
 Missing or unknown descriptor metadata prevents `DERIVATIVE_READY` and
 `FIT_READY`; Regression does not fill it from local defaults.
+
+The first descriptor is derivative-ready and authority-neutral. Regression's
+typed fixed-composition VLE contract makes that exact family `FIT_READY`; it
+does not make the capability reference-validated or admitted.
 
 Direct observable residuals consume Provider values and first total
 derivatives. For solver coordinates `z_k`, physical parameters `p_j`, and
@@ -387,14 +394,24 @@ The implementation shall:
 Performance evidence cannot relax derivative, rank, or physical-validity
 gates.
 
+The installed first-slice campaign evaluates all 17 audited May 2015
+methane/ethane rows as training data. Its `68 x 35` solve converges with full
+rank 35, projected parameter rank 1, and a non-bound
+`k_ij = -0.00843032298906253`. The native fit itself completed in `0.083270 s`
+in the bounded development smoke. This is performance and in-sample
+reproduction evidence only; the retained pressure-closure result remains
+negative under its historical gate and predictive status remains
+`NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
+
 ## Implementation sequence
 
-1. Introduce the typed capability, parameter, observation, problem, and result
-   contracts without adding a second native module or target.
-2. Generalize neutral, non-associating binary `k_ij` from paper-named input
-   ownership to caller-supplied component pairs and fixed-composition rows,
-   matching the current phase-block domain and retaining the existing
-   reference campaigns as installed-artifact evidence.
+1. **Complete.** Introduce the typed capability, parameter, observation,
+   problem, and result contracts without adding a second native module or
+   target.
+2. **Complete for fixed-composition VLE.** Generalize neutral,
+   non-associating binary `k_ij` from paper-named input ownership to
+   caller-supplied component pairs and rows, matching the advertised
+   phase-block domain and retaining reference campaigns as evidence.
 3. Add Provider active `l_ij` support and admit it through the same phase and
    property observation contracts.
 4. Migrate pure `m`, `sigma`, and `epsilon/k`, Born diameter, and solvation

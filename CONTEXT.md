@@ -52,17 +52,47 @@ with no added runtime test seam.
 
 `next_figiel_family_status: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED`
 
-`general_parameter_regression_status: USER_APPROVED_ARCHITECTURE_RUNTIME_PENDING`
+`general_parameter_regression_status: NEUTRAL_BINARY_KIJ_FIT_READY_AUTHORITY_NEUTRAL`
 
 The user-approved 2026-07-27 destination is general parameter-family
 regression, defined in `docs/science/general-parameter-regression.md`. The
-design requires caller-supplied source-bound data to select Provider-supported
-components, parameters, and typed observations, with exact Provider
-derivatives feeding one canonical Ceres engine and result. Published methane,
-ethane, Figiel, and later campaigns are positive or negative evidence, not
-hard-coded mixture limits. This runtime is not implemented. The finite typed
-schema is not an arbitrary residual plugin or mutable registry, and the
-architecture decision does not make unsupported families fit-ready.
+first family is implemented: caller-supplied, source-bound fixed-composition
+VLE rows may fit one shared `k_ij` for any neutral, nonassociating binary model
+whose installed Provider descriptor advertises the exact
+`(n1,n2,V,k_ij)` Hessian callback. The runtime uses the existing native module
+and target, one Ceres engine/result, exact derivatives, caller-declared
+bounds/scales/starts/volume policy, full and projected rank diagnostics, and
+isolated training/reporting partitions. Unknown Provider descriptor members
+are reported unsupported and cannot be requested dynamically.
+
+Provider commits `651b778de5b25199a9efe96ac67b89d2fd113a0a`,
+`30f896df4f63a8b12dbc8047923306364c416966`, and
+`5d9065110dae1f2548fbf831e92bd5c3362d58d1` respectively add the model-bound
+descriptor, preserve old v1 model loading, and restore accepted pure-component
+CppAD numerical parity. The retained Provider wheel has SHA-256
+`f5c06ee9e5dbe29bcca881378355672057283a69e59e3ec8561c0d1378c60d14`;
+its installed public header has SHA-256
+`18d74d761290154dad3a336ced0d25c0b2badeab7e9462de3485a99e619fae1a`.
+Regression commits `626b62df1d7ba43275a3931748ad60458325609c`,
+`dd45126095689d01110e1152ea27a90e4a82694e`, and
+`8816c3cd53e1f1b779e92ca43f669cc70d01fc78` implement and harden the runtime.
+The retained Regression wheel has SHA-256
+`f2a8f757eb56b7b1c21676245d40ced5f58b95b3ff233b9c6a233b9061365adc`.
+
+All 17 audited May rows reproduce the frozen `68 x 35` formulation with
+convergence, full rank 35, projected parameter rank 1, a non-bound
+`k_ij = -0.00843032298906253`, and declared-start confirmation. The native
+fit took `0.083270 s` in the bounded smoke; the explicit campaign test takes
+about one second including Python/model/data setup. This remains in-sample,
+authority-neutral evidence. It does not reinterpret the retained negative
+pressure-closure evidence, establish prediction, or admit fitted values to a
+Provider catalog.
+
+Published methane, ethane, Figiel, and later campaigns remain positive or
+negative evidence rather than hard-coded mixture limits. The finite typed
+schema is not an arbitrary residual plugin or mutable registry. All parameter
+families other than this exact neutral-binary fixed-composition `k_ij`
+contract retain their prior readiness states.
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.
 Canonical Migration checkpoint
@@ -71,8 +101,9 @@ Canonical Migration checkpoint
 design as a useful parallel, deferred Provider-dependent track while HELD2
 retains Provider implementation priority. The frozen neutral-hydrocarbon
 equations and numerical contract remain in
-`docs/science/neutral-hydrocarbon-next-slice.md`; no packaged planning
-framework, binary executable owner, or runtime API exists. Validation's direct-
+`docs/science/neutral-hydrocarbon-next-slice.md`; its rejected replay harness
+and packaged planning framework remain absent. The new source-bound general
+runtime does not promote or reinterpret that old evidence. Validation's direct-
 experimental propane packet remains accepted source evidence at
 `7e51590757f1cb85f51df98e9fe1f88cd4255a88`, but it no longer authorizes active
 Checkpoint A work.

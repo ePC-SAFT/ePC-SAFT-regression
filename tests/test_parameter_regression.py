@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import csv
 import math
 from dataclasses import replace
+from pathlib import Path
 
 from epcsaft import EPCSAFT, ParameterBundle, native_sdk
 import pytest
@@ -323,3 +325,56 @@ def test_provider_failure_returns_diagnostic_result() -> None:
     assert result.rows[0].status == "failed"
     assert result.evaluated_row_count == 0
     assert result.failed_row_count == 1
+
+
+@pytest.mark.campaign
+def test_all_audited_may_rows_reproduce_the_general_kij_reference_fit() -> None:
+    model = _model()
+    data_path = Path(__file__).parents[1] / "evidence" / "may-2015-methane-ethane-vle.csv"
+    with data_path.open(newline="", encoding="utf-8") as stream:
+        records = tuple(csv.DictReader(stream))
+    gas_constant = 8.31446261815324
+    rows = tuple(
+        FixedCompositionVleObservation(
+            row_id=record["row_id"],
+            source_id="may-2015",
+            source_locator=f"{data_path.name}:{record['row_id']}",
+            component_ids=("methane", "ethane"),
+            temperature_k=float(record["T_K"]),
+            pressure_pa=float(record["P_Pa"]),
+            liquid_mole_fraction_first=float(record["x_methane"]),
+            vapor_mole_fraction_first=float(record["y_methane"]),
+            pressure_scale_pa=float(record["P_Pa"]),
+            chemical_potential_scales=(1.0, 1.0),
+            liquid_volume_origin_m3_per_mol=6.5e-5,
+            liquid_volume_start_m3_per_mol=6.5e-5,
+            liquid_volume_bounds_m3_per_mol=(2.0e-5, 1.0e-4),
+            vapor_volume_origin_m3_per_mol=(
+                gas_constant * float(record["T_K"]) / float(record["P_Pa"])
+            ),
+            vapor_volume_start_m3_per_mol=(
+                gas_constant * float(record["T_K"]) / float(record["P_Pa"])
+            ),
+            vapor_volume_bounds_m3_per_mol=(1.0e-4, 1.0e-2),
+            partition=ObservationPartition.TRAINING,
+        )
+        for record in records
+    )
+    problem = _problem(model, rows)
+
+    result = fit_parameters(problem, model)
+
+    assert len(rows) == 17
+    assert result.termination == "CONVERGENCE"
+    assert result.solution_usable
+    assert result.jacobian.residual_count == 68
+    assert result.jacobian.variable_count == 35
+    assert result.jacobian.full_rank == 35
+    assert result.jacobian.projected_parameter_rank == 1
+    assert result.parameter.active_bound is None
+    assert result.parameter.final == pytest.approx(
+        -0.00843032298906253, rel=0.0, abs=2.0e-12
+    )
+    assert result.confirmation_count == 2
+    assert result.training_row_count == 17
+    assert result.predictive_status == "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"

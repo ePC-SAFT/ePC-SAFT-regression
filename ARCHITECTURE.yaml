@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-general-parameter-architecture-pending
+status: authoritative-methane-and-ethane-with-neutral-binary-kij-fit-ready
 
 authority:
   accepted_capabilities:
@@ -38,10 +38,13 @@ scope: >-
   candidate fits five current-catalog Born diameters to five reported-average
   targets through the installed Provider first-derivative callback. It passes
   its local gates after the user-approved descriptive-comparison correction
-  and has no production authority.
+  and has no production authority. The authority-neutral general surface also
+  fits one shared k_ij from caller-supplied fixed-composition VLE rows for any
+  neutral, nonassociating binary model whose installed Provider capability
+  descriptor supplies the exact active Hessian contract.
 
 general_parameter_regression:
-  status: USER_APPROVED_ARCHITECTURE_RUNTIME_PENDING
+  status: NEUTRAL_BINARY_KIJ_FIT_READY_AUTHORITY_NEUTRAL
   design_owner: docs/science/general-parameter-regression.md
   objective: >-
     Fit any admitted continuous ePC-SAFT parameter for any Provider-supported
@@ -62,7 +65,35 @@ general_parameter_regression:
     observation_schema: finite-typed-source-bound
   reference_campaign_role: evidence-not-component-restriction
   forbidden_interpretation: every-provider-parameter-is-fit-ready-now
-  immediate_provider_gate: RUNTIME_PENDING_PROVIDER_CAPABILITY_DESCRIPTOR
+  immediate_provider_gate: SATISFIED_FOR_NEUTRAL_BINARY_KIJ
+  provider_subject: 5d9065110dae1f2548fbf831e92bd5c3362d58d1
+  provider_wheel_sha256: f5c06ee9e5dbe29bcca881378355672057283a69e59e3ec8561c0d1378c60d14
+  provider_header_sha256: 18d74d761290154dad3a336ced0d25c0b2badeab7e9462de3485a99e619fae1a
+  regression_subject: 8816c3cd53e1f1b779e92ca43f669cc70d01fc78
+  regression_wheel_sha256: f2a8f757eb56b7b1c21676245d40ced5f58b95b3ff233b9c6a233b9061365adc
+  first_fit_ready_family:
+    family: k_ij
+    model_domain: neutral-nonassociating-binary
+    observation_contract: fixed-composition-vle-lifted-volumes
+    provider_coordinates: [n1_mol, n2_mol, volume_m3, k_ij]
+    provider_derivative_order: 2
+    parameter_count: 1
+    residuals_per_row: 4
+    nuisance_variables_per_row: 2
+    authority_effect: none
+    predictive_effect: none
+  installed_reference_smoke:
+    source_rows: 17
+    source_sha256: 5cd1e74925a3c6504f5106dcf911f2cae2d6e99a5133fccc20454d8991bdbc7f
+    variables: 35
+    residuals: 68
+    full_rank: 35
+    projected_parameter_rank: 1
+    fitted_kij: -0.00843032298906253
+    active_bound: false
+    native_fit_elapsed_seconds: 0.083270
+    predictive_status: NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF
+    interpretation: in-sample-runtime-evidence-not-scientific-admission
   equilibrium_dependency: FORBIDDEN_BY_CURRENT_DOCTRINE
 
 owners:
@@ -73,6 +104,8 @@ owners:
   born_residual_jacobian_and_ceres: src/epcsaft_regression/native/born_diameter_fit.cpp
   water_factor_residual_jacobian_and_ceres: src/epcsaft_regression/native/figiel_water_factor_fit.cpp
   aqueous_kij_residual_jacobian_and_ceres: src/epcsaft_regression/native/figiel_kij_fit.cpp
+  general_parameter_contract_and_result: src/epcsaft_regression/parameter_regression.py
+  general_parameter_capability_residual_jacobian_and_ceres: src/epcsaft_regression/native/general_fit.cpp
   provider_capsule_gate: src/epcsaft_regression/native/module.cpp
   component_receipt_runner: tools/run_candidate.py
   figiel_candidate_evidence_runner: tools/run_figiel_born_candidate.py
@@ -449,8 +482,8 @@ parameter_family_readiness:
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
   figiel_current_catalog_aqueous_kij: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED
   reactive_or_temperature_dependent_parameters: NOT_READY
-  general_parameter_regression: USER_APPROVED_ARCHITECTURE_RUNTIME_PENDING
-  mixture_independent_kij: NOT_READY_PENDING_TYPED_REQUEST_AND_GENERAL_PROVIDER_SEAM
+  general_parameter_regression: PARTIAL_FIRST_FAMILY_FIT_READY
+  mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
   mixture_independent_lij: NOT_READY_PENDING_EXACT_ACTIVE_PROVIDER_DERIVATIVE
   mixture_independent_association: NOT_READY_PENDING_EXACT_TOPOLOGY_BOUND_PROVIDER_DERIVATIVES
   khb_ij: NOT_READY_NOT_A_CURRENT_PROVIDER_PARAMETER_FAMILY

@@ -87,5 +87,10 @@ used as evidence rather than mixture restrictions. Its sole architecture owner
 is `docs/science/general-parameter-regression.md`. This is a finite typed
 capability schema, not an arbitrary plugin or mutable registry. Do not claim a
 family is fit-ready until its exact derivative, observation, rank, and
-installed-artifact gates pass; do not broaden it to uncertainty,
-catalog-persistence, or global-identifiability authority.
+installed-artifact gates pass. The first fit-ready family is one shared
+`k_ij` for caller-supplied fixed-composition VLE rows on an installed
+Provider-advertised neutral, nonassociating binary model. It remains
+authority-neutral and is not restricted to the methane/ethane reference
+mixture. All other general families retain their documented pending states;
+do not broaden them to uncertainty, catalog persistence, or global-
+identifiability authority.
