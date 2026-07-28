@@ -124,3 +124,23 @@ needed by MEA, but Migration's D-026 installed two-liquid Stage-II/III gate
 must pass first. The reduced mixed-observable tracer follows both
 prerequisites. Missing pure or cross-association recovery sources remain
 optional standalone work and do not block that MEA path.
+
+## Agent skills
+
+<!-- project-truss:setup:start -->
+### Project Truss
+
+Users invoke `project-truss:setup` once and `project-truss:start` for ongoing engineering work.
+
+### Issue tracker
+
+Project Truss uses GitHub-native root and leaf issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Matt triage roles map to descriptive labels only. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Read the configured domain context and ADRs. See `docs/agents/domain.md`.
+<!-- project-truss:setup:end -->
