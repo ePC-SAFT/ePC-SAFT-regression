@@ -273,10 +273,12 @@ class ParameterCoordinate:
     def __post_init__(self) -> None:
         if not isinstance(self.family, ParameterFamily):
             raise TypeError("family must be a ParameterFamily")
-        if self.family is not ParameterFamily.K_IJ:
-            raise ValueError("the v1 pair-coordinate contract currently supports only k_ij")
+        if self.family not in (ParameterFamily.K_IJ, ParameterFamily.L_IJ):
+            raise ValueError(
+                "the v1 pair-coordinate contract supports only k_ij and l_ij"
+            )
         if not isinstance(self.identity, PairParameterIdentity):
-            raise TypeError("k_ij identity must be a PairParameterIdentity")
+            raise TypeError("pair-parameter identity must be a PairParameterIdentity")
         _require_nonempty_string(self.capability_id, "capability_id")
         _require_sha256(
             self.provider_parameter_fingerprint,
@@ -290,7 +292,7 @@ class ParameterCoordinate:
         )
         _require_nonempty_string(self.unit, "unit")
         if self.unit != "1":
-            raise ValueError("k_ij unit must be '1'")
+            raise ValueError("pair-parameter unit must be '1'")
         if not isinstance(self.transform, AffineParameterTransform):
             raise TypeError("transform must be an AffineParameterTransform")
         _require_finite(self.lower_bound, "lower bound")
@@ -619,7 +621,7 @@ def _evaluate_parameters(
     problem: RegressionProblem, model: object, variables: tuple[float, ...]
 ) -> tuple[tuple[float, ...], tuple[float, ...]]:
     capability = _matched_capability(problem, model)
-    residuals, jacobian = _native.evaluate_general_kij(
+    residuals, jacobian = _native.evaluate_general_pair(
         native_sdk(model), _native_payload(problem, capability), variables
     )
     return tuple(residuals), tuple(jacobian)
@@ -627,7 +629,7 @@ def _evaluate_parameters(
 
 def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResult:
     capability = _matched_capability(problem, model)
-    native = _native.solve_general_kij(
+    native = _native.solve_general_pair(
         native_sdk(model), _native_payload(problem, capability)
     )
     parameter_coordinate = problem.parameters[0]

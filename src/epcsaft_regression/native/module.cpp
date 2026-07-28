@@ -241,33 +241,33 @@ PyObject* py_parameter_capabilities(PyObject*, PyObject* capsule) {
     return epcsaft_regression::parameter_capabilities_python(capsule);
 }
 
-PyObject* py_evaluate_general_kij(PyObject*, PyObject* args) {
+PyObject* py_evaluate_general_pair(PyObject*, PyObject* args) {
     PyObject* capsule = nullptr;
     PyObject* payload = nullptr;
     PyObject* variables = nullptr;
     if (!PyArg_ParseTuple(
             args,
-            "OOO:evaluate_general_kij",
+            "OOO:evaluate_general_pair",
             &capsule,
             &payload,
             &variables
         )) {
         return nullptr;
     }
-    return epcsaft_regression::evaluate_general_kij_python(
+    return epcsaft_regression::evaluate_general_pair_python(
         capsule, payload, variables
     );
 }
 
-PyObject* py_solve_general_kij(PyObject*, PyObject* args) {
+PyObject* py_solve_general_pair(PyObject*, PyObject* args) {
     PyObject* capsule = nullptr;
     PyObject* payload = nullptr;
     if (!PyArg_ParseTuple(
-            args, "OO:solve_general_kij", &capsule, &payload
+            args, "OO:solve_general_pair", &capsule, &payload
         )) {
         return nullptr;
     }
-    return epcsaft_regression::solve_general_kij_python(capsule, payload);
+    return epcsaft_regression::solve_general_pair_python(capsule, payload);
 }
 
 PyMethodDef methods[] = {
@@ -324,14 +324,14 @@ PyMethodDef methods[] = {
         "Read exact model-bound Provider parameter capabilities."
     },
     {
-        "evaluate_general_kij",
-        py_evaluate_general_kij,
+        "evaluate_general_pair",
+        py_evaluate_general_pair,
         METH_VARARGS,
         "Evaluate exact general neutral-binary residuals and Jacobian."
     },
     {
-        "solve_general_kij",
-        py_solve_general_kij,
+        "solve_general_pair",
+        py_solve_general_pair,
         METH_VARARGS,
         "Fit one shared neutral-binary interaction parameter."
     },

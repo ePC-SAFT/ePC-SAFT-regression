@@ -34,6 +34,18 @@ def _model() -> EPCSAFT:
     return EPCSAFT(parameters)
 
 
+def _capability(
+    model: EPCSAFT,
+    family: ParameterFamily = ParameterFamily.K_IJ,
+):
+    return next(
+        capability
+        for capability in parameter_capabilities(model)
+        if not isinstance(capability, UnsupportedParameterCapability)
+        and capability.family is family
+    )
+
+
 def _row(
     row_id: str = "may2015-ch4-c2h6-002",
     partition: ObservationPartition = ObservationPartition.TRAINING,
@@ -62,8 +74,9 @@ def _row(
 def _problem(
     model: EPCSAFT,
     rows: tuple[FixedCompositionVleObservation, ...] | None = None,
+    family: ParameterFamily = ParameterFamily.K_IJ,
 ) -> RegressionProblem:
-    (capability,) = parameter_capabilities(model)
+    capability = _capability(model, family)
     observations = rows or (_row(),)
     source = SourceDescriptor(
         source_id="may-2015",
@@ -79,7 +92,7 @@ def _problem(
         residual_scale_rationale="Pressure by observed P; mu/RT dimensionless.",
     )
     parameter = ParameterCoordinate(
-        family=ParameterFamily.K_IJ,
+        family=family,
         identity=PairParameterIdentity("methane", "ethane"),
         capability_id=capability.capability_id,
         provider_parameter_fingerprint=capability.parameter_fingerprint,
@@ -109,7 +122,7 @@ def test_installed_provider_advertises_exact_neutral_binary_kij_contract(
 ) -> None:
     model = _model()
 
-    (capability,) = parameter_capabilities(model)
+    capability = _capability(model)
 
     assert capability.capability_id == "neutral_binary_phase_kij_v1"
     assert capability.family is ParameterFamily.K_IJ
@@ -134,14 +147,26 @@ def test_installed_provider_advertises_exact_neutral_binary_kij_contract(
     assert capability.unsupported_status == "UNSUPPORTED_MODEL"
     assert capability.domain_status == "DOMAIN_ERROR"
 
+    lij = _capability(model, ParameterFamily.L_IJ)
+    assert lij.capability_id == "neutral_binary_phase_lij_v1"
+    assert lij.component_ids == capability.component_ids
+    assert lij.coordinate_kinds == ("amount", "amount", "volume", "l_ij")
+    assert lij.coordinate_units == capability.coordinate_units
+    assert lij.parameter_fingerprint == capability.parameter_fingerprint
+    assert lij.topology_fingerprint == capability.topology_fingerprint
+    assert lij.derivative_order == 2
+    assert lij.observation_contract == capability.observation_contract
+    assert lij.model_domain == capability.model_domain
+
     raw = parameter_regression._native.parameter_capabilities(native_sdk(model))
     monkeypatch.setattr(
         parameter_regression._native,
         "parameter_capabilities",
         lambda _: (*raw, (999, 1, 998)),
     )
-    known, unsupported = parameter_capabilities(model)
-    assert known == capability
+    known = parameter_capabilities(model)
+    assert known[0] == capability
+    unsupported = known[-1]
     assert unsupported == UnsupportedParameterCapability(
         capability_code=999,
         schema_version=1,
@@ -149,9 +174,12 @@ def test_installed_provider_advertises_exact_neutral_binary_kij_contract(
     )
 
 
-def test_exact_lifted_kij_jacobian_matches_directional_residual_difference() -> None:
+@pytest.mark.parametrize("family", (ParameterFamily.K_IJ, ParameterFamily.L_IJ))
+def test_exact_lifted_pair_jacobian_matches_directional_residual_difference(
+    family: ParameterFamily,
+) -> None:
     model = _model()
-    problem = _problem(model)
+    problem = _problem(model, family=family)
     variables = (
         0.0,
         math.log(6.5e-5 / 6.0e-5),
@@ -229,6 +257,24 @@ def test_general_kij_fit_reports_rank_confirmation_and_partition_isolation() -> 
     assert result.predictive_status == "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
 
 
+def test_general_lij_fit_reuses_the_exact_lifted_pair_engine() -> None:
+    model = _model()
+
+    result = fit_parameters(
+        _problem(model, family=ParameterFamily.L_IJ),
+        model,
+    )
+
+    assert result.parameter.family is ParameterFamily.L_IJ
+    assert result.capability.family is ParameterFamily.L_IJ
+    assert result.jacobian.residual_count == 4
+    assert result.jacobian.variable_count == 3
+    assert result.jacobian.projected_parameter_rank == 1
+    assert result.parameter.active_bound is None
+    assert result.confirmation_count == 2
+    assert result.rows[0].derivative_status == "EXACT_PROVIDER_HESSIAN"
+
+
 def test_status_requires_converged_termination_but_not_full_lifted_rank(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -270,7 +316,7 @@ def test_status_requires_converged_termination_but_not_full_lifted_rank(
         4,
     )
     monkeypatch.setattr(
-        parameter_regression._native, "solve_general_kij", lambda *_: native
+        parameter_regression._native, "solve_general_pair", lambda *_: native
     )
 
     converged = fit_parameters(problem, model)
@@ -280,7 +326,7 @@ def test_status_requires_converged_termination_but_not_full_lifted_rank(
 
     monkeypatch.setattr(
         parameter_regression._native,
-        "solve_general_kij",
+        "solve_general_pair",
         lambda *_: ("NO_CONVERGENCE", *native[1:]),
     )
     stopped = fit_parameters(problem, model)
@@ -292,12 +338,12 @@ def test_rows_outside_provider_temperature_domain_fail_before_ceres(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     model = _model()
-    (capability,) = parameter_capabilities(model)
+    capability = _capability(model)
     outside = replace(_row(), temperature_k=capability.temperature_max_k + 1.0)
     problem = _problem(model, (outside,))
     monkeypatch.setattr(
         parameter_regression._native,
-        "solve_general_kij",
+        "solve_general_pair",
         lambda *_: pytest.fail("Ceres must not start outside the Provider domain"),
     )
 
@@ -327,14 +373,12 @@ def test_provider_failure_returns_diagnostic_result() -> None:
     assert result.failed_row_count == 1
 
 
-@pytest.mark.campaign
-def test_all_audited_may_rows_reproduce_the_general_kij_reference_fit() -> None:
-    model = _model()
+def _audited_may_rows() -> tuple[FixedCompositionVleObservation, ...]:
     data_path = Path(__file__).parents[1] / "evidence" / "may-2015-methane-ethane-vle.csv"
     with data_path.open(newline="", encoding="utf-8") as stream:
         records = tuple(csv.DictReader(stream))
     gas_constant = 8.31446261815324
-    rows = tuple(
+    return tuple(
         FixedCompositionVleObservation(
             row_id=record["row_id"],
             source_id="may-2015",
@@ -360,6 +404,12 @@ def test_all_audited_may_rows_reproduce_the_general_kij_reference_fit() -> None:
         )
         for record in records
     )
+
+
+@pytest.mark.campaign
+def test_all_audited_may_rows_reproduce_the_general_kij_reference_fit() -> None:
+    model = _model()
+    rows = _audited_may_rows()
     problem = _problem(model, rows)
 
     result = fit_parameters(problem, model)
@@ -377,4 +427,27 @@ def test_all_audited_may_rows_reproduce_the_general_kij_reference_fit() -> None:
     )
     assert result.confirmation_count == 2
     assert result.training_row_count == 17
+    assert result.predictive_status == "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
+
+
+@pytest.mark.campaign
+def test_all_audited_may_rows_are_fit_ready_for_general_lij() -> None:
+    model = _model()
+    rows = _audited_may_rows()
+
+    result = fit_parameters(
+        _problem(model, rows, family=ParameterFamily.L_IJ),
+        model,
+    )
+
+    assert result.termination == "CONVERGENCE"
+    assert result.solution_usable
+    assert result.jacobian.residual_count == 68
+    assert result.jacobian.variable_count == 35
+    assert result.jacobian.full_rank == 35
+    assert result.jacobian.projected_parameter_rank == 1
+    assert result.parameter.active_bound is None
+    assert result.confirmation_count == 2
+    assert result.training_row_count == 17
+    assert result.failed_row_count == 0
     assert result.predictive_status == "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"

@@ -317,13 +317,18 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
     for (std::size_t index = 0; index < table.capability_count; ++index) {
         const auto& candidate = table.capabilities[index];
         if (candidate.capability
-            != EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1) {
+                != EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1
+            && candidate.capability
+                != EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_LIJ_HELMHOLTZ_V1) {
             continue;
         }
         validate_descriptor(candidate);
+        if (payload.capability_id != capability_id(candidate.capability)) {
+            continue;
+        }
         if (selected != nullptr) {
             throw std::runtime_error(
-                "provider advertises duplicate neutral-binary capabilities"
+                "provider advertises a duplicate requested capability"
             );
         }
         selected = &candidate;
@@ -334,8 +339,15 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
         );
     }
     const auto& descriptor = *selected;
-    if (payload.capability_id != capability_id(descriptor.capability)
-        || !bounded_field_equal(
+    const bool kij = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1;
+    const bool callback_available = kij
+        ? table.evaluate_mixture_phase_kij != nullptr
+        : table.table_size
+                >= offsetof(epcsaft_native_sdk_v1, evaluate_mixture_phase_lij)
+                    + sizeof(table.evaluate_mixture_phase_lij)
+            && table.evaluate_mixture_phase_lij != nullptr;
+    if (!bounded_field_equal(
             payload.parameter_fingerprint, descriptor.parameter_fingerprint
         )
         || !bounded_field_equal(
@@ -345,7 +357,7 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
         || descriptor.component_ids == nullptr
         || payload.component_ids[0] != descriptor.component_ids[0]
         || payload.component_ids[1] != descriptor.component_ids[1]
-        || table.evaluate_mixture_phase_kij == nullptr
+        || !callback_available
         || table.mixture_result_size
             != sizeof(epcsaft_mixture_phase_block_result_v1)) {
         throw std::runtime_error(
@@ -360,6 +372,10 @@ const char* capability_id(std::uint32_t value) {
         == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1) {
         return "neutral_binary_phase_kij_v1";
     }
+    if (value
+        == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_LIJ_HELMHOLTZ_V1) {
+        return "neutral_binary_phase_lij_v1";
+    }
     throw std::runtime_error("provider advertised an unknown capability");
 }
 
@@ -367,6 +383,10 @@ const char* parameter_family(std::uint32_t value) {
     if (value
         == EPCSAFT_NATIVE_PARAMETER_FAMILY_BINARY_INTERACTION_KIJ_V1) {
         return "k_ij";
+    }
+    if (value
+        == EPCSAFT_NATIVE_PARAMETER_FAMILY_BINARY_INTERACTION_LIJ_V1) {
+        return "l_ij";
     }
     throw std::runtime_error("provider advertised an unknown parameter family");
 }
@@ -379,6 +399,8 @@ const char* coordinate_kind(std::uint32_t value) {
             return "volume";
         case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_BINARY_INTERACTION_KIJ_V1:
             return "k_ij";
+        case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_BINARY_INTERACTION_LIJ_V1:
+            return "l_ij";
         default:
             throw std::runtime_error(
                 "provider advertised an unknown capability coordinate"
@@ -389,14 +411,23 @@ const char* coordinate_kind(std::uint32_t value) {
 void validate_descriptor(
     const epcsaft_native_capability_descriptor_v1& descriptor
 ) {
+    const bool kij = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1;
+    const bool lij = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_LIJ_HELMHOLTZ_V1;
+    const bool matching_family =
+        (kij
+         && descriptor.parameter_family
+             == EPCSAFT_NATIVE_PARAMETER_FAMILY_BINARY_INTERACTION_KIJ_V1)
+        || (lij
+            && descriptor.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_BINARY_INTERACTION_LIJ_V1);
     if (descriptor.struct_size
             != sizeof(epcsaft_native_capability_descriptor_v1)
         || descriptor.schema_version
             != EPCSAFT_NATIVE_CAPABILITY_SCHEMA_VERSION_V1
-        || descriptor.capability
-            != EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1
-        || descriptor.parameter_family
-            != EPCSAFT_NATIVE_PARAMETER_FAMILY_BINARY_INTERACTION_KIJ_V1
+        || (!kij && !lij)
+        || !matching_family
         || descriptor.parameter_identity
             != EPCSAFT_NATIVE_PARAMETER_IDENTITY_UNORDERED_COMPONENT_PAIR_V1
         || descriptor.observation_contract
@@ -434,7 +465,9 @@ void validate_descriptor(
         EPCSAFT_NATIVE_CAPABILITY_COORDINATE_AMOUNT_V1,
         EPCSAFT_NATIVE_CAPABILITY_COORDINATE_AMOUNT_V1,
         EPCSAFT_NATIVE_CAPABILITY_COORDINATE_VOLUME_V1,
-        EPCSAFT_NATIVE_CAPABILITY_COORDINATE_BINARY_INTERACTION_KIJ_V1,
+        kij
+            ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_BINARY_INTERACTION_KIJ_V1
+            : EPCSAFT_NATIVE_CAPABILITY_COORDINATE_BINARY_INTERACTION_LIJ_V1,
     };
     const std::array<int, 4> components = {0, 1, -1, -1};
     const std::array<int, 4> pair_a = {-1, -1, -1, 0};
@@ -614,15 +647,25 @@ Phase evaluate_phase(
     result.hessian_capacity = phase.hessian.size();
     result.gradient = phase.gradient.data();
     result.hessian = phase.hessian.data();
-    const int status = table.evaluate_mixture_phase_kij(
-        table.model_context,
-        row.temperature,
-        amounts.data(),
-        amounts.size(),
-        volume,
-        parameter,
-        &result
-    );
+    const int status = payload.capability_id == "neutral_binary_phase_kij_v1"
+        ? table.evaluate_mixture_phase_kij(
+              table.model_context,
+              row.temperature,
+              amounts.data(),
+              amounts.size(),
+              volume,
+              parameter,
+              &result
+          )
+        : table.evaluate_mixture_phase_lij(
+              table.model_context,
+              row.temperature,
+              amounts.data(),
+              amounts.size(),
+              volume,
+              parameter,
+              &result
+          );
     if (status != EPCSAFT_NATIVE_STATUS_OK_V1 || result.status != status) {
         const std::size_t error_length = strnlen(
             result.error, EPCSAFT_NATIVE_SDK_V1_ERROR_SIZE
@@ -732,9 +775,9 @@ void evaluate_problem(
     }
 }
 
-class GeneralKijCost final : public ceres::CostFunction {
+class GeneralPairCost final : public ceres::CostFunction {
 public:
-    GeneralKijCost(
+    GeneralPairCost(
         const epcsaft_native_sdk_v1* table, const Payload& payload
     ) : table_(table), payload_(payload), scratch_(make_evaluation(payload)) {
         set_num_residuals(static_cast<int>(4 * payload.training_rows.size()));
@@ -882,7 +925,7 @@ SolveOutcome solve_training(
         outcome.variables[2 + 2 * index] =
             std::log(row.vapor_volume_start / row.vapor_volume_origin);
     }
-    GeneralKijCost cost(&table, payload);
+    GeneralPairCost cost(&table, payload);
     ceres::Problem::Options problem_options;
     problem_options.cost_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
     ceres::Problem problem(problem_options);
@@ -1240,8 +1283,12 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
         if (result == nullptr) return nullptr;
         for (std::size_t index = 0; index < table->capability_count; ++index) {
             const auto& descriptor = table->capabilities[index];
-            PyObject* item = descriptor.capability
+            PyObject* item = (
+                descriptor.capability
                     == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_LIJ_HELMHOLTZ_V1
+            )
                 ? descriptor_to_python(descriptor)
                 : unsupported_descriptor_to_python(descriptor);
             if (item == nullptr) {
@@ -1258,7 +1305,7 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
     }
 }
 
-PyObject* evaluate_general_kij_python(
+PyObject* evaluate_general_pair_python(
     PyObject* capsule, PyObject* payload_object, PyObject* variables_object
 ) {
     try {
@@ -1299,7 +1346,7 @@ PyObject* evaluate_general_kij_python(
     }
 }
 
-PyObject* solve_general_kij_python(
+PyObject* solve_general_pair_python(
     PyObject* capsule, PyObject* payload_object
 ) {
     try {

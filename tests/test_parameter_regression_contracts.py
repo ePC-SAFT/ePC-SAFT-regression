@@ -108,6 +108,18 @@ def test_contract_canonicalizes_pair_and_binds_source_dataset_and_partitions() -
     assert problem.parameters[0].solver_starts == (0.0, -5.0, 5.0)
 
 
+def test_pair_coordinate_accepts_the_distinct_lij_family() -> None:
+    coordinate = replace(
+        _problem((_row("train-1"),)).parameters[0],
+        family=ParameterFamily.L_IJ,
+        capability_id="neutral_binary_phase_lij_v1",
+    )
+
+    assert coordinate.family is ParameterFamily.L_IJ
+    assert coordinate.identity.canonical_component_ids == ("ethane", "methane")
+    assert coordinate.unit == "1"
+
+
 @pytest.mark.parametrize(
     ("mutation", "match"),
     (
