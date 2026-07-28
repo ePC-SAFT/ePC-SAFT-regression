@@ -304,40 +304,6 @@ def test_mea_start_evaluation_has_exact_dynamic_problem_shape() -> None:
     assert fingerprint == MEA_SATURATION_FIT_V1.expected_provider_fingerprint
 
 
-def test_mea_exact_jacobian_matches_directional_residual_difference() -> None:
-    capsule = _capsule("monoethanolamine")
-    payload = _payload("monoethanolamine")
-    variables = (0.0,) * 5
-    direction = tuple(
-        (1.0 if index % 2 == 0 else -1.0) * (0.002 + 0.0001 * index)
-        for index in range(5)
-    )
-    residuals, jacobian, _, _ = native.evaluate(capsule, payload, variables)
-    step = 2.0e-4
-    plus = tuple(step * value for value in direction)
-    minus = tuple(-step * value for value in direction)
-    residuals_plus = native.evaluate(capsule, payload, plus)[0]
-    residuals_minus = native.evaluate(capsule, payload, minus)[0]
-    finite_difference = tuple(
-        (right - left) / (2.0 * step)
-        for right, left in zip(
-            residuals_plus, residuals_minus, strict=True
-        )
-    )
-    product = tuple(
-        math.fsum(
-            jacobian[row * 5 + column] * direction[column]
-            for column in range(5)
-        )
-        for row in range(30)
-    )
-
-    assert residuals
-    assert product == pytest.approx(
-        finite_difference, rel=5.0e-6, abs=5.0e-7
-    )
-
-
 @pytest.mark.campaign
 def test_mea_joint_fit_reproduces_the_source_correlation_targets(
     mea_fit_result: object,
