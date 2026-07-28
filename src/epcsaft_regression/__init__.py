@@ -19,6 +19,7 @@ from .workflow import (
 )
 from .parameter_regression import (
     AffineParameterTransform,
+    AqueousKijMeanIonicActivityObservation,
     ComponentParameterIdentity,
     DirectObservationRowDiagnostic,
     FixedCompositionVleObservation,
@@ -59,6 +60,7 @@ __all__ = (
     "ParameterCapability",
     "ParameterFamily",
     "AffineParameterTransform",
+    "AqueousKijMeanIonicActivityObservation",
     "ComponentParameterIdentity",
     "DirectObservationRowDiagnostic",
     "FixedCompositionVleObservation",

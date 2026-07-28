@@ -6,6 +6,7 @@ import math
 import pytest
 
 from epcsaft_regression.parameter_regression import (
+    AqueousKijMeanIonicActivityObservation,
     AffineParameterTransform,
     ComponentParameterIdentity,
     FixedCompositionVleObservation,
@@ -183,6 +184,27 @@ def test_direct_observations_bind_model_order_active_component_and_units() -> No
     assert miac.component_ids[0] == miac.active_component_id
     assert gibbs.component_ids[1] == gibbs.active_component_id
     assert canonical_dataset_sha256((miac, gibbs))
+
+
+def test_aqueous_kij_observation_binds_active_pair_and_fixed_context() -> None:
+    row = AqueousKijMeanIonicActivityObservation(
+        row_id="nabr-001",
+        source_id="doi:example",
+        source_locator="table-1:nabr-001",
+        component_ids=("water", "sodium-cation", "bromide-anion"),
+        active_pair_component_ids=("sodium-cation", "water"),
+        fixed_k_ij=(-0.3, -0.3, 0.65),
+        temperature_k=298.15,
+        pressure_pa=100_000.0,
+        formula_unit_molality_mol_per_kg=0.1,
+        observed_mean_ionic_activity_coefficient=0.778,
+        relative_residual_scale=1.0,
+        partition=ObservationPartition.TRAINING,
+    )
+
+    assert row.active_pair_component_ids == ("sodium-cation", "water")
+    assert row.canonical_active_pair_component_ids == ("sodium-cation", "water")
+    assert canonical_dataset_sha256((row,))
 
 
 @pytest.mark.parametrize(

@@ -140,7 +140,7 @@ and rank gates.
 | `segment_count` (`m`) | component | pure saturation pressure/density, PVT density, phase-equilibrium and caloric observations | fit-ready one-family-at-a-time for caller-supplied pure-saturation pressure/liquid-density rows on an advertised neutral pure capability; other observations pending |
 | `segment_diameter` (`sigma`) | component or declared correlation coefficient | liquid density/PVT, saturation density, phase equilibrium | fit-ready one-family-at-a-time for caller-supplied pure-saturation pressure/liquid-density rows on an advertised neutral pure capability; correlation coefficients and other observations pending |
 | `dispersion_energy_over_k` (`epsilon/k`) | component | vapor pressure, phase equilibrium, caloric and PVT observations | fit-ready one-family-at-a-time for caller-supplied pure-saturation pressure/liquid-density rows on an advertised neutral pure capability; other observations pending |
-| `k_ij` | unordered component pair | fixed-composition VLE/LLE, activity/fugacity coefficients, MIAC when the electrolyte formulation makes that pair active | fit-ready for caller-supplied fixed-composition VLE rows on any installed Provider model advertising the neutral, nonassociating binary capability; other observation/model domains remain pending |
+| `k_ij` | unordered component pair | fixed-composition VLE/LLE, activity/fugacity coefficients, MIAC when the electrolyte formulation makes that pair active | fit-ready for caller-supplied fixed-composition VLE rows on an advertised neutral, nonassociating binary capability and one-at-a-time aqueous MIAC fits on an advertised water/cation/anion capability; other observation/model domains remain pending |
 | `l_ij` | unordered component pair | density, excess volume, and phase-equilibrium data sensitive to cross-size mixing | fit-ready for caller-supplied fixed-composition VLE rows on any installed Provider model advertising the neutral, nonassociating binary capability; other observation/model domains remain pending |
 | `association_energy_over_k` | association endpoint pair | hydrogen-bond-sensitive VLE/LLE, solvation, enthalpy, and related phase-property observations | represented by Provider; exact active derivative and Regression surface pending |
 | `association_volume` | association endpoint pair | hydrogen-bond-sensitive VLE/LLE, density, solvation, and caloric observations | represented by Provider; exact active derivative and Regression surface pending |
@@ -195,6 +195,23 @@ residual scale and its rationale
 partition: TRAINING | HELD_OUT | STRESS
 source_id and row locator
 ```
+
+For aqueous mean-ionic-activity fits, one scalar `k_ij` is active per problem.
+Each row carries the ordered Provider model identity and the explicit fixed
+`(k_water,cation, k_water,anion, k_cation,anion)` context. The active pair
+replaces exactly one entry before the installed Provider batch callback is
+evaluated. The residual and exact Jacobian are
+
+```text
+r_i = (1 - gamma_model,i / gamma_observed,i) / s_i
+dr_i/dz = -(gamma_model,i / gamma_observed,i)
+           * d ln(gamma_model,i)/d k_ij * (d k_ij/dz) / s_i.
+```
+
+The fixed context is a required workflow input, not a catalog default inferred
+by Regression. Water--cation, water--anion, and cation--anion are separate
+closed Provider capabilities; fitting one does not silently activate the other
+two.
 
 The canonical transformed-dataset hash binds every row to exactly one
 partition. Row IDs are globally unique, partitions are disjoint, and only

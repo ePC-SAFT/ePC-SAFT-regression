@@ -27,6 +27,7 @@ enum class ObservationKind {
     pair_phase,
     pure_phase,
     mean_ionic_activity,
+    aqueous_kij_activity,
     solvation_gibbs,
 };
 
@@ -52,6 +53,7 @@ struct Row final {
     double direct_state{0.0};
     double observed_value{0.0};
     double direct_scale{0.0};
+    std::array<double, 3> fixed_k_ij{};
 };
 
 struct Payload final {
@@ -115,7 +117,10 @@ struct RowOutcome final {
 
 bool direct_observation(const Payload& payload) {
     return payload.capability_id == "ion_solvation_born_v1"
-        || payload.capability_id == "aqueous_solvation_factor_miac_v1";
+        || payload.capability_id == "aqueous_solvation_factor_miac_v1"
+        || payload.capability_id == "aqueous_water_cation_kij_miac_v1"
+        || payload.capability_id == "aqueous_water_anion_kij_miac_v1"
+        || payload.capability_id == "aqueous_cation_anion_kij_miac_v1";
 }
 
 std::size_t residual_count(const Payload& payload) {
@@ -188,8 +193,10 @@ Row parse_row(PyObject* object, ObservationKind kind) {
         PySequence_Fast(object, "observation payload must be a sequence")
     };
     const bool direct = kind == ObservationKind::mean_ionic_activity
+        || kind == ObservationKind::aqueous_kij_activity
         || kind == ObservationKind::solvation_gibbs;
-    const Py_ssize_t expected_size = direct ? 7 : 17;
+    const Py_ssize_t expected_size =
+        kind == ObservationKind::aqueous_kij_activity ? 10 : direct ? 7 : 17;
     if (!sequence
         || PySequence_Fast_GET_SIZE(sequence.get()) != expected_size) {
         PyErr_Clear();
@@ -210,6 +217,13 @@ Row parse_row(PyObject* object, ObservationKind kind) {
         row.direct_state = number(item(4), "direct observation state");
         row.observed_value = number(item(5), "observed value");
         row.direct_scale = number(item(6), "direct residual scale");
+        if (kind == ObservationKind::aqueous_kij_activity) {
+            row.fixed_k_ij = {
+                number(item(7), "fixed water-cation k_ij"),
+                number(item(8), "fixed water-anion k_ij"),
+                number(item(9), "fixed cation-anion k_ij"),
+            };
+        }
         const bool valid = row.temperature > 0.0 && row.pressure > 0.0
             && row.direct_scale > 0.0
             && (kind != ObservationKind::mean_ionic_activity
@@ -347,6 +361,12 @@ Payload parse_payload(PyObject* object) {
         ? ObservationKind::solvation_gibbs
         : payload.capability_id == "aqueous_solvation_factor_miac_v1"
             ? ObservationKind::mean_ionic_activity
+            : payload.capability_id == "aqueous_water_cation_kij_miac_v1"
+                    || payload.capability_id
+                        == "aqueous_water_anion_kij_miac_v1"
+                    || payload.capability_id
+                        == "aqueous_cation_anion_kij_miac_v1"
+                ? ObservationKind::aqueous_kij_activity
             : component_count == 1
                 ? ObservationKind::pure_phase
                 : ObservationKind::pair_phase;
@@ -470,7 +490,13 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
             || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1
             || candidate.capability
-                == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_SOLVATION_FACTOR_MIAC_V1;
+                == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_SOLVATION_FACTOR_MIAC_V1
+            || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_CATION_KIJ_MIAC_V1
+            || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_ANION_KIJ_MIAC_V1
+            || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1;
         if (!supported) {
             continue;
         }
@@ -499,8 +525,15 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1;
     const bool solvation_factor = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_SOLVATION_FACTOR_MIAC_V1;
+    const bool aqueous_kij =
+        descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_CATION_KIJ_MIAC_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_ANION_KIJ_MIAC_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1;
     const bool binary = kij || lij;
-    const bool direct = born || solvation_factor;
+    const bool direct = born || solvation_factor || aqueous_kij;
     const bool callback_available = kij
         ? table.evaluate_mixture_phase_kij != nullptr
         : lij
@@ -521,6 +554,10 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
                             == sizeof(
                                 epcsaft_aqueous_miac_solvation_factor_result_v1
                             )
+                    : aqueous_kij
+                        ? table.evaluate_aqueous_miac_kij_batch != nullptr
+                            && table.aqueous_miac_kij_result_size
+                                == sizeof(epcsaft_aqueous_miac_kij_result_v1)
                     : (table.table_size
                     >= offsetof(
                         epcsaft_native_sdk_v1,
@@ -586,6 +623,18 @@ const char* capability_id(std::uint32_t value) {
     if (value
         == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_SOLVATION_FACTOR_MIAC_V1) {
         return "aqueous_solvation_factor_miac_v1";
+    }
+    if (value
+        == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_CATION_KIJ_MIAC_V1) {
+        return "aqueous_water_cation_kij_miac_v1";
+    }
+    if (value
+        == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_ANION_KIJ_MIAC_V1) {
+        return "aqueous_water_anion_kij_miac_v1";
+    }
+    if (value
+        == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1) {
+        return "aqueous_cation_anion_kij_miac_v1";
     }
     throw std::runtime_error("provider advertised an unknown capability");
 }
@@ -662,9 +711,16 @@ void validate_descriptor(
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1;
     const bool solvation_factor = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_SOLVATION_FACTOR_MIAC_V1;
+    const bool aqueous_kij =
+        descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_CATION_KIJ_MIAC_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_ANION_KIJ_MIAC_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1;
     const bool binary = kij || lij;
     const bool pure = segment_count || segment_diameter || dispersion_energy;
-    const bool direct = born || solvation_factor;
+    const bool direct = born || solvation_factor || aqueous_kij;
     const bool matching_family =
         (kij
          && descriptor.parameter_family
@@ -686,10 +742,13 @@ void validate_descriptor(
                 == EPCSAFT_NATIVE_PARAMETER_FAMILY_BORN_DIAMETER_V1)
         || (solvation_factor
             && descriptor.parameter_family
-                == EPCSAFT_NATIVE_PARAMETER_FAMILY_SOLVATION_FACTOR_V1);
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_SOLVATION_FACTOR_V1)
+        || (aqueous_kij
+            && descriptor.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_BINARY_INTERACTION_KIJ_V1);
     const std::uint32_t expected_observation = born
         ? EPCSAFT_NATIVE_OBSERVATION_ION_SOLVATION_GIBBS_V1
-        : solvation_factor
+        : solvation_factor || aqueous_kij
             ? EPCSAFT_NATIVE_OBSERVATION_AQUEOUS_MEAN_IONIC_ACTIVITY_V1
             : EPCSAFT_NATIVE_OBSERVATION_FIXED_COMPOSITION_HELMHOLTZ_PHASE_V1;
     const std::uint32_t expected_domain = binary
@@ -712,7 +771,7 @@ void validate_descriptor(
         || (!binary && !pure && !direct)
         || !matching_family
         || descriptor.parameter_identity
-            != (binary
+            != (binary || aqueous_kij
                     ? EPCSAFT_NATIVE_PARAMETER_IDENTITY_UNORDERED_COMPONENT_PAIR_V1
                     : EPCSAFT_NATIVE_PARAMETER_IDENTITY_COMPONENT_V1)
         || descriptor.observation_contract != expected_observation
@@ -752,7 +811,27 @@ void validate_descriptor(
     std::vector<int> pair_a;
     std::vector<int> pair_b;
     std::vector<const char*> units;
-    if (direct) {
+    if (aqueous_kij) {
+        kinds.push_back(
+            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_BINARY_INTERACTION_KIJ_V1
+        );
+        components.push_back(-1);
+        if (descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_CATION_KIJ_MIAC_V1) {
+            pair_a.push_back(0);
+            pair_b.push_back(1);
+        } else if (
+            descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_ANION_KIJ_MIAC_V1
+        ) {
+            pair_a.push_back(0);
+            pair_b.push_back(2);
+        } else {
+            pair_a.push_back(1);
+            pair_b.push_back(2);
+        }
+        units.push_back("dimensionless");
+    } else if (direct) {
         kinds.push_back(
             born
                 ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_BORN_DIAMETER_V1
@@ -917,6 +996,14 @@ PyObject* descriptor_to_python(
             == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_KIJ_HELMHOLTZ_V1
         || descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_NEUTRAL_BINARY_LIJ_HELMHOLTZ_V1;
+    const bool aqueous_kij =
+        descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_CATION_KIJ_MIAC_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_ANION_KIJ_MIAC_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1;
+    const bool pair_coordinate = binary || aqueous_kij;
     const char* observation_contract =
         descriptor.observation_contract
                 == EPCSAFT_NATIVE_OBSERVATION_ION_SOLVATION_GIBBS_V1
@@ -937,7 +1024,7 @@ PyObject* descriptor_to_python(
                     : "neutral_nonassociating_pure";
     const auto& parameter_coordinate =
         descriptor.coordinates[descriptor.coordinate_count - 1];
-    const std::size_t active_component_count = binary ? 2u : 1u;
+    const std::size_t active_component_count = pair_coordinate ? 2u : 1u;
     PyObject* active_components = PyTuple_New(
         static_cast<Py_ssize_t>(active_component_count)
     );
@@ -948,7 +1035,7 @@ PyObject* descriptor_to_python(
         return nullptr;
     }
     for (std::size_t index = 0; index < active_component_count; ++index) {
-        const int component_index = binary
+        const int component_index = pair_coordinate
             ? (index == 0
                    ? parameter_coordinate.pair_component_index_a
                    : parameter_coordinate.pair_component_index_b)
@@ -983,7 +1070,7 @@ PyObject* descriptor_to_python(
         "NONE",
         descriptor.temperature_min_k,
         descriptor.temperature_max_k,
-        binary ? "unordered_component_pair" : "component",
+        pair_coordinate ? "unordered_component_pair" : "component",
         observation_contract,
         model_domain,
         "row_major",
@@ -1185,12 +1272,87 @@ void evaluate_direct_problem(
     molalities.reserve(row_count);
     for (const Row& row : payload.training_rows) {
         if (row.temperature != first.temperature
-            || row.pressure != first.pressure) {
+            || row.pressure != first.pressure
+            || (row.kind == ObservationKind::aqueous_kij_activity
+                && row.fixed_k_ij != first.fixed_k_ij)) {
             throw std::invalid_argument(
-                "batched direct observations must share temperature and pressure"
+                "batched direct observations must share temperature, pressure, "
+                "and fixed parameter context"
             );
         }
         molalities.push_back(row.direct_state);
+    }
+    const bool aqueous_kij =
+        payload.capability_id == "aqueous_water_cation_kij_miac_v1"
+        || payload.capability_id == "aqueous_water_anion_kij_miac_v1"
+        || payload.capability_id == "aqueous_cation_anion_kij_miac_v1";
+    if (aqueous_kij) {
+        std::array<double, 3> k_ij = first.fixed_k_ij;
+        const std::size_t active_index =
+            payload.capability_id == "aqueous_water_cation_kij_miac_v1"
+            ? 0u
+            : payload.capability_id == "aqueous_water_anion_kij_miac_v1"
+                ? 1u
+                : 2u;
+        k_ij[active_index] = parameter;
+        std::vector<epcsaft_aqueous_miac_kij_result_v1> results(row_count);
+        for (auto& result : results) {
+            result.struct_size = sizeof(result);
+        }
+        const int status = table.evaluate_aqueous_miac_kij_batch(
+            table.model_context,
+            payload.parameter_fingerprint.c_str(),
+            first.temperature,
+            first.pressure,
+            molalities.data(),
+            molalities.size(),
+            k_ij.data(),
+            k_ij.size(),
+            results.data(),
+            results.size()
+        );
+        if (status != EPCSAFT_NATIVE_STATUS_OK_V1) {
+            throw std::runtime_error(
+                std::string("Provider aqueous-kij batch failed: ")
+                + results.front().error
+            );
+        }
+        for (std::size_t index = 0; index < row_count; ++index) {
+            const Row& row = payload.training_rows[index];
+            const auto& result = results[index];
+            const double derivative = result.derivative[active_index];
+            if (result.status != status
+                || !bounded_field_equal(
+                    payload.parameter_fingerprint,
+                    result.parameter_fingerprint
+                )
+                || !std::isfinite(
+                    result.log_mean_ionic_activity_coefficient_molality
+                )
+                || !std::isfinite(derivative)
+                || !std::isfinite(result.reference_molality_mol_per_kg)
+                || !std::isfinite(result.reference_convergence_error)
+                || !std::isfinite(
+                    result.reference_derivative_convergence_error
+                )) {
+                throw std::runtime_error(
+                    std::string("Provider aqueous-kij row failed: ")
+                    + result.error
+                );
+            }
+            const double modeled = std::exp(
+                result.log_mean_ionic_activity_coefficient_molality
+            );
+            const double ratio = modeled / row.observed_value;
+            evaluation.modeled_values[index] = modeled;
+            evaluation.provider_derivatives[index] = derivative;
+            evaluation.residuals[index] =
+                (1.0 - ratio) / row.direct_scale;
+            evaluation.jacobian[index] =
+                -ratio * derivative * payload.parameter_scale
+                / row.direct_scale;
+        }
+        return;
     }
     std::vector<epcsaft_aqueous_miac_solvation_factor_result_v1> results(
         row_count
@@ -2093,6 +2255,12 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
                     == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1
                 || descriptor.capability
                     == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_SOLVATION_FACTOR_MIAC_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_CATION_KIJ_MIAC_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_ANION_KIJ_MIAC_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1
             )
                 ? descriptor_to_python(descriptor)
                 : unsupported_descriptor_to_python(descriptor);

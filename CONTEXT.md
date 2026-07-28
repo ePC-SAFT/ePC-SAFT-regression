@@ -273,6 +273,14 @@ Status is
 `SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE`. No rows,
 weights, bounds, starts, or tolerances were tuned to the answer.
 
+The authority-neutral general API now consumes the same installed batch
+derivative as three closed scalar aqueous capabilities: water--cation,
+water--anion, and cation--anion. A caller can fit one unordered `k_ij` from
+source-bound aqueous MIAC rows while supplying the other two interactions
+explicitly. This expands the observation domain of `k_ij`; it does not
+reinterpret the retained Stage-C comparison, infer catalog defaults, or admit
+a simultaneous electrolyte parameter overlay.
+
 The Figiel Tables 2–5 recovery remains a staged reference campaign. It does
 not define the component domain of a completed parameter family. Validation's
 exact ledger alone classifies each value as fitted, inherited, fixed, or

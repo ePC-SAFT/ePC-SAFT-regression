@@ -11,10 +11,12 @@ import pytest
 import epcsaft_regression.parameter_regression as parameter_regression
 from epcsaft_regression import (
     AffineParameterTransform,
+    AqueousKijMeanIonicActivityObservation,
     ComponentParameterIdentity,
     DirectObservationRowDiagnostic,
     FixedCompositionVleObservation,
     FIGIEL_BORN_DIAMETER_TRACER_V1,
+    FIGIEL_AQUEOUS_KIJ_V1,
     FIGIEL_WATER_SOLVATION_FACTOR_V1,
     MeanIonicActivityObservation,
     ObservationPartition,
@@ -33,7 +35,7 @@ from epcsaft_regression import (
     load_pure_saturation_dataset,
     parameter_capabilities,
 )
-from epcsaft_regression.workflow import _fixed_water_factor_model
+from epcsaft_regression.workflow import _aqueous_kij_models, _fixed_water_factor_model
 from epcsaft_regression.parameter_regression import (
     _evaluate_parameters,
     _native_payload,
@@ -327,6 +329,87 @@ def _solvation_factor_problem(model: EPCSAFT) -> RegressionProblem:
     )
 
 
+def _aqueous_kij_problem(model: EPCSAFT) -> RegressionProblem:
+    specification = FIGIEL_AQUEOUS_KIJ_V1
+    capability = next(
+        capability
+        for capability in parameter_capabilities(model)
+        if not isinstance(capability, UnsupportedParameterCapability)
+        and capability.capability_id
+        == "aqueous_water_cation_kij_miac_v1"
+    )
+    observations = tuple(
+        AqueousKijMeanIonicActivityObservation(
+            row_id=row.row_id,
+            source_id="hamer-wu-1972-nabr",
+            source_locator=(
+                "validation:data/hamer-wu-1972-aqueous-alkali-halides.csv:"
+                f"{row.row_id}"
+            ),
+            component_ids=capability.component_ids,
+            active_pair_component_ids=("water", "sodium-cation"),
+            fixed_k_ij=(-0.3, -0.3, 0.65),
+            temperature_k=specification.temperature_k,
+            pressure_pa=specification.pressure_pa,
+            formula_unit_molality_mol_per_kg=row.molality_mol_per_kg,
+            observed_mean_ionic_activity_coefficient=row.gamma_pm_m,
+            relative_residual_scale=1.0,
+            partition=ObservationPartition.TRAINING,
+        )
+        for row in specification.observations
+        if row.salt == "NaBr"
+    )
+    source = SourceDescriptor(
+        source_id="hamer-wu-1972-nabr",
+        citation=(
+            "Hamer and Wu (1972), NaBr mean ionic activity coefficients; "
+            "audited by Validation packet 8944d34f."
+        ),
+        durable_locator=(
+            "validation:data/hamer-wu-1972-aqueous-alkali-halides.csv"
+        ),
+        source_artifact_sha256=specification.source_hamer_wu_csv_sha256,
+        canonical_dataset_sha256=canonical_dataset_sha256(observations),
+        transformation_record=(
+            "Selected all 21 audited NaBr rows; fixed water-anion and "
+            "cation-anion interactions are explicit workflow inputs."
+        ),
+        units_and_bases=(
+            "T/K, P/Pa, formula-unit molality/(mol/kg), gamma_pm on the "
+            "molality basis; k_ij dimensionless."
+        ),
+        use_basis="All rows are in-sample scalar parameter-recovery targets.",
+        residual_scale_rationale=(
+            "Use the frozen dimensionless residual "
+            "1 - gamma_model/gamma_observed."
+        ),
+    )
+    parameter = ParameterCoordinate(
+        family=ParameterFamily.K_IJ,
+        identity=PairParameterIdentity("water", "sodium-cation"),
+        capability_id=capability.capability_id,
+        provider_parameter_fingerprint=capability.parameter_fingerprint,
+        provider_topology_fingerprint=capability.topology_fingerprint,
+        unit="1",
+        transform=AffineParameterTransform(origin=-0.3, scale=0.1),
+        lower_bound=-1.0,
+        upper_bound=1.0,
+        starts=(0.0, 0.25),
+    )
+    return RegressionProblem(
+        sources=(source,),
+        parameters=(parameter,),
+        observations=observations,
+        maximum_condition_number=1.0e10,
+        maximum_iterations=50,
+        function_tolerance=1.0e-10,
+        gradient_tolerance=1.0e-10,
+        parameter_tolerance=1.0e-10,
+        confirmation_parameter_scaled_max_delta=1.0e-5,
+        confirmation_cost_relative_delta=1.0e-8,
+    )
+
+
 def _born_diameter_problem(
     model: EPCSAFT, target_index: int
 ) -> RegressionProblem:
@@ -528,6 +611,38 @@ def test_installed_provider_advertises_exact_direct_observable_contracts() -> No
     )
 
 
+def test_installed_provider_advertises_each_aqueous_kij_miac_contract() -> None:
+    model = _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4]
+    capabilities = tuple(
+        capability
+        for capability in parameter_capabilities(model)
+        if not isinstance(capability, UnsupportedParameterCapability)
+        and capability.family is ParameterFamily.K_IJ
+        and capability.observation_contract == "aqueous_mean_ionic_activity"
+    )
+
+    assert tuple(capability.capability_id for capability in capabilities) == (
+        "aqueous_water_cation_kij_miac_v1",
+        "aqueous_water_anion_kij_miac_v1",
+        "aqueous_cation_anion_kij_miac_v1",
+    )
+    assert tuple(capability.active_component_ids for capability in capabilities) == (
+        ("sodium-cation", "water"),
+        ("bromide-anion", "water"),
+        ("bromide-anion", "sodium-cation"),
+    )
+    assert all(
+        capability.component_ids
+        == ("water", "sodium-cation", "bromide-anion")
+        and capability.coordinate_kinds == ("k_ij",)
+        and capability.coordinate_units == ("dimensionless",)
+        and capability.derivative_order == 1
+        and capability.identity_shape == "unordered_component_pair"
+        and capability.model_domain == "figiel_aqueous_nabr"
+        for capability in capabilities
+    )
+
+
 def test_exact_solvation_factor_jacobian_matches_directional_residual_difference() -> None:
     model = _fixed_water_factor_model(FIGIEL_WATER_SOLVATION_FACTOR_V1)
     problem = _solvation_factor_problem(model)
@@ -558,6 +673,47 @@ def test_general_engine_fits_water_solvation_factor_over_all_nabr_rows() -> None
     assert result.parameter.final == pytest.approx(
         1.5590515389548207, rel=1.0e-11, abs=1.0e-11
     )
+    assert result.parameter.active_bound is None
+    assert result.jacobian.residual_count == 21
+    assert result.jacobian.variable_count == 1
+    assert result.jacobian.full_rank == 1
+    assert result.jacobian.projected_parameter_rank == 1
+    assert result.confirmations_usable
+    assert all(
+        isinstance(row, DirectObservationRowDiagnostic)
+        and row.evaluated
+        and row.derivative_status == "EXACT_PROVIDER_FIRST_DERIVATIVE"
+        for row in result.rows
+    )
+
+
+def test_exact_aqueous_kij_jacobian_matches_directional_residual_difference() -> None:
+    model = _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4]
+    problem = _aqueous_kij_problem(model)
+    trial = problem.parameters[0].transform.to_solver(-0.2)
+
+    residuals, jacobian = _evaluate_parameters(problem, model, (trial,))
+    step = 1.0e-5
+    plus = _evaluate_parameters(problem, model, (trial + step,))[0]
+    minus = _evaluate_parameters(problem, model, (trial - step,))[0]
+    finite_difference = tuple(
+        (upper - lower) / (2.0 * step)
+        for upper, lower in zip(plus, minus, strict=True)
+    )
+
+    assert len(residuals) == len(jacobian) == 21
+    assert jacobian == pytest.approx(
+        finite_difference, rel=2.0e-6, abs=2.0e-8
+    )
+
+
+def test_general_engine_fits_one_aqueous_kij_from_user_rows() -> None:
+    model = _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4]
+    result = fit_parameters(_aqueous_kij_problem(model), model)
+
+    assert result.solver_converged
+    assert result.numerically_converged
+    assert result.workflow_valid
     assert result.parameter.active_bound is None
     assert result.jacobian.residual_count == 21
     assert result.jacobian.variable_count == 1

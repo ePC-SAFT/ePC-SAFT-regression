@@ -222,7 +222,11 @@ def parameter_capabilities(
                 helmholtz_basis_id=raw[18],
                 unsupported_status=raw[19],
                 domain_status=raw[20],
-                active_component_ids=tuple(raw[21]),
+                active_component_ids=(
+                    tuple(sorted(raw[21]))
+                    if raw[12] == "unordered_component_pair"
+                    else tuple(raw[21])
+                ),
             )
         )
     return tuple(capabilities)
@@ -594,6 +598,64 @@ class MeanIonicActivityObservation:
 
 
 @dataclass(frozen=True, slots=True)
+class AqueousKijMeanIonicActivityObservation:
+    row_id: str
+    source_id: str
+    source_locator: str
+    component_ids: tuple[str, str, str]
+    active_pair_component_ids: tuple[str, str]
+    fixed_k_ij: tuple[float, float, float]
+    temperature_k: float
+    pressure_pa: float
+    formula_unit_molality_mol_per_kg: float
+    observed_mean_ionic_activity_coefficient: float
+    relative_residual_scale: float
+    partition: ObservationPartition
+
+    def __post_init__(self) -> None:
+        for field in ("row_id", "source_id", "source_locator"):
+            _require_nonempty_string(getattr(self, field), field)
+        if type(self.component_ids) is not tuple or len(self.component_ids) != 3:
+            raise ValueError(
+                "component_ids must contain solvent, cation, and anion"
+            )
+        for component_id in self.component_ids:
+            _require_nonempty_string(component_id, "component_id")
+        if len(set(self.component_ids)) != 3:
+            raise ValueError("component_ids must be distinct")
+        if (
+            type(self.active_pair_component_ids) is not tuple
+            or len(self.active_pair_component_ids) != 2
+            or len(set(self.active_pair_component_ids)) != 2
+            or not set(self.active_pair_component_ids).issubset(self.component_ids)
+        ):
+            raise ValueError(
+                "active_pair_component_ids must identify two model components"
+            )
+        if type(self.fixed_k_ij) is not tuple or len(self.fixed_k_ij) != 3:
+            raise ValueError(
+                "fixed_k_ij must contain water-cation, water-anion, and "
+                "cation-anion values"
+            )
+        for value in self.fixed_k_ij:
+            _require_finite(value, "fixed k_ij")
+        for field in (
+            "temperature_k",
+            "pressure_pa",
+            "formula_unit_molality_mol_per_kg",
+            "observed_mean_ionic_activity_coefficient",
+            "relative_residual_scale",
+        ):
+            _require_finite(getattr(self, field), field, positive=True)
+        if not isinstance(self.partition, ObservationPartition):
+            raise TypeError("partition must be an ObservationPartition")
+
+    @property
+    def canonical_active_pair_component_ids(self) -> tuple[str, str]:
+        return tuple(sorted(self.active_pair_component_ids))
+
+
+@dataclass(frozen=True, slots=True)
 class SolvationGibbsObservation:
     row_id: str
     source_id: str
@@ -627,7 +689,11 @@ class SolvationGibbsObservation:
             raise TypeError("partition must be an ObservationPartition")
 
 
-DirectObservation = MeanIonicActivityObservation | SolvationGibbsObservation
+DirectObservation = (
+    MeanIonicActivityObservation
+    | AqueousKijMeanIonicActivityObservation
+    | SolvationGibbsObservation
+)
 RegressionObservation = (
     FixedCompositionVleObservation
     | PureSaturationObservation
@@ -636,6 +702,25 @@ RegressionObservation = (
 
 
 def _canonical_row(row: RegressionObservation) -> dict[str, object]:
+    if isinstance(row, AqueousKijMeanIonicActivityObservation):
+        return {
+            "row_id": row.row_id,
+            "source_id": row.source_id,
+            "source_locator": row.source_locator,
+            "component_ids": list(row.component_ids),
+            "active_pair_component_ids": list(row.active_pair_component_ids),
+            "fixed_k_ij": list(row.fixed_k_ij),
+            "temperature_k": row.temperature_k,
+            "pressure_pa": row.pressure_pa,
+            "formula_unit_molality_mol_per_kg": (
+                row.formula_unit_molality_mol_per_kg
+            ),
+            "observed_mean_ionic_activity_coefficient": (
+                row.observed_mean_ionic_activity_coefficient
+            ),
+            "relative_residual_scale": row.relative_residual_scale,
+            "partition": row.partition.value,
+        }
     if isinstance(row, MeanIonicActivityObservation):
         return {
             "row_id": row.row_id,
@@ -784,11 +869,10 @@ class RegressionProblem:
         identity = self.parameters[0].identity.canonical_component_ids
         for row in self.observations:
             row_identity = (
-                (row.active_component_id,)
-                if isinstance(
-                    row,
-                    (MeanIonicActivityObservation, SolvationGibbsObservation),
-                )
+                row.canonical_active_pair_component_ids
+                if isinstance(row, AqueousKijMeanIonicActivityObservation)
+                else (row.active_component_id,)
+                if isinstance(row, (MeanIonicActivityObservation, SolvationGibbsObservation))
                 else (
                     tuple(sorted(row.component_ids))
                     if len(row.component_ids) == 2
@@ -835,6 +919,17 @@ class RegressionProblem:
 
 
 def _row_payload(row: RegressionObservation) -> tuple[object, ...]:
+    if isinstance(row, AqueousKijMeanIonicActivityObservation):
+        return (
+            row.row_id,
+            row.partition.value,
+            row.temperature_k,
+            row.pressure_pa,
+            row.formula_unit_molality_mol_per_kg,
+            row.observed_mean_ionic_activity_coefficient,
+            row.relative_residual_scale,
+            *row.fixed_k_ij,
+        )
     if isinstance(row, MeanIonicActivityObservation):
         return (
             row.row_id,
@@ -974,7 +1069,10 @@ def _matched_capability(
             raise ValueError(
                 f"observation {row.row_id!r} temperature is outside the Provider capability domain"
             )
-        if isinstance(row, MeanIonicActivityObservation):
+        if isinstance(
+            row,
+            (MeanIonicActivityObservation, AqueousKijMeanIonicActivityObservation),
+        ):
             if (
                 row.pressure_pa != 100_000.0
                 or not 0.001
@@ -988,8 +1086,10 @@ def _matched_capability(
             if (
                 capability.observation_contract
                 != "aqueous_mean_ionic_activity"
-                or capability.active_component_ids
-                != parameter.identity.canonical_component_ids
+                or (
+                    capability.active_component_ids
+                    != parameter.identity.canonical_component_ids
+                )
             ):
                 raise ValueError(
                     "mean-ionic-activity observation does not match the "
@@ -1050,18 +1150,33 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
                     "mean_ionic_activity_coefficient"
                     if isinstance(
                         observation := observations[row[0]],
-                        MeanIonicActivityObservation,
+                        (
+                            MeanIonicActivityObservation,
+                            AqueousKijMeanIonicActivityObservation,
+                        ),
                     )
                     else "solvation_gibbs_energy"
                 ),
                 observable_unit=(
                     "1"
-                    if isinstance(observation, MeanIonicActivityObservation)
+                    if isinstance(
+                        observation,
+                        (
+                            MeanIonicActivityObservation,
+                            AqueousKijMeanIonicActivityObservation,
+                        ),
+                    )
                     else "J/mol"
                 ),
                 observed_value=(
                     observation.observed_mean_ionic_activity_coefficient
-                    if isinstance(observation, MeanIonicActivityObservation)
+                    if isinstance(
+                        observation,
+                        (
+                            MeanIonicActivityObservation,
+                            AqueousKijMeanIonicActivityObservation,
+                        ),
+                    )
                     else observation.observed_solvation_gibbs_j_per_mol
                 ),
                 modeled_value=row[7],
@@ -1078,7 +1193,11 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
             )
             if isinstance(
                 observations[row[0]],
-                (MeanIonicActivityObservation, SolvationGibbsObservation),
+                (
+                    MeanIonicActivityObservation,
+                    AqueousKijMeanIonicActivityObservation,
+                    SolvationGibbsObservation,
+                ),
             )
             else PureSaturationRowDiagnostic(
                 row_id=row[0],
