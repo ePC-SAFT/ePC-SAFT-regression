@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-kij-lij-and-scalar-pure-fit-ready
+status: authoritative-methane-and-ethane-with-seven-general-families-fit-ready
 
 authority:
   accepted_capabilities:
@@ -48,7 +48,7 @@ scope: >-
   liquid-density rows on a matching neutral pure capability.
 
 general_parameter_regression:
-  status: KIJ_LIJ_AND_SCALAR_PURE_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
+  status: SEVEN_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
   design_owner: docs/science/general-parameter-regression.md
   objective: >-
     Fit any admitted continuous ePC-SAFT parameter for any Provider-supported
@@ -69,7 +69,7 @@ general_parameter_regression:
     observation_schema: finite-typed-source-bound
   reference_campaign_role: evidence-not-component-restriction
   forbidden_interpretation: every-provider-parameter-is-fit-ready-now
-  immediate_provider_gate: SATISFIED_FOR_KIJ_LIJ_AND_SCALAR_PURE_FAMILIES
+  immediate_provider_gate: SATISFIED_FOR_SEVEN_FAMILIES
   provider_subject: 1e571ab0a84603a51ed6994b14286f683fb12b88
   provider_wheel_sha256: 6536edc63adaa13c5c6c67c185d82c9ae232048e99dc3dc3be502708eea4410f
   provider_header_sha256: b667379c2d7106d012c6b57f96b6f32dd23ef305fe6f15a87c22ab20029008f8
@@ -77,8 +77,12 @@ general_parameter_regression:
   scalar_pure_provider_tree: cecdfddde1c29f6d33fc1106d0662e0376981e4a
   scalar_pure_provider_wheel_sha256: 9df62965f55876104585504f0f9170fefffbbaa9e94b23f90ac1da582cf5cb4c
   scalar_pure_provider_header_sha256: feadc42414188cd9fa50708dff5e7815f9eec85bf868f080e65e07a4c70b461d
-  regression_subject: da7a44ce093201022aec2f3514d4e4fd9d8d2929
-  regression_wheel_sha256: 3a59d2233fec51f949a7784937b54f7f66beae2476fa8e33976672a480b67137
+  direct_observable_provider_subject: 2d1816cf376294156684fee85611a93fc41d0970
+  direct_observable_provider_tree: 0a36f875fe75cc90cece5144373ab031c8724ccc
+  direct_observable_provider_wheel_sha256: bc40a9ac2c217afe163cf0bed36159e8f3387d6a1bd09a24665b4a952d84a8d3
+  direct_observable_provider_header_sha256: 568381308595713a60ee0b24b1ca357956b51b7cbbf759cc13404108eeac8780
+  pair_reference_regression_subject: da7a44ce093201022aec2f3514d4e4fd9d8d2929
+  pair_reference_regression_wheel_sha256: 3a59d2233fec51f949a7784937b54f7f66beae2476fa8e33976672a480b67137
   fit_ready_pair_families:
     families: [k_ij, l_ij]
     model_domain: neutral-nonassociating-binary
@@ -108,6 +112,20 @@ general_parameter_regression:
     fitted_segment_count: 1.0001569260577763
     fitted_segment_diameter_angstrom: 3.7063548743836034
     fitted_dispersion_energy_over_k_kelvin: 150.00325287725062
+    authority_effect: none
+    predictive_effect: none
+  fit_ready_direct_observable_families:
+    families: [born_diameter, solvation_factor]
+    parameter_count_per_problem: 1
+    nuisance_variables: 0
+    provider_derivative_order: 1
+    born_observation_contract: solvation-gibbs-energy
+    born_reference_problem_count: 5
+    born_reference_shape_per_problem: 1x1
+    solvation_factor_observation_contract: mean-ionic-activity
+    solvation_factor_reference_shape: 21x1
+    reference_full_rank: 1
+    reference_projected_parameter_rank: 1
     authority_effect: none
     predictive_effect: none
   installed_reference_smoke:
@@ -507,14 +525,16 @@ parameter_family_readiness:
     retained_evidence_authority: D-022
   association_parameters: NOT_READY
   polar_parameters: NOT_READY
-  electrolyte_born_parameters: NOT_READY_NO_CATALOG_ADMISSION
+  electrolyte_born_parameters: FIT_READY_DIRECT_OBSERVABLE_AUTHORITY_NEUTRAL_NO_CATALOG_ADMISSION
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
   figiel_current_catalog_aqueous_kij: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED
   reactive_or_temperature_dependent_parameters: NOT_READY
-  general_parameter_regression: PARTIAL_FIVE_FAMILIES_FIT_READY
+  general_parameter_regression: PARTIAL_SEVEN_FAMILIES_FIT_READY
   mixture_independent_scalar_pure: FIT_READY_PURE_SATURATION_PRESSURE_AND_LIQUID_DENSITY
   mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
   mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
+  mixture_independent_born_diameter: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
+  mixture_independent_solvation_factor: FIT_READY_ADVERTISED_MEAN_IONIC_ACTIVITY_DOMAIN
   mixture_independent_association: NOT_READY_PENDING_EXACT_TOPOLOGY_BOUND_PROVIDER_DERIVATIVES
   khb_ij: NOT_READY_NOT_A_CURRENT_PROVIDER_PARAMETER_FAMILY
   full_parameter_family_coverage: NOT_READY

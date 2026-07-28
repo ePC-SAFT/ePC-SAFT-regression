@@ -12,7 +12,11 @@ import epcsaft_regression.parameter_regression as parameter_regression
 from epcsaft_regression import (
     AffineParameterTransform,
     ComponentParameterIdentity,
+    DirectObservationRowDiagnostic,
     FixedCompositionVleObservation,
+    FIGIEL_BORN_DIAMETER_TRACER_V1,
+    FIGIEL_WATER_SOLVATION_FACTOR_V1,
+    MeanIonicActivityObservation,
     ObservationPartition,
     PairParameterIdentity,
     ParameterCoordinate,
@@ -22,12 +26,14 @@ from epcsaft_regression import (
     RegressionProblem,
     RegressionResult,
     SourceDescriptor,
+    SolvationGibbsObservation,
     UnsupportedParameterCapability,
     canonical_dataset_sha256,
     fit_parameters,
     load_pure_saturation_dataset,
     parameter_capabilities,
 )
+from epcsaft_regression.workflow import _fixed_water_factor_model
 from epcsaft_regression.parameter_regression import (
     _evaluate_parameters,
     _native_payload,
@@ -45,6 +51,19 @@ def _pure_model() -> EPCSAFT:
     parameters = ParameterBundle.from_catalog(
         "gross-2001-methane-ethane", version=1
     ).select(("methane",))
+    return EPCSAFT(parameters)
+
+
+def _aqueous_model(
+    component_ids: tuple[str, str, str] = (
+        "water",
+        "sodium-cation",
+        "bromide-anion",
+    ),
+) -> EPCSAFT:
+    parameters = ParameterBundle.from_catalog(
+        "figiel-2025-reference-electrolytes", version=1
+    ).select(component_ids)
     return EPCSAFT(parameters)
 
 
@@ -233,6 +252,160 @@ def _pure_problem(
     )
 
 
+def _solvation_factor_problem(model: EPCSAFT) -> RegressionProblem:
+    specification = FIGIEL_WATER_SOLVATION_FACTOR_V1
+    capability = _capability(model, ParameterFamily.SOLVATION_FACTOR)
+    observations = tuple(
+        MeanIonicActivityObservation(
+            row_id=row.row_id,
+            source_id="hamer-wu-1972-nabr",
+            source_locator=(
+                "validation:data/figiel-2025-hamer-wu-miac.csv:"
+                f"{row.row_id}"
+            ),
+            component_ids=capability.component_ids,
+            active_component_id="water",
+            temperature_k=specification.temperature_k,
+            pressure_pa=specification.pressure_pa,
+            formula_unit_molality_mol_per_kg=(
+                row.molality_mol_per_kg
+            ),
+            observed_mean_ionic_activity_coefficient=row.gamma_pm_m,
+            relative_residual_scale=1.0,
+            partition=ObservationPartition.TRAINING,
+        )
+        for row in specification.observations
+    )
+    source = SourceDescriptor(
+        source_id="hamer-wu-1972-nabr",
+        citation=(
+            "Hamer and Wu (1972), NaBr mean ionic activity coefficients; "
+            "audited by Validation packet 8944d34f."
+        ),
+        durable_locator=(
+            "validation:data/figiel-2025-hamer-wu-miac.csv"
+        ),
+        source_artifact_sha256=specification.source_hamer_wu_csv_sha256,
+        canonical_dataset_sha256=canonical_dataset_sha256(observations),
+        transformation_record=(
+            "Selected all 21 audited NaBr rows; no row duplication or "
+            "response transformation."
+        ),
+        units_and_bases=(
+            "T/K, P/Pa, formula-unit molality/(mol/kg), gamma_pm on the "
+            "molality basis."
+        ),
+        use_basis="All rows are in-sample parameter-recovery targets.",
+        residual_scale_rationale=(
+            "Preserve the frozen dimensionless residual "
+            "1 - gamma_model/gamma_observed."
+        ),
+    )
+    parameter = ParameterCoordinate(
+        family=ParameterFamily.SOLVATION_FACTOR,
+        identity=ComponentParameterIdentity("water"),
+        capability_id=capability.capability_id,
+        provider_parameter_fingerprint=capability.parameter_fingerprint,
+        provider_topology_fingerprint=capability.topology_fingerprint,
+        unit="1",
+        transform=AffineParameterTransform(origin=1.5, scale=0.1),
+        lower_bound=specification.parameter_bounds[0],
+        upper_bound=specification.parameter_bounds[1],
+        starts=specification.starts,
+    )
+    return RegressionProblem(
+        sources=(source,),
+        parameters=(parameter,),
+        observations=observations,
+        maximum_condition_number=1.0e10,
+        maximum_iterations=specification.max_num_iterations,
+        function_tolerance=specification.function_tolerance,
+        gradient_tolerance=specification.gradient_tolerance,
+        parameter_tolerance=specification.parameter_tolerance,
+        confirmation_parameter_scaled_max_delta=1.0e-4,
+        confirmation_cost_relative_delta=1.0e-8,
+    )
+
+
+def _born_diameter_problem(
+    model: EPCSAFT, target_index: int
+) -> RegressionProblem:
+    specification = FIGIEL_BORN_DIAMETER_TRACER_V1
+    target = specification.targets[target_index]
+    capability = _capability(model, ParameterFamily.BORN_DIAMETER)
+    observation = SolvationGibbsObservation(
+        row_id=target.target_id,
+        source_id="figiel-2025-s5-reported-averages",
+        source_locator=(
+            f"{specification.source_locator}:{target.target_id}"
+        ),
+        component_ids=target.component_order,
+        active_component_id=target.active_component_id,
+        temperature_k=specification.temperature_k,
+        pressure_pa=specification.pressure_pa,
+        observed_solvation_gibbs_j_per_mol=target.target_j_per_mol,
+        residual_scale_j_per_mol=abs(target.target_j_per_mol),
+        partition=ObservationPartition.TRAINING,
+    )
+    source = SourceDescriptor(
+        source_id="figiel-2025-s5-reported-averages",
+        citation=(
+            "Figiel, Yu, and Held (2025), SI Table S5 reported-average "
+            "water solvation Gibbs energies."
+        ),
+        durable_locator=specification.source_si_doi,
+        source_artifact_sha256=specification.packaged_targets_sha256,
+        canonical_dataset_sha256=canonical_dataset_sha256((observation,)),
+        transformation_record=(
+            "Converted the selected reported average from kJ/mol to J/mol; "
+            "the 27 supporting rows are provenance, not residual duplication."
+        ),
+        units_and_bases=(
+            "T/K, P/Pa, solvation Gibbs energy/(J/mol); "
+            f"{specification.source_basis}."
+        ),
+        use_basis=(
+            "One in-sample source-bound Born-diameter recovery problem."
+        ),
+        residual_scale_rationale=(
+            "Scale the Gibbs-energy difference by the magnitude of its "
+            "reported target, preserving the frozen tracer contract."
+        ),
+    )
+    parameter = ParameterCoordinate(
+        family=ParameterFamily.BORN_DIAMETER,
+        identity=ComponentParameterIdentity(target.active_component_id),
+        capability_id=capability.capability_id,
+        provider_parameter_fingerprint=capability.parameter_fingerprint,
+        provider_topology_fingerprint=capability.topology_fingerprint,
+        unit="angstrom",
+        transform=AffineParameterTransform(
+            origin=specification.diameter_origin_angstrom,
+            scale=specification.diameter_scale_angstrom,
+        ),
+        lower_bound=specification.diameter_bounds_angstrom[0],
+        upper_bound=specification.diameter_bounds_angstrom[1],
+        starts=tuple(
+            start[target_index]
+            for start in specification.start_diameters_angstrom
+        ),
+    )
+    return RegressionProblem(
+        sources=(source,),
+        parameters=(parameter,),
+        observations=(observation,),
+        maximum_condition_number=1.0e10,
+        maximum_iterations=specification.max_num_iterations,
+        function_tolerance=specification.function_tolerance,
+        gradient_tolerance=specification.gradient_tolerance,
+        parameter_tolerance=specification.parameter_tolerance,
+        confirmation_parameter_scaled_max_delta=(
+            specification.confirmation_parameter_scaled_max_delta
+        ),
+        confirmation_cost_relative_delta=1.0e-8,
+    )
+
+
 def test_installed_provider_advertises_exact_neutral_binary_kij_contract(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -287,6 +460,165 @@ def test_installed_provider_advertises_exact_neutral_binary_kij_contract(
         capability_code=999,
         schema_version=1,
         parameter_family_code=998,
+    )
+
+
+def test_installed_provider_advertises_exact_direct_observable_contracts() -> None:
+    solvation = _capability(
+        _aqueous_model(), ParameterFamily.SOLVATION_FACTOR
+    )
+    born = _capability(
+        _aqueous_model(
+            ("water", "sodium-cation", "chloride-anion")
+        ),
+        ParameterFamily.BORN_DIAMETER,
+    )
+
+    assert (
+        solvation.capability_id,
+        solvation.component_ids,
+        solvation.coordinate_kinds,
+        solvation.coordinate_units,
+        solvation.derivative_order,
+        solvation.identity_shape,
+        solvation.observation_contract,
+        solvation.model_domain,
+        solvation.state_coordinate_count,
+        solvation.active_parameter_count,
+        solvation.active_component_ids,
+    ) == (
+        "aqueous_solvation_factor_miac_v1",
+        ("water", "sodium-cation", "bromide-anion"),
+        ("solvation_factor",),
+        ("dimensionless",),
+        1,
+        "component",
+        "aqueous_mean_ionic_activity",
+        "figiel_aqueous_nabr",
+        0,
+        1,
+        ("water",),
+    )
+    assert (
+        born.capability_id,
+        born.coordinate_kinds,
+        born.coordinate_units,
+        born.derivative_order,
+        born.observation_contract,
+        born.model_domain,
+        born.active_component_ids,
+    ) == (
+        "ion_solvation_born_v1",
+        ("born_diameter",),
+        ("angstrom",),
+        1,
+        "ion_solvation_gibbs",
+        "figiel_water_single_ion",
+        ("sodium-cation",),
+    )
+
+
+def test_exact_solvation_factor_jacobian_matches_directional_residual_difference() -> None:
+    model = _fixed_water_factor_model(FIGIEL_WATER_SOLVATION_FACTOR_V1)
+    problem = _solvation_factor_problem(model)
+    trial = problem.parameters[0].transform.to_solver(1.4)
+
+    residuals, jacobian = _evaluate_parameters(problem, model, (trial,))
+    step = 1.0e-5
+    plus = _evaluate_parameters(problem, model, (trial + step,))[0]
+    minus = _evaluate_parameters(problem, model, (trial - step,))[0]
+    finite_difference = tuple(
+        (upper - lower) / (2.0 * step)
+        for upper, lower in zip(plus, minus, strict=True)
+    )
+
+    assert len(residuals) == len(jacobian) == 21
+    assert jacobian == pytest.approx(
+        finite_difference, rel=2.0e-6, abs=2.0e-8
+    )
+
+
+def test_general_engine_fits_water_solvation_factor_over_all_nabr_rows() -> None:
+    model = _fixed_water_factor_model(FIGIEL_WATER_SOLVATION_FACTOR_V1)
+    result = fit_parameters(_solvation_factor_problem(model), model)
+
+    assert result.solver_converged
+    assert result.numerically_converged
+    assert result.workflow_valid
+    assert result.parameter.final == pytest.approx(
+        1.5590515389548207, rel=1.0e-11, abs=1.0e-11
+    )
+    assert result.parameter.active_bound is None
+    assert result.jacobian.residual_count == 21
+    assert result.jacobian.variable_count == 1
+    assert result.jacobian.full_rank == 1
+    assert result.jacobian.projected_parameter_rank == 1
+    assert result.confirmations_usable
+    assert all(
+        isinstance(row, DirectObservationRowDiagnostic)
+        and row.evaluated
+        and row.derivative_status == "EXACT_PROVIDER_FIRST_DERIVATIVE"
+        for row in result.rows
+    )
+
+
+def test_exact_born_diameter_jacobian_matches_directional_residual_difference() -> None:
+    target_index = 1
+    target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[target_index]
+    model = _aqueous_model(target.component_order)
+    problem = _born_diameter_problem(model, target_index)
+    trial = problem.parameters[0].transform.to_solver(3.2)
+
+    residuals, jacobian = _evaluate_parameters(problem, model, (trial,))
+    step = 1.0e-5
+    plus = _evaluate_parameters(problem, model, (trial + step,))[0]
+    minus = _evaluate_parameters(problem, model, (trial - step,))[0]
+    finite_difference = (plus[0] - minus[0]) / (2.0 * step)
+
+    assert len(residuals) == len(jacobian) == 1
+    assert jacobian[0] == pytest.approx(
+        finite_difference, rel=2.0e-7, abs=2.0e-9
+    )
+
+
+@pytest.mark.parametrize(
+    ("target_index", "expected"),
+    tuple(
+        enumerate(
+            (
+                2.7888130173797934,
+                3.4524616464076425,
+                4.147266741279482,
+                4.101505615791675,
+                4.476998527506598,
+            )
+        )
+    ),
+)
+def test_general_engine_fits_each_born_diameter_independently(
+    target_index: int, expected: float
+) -> None:
+    target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[target_index]
+    model = _aqueous_model(target.component_order)
+    result = fit_parameters(
+        _born_diameter_problem(model, target_index), model
+    )
+
+    assert result.solver_converged
+    assert result.numerically_converged
+    assert result.workflow_valid
+    assert result.parameter.final == pytest.approx(
+        expected, rel=2.0e-11, abs=2.0e-11
+    )
+    assert result.parameter.active_bound is None
+    assert result.jacobian.residual_count == 1
+    assert result.jacobian.variable_count == 1
+    assert result.jacobian.full_rank == 1
+    assert result.jacobian.projected_parameter_rank == 1
+    assert result.confirmations_usable
+    assert isinstance(result.rows[0], DirectObservationRowDiagnostic)
+    assert result.rows[0].derivative_status == (
+        "EXACT_PROVIDER_FIRST_DERIVATIVE"
     )
 
 

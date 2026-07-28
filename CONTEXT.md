@@ -52,11 +52,11 @@ with no added runtime test seam.
 
 `next_figiel_family_status: CONDITIONAL_STAGE_C_NUMERICALLY_CONFIRMED_PRINTED_TUPLE_NOT_RECOVERED`
 
-`general_parameter_regression_status: KIJ_LIJ_AND_SCALAR_PURE_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
+`general_parameter_regression_status: SEVEN_PARAMETER_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
 
 The user-approved 2026-07-27 destination is general parameter-family
 regression, defined in `docs/science/general-parameter-regression.md`. The
-first five families are implemented. Caller-supplied, source-bound
+first seven families are implemented. Caller-supplied, source-bound
 fixed-composition VLE rows may independently fit one shared `k_ij` or `l_ij`
 for any neutral, nonassociating binary model whose installed Provider
 descriptor advertises the corresponding exact `(n1,n2,V,pair_parameter)`
@@ -101,6 +101,23 @@ parameter rank 1 for each independent fit. The fitted values are
 agreement. These are local in-sample implementation anchors, not fitted
 catalog values or predictive acceptance.
 
+Provider commit `2d1816cf376294156684fee85611a93fc41d0970` (tree
+`0a36f875fe75cc90cece5144373ab031c8724ccc`) advertises the existing
+active-Born and aqueous-solvation-factor callbacks through the same typed
+capability negotiation, including model-topology fingerprints. Its exact wheel
+SHA-256 is
+`bc40a9ac2c217afe163cf0bed36159e8f3387d6a1bd09a24665b4a952d84a8d3`
+and installed-header SHA-256 is
+`568381308595713a60ee0b24b1ca357956b51b7cbbf759cc13404108eeac8780`.
+The shared Regression surface now fits one Born diameter from source-bound
+solvation-Gibbs observations or one solvation factor from source-bound mean-
+ionic-activity observations. The Figiel reference evidence consists of five
+independent `1x1`, rank-1 Born problems and the existing `21x1`, rank-1 NaBr
+water-factor problem. All starts converge to the prior paper-specific
+reference values with no active bounds. This is fit readiness only for the
+advertised fixed-state reference paths, not general electrolyte, catalog, or
+predictive authority.
+
 All 17 audited May rows reproduce the frozen `68 x 35` formulation with
 convergence, full rank 35, projected parameter rank 1, a non-bound
 `k_ij = -0.00843032298906253`, and declared-start confirmation. The same
@@ -113,8 +130,8 @@ Provider catalog.
 Published methane, ethane, Figiel, and later campaigns remain positive or
 negative evidence rather than hard-coded mixture limits. The finite typed
 schema is not an arbitrary residual plugin or mutable registry. All parameter
-families other than these exact neutral-binary fixed-composition `k_ij` and
-`l_ij` contracts and scalar pure-saturation component contracts retain their
+families other than these exact neutral-binary fixed-composition, scalar pure-
+saturation, solvation-Gibbs, and mean-ionic-activity contracts retain their
 prior readiness states.
 
 Migration D-023 supersedes D-022's active order without rewriting its evidence.

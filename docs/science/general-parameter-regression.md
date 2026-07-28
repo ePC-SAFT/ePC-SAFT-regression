@@ -1,7 +1,8 @@
 # General ePC-SAFT Parameter Regression
 
-Status: neutral-binary `k_ij`/`l_ij` and scalar pure
-`m`/`sigma`/`epsilon-k` families fit-ready; broader families pending
+Status: neutral-binary `k_ij`/`l_ij`, scalar pure
+`m`/`sigma`/`epsilon-k`, Born-diameter, and solvation-factor families
+fit-ready for their typed observation contracts; broader families pending
 
 Date: 2026-07-27
 
@@ -144,8 +145,8 @@ and rank gates.
 | `association_energy_over_k` | association endpoint pair | hydrogen-bond-sensitive VLE/LLE, solvation, enthalpy, and related phase-property observations | represented by Provider; exact active derivative and Regression surface pending |
 | `association_volume` | association endpoint pair | hydrogen-bond-sensitive VLE/LLE, density, solvation, and caloric observations | represented by Provider; exact active derivative and Regression surface pending |
 | `k_hb_ij` | source-defined cross-association combining-rule coordinate | the same cross-association-sensitive observations, with enough composition/temperature variation to separate it from pure association parameters | not a current Provider record family; requires an explicit active combining-rule coordinate or a declared transform to resolved cross-association energy |
-| `born_diameter` | ion component | source-defined single-ion solvation Gibbs energy or another explicitly admitted ionic observable | five-ion fit demonstrated under one fixed `(T,P,reference-path)` convention; general request pending |
-| `solvation_factor` | applicable component | MIAC, osmotic/activity, or solvation observations under a declared reference sequence | one NaBr water-factor fit demonstrated under one fixed reference path; general request pending |
+| `born_diameter` | ion component | source-defined single-ion solvation Gibbs energy under the advertised fixed-state reference path | fit-ready one ion at a time for caller-supplied solvation-Gibbs targets on an installed direct-observable capability; five Figiel ions are reference evidence |
+| `solvation_factor` | applicable component | MIAC under the advertised fixed-state reference path | fit-ready one component factor at a time for caller-supplied mean-ionic-activity rows on an installed direct-observable capability; 21 NaBr rows are reference evidence |
 | dielectric and ion-suppression coefficients | component/model/correlation term | dielectric, MIAC, osmotic/activity, solvation, or phase observations over a rank-sufficient state range | represented families vary; exact active derivatives and Regression surface pending |
 | polar coefficients | component/correlation term | polar-mixture VLE, PVT, caloric, dielectric, or other source-defined polar observables | represented families vary; exact active derivatives and Regression surface pending |
 | temperature-dependent coefficients | named correlation term | observations spanning enough temperatures to identify every active coefficient | represented correlations vary; exact active derivatives and Regression surface pending |
@@ -235,9 +236,11 @@ Provider `1e571ab0a84603a51ed6994b14286f683fb12b88` supplies the first two
 general model-bound capability descriptors for neutral binary `k_ij` and
 `l_ij`. Provider `86983ff` adds three component-identity descriptors for a
 neutral, nonassociating, constant-diameter pure model, backed by the exact
-`(n,V,active_parameter)` value/gradient/Hessian callback. Regression selects
-the requested known
-descriptor from that finite Provider capability set, reports unknown
+`(n,V,active_parameter)` value/gradient/Hessian callback. Provider
+`2d1816cf376294156684fee85611a93fc41d0970` adds complete typed descriptors
+and topology fingerprints for the existing active-Born and aqueous-
+solvation-factor callbacks. Regression selects the requested known descriptor
+from that finite Provider capability set, reports unknown
 descriptors as unsupported, and rejects an unknown capability request. Later
 families must supply the same closed metadata:
 
@@ -262,21 +265,34 @@ families must supply the same closed metadata:
 Missing or unknown descriptor metadata prevents `DERIVATIVE_READY` and
 `FIT_READY`; Regression does not fill it from local defaults.
 
-The first descriptor is derivative-ready and authority-neutral. Regression's
-typed fixed-composition VLE contract makes that exact family `FIT_READY`; it
-does not make the capability reference-validated or admitted.
+The direct-observable descriptors have derivative order one because Provider
+returns the observable and its exact total derivative with respect to the sole
+active physical parameter. Regression's typed direct-observation contracts
+make those exact domains `FIT_READY`; this does not admit fitted values to the
+Provider catalog or generalize their fixed reference paths.
 
 Direct observable residuals consume Provider values and first total
-derivatives. For solver coordinates `z_k`, physical parameters `p_j`, and
-residual scale `s_q`:
+derivatives. For a solvation-Gibbs target, solver coordinate `z`, physical
+parameter `p = p_origin + p_scale z`, and residual scale `s_G`:
 
 ```text
-r_q = (y_q(p) - y_q,observed) / s_q
-J_qk = sum_j[(dy_q/dp_j) * (dp_j/dz_k)] / s_q
+r_G = (G_solv(p) - G_solv,observed) / s_G
+J_G = (dG_solv/dp) * p_scale / s_G
 ```
 
-`dp/dz` owns affine scales and any declared parameter sharing. It is never
-silently assumed diagonal.
+The mean-ionic-activity contract preserves the source-frozen relative
+residual rather than substituting a log residual:
+
+```text
+gamma_model = exp(log_gamma_model)
+r_gamma = (1 - gamma_model/gamma_observed) / s_relative
+J_gamma = -(gamma_model/gamma_observed)
+          * d(log_gamma_model)/dp * p_scale / s_relative
+```
+
+The implemented direct path accepts exactly one active parameter per problem.
+Parameter sharing is therefore explicit across rows, while the five Figiel
+Born targets are five independent one-parameter problems.
 
 Lifted phase-equilibrium residuals consume Provider phase-potential values,
 gradients, and Hessians. The Hessian supplies exact derivatives of pressure
@@ -449,12 +465,16 @@ prediction evidence, or Provider-catalog authority.
 4. **Complete for independent scalar pure saturation.** Admit `m`, `sigma`,
    and `epsilon/k` component coordinates through the same contract, result,
    Ceres owner, and native target. The accepted joint methane/ethane workflow
-   remains unchanged. Born diameter and solvation factor still require
-   migration onto the shared direct-observation path.
-5. Add association energy/volume and an explicit `k_hb_ij` combining-rule
+   remains unchanged.
+5. **Complete for the advertised direct-observable domains.** Admit one Born
+   diameter from one or more solvation-Gibbs targets, or one solvation factor
+   from one or more mean-ionic-activity targets. Each problem remains one
+   parameter at a time, consumes the Provider value/first derivative, and
+   uses no lifted phase variables.
+6. Add association energy/volume and an explicit `k_hb_ij` combining-rule
    coordinate only after Provider supplies exact topology-bound derivatives
    and source-backed datasets establish rank.
-6. Add polar, dielectric, and temperature-dependent families as separately
+7. Add polar, dielectric, and temperature-dependent families as separately
    evidenced capabilities rather than new engines. Equilibrium-coupled
    observations remain blocked by the dependency doctrine and are not part of
    this sequence.

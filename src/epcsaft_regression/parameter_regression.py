@@ -56,6 +56,7 @@ class ParameterCapability:
     helmholtz_basis_id: str
     unsupported_status: str
     domain_status: str
+    active_component_ids: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +131,22 @@ class PureSaturationRowDiagnostic:
 
 
 @dataclass(frozen=True, slots=True)
+class DirectObservationRowDiagnostic:
+    row_id: str
+    partition: str
+    observable: str
+    observable_unit: str
+    observed_value: float
+    modeled_value: float
+    scaled_residual: float
+    provider_derivative: float
+    derivative_status: str
+    status: str
+    evaluated: bool
+    failure_reason: str
+
+
+@dataclass(frozen=True, slots=True)
 class RegressionResult:
     problem: RegressionProblem
     capability: ParameterCapability
@@ -148,7 +165,12 @@ class RegressionResult:
     iterations: int
     parameter: FittedParameterDiagnostic
     jacobian: GeneralJacobianDiagnostics
-    rows: tuple[GeneralRowDiagnostic | PureSaturationRowDiagnostic, ...]
+    rows: tuple[
+        GeneralRowDiagnostic
+        | PureSaturationRowDiagnostic
+        | DirectObservationRowDiagnostic,
+        ...,
+    ]
     confirmation_count: int
     confirmation_parameter_scaled_max_delta: float
     confirmation_cost_relative_max_delta: float
@@ -200,6 +222,7 @@ def parameter_capabilities(
                 helmholtz_basis_id=raw[18],
                 unsupported_status=raw[19],
                 domain_status=raw[20],
+                active_component_ids=tuple(raw[21]),
             )
         )
     return tuple(capabilities)
@@ -313,6 +336,8 @@ class ParameterCoordinate:
             ParameterFamily.SEGMENT_COUNT: "1",
             ParameterFamily.SEGMENT_DIAMETER: "angstrom",
             ParameterFamily.DISPERSION_ENERGY_OVER_K: "K",
+            ParameterFamily.BORN_DIAMETER: "angstrom",
+            ParameterFamily.SOLVATION_FACTOR: "1",
         }
         if self.family in pair_families:
             if not isinstance(self.identity, PairParameterIdentity):
@@ -331,7 +356,8 @@ class ParameterCoordinate:
             raise ValueError(
                 "the v1 coordinate contract supports only k_ij, l_ij, "
                 "segment_count, segment_diameter, and "
-                "dispersion_energy_over_k"
+                "dispersion_energy_over_k, born_diameter, or "
+                "solvation_factor"
             )
         _require_nonempty_string(self.capability_id, "capability_id")
         _require_sha256(
@@ -521,10 +547,128 @@ class PureSaturationObservation:
             raise ValueError(f"{phase} volume start must lie within its bounds")
 
 
-RegressionObservation = FixedCompositionVleObservation | PureSaturationObservation
+def _validate_direct_component_identity(
+    component_ids: tuple[str, ...], active_component_id: str
+) -> None:
+    if type(component_ids) is not tuple or len(component_ids) < 2:
+        raise ValueError("component_ids must contain the ordered Provider model")
+    for component_id in component_ids:
+        _require_nonempty_string(component_id, "component_id")
+    if len(set(component_ids)) != len(component_ids):
+        raise ValueError("component_ids must be distinct")
+    _require_nonempty_string(active_component_id, "active_component_id")
+    if active_component_id not in component_ids:
+        raise ValueError("active_component_id must occur in component_ids")
+
+
+@dataclass(frozen=True, slots=True)
+class MeanIonicActivityObservation:
+    row_id: str
+    source_id: str
+    source_locator: str
+    component_ids: tuple[str, ...]
+    active_component_id: str
+    temperature_k: float
+    pressure_pa: float
+    formula_unit_molality_mol_per_kg: float
+    observed_mean_ionic_activity_coefficient: float
+    relative_residual_scale: float
+    partition: ObservationPartition
+
+    def __post_init__(self) -> None:
+        for field in ("row_id", "source_id", "source_locator"):
+            _require_nonempty_string(getattr(self, field), field)
+        _validate_direct_component_identity(
+            self.component_ids, self.active_component_id
+        )
+        for field in (
+            "temperature_k",
+            "pressure_pa",
+            "formula_unit_molality_mol_per_kg",
+            "observed_mean_ionic_activity_coefficient",
+            "relative_residual_scale",
+        ):
+            _require_finite(getattr(self, field), field, positive=True)
+        if not isinstance(self.partition, ObservationPartition):
+            raise TypeError("partition must be an ObservationPartition")
+
+
+@dataclass(frozen=True, slots=True)
+class SolvationGibbsObservation:
+    row_id: str
+    source_id: str
+    source_locator: str
+    component_ids: tuple[str, ...]
+    active_component_id: str
+    temperature_k: float
+    pressure_pa: float
+    observed_solvation_gibbs_j_per_mol: float
+    residual_scale_j_per_mol: float
+    partition: ObservationPartition
+
+    def __post_init__(self) -> None:
+        for field in ("row_id", "source_id", "source_locator"):
+            _require_nonempty_string(getattr(self, field), field)
+        _validate_direct_component_identity(
+            self.component_ids, self.active_component_id
+        )
+        _require_finite(self.temperature_k, "temperature_k", positive=True)
+        _require_finite(self.pressure_pa, "pressure_pa", positive=True)
+        _require_finite(
+            self.observed_solvation_gibbs_j_per_mol,
+            "observed_solvation_gibbs_j_per_mol",
+        )
+        _require_finite(
+            self.residual_scale_j_per_mol,
+            "residual_scale_j_per_mol",
+            positive=True,
+        )
+        if not isinstance(self.partition, ObservationPartition):
+            raise TypeError("partition must be an ObservationPartition")
+
+
+DirectObservation = MeanIonicActivityObservation | SolvationGibbsObservation
+RegressionObservation = (
+    FixedCompositionVleObservation
+    | PureSaturationObservation
+    | DirectObservation
+)
 
 
 def _canonical_row(row: RegressionObservation) -> dict[str, object]:
+    if isinstance(row, MeanIonicActivityObservation):
+        return {
+            "row_id": row.row_id,
+            "source_id": row.source_id,
+            "source_locator": row.source_locator,
+            "component_ids": list(row.component_ids),
+            "active_component_id": row.active_component_id,
+            "temperature_k": row.temperature_k,
+            "pressure_pa": row.pressure_pa,
+            "formula_unit_molality_mol_per_kg": (
+                row.formula_unit_molality_mol_per_kg
+            ),
+            "observed_mean_ionic_activity_coefficient": (
+                row.observed_mean_ionic_activity_coefficient
+            ),
+            "relative_residual_scale": row.relative_residual_scale,
+            "partition": row.partition.value,
+        }
+    if isinstance(row, SolvationGibbsObservation):
+        return {
+            "row_id": row.row_id,
+            "source_id": row.source_id,
+            "source_locator": row.source_locator,
+            "component_ids": list(row.component_ids),
+            "active_component_id": row.active_component_id,
+            "temperature_k": row.temperature_k,
+            "pressure_pa": row.pressure_pa,
+            "observed_solvation_gibbs_j_per_mol": (
+                row.observed_solvation_gibbs_j_per_mol
+            ),
+            "residual_scale_j_per_mol": row.residual_scale_j_per_mol,
+            "partition": row.partition.value,
+        }
     if isinstance(row, PureSaturationObservation):
         return {
             "row_id": row.row_id,
@@ -640,13 +784,20 @@ class RegressionProblem:
         identity = self.parameters[0].identity.canonical_component_ids
         for row in self.observations:
             row_identity = (
-                tuple(sorted(row.component_ids))
-                if len(row.component_ids) == 2
-                else row.component_ids
+                (row.active_component_id,)
+                if isinstance(
+                    row,
+                    (MeanIonicActivityObservation, SolvationGibbsObservation),
+                )
+                else (
+                    tuple(sorted(row.component_ids))
+                    if len(row.component_ids) == 2
+                    else row.component_ids
+                )
             )
             if row_identity != identity:
                 raise ValueError(
-                    f"observation {row.row_id!r} component pair does not match the parameter identity"
+                    f"observation {row.row_id!r} identity does not match the parameter identity"
                 )
         _require_finite(
             self.maximum_condition_number,
@@ -684,6 +835,26 @@ class RegressionProblem:
 
 
 def _row_payload(row: RegressionObservation) -> tuple[object, ...]:
+    if isinstance(row, MeanIonicActivityObservation):
+        return (
+            row.row_id,
+            row.partition.value,
+            row.temperature_k,
+            row.pressure_pa,
+            row.formula_unit_molality_mol_per_kg,
+            row.observed_mean_ionic_activity_coefficient,
+            row.relative_residual_scale,
+        )
+    if isinstance(row, SolvationGibbsObservation):
+        return (
+            row.row_id,
+            row.partition.value,
+            row.temperature_k,
+            row.pressure_pa,
+            0.0,
+            row.observed_solvation_gibbs_j_per_mol,
+            row.residual_scale_j_per_mol,
+        )
     if isinstance(row, PureSaturationObservation):
         return (
             row.row_id,
@@ -803,6 +974,33 @@ def _matched_capability(
             raise ValueError(
                 f"observation {row.row_id!r} temperature is outside the Provider capability domain"
             )
+        if isinstance(row, MeanIonicActivityObservation):
+            if (
+                capability.observation_contract
+                != "aqueous_mean_ionic_activity"
+                or capability.active_component_ids
+                != parameter.identity.canonical_component_ids
+            ):
+                raise ValueError(
+                    "mean-ionic-activity observation does not match the "
+                    "Provider direct-observable capability"
+                )
+        elif isinstance(row, SolvationGibbsObservation):
+            if (
+                capability.observation_contract != "ion_solvation_gibbs"
+                or capability.active_component_ids
+                != parameter.identity.canonical_component_ids
+            ):
+                raise ValueError(
+                    "solvation-Gibbs observation does not match the Provider "
+                    "direct-observable capability"
+                )
+        elif capability.observation_contract != (
+            "fixed_composition_helmholtz_phase"
+        ):
+            raise ValueError(
+                "phase observation does not match the Provider capability"
+            )
     return capability
 
 
@@ -823,9 +1021,51 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
     )
     parameter_coordinate = problem.parameters[0]
     observations = {row.row_id: row for row in problem.observations}
-    rows: tuple[GeneralRowDiagnostic | PureSaturationRowDiagnostic, ...] = tuple(
+    rows: tuple[
+        GeneralRowDiagnostic
+        | PureSaturationRowDiagnostic
+        | DirectObservationRowDiagnostic,
+        ...,
+    ] = tuple(
         (
-            PureSaturationRowDiagnostic(
+            DirectObservationRowDiagnostic(
+                row_id=row[0],
+                partition=row[1],
+                observable=(
+                    "mean_ionic_activity_coefficient"
+                    if isinstance(
+                        observation := observations[row[0]],
+                        MeanIonicActivityObservation,
+                    )
+                    else "solvation_gibbs_energy"
+                ),
+                observable_unit=(
+                    "1"
+                    if isinstance(observation, MeanIonicActivityObservation)
+                    else "J/mol"
+                ),
+                observed_value=(
+                    observation.observed_mean_ionic_activity_coefficient
+                    if isinstance(observation, MeanIonicActivityObservation)
+                    else observation.observed_solvation_gibbs_j_per_mol
+                ),
+                modeled_value=row[7],
+                scaled_residual=row[4][0],
+                provider_derivative=row[8],
+                derivative_status=(
+                    "EXACT_PROVIDER_FIRST_DERIVATIVE"
+                    if row[5]
+                    else "UNAVAILABLE"
+                ),
+                status="evaluated" if row[5] else "failed",
+                evaluated=row[5],
+                failure_reason=row[6],
+            )
+            if isinstance(
+                observations[row[0]],
+                (MeanIonicActivityObservation, SolvationGibbsObservation),
+            )
+            else PureSaturationRowDiagnostic(
                 row_id=row[0],
                 partition=row[1],
                 liquid_volume_m3_per_mol=row[2],

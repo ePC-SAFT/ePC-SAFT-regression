@@ -9,11 +9,13 @@ from epcsaft_regression.parameter_regression import (
     AffineParameterTransform,
     ComponentParameterIdentity,
     FixedCompositionVleObservation,
+    MeanIonicActivityObservation,
     ObservationPartition,
     PairParameterIdentity,
     ParameterCoordinate,
     ParameterFamily,
     RegressionProblem,
+    SolvationGibbsObservation,
     SourceDescriptor,
     canonical_dataset_sha256,
 )
@@ -127,6 +129,8 @@ def test_pair_coordinate_accepts_the_distinct_lij_family() -> None:
         (ParameterFamily.SEGMENT_COUNT, "1"),
         (ParameterFamily.SEGMENT_DIAMETER, "angstrom"),
         (ParameterFamily.DISPERSION_ENERGY_OVER_K, "K"),
+        (ParameterFamily.BORN_DIAMETER, "angstrom"),
+        (ParameterFamily.SOLVATION_FACTOR, "1"),
     ),
 )
 def test_component_coordinate_accepts_scalar_pure_families(
@@ -147,6 +151,81 @@ def test_component_coordinate_accepts_scalar_pure_families(
 
     assert coordinate.identity.canonical_component_ids == ("methane",)
     assert coordinate.unit == unit
+
+
+def test_direct_observations_bind_model_order_active_component_and_units() -> None:
+    miac = MeanIonicActivityObservation(
+        row_id="nabr-001",
+        source_id="doi:example",
+        source_locator="table-1:nabr-001",
+        component_ids=("water", "sodium-cation", "bromide-anion"),
+        active_component_id="water",
+        temperature_k=298.15,
+        pressure_pa=100_000.0,
+        formula_unit_molality_mol_per_kg=0.1,
+        observed_mean_ionic_activity_coefficient=0.778,
+        relative_residual_scale=1.0,
+        partition=ObservationPartition.TRAINING,
+    )
+    gibbs = SolvationGibbsObservation(
+        row_id="sodium-s5",
+        source_id="doi:example",
+        source_locator="table-s5:sodium",
+        component_ids=("water", "sodium-cation", "chloride-anion"),
+        active_component_id="sodium-cation",
+        temperature_k=298.15,
+        pressure_pa=100_000.0,
+        observed_solvation_gibbs_j_per_mol=-381_100.0,
+        residual_scale_j_per_mol=381_100.0,
+        partition=ObservationPartition.TRAINING,
+    )
+
+    assert miac.component_ids[0] == miac.active_component_id
+    assert gibbs.component_ids[1] == gibbs.active_component_id
+    assert canonical_dataset_sha256((miac, gibbs))
+
+
+@pytest.mark.parametrize(
+    ("build", "match"),
+    (
+        (
+            lambda: MeanIonicActivityObservation(
+                row_id="nabr-001",
+                source_id="doi:example",
+                source_locator="table-1:nabr-001",
+                component_ids=("water", "sodium-cation", "bromide-anion"),
+                active_component_id="methane",
+                temperature_k=298.15,
+                pressure_pa=100_000.0,
+                formula_unit_molality_mol_per_kg=0.1,
+                observed_mean_ionic_activity_coefficient=0.778,
+                relative_residual_scale=1.0,
+                partition=ObservationPartition.TRAINING,
+            ),
+            "active_component_id",
+        ),
+        (
+            lambda: SolvationGibbsObservation(
+                row_id="sodium-s5",
+                source_id="doi:example",
+                source_locator="table-s5:sodium",
+                component_ids=("water", "sodium-cation", "chloride-anion"),
+                active_component_id="sodium-cation",
+                temperature_k=298.15,
+                pressure_pa=100_000.0,
+                observed_solvation_gibbs_j_per_mol=-381_100.0,
+                residual_scale_j_per_mol=0.0,
+                partition=ObservationPartition.TRAINING,
+            ),
+            "positive",
+        ),
+    ),
+)
+def test_direct_observations_reject_invalid_identity_or_scale(
+    build: object, match: str
+) -> None:
+    with pytest.raises((TypeError, ValueError), match=match):
+        build()  # type: ignore[operator]
 
 
 @pytest.mark.parametrize(
