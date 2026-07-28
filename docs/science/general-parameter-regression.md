@@ -122,7 +122,7 @@ derivative readiness:
 | `zuber_ion_suppression_coefficient` | continuous component coordinate when exact derivatives are advertised |
 | `rueben_dipole_scaling`, `rueben_polarizability_scaling`, `rueben_correlation_integral_parameter` | continuous polar-model coordinates when exact derivatives are advertised |
 | `k_ij`, `l_ij` | continuous unordered component-pair coordinates |
-| `association_energy_over_k`, `association_volume` | continuous association-endpoint coordinates |
+| `association_energy_over_k`, `association_volume` | continuous model-bound coordinates only for an advertised pure 2B model with one symmetric association pair; general association-endpoint identity remains pending |
 | `dielectric_ion_suppression_coefficient`, `ionic_region_relative_permittivity` | continuous model coordinates when exact derivatives are advertised |
 | correlation terms for `segment_diameter`, `relative_permittivity`, and `solvation_factor` | individually named coefficient coordinates; no whole-correlation opaque fit |
 
@@ -143,8 +143,8 @@ and rank gates.
 | `dispersion_energy_over_k` (`epsilon/k`) | component | vapor pressure, phase equilibrium, caloric and PVT observations | fit-ready one-family-at-a-time for caller-supplied pure-saturation pressure/liquid-density rows on an advertised neutral pure capability; other observations pending |
 | `k_ij` | unordered component pair | fixed-composition VLE/LLE, activity/fugacity coefficients, MIAC when the electrolyte formulation makes that pair active, single-ion solvation Gibbs endpoints | fit-ready for caller-supplied fixed-composition VLE rows on an advertised neutral nonassociating binary capability, one-at-a-time aqueous MIAC fits on an advertised water/cation/anion capability, and one-at-a-time solvation-Gibbs fits on an advertised organic-solvent/ion capability; other observation/model domains remain pending |
 | `l_ij` | unordered component pair | density, excess volume, and phase-equilibrium data sensitive to cross-size mixing | fit-ready for caller-supplied fixed-composition VLE rows on any installed Provider model advertising the neutral, nonassociating binary capability; other observation/model domains remain pending |
-| `association_energy_over_k` | association endpoint pair | hydrogen-bond-sensitive VLE/LLE, solvation, enthalpy, and related phase-property observations | represented by Provider; exact active derivative and Regression surface pending |
-| `association_volume` | association endpoint pair | hydrogen-bond-sensitive VLE/LLE, density, solvation, and caloric observations | represented by Provider; exact active derivative and Regression surface pending |
+| `association_energy_over_k` | sole symmetric pair of an advertised pure 2B model | simultaneous pure vapor-pressure and liquid-density series; other hydrogen-bond-sensitive observations require separately advertised contracts | exact Provider Hessian and Regression pure-density surface implemented; source series needed for recovery are not retained |
+| `association_volume` | sole symmetric pair of an advertised pure 2B model | simultaneous pure vapor-pressure and liquid-density series; other hydrogen-bond-sensitive observations require separately advertised contracts | exact Provider Hessian and Regression pure-density surface implemented; source series needed for recovery are not retained |
 | `k_hb_ij` | source-defined cross-association combining-rule coordinate | the same cross-association-sensitive observations, with enough composition/temperature variation to separate it from pure association parameters | not a current Provider record family; requires an explicit active combining-rule coordinate or a declared transform to resolved cross-association energy |
 | `born_diameter` | ion component | source-defined single-ion solvation Gibbs energy under the advertised fixed-state reference path | fit-ready one ion at a time for caller-supplied solvation-Gibbs targets on an installed direct-observable capability; five Figiel ions are reference evidence |
 | `solvation_factor` | applicable component | MIAC under the advertised fixed-state reference path | fit-ready one component factor at a time for caller-supplied mean-ionic-activity rows on an installed direct-observable capability; 21 NaBr rows are reference evidence |
@@ -166,6 +166,61 @@ transform identifier and fingerprint, and its exact total derivative including
 the transform chain rule. Otherwise the caller may fit the resolved
 `association_energy_over_k` coordinate, and the result must retain that
 different meaning.
+
+### Bounded pure-association surface
+
+Provider commits `c9ada20` and `a4d8a0e` add no new callback or solver. They
+extend the existing scalar pure phase callback only when the installed model
+has one neutral component, exactly two association sites, and one symmetric
+active pair. The descriptor identity is model-bound and its topology
+fingerprint is mandatory. It therefore does not claim arbitrary association
+endpoint, mixed association, or `k_hb_ij` support.
+
+For one pure-density observation, Regression owns the lifted coordinate
+
+```text
+p = p_origin + p_scale z
+V = V_origin exp(u)
+```
+
+and the two scaled residuals
+
+```text
+r_P   = (P_model(T, n=1, V, p) - P_observed) / s_P
+r_rho = (M / V - rho_observed) / s_rho
+```
+
+The exact Jacobian consumes the Provider Hessian in `(n,V,p)`:
+
+```text
+dr_P/dz   = -R T Phi_Vp p_scale / s_P
+dr_P/du   = -R T Phi_VV V / s_P
+dr_rho/dz = 0
+dr_rho/du = -(M/V) / s_rho
+```
+
+Thus one row is a `2 x 2` local problem and must pass full rank 2 plus
+projected parameter rank 1. This surface is executable with the direct
+Held-2012 ethanol density anchor retained by Validation (CSV SHA-256
+`25e3be94ee3cfb5eb13df89827f4368673f87f96d6b0225c12e35f9396b8779c`),
+using 1 bar as the declared model approximation to the reported ambient
+pressure, but that single point is not the paper's parameter-recovery target.
+For both independent parameter families, the two declared one-row starts
+return finite full-rank diagnostics but do not reach solver or numerical
+convergence. That is retained surface/falsification evidence, not a fitted
+parameter result.
+
+Gross and Sadowski (2002, DOI `10.1021/ie010954d`) state that all five pure
+parameters were adjusted simultaneously against vapor-pressure and
+liquid-density data over the reported temperature range; for ethanol the
+range is 230--516 K. The read-only Markdown artifact used to verify that
+method has SHA-256
+`dc4695f03a2511f0ac416bfb54923ed2b7b7a9ced8240d10b112b42ad977d732`.
+The underlying primary rows and exact objective/weights are not retained in
+Validation. Consequently these two families are
+`DERIVATIVE_READY_REGRESSION_SURFACE_READY_SOURCE_SERIES_NOT_READY`, not
+`FIT_READY`. The single density anchor must not be used to tune bounds,
+scales, or acceptance thresholds after seeing a fitted value.
 
 ## Source-bound observations
 
@@ -540,9 +595,12 @@ prediction evidence, or Provider-catalog authority.
    non-bound training solve and recovers `7.067350349980952` versus the
    paper's descriptive `7.01`; the digitized rows define no scientific or
    predictive cutoff.
-7. Add association energy/volume and an explicit `k_hb_ij` combining-rule
-   coordinate only after Provider supplies exact topology-bound derivatives
-   and source-backed datasets establish rank.
+7. **Partial for pure 2B association.** Exact Provider Hessians and the
+   Regression pure-density surface exist for the sole symmetric association
+   pair. Recovery remains source-blocked until the original simultaneous
+   vapor-pressure/liquid-density rows and objective are retained. General
+   association endpoints and an explicit `k_hb_ij` combining-rule coordinate
+   remain separate future capabilities.
 8. Add polar, remaining dielectric, and temperature-dependent families as
    separately evidenced capabilities rather than new engines. Equilibrium-coupled
    observations remain blocked by the dependency doctrine and are not part of

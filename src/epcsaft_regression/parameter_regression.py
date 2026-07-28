@@ -131,6 +131,22 @@ class PureSaturationRowDiagnostic:
 
 
 @dataclass(frozen=True, slots=True)
+class PureDensityRowDiagnostic:
+    row_id: str
+    partition: str
+    volume_m3_per_mol: float
+    scaled_residuals: tuple[float, float]
+    observed_pressure_pa: float
+    model_pressure_pa: float
+    observed_density_kg_per_m3: float
+    model_density_kg_per_m3: float
+    derivative_status: str
+    status: str
+    evaluated: bool
+    failure_reason: str
+
+
+@dataclass(frozen=True, slots=True)
 class DirectObservationRowDiagnostic:
     row_id: str
     partition: str
@@ -168,6 +184,7 @@ class RegressionResult:
     rows: tuple[
         GeneralRowDiagnostic
         | PureSaturationRowDiagnostic
+        | PureDensityRowDiagnostic
         | DirectObservationRowDiagnostic,
         ...,
     ]
@@ -356,6 +373,8 @@ class ParameterCoordinate:
         }
         model_units = {
             ParameterFamily.DIELECTRIC_ION_SUPPRESSION_COEFFICIENT: "1",
+            ParameterFamily.ASSOCIATION_ENERGY_OVER_K: "K",
+            ParameterFamily.ASSOCIATION_VOLUME: "1",
         }
         if self.family in pair_families:
             if not isinstance(self.identity, PairParameterIdentity):
@@ -382,6 +401,7 @@ class ParameterCoordinate:
                 "segment_count, segment_diameter, and "
                 "dispersion_energy_over_k, born_diameter, or "
                 "solvation_factor, or dielectric_ion_suppression_coefficient"
+                ", association_energy_over_k, or association_volume"
             )
         _require_nonempty_string(self.capability_id, "capability_id")
         _require_sha256(
@@ -569,6 +589,56 @@ class PureSaturationObservation:
             raise ValueError(f"{phase} volume bounds must be strictly increasing")
         if not lower <= start <= upper:
             raise ValueError(f"{phase} volume start must lie within its bounds")
+
+
+@dataclass(frozen=True, slots=True)
+class PureDensityObservation:
+    row_id: str
+    source_id: str
+    source_locator: str
+    component_id: str
+    temperature_k: float
+    pressure_pa: float
+    density_kg_per_m3: float
+    molar_mass_kg_per_mol: float
+    pressure_scale_pa: float
+    density_scale_kg_per_m3: float
+    volume_origin_m3_per_mol: float
+    volume_start_m3_per_mol: float
+    volume_bounds_m3_per_mol: tuple[float, float]
+    partition: ObservationPartition
+
+    def __post_init__(self) -> None:
+        for field in ("row_id", "source_id", "source_locator", "component_id"):
+            _require_nonempty_string(getattr(self, field), field)
+        for field in (
+            "temperature_k",
+            "pressure_pa",
+            "density_kg_per_m3",
+            "molar_mass_kg_per_mol",
+            "pressure_scale_pa",
+            "density_scale_kg_per_m3",
+            "volume_origin_m3_per_mol",
+            "volume_start_m3_per_mol",
+        ):
+            _require_finite(getattr(self, field), field, positive=True)
+        if type(self.volume_bounds_m3_per_mol) is not tuple or len(
+            self.volume_bounds_m3_per_mol
+        ) != 2:
+            raise ValueError("volume bounds must contain two values")
+        lower, upper = self.volume_bounds_m3_per_mol
+        _require_finite(lower, "volume lower bound", positive=True)
+        _require_finite(upper, "volume upper bound", positive=True)
+        if lower >= upper:
+            raise ValueError("volume bounds must be strictly increasing")
+        if not lower <= self.volume_start_m3_per_mol <= upper:
+            raise ValueError("volume start must lie within its bounds")
+        if not isinstance(self.partition, ObservationPartition):
+            raise TypeError("partition must be an ObservationPartition")
+
+    @property
+    def component_ids(self) -> tuple[str]:
+        return (self.component_id,)
 
 
 def _validate_direct_component_identity(
@@ -830,6 +900,7 @@ DirectObservation = (
 RegressionObservation = (
     FixedCompositionVleObservation
     | PureSaturationObservation
+    | PureDensityObservation
     | DirectObservation
 )
 
@@ -920,6 +991,23 @@ def _canonical_row(row: RegressionObservation) -> dict[str, object]:
                 row.observed_solvation_gibbs_j_per_mol
             ),
             "residual_scale_j_per_mol": row.residual_scale_j_per_mol,
+            "partition": row.partition.value,
+        }
+    if isinstance(row, PureDensityObservation):
+        return {
+            "row_id": row.row_id,
+            "source_id": row.source_id,
+            "source_locator": row.source_locator,
+            "component_ids": list(row.component_ids),
+            "temperature_k": row.temperature_k,
+            "pressure_pa": row.pressure_pa,
+            "density_kg_per_m3": row.density_kg_per_m3,
+            "molar_mass_kg_per_mol": row.molar_mass_kg_per_mol,
+            "pressure_scale_pa": row.pressure_scale_pa,
+            "density_scale_kg_per_m3": row.density_scale_kg_per_m3,
+            "volume_origin_m3_per_mol": row.volume_origin_m3_per_mol,
+            "volume_start_m3_per_mol": row.volume_start_m3_per_mol,
+            "volume_bounds_m3_per_mol": list(row.volume_bounds_m3_per_mol),
             "partition": row.partition.value,
         }
     if isinstance(row, PureSaturationObservation):
@@ -1034,10 +1122,20 @@ class RegressionProblem:
             raise ValueError("at least one training observation is required")
         if len(self.parameters) != 1:
             raise ValueError("the first implementation accepts exactly one shared parameter")
+        density_observations = tuple(
+            isinstance(row, PureDensityObservation) for row in self.observations
+        )
+        if any(density_observations) and not all(density_observations):
+            raise ValueError(
+                "pure-density and phase-equilibrium observations cannot share "
+                "one regression problem"
+            )
         identity = self.parameters[0].identity.canonical_component_ids
         for row in self.observations:
             row_identity = (
                 ()
+                if isinstance(self.parameters[0].identity, ModelParameterIdentity)
+                else ()
                 if isinstance(row, RelativePermittivityRatioObservation)
                 else row.canonical_active_pair_component_ids
                 if isinstance(
@@ -1147,6 +1245,21 @@ def _row_payload(row: RegressionObservation) -> tuple[object, ...]:
             row.observed_solvation_gibbs_j_per_mol,
             row.residual_scale_j_per_mol,
         )
+    if isinstance(row, PureDensityObservation):
+        return (
+            row.row_id,
+            row.partition.value,
+            row.temperature_k,
+            row.pressure_pa,
+            row.pressure_scale_pa,
+            row.molar_mass_kg_per_mol,
+            row.density_kg_per_m3,
+            row.density_scale_kg_per_m3,
+            row.volume_origin_m3_per_mol,
+            row.volume_start_m3_per_mol,
+            row.volume_bounds_m3_per_mol[0],
+            row.volume_bounds_m3_per_mol[1],
+        )
     if isinstance(row, PureSaturationObservation):
         return (
             row.row_id,
@@ -1192,6 +1305,11 @@ def _native_payload(
     problem: RegressionProblem, capability: ParameterCapability
 ) -> tuple[object, ...]:
     parameter = problem.parameters[0]
+    observation_shape = (
+        "pure_density"
+        if isinstance(problem.observations[0], PureDensityObservation)
+        else "phase_or_direct"
+    )
     return (
         parameter.capability_id,
         parameter.provider_parameter_fingerprint,
@@ -1214,6 +1332,7 @@ def _native_payload(
             _row_payload(row)
             for row in (*problem.held_out_observations, *problem.stress_observations)
         ),
+        observation_shape,
     )
 
 
@@ -1354,6 +1473,7 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
     rows: tuple[
         GeneralRowDiagnostic
         | PureSaturationRowDiagnostic
+        | PureDensityRowDiagnostic
         | DirectObservationRowDiagnostic,
         ...,
     ] = tuple(
@@ -1426,6 +1546,31 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
                     SolvationGibbsObservation,
                     RelativePermittivityRatioObservation,
                 ),
+            )
+            else PureDensityRowDiagnostic(
+                row_id=row[0],
+                partition=row[1],
+                volume_m3_per_mol=row[2],
+                scaled_residuals=tuple(row[4]),
+                observed_pressure_pa=observation.pressure_pa,
+                model_pressure_pa=(
+                    observation.pressure_pa
+                    + row[4][0] * observation.pressure_scale_pa
+                ),
+                observed_density_kg_per_m3=observation.density_kg_per_m3,
+                model_density_kg_per_m3=(
+                    observation.molar_mass_kg_per_mol / row[2]
+                ),
+                derivative_status=(
+                    "EXACT_PROVIDER_HESSIAN" if row[5] else "UNAVAILABLE"
+                ),
+                status="evaluated" if row[5] else "failed",
+                evaluated=row[5],
+                failure_reason=row[6],
+            )
+            if isinstance(
+                observation := observations[row[0]],
+                PureDensityObservation,
             )
             else PureSaturationRowDiagnostic(
                 row_id=row[0],

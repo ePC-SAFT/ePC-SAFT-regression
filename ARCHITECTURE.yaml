@@ -555,7 +555,7 @@ parameter_family_readiness:
   constant_methane_ethane_kij:
     status: NOT_READY_DEFERRED_NONPRODUCTION_UNDER_D023
     retained_evidence_authority: D-022
-  association_parameters: NOT_READY
+  association_parameters: DERIVATIVE_AND_REGRESSION_SURFACE_READY_PURE_2B_SOURCE_SERIES_NOT_READY
   polar_parameters: NOT_READY
   electrolyte_born_parameters: FIT_READY_DIRECT_OBSERVABLE_AUTHORITY_NEUTRAL_NO_CATALOG_ADMISSION
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
@@ -568,7 +568,7 @@ parameter_family_readiness:
   mixture_independent_born_diameter: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_solvation_factor: FIT_READY_ADVERTISED_MEAN_IONIC_ACTIVITY_DOMAIN
   model_dielectric_ion_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
-  mixture_independent_association: NOT_READY_PENDING_EXACT_TOPOLOGY_BOUND_PROVIDER_DERIVATIVES
+  mixture_independent_association: PARTIAL_PURE_2B_MODEL_BOUND_DERIVATIVE_AND_DENSITY_SURFACE_READY_SOURCE_SERIES_NOT_READY
   khb_ij: NOT_READY_NOT_A_CURRENT_PROVIDER_PARAMETER_FAMILY
   full_parameter_family_coverage: NOT_READY
 

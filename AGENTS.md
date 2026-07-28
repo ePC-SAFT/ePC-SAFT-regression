@@ -106,3 +106,8 @@ organic-solvent/ion pair callback. The four retained Figiel rows are
 constructed nearest-pure endpoint implementation evidence, not exact
 reproduction of the paper's pure-organic fitting data or mixed-solvent
 prediction evidence.
+Pure 2B association energy and volume now have an exact model-bound Provider
+Hessian and a shared Regression pure-density surface, but remain source-series
+blocked rather than fit-ready. The single Held-2012 ethanol density anchor is
+not a substitute for the simultaneous vapor-pressure/liquid-density series
+used by Gross and Sadowski.

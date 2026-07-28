@@ -54,6 +54,15 @@ with no added runtime test seam.
 
 `general_parameter_regression_status: EIGHT_PARAMETER_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL`
 
+Pure 2B `association_energy_over_k` and `association_volume` now have a
+model-bound exact Provider `(n,V,p)` Hessian and the shared Regression
+pressure/density `2 x 2` lifted surface. They are not counted among the eight
+fit-ready families: the retained Held-2012 ethanol row is one direct density
+anchor, while Gross--Sadowski fitted all five pure parameters simultaneously
+to vapor-pressure and liquid-density series. Those source rows and their exact
+objective are not retained, so status is
+`DERIVATIVE_READY_REGRESSION_SURFACE_READY_SOURCE_SERIES_NOT_READY`.
+
 The user-approved 2026-07-27 destination is general parameter-family
 regression, defined in `docs/science/general-parameter-regression.md`. The
 first eight families are implemented. Caller-supplied, source-bound

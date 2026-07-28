@@ -26,6 +26,7 @@ constexpr double gas_constant = 8.31446261815324;
 enum class ObservationKind {
     pair_phase,
     pure_phase,
+    pure_density,
     mean_ionic_activity,
     aqueous_kij_activity,
     ion_solvation_kij,
@@ -60,6 +61,7 @@ struct Row final {
 
 struct Payload final {
     std::string capability_id;
+    std::string observation_shape;
     std::string parameter_fingerprint;
     std::string topology_fingerprint;
     std::vector<std::string> component_ids;
@@ -132,15 +134,23 @@ bool direct_observation(const Payload& payload) {
             == "ion_solvation_cation_anion_kij_v1";
 }
 
+bool pure_density_observation(const Payload& payload) {
+    return payload.observation_shape == "pure_density";
+}
+
 std::size_t residual_count(const Payload& payload) {
-    return (direct_observation(payload) ? 1u : 4u)
+    return (direct_observation(payload)
+            ? 1u
+            : pure_density_observation(payload) ? 2u : 4u)
         * payload.training_rows.size();
 }
 
 std::size_t variable_count(const Payload& payload) {
     return direct_observation(payload)
         ? 1u
-        : 1u + 2u * payload.training_rows.size();
+        : 1u
+            + (pure_density_observation(payload) ? 1u : 2u)
+                * payload.training_rows.size();
 }
 
 class OwnedPyObject final {
@@ -210,6 +220,7 @@ Row parse_row(PyObject* object, ObservationKind kind) {
         kind == ObservationKind::aqueous_kij_activity
                 || kind == ObservationKind::ion_solvation_kij
             ? 10
+            : kind == ObservationKind::pure_density ? 12
             : direct ? 7 : 17;
     if (!sequence
         || PySequence_Fast_GET_SIZE(sequence.get()) != expected_size) {
@@ -249,6 +260,31 @@ Row parse_row(PyObject* object, ObservationKind kind) {
         if (!valid) {
             throw std::invalid_argument(
                 "direct observation state, value, and scale are invalid"
+            );
+        }
+        return row;
+    }
+    if (kind == ObservationKind::pure_density) {
+        row.pressure_scale = number(item(4), "pressure scale");
+        row.molar_mass = number(item(5), "molar mass");
+        row.liquid_density = number(item(6), "liquid density");
+        row.liquid_density_scale = number(item(7), "liquid-density scale");
+        row.liquid_volume_origin = number(item(8), "volume origin");
+        row.liquid_volume_start = number(item(9), "volume start");
+        row.liquid_volume_bounds = {
+            number(item(10), "volume lower bound"),
+            number(item(11), "volume upper bound"),
+        };
+        if (!(row.temperature > 0.0 && row.pressure > 0.0
+              && row.pressure_scale > 0.0 && row.molar_mass > 0.0
+              && row.liquid_density > 0.0 && row.liquid_density_scale > 0.0
+              && row.liquid_volume_origin > 0.0
+              && row.liquid_volume_bounds[0] > 0.0
+              && row.liquid_volume_bounds[0] < row.liquid_volume_bounds[1]
+              && row.liquid_volume_start >= row.liquid_volume_bounds[0]
+              && row.liquid_volume_start <= row.liquid_volume_bounds[1])) {
+            throw std::invalid_argument(
+                "pure-density observation state, scales, and volume are invalid"
             );
         }
         return row;
@@ -343,10 +379,10 @@ Payload parse_payload(PyObject* object) {
     OwnedPyObject sequence{
         PySequence_Fast(object, "general regression payload must be a sequence")
     };
-    if (!sequence || PySequence_Fast_GET_SIZE(sequence.get()) != 18) {
+    if (!sequence || PySequence_Fast_GET_SIZE(sequence.get()) != 19) {
         PyErr_Clear();
         throw std::invalid_argument(
-            "general regression payload must contain exactly 18 fields"
+            "general regression payload must contain exactly 19 fields"
         );
     }
     auto item = [&](Py_ssize_t index) {
@@ -365,6 +401,7 @@ Payload parse_payload(PyObject* object) {
     }
     Payload payload{};
     payload.capability_id = text(item(0), "capability id");
+    payload.observation_shape = text(item(18), "observation shape");
     payload.parameter_fingerprint = text(item(1), "parameter fingerprint");
     payload.topology_fingerprint = text(item(2), "topology fingerprint");
     const Py_ssize_t component_count = PySequence_Fast_GET_SIZE(components.get());
@@ -394,6 +431,8 @@ Payload parse_payload(PyObject* object) {
                     || payload.capability_id
                         == "aqueous_cation_anion_kij_miac_v1"
                 ? ObservationKind::aqueous_kij_activity
+            : payload.observation_shape == "pure_density"
+                ? ObservationKind::pure_density
             : component_count == 1
                 ? ObservationKind::pure_phase
                 : ObservationKind::pair_phase;
@@ -514,6 +553,10 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
                 == EPCSAFT_NATIVE_CAPABILITY_PURE_SEGMENT_DIAMETER_HELMHOLTZ_V1
             || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_PURE_DISPERSION_ENERGY_HELMHOLTZ_V1
+            || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_ENERGY_HELMHOLTZ_V1
+            || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1
             || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1
             || candidate.capability
@@ -684,6 +727,14 @@ const char* capability_id(std::uint32_t value) {
         == EPCSAFT_NATIVE_CAPABILITY_PURE_DISPERSION_ENERGY_HELMHOLTZ_V1) {
         return "neutral_pure_dispersion_energy_over_k_v1";
     }
+    if (value
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_ENERGY_HELMHOLTZ_V1) {
+        return "neutral_pure_2b_association_energy_over_k_v1";
+    }
+    if (value
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1) {
+        return "neutral_pure_2b_association_volume_v1";
+    }
     if (value == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1) {
         return "ion_solvation_born_v1";
     }
@@ -751,6 +802,13 @@ const char* parameter_family(std::uint32_t value) {
         == EPCSAFT_NATIVE_PARAMETER_FAMILY_DIELECTRIC_ION_SUPPRESSION_V1) {
         return "dielectric_ion_suppression_coefficient";
     }
+    if (value
+        == EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_ENERGY_OVER_K_V1) {
+        return "association_energy_over_k";
+    }
+    if (value == EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_VOLUME_V1) {
+        return "association_volume";
+    }
     throw std::runtime_error("provider advertised an unknown parameter family");
 }
 
@@ -776,6 +834,10 @@ const char* coordinate_kind(std::uint32_t value) {
             return "solvation_factor";
         case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_DIELECTRIC_ION_SUPPRESSION_V1:
             return "dielectric_ion_suppression_coefficient";
+        case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_ENERGY_OVER_K_V1:
+            return "association_energy_over_k";
+        case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_VOLUME_V1:
+            return "association_volume";
         default:
             throw std::runtime_error(
                 "provider advertised an unknown capability coordinate"
@@ -796,6 +858,11 @@ void validate_descriptor(
         == EPCSAFT_NATIVE_CAPABILITY_PURE_SEGMENT_DIAMETER_HELMHOLTZ_V1;
     const bool dispersion_energy = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_PURE_DISPERSION_ENERGY_HELMHOLTZ_V1;
+    const bool association_energy = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_ENERGY_HELMHOLTZ_V1;
+    const bool association_volume = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1;
+    const bool association = association_energy || association_volume;
     const bool born = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1;
     const bool solvation_factor = descriptor.capability
@@ -817,7 +884,8 @@ void validate_descriptor(
         || descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_CATION_ANION_KIJ_V1;
     const bool binary = kij || lij;
-    const bool pure = segment_count || segment_diameter || dispersion_energy;
+    const bool pure = segment_count || segment_diameter || dispersion_energy
+        || association;
     const bool direct = born || solvation_factor || aqueous_kij || dielectric
         || ion_solvation_kij;
     const bool matching_family =
@@ -836,6 +904,12 @@ void validate_descriptor(
         || (dispersion_energy
             && descriptor.parameter_family
                 == EPCSAFT_NATIVE_PARAMETER_FAMILY_DISPERSION_ENERGY_OVER_K_V1)
+        || (association_energy
+            && descriptor.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_ENERGY_OVER_K_V1)
+        || (association_volume
+            && descriptor.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_VOLUME_V1)
         || (born
             && descriptor.parameter_family
                 == EPCSAFT_NATIVE_PARAMETER_FAMILY_BORN_DIAMETER_V1)
@@ -860,6 +934,8 @@ void validate_descriptor(
             : EPCSAFT_NATIVE_OBSERVATION_FIXED_COMPOSITION_HELMHOLTZ_PHASE_V1;
     const std::uint32_t expected_domain = binary
         ? EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_NONASSOCIATING_BINARY_V1
+        : association
+            ? EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_ASSOCIATING_PURE_V1
         : pure
             ? EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_NONASSOCIATING_PURE_V1
             : born
@@ -882,7 +958,7 @@ void validate_descriptor(
         || (!binary && !pure && !direct)
         || !matching_family
         || descriptor.parameter_identity
-            != (dielectric
+            != (dielectric || association
                     ? EPCSAFT_NATIVE_PARAMETER_IDENTITY_MODEL_V1
                 : binary || aqueous_kij || ion_solvation_kij
                     ? EPCSAFT_NATIVE_PARAMETER_IDENTITY_UNORDERED_COMPONENT_PAIR_V1
@@ -995,14 +1071,19 @@ void validate_descriptor(
                 ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SEGMENT_COUNT_V1
                 : segment_diameter
                     ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SEGMENT_DIAMETER_V1
-                    : EPCSAFT_NATIVE_CAPABILITY_COORDINATE_DISPERSION_ENERGY_OVER_K_V1
+                : dispersion_energy
+                    ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_DISPERSION_ENERGY_OVER_K_V1
+                : association_energy
+                    ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_ENERGY_OVER_K_V1
+                    : EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_VOLUME_V1
         );
-        components.push_back(0);
+        components.push_back(association ? -1 : 0);
         pair_a.push_back(-1);
         pair_b.push_back(-1);
         units.push_back(
-            segment_count ? "dimensionless"
-                          : segment_diameter ? "angstrom" : "kelvin"
+            segment_count || association_volume
+                ? "dimensionless"
+                : segment_diameter ? "angstrom" : "kelvin"
         );
     }
     for (std::size_t index = 0; index < kinds.size(); ++index) {
@@ -1124,6 +1205,10 @@ PyObject* descriptor_to_python(
             == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1;
     const bool dielectric = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1;
+    const bool association = descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_ENERGY_HELMHOLTZ_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1;
     const bool ion_solvation_kij =
         descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1
@@ -1156,13 +1241,15 @@ PyObject* descriptor_to_python(
                 : descriptor.model_domain
                         == EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_SINGLE_ION_SOLVATION_V1
                     ? "figiel_single_ion_solvation"
+                : association
+                    ? "neutral_associating_pure_2b"
                 : binary
                     ? "neutral_nonassociating_binary"
                     : "neutral_nonassociating_pure";
     const auto& parameter_coordinate =
         descriptor.coordinates[descriptor.coordinate_count - 1];
     const std::size_t active_component_count =
-        dielectric ? 0u : pair_coordinate ? 2u : 1u;
+        dielectric || association ? 0u : pair_coordinate ? 2u : 1u;
     PyObject* active_components = PyTuple_New(
         static_cast<Py_ssize_t>(active_component_count)
     );
@@ -1208,7 +1295,7 @@ PyObject* descriptor_to_python(
         "NONE",
         descriptor.temperature_min_k,
         descriptor.temperature_max_k,
-        dielectric
+        dielectric || association
             ? "model"
             : pair_coordinate ? "unordered_component_pair" : "component",
         observation_contract,
@@ -1277,6 +1364,17 @@ Phase evaluate_phase(
         ) {
             family =
                 EPCSAFT_NATIVE_PARAMETER_FAMILY_DISPERSION_ENERGY_OVER_K_V1;
+        } else if (
+            payload.capability_id
+            == "neutral_pure_2b_association_energy_over_k_v1"
+        ) {
+            family =
+                EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_ENERGY_OVER_K_V1;
+        } else if (
+            payload.capability_id
+            == "neutral_pure_2b_association_volume_v1"
+        ) {
+            family = EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_VOLUME_V1;
         }
         status = table.evaluate_pure_phase_parameter(
             table.model_context,
@@ -1719,6 +1817,84 @@ void evaluate_problem(
         }
         return;
     }
+    if (pure_density_observation(payload)) {
+        for (std::size_t row_index = 0; row_index < row_count; ++row_index) {
+            const Row& row = payload.training_rows[row_index];
+            const std::size_t volume_column = 1 + row_index;
+            const double volume =
+                row.liquid_volume_origin * std::exp(variables[volume_column]);
+            if (!std::isfinite(volume)
+                || volume < row.liquid_volume_bounds[0]
+                || volume > row.liquid_volume_bounds[1]) {
+                throw std::invalid_argument(
+                    "pure-density volume violates its declared bounds"
+                );
+            }
+            const Phase phase = evaluate_phase(
+                table, payload, row, 1.0, volume, parameter
+            );
+            constexpr std::size_t volume_coordinate = 1;
+            constexpr std::size_t parameter_coordinate = 2;
+            if (!(phase.hessian[
+                    volume_coordinate * phase.coordinate_count
+                    + volume_coordinate
+                ] > 0.0)) {
+                throw std::runtime_error(
+                    "pure-density state is not mechanically stable"
+                );
+            }
+            const std::size_t residual_offset = 2 * row_index;
+            const double modeled_density = row.molar_mass / volume;
+            evaluation.residuals[residual_offset] =
+                (phase.pressure - row.pressure) / row.pressure_scale;
+            evaluation.residuals[residual_offset + 1] =
+                (modeled_density - row.liquid_density)
+                / row.liquid_density_scale;
+            auto jacobian = [&](std::size_t residual, std::size_t column)
+                -> double& {
+                return evaluation.jacobian[
+                    residual * variable_total + column
+                ];
+            };
+            jacobian(residual_offset, 0) =
+                -gas_constant * row.temperature
+                * phase.hessian[
+                    volume_coordinate * phase.coordinate_count
+                    + parameter_coordinate
+                ]
+                * payload.parameter_scale / row.pressure_scale;
+            jacobian(residual_offset, volume_column) =
+                -gas_constant * row.temperature
+                * phase.hessian[
+                    volume_coordinate * phase.coordinate_count
+                    + volume_coordinate
+                ]
+                * volume / row.pressure_scale;
+            jacobian(residual_offset + 1, volume_column) =
+                -modeled_density / row.liquid_density_scale;
+            evaluation.modeled_values[row_index] = modeled_density;
+            evaluation.provider_derivatives[row_index] =
+                phase.hessian[
+                    volume_coordinate * phase.coordinate_count
+                    + parameter_coordinate
+                ];
+        }
+        if (!std::all_of(
+                evaluation.residuals.cbegin(),
+                evaluation.residuals.cend(),
+                [](double value) { return std::isfinite(value); }
+            )
+            || !std::all_of(
+                evaluation.jacobian.cbegin(),
+                evaluation.jacobian.cend(),
+                [](double value) { return std::isfinite(value); }
+            )) {
+            throw std::runtime_error(
+                "assembled pure-density residual or Jacobian is nonfinite"
+            );
+        }
+        return;
+    }
     for (std::size_t row_index = 0; row_index < row_count; ++row_index) {
         const Row& row = payload.training_rows[row_index];
         const std::size_t liquid_column = 1 + 2 * row_index;
@@ -2003,14 +2179,18 @@ SolveOutcome solve_training(
             ++index
         ) {
             const Row& row = payload.training_rows[index];
-            outcome.variables[1 + 2 * index] =
+            const std::size_t stride =
+                pure_density_observation(payload) ? 1u : 2u;
+            outcome.variables[1 + stride * index] =
                 std::log(
                     row.liquid_volume_start / row.liquid_volume_origin
                 );
-            outcome.variables[2 + 2 * index] =
-                std::log(
-                    row.vapor_volume_start / row.vapor_volume_origin
-                );
+            if (!pure_density_observation(payload)) {
+                outcome.variables[2 + 2 * index] =
+                    std::log(
+                        row.vapor_volume_start / row.vapor_volume_origin
+                    );
+            }
         }
     }
     GeneralCost cost(&table, payload);
@@ -2037,9 +2217,11 @@ SolveOutcome solve_training(
             ++index
         ) {
             const Row& row = payload.training_rows[index];
+            const std::size_t stride =
+                pure_density_observation(payload) ? 1u : 2u;
             problem.SetParameterLowerBound(
                 outcome.variables.data(),
-                static_cast<int>(1 + 2 * index),
+                static_cast<int>(1 + stride * index),
                 std::log(
                     row.liquid_volume_bounds[0]
                     / row.liquid_volume_origin
@@ -2047,12 +2229,15 @@ SolveOutcome solve_training(
             );
             problem.SetParameterUpperBound(
                 outcome.variables.data(),
-                static_cast<int>(1 + 2 * index),
+                static_cast<int>(1 + stride * index),
                 std::log(
                     row.liquid_volume_bounds[1]
                     / row.liquid_volume_origin
                 )
             );
+            if (pure_density_observation(payload)) {
+                continue;
+            }
             problem.SetParameterLowerBound(
                 outcome.variables.data(),
                 static_cast<int>(2 + 2 * index),
@@ -2103,22 +2288,23 @@ public:
         payload_(payload),
         parameter_(parameter_solver_value),
         scratch_(make_evaluation(payload)) {
-        set_num_residuals(4);
-        mutable_parameter_block_sizes()->push_back(2);
+        const bool density = pure_density_observation(payload_);
+        set_num_residuals(density ? 2 : 4);
+        mutable_parameter_block_sizes()->push_back(density ? 1 : 2);
     }
 
     bool Evaluate(
         double const* const* values, double* residuals, double** jacobians
     ) const override {
         try {
-            const std::array<double, 3> variables = {
-                parameter_, values[0][0], values[0][1]
-            };
+            std::vector<double> variables{parameter_, values[0][0]};
+            if (!pure_density_observation(payload_)) {
+                variables.push_back(values[0][1]);
+            }
             evaluate_problem(
                 *table_,
                 payload_,
-                variables.data(),
-                variables.size(),
+                variables.data(), variables.size(),
                 scratch_
             );
             std::copy(
@@ -2127,11 +2313,21 @@ public:
                 residuals
             );
             if (jacobians != nullptr && jacobians[0] != nullptr) {
-                for (std::size_t row = 0; row < 4; ++row) {
-                    jacobians[0][2 * row] =
-                        scratch_.jacobian[3 * row + 1];
-                    jacobians[0][2 * row + 1] =
-                        scratch_.jacobian[3 * row + 2];
+                const std::size_t nuisance_count =
+                    pure_density_observation(payload_) ? 1u : 2u;
+                const std::size_t row_count =
+                    pure_density_observation(payload_) ? 2u : 4u;
+                for (std::size_t row = 0; row < row_count; ++row) {
+                    for (
+                        std::size_t column = 0;
+                        column < nuisance_count;
+                        ++column
+                    ) {
+                        jacobians[0][nuisance_count * row + column] =
+                            scratch_.jacobian[
+                                (1 + nuisance_count) * row + 1 + column
+                            ];
+                    }
                 }
             }
             failure_reason_.clear();
@@ -2180,29 +2376,36 @@ RowOutcome solve_reporting(
         variables.data(), 0,
         std::log(row.liquid_volume_bounds[1] / row.liquid_volume_origin)
     );
-    problem.SetParameterLowerBound(
-        variables.data(), 1,
-        std::log(row.vapor_volume_bounds[0] / row.vapor_volume_origin)
-    );
-    problem.SetParameterUpperBound(
-        variables.data(), 1,
-        std::log(row.vapor_volume_bounds[1] / row.vapor_volume_origin)
-    );
+    if (!pure_density_observation(row_payload)) {
+        problem.SetParameterLowerBound(
+            variables.data(), 1,
+            std::log(row.vapor_volume_bounds[0] / row.vapor_volume_origin)
+        );
+        problem.SetParameterUpperBound(
+            variables.data(), 1,
+            std::log(row.vapor_volume_bounds[1] / row.vapor_volume_origin)
+        );
+    }
     ceres::Solver::Summary summary;
     ceres::Solve(solver_options(payload), &problem, &summary);
     RowOutcome outcome{
         row,
         row.liquid_volume_origin * std::exp(variables[0]),
-        row.vapor_volume_origin * std::exp(variables[1]),
+        pure_density_observation(row_payload)
+            ? std::numeric_limits<double>::quiet_NaN()
+            : row.vapor_volume_origin * std::exp(variables[1]),
         {},
         summary.IsSolutionUsable(),
         cost.failure_reason(),
     };
     try {
         Evaluation evaluation = make_evaluation(row_payload);
-        const std::array<double, 3> final_variables = {
-            parameter_solver_value, variables[0], variables[1]
+        std::vector<double> final_variables{
+            parameter_solver_value, variables[0]
         };
+        if (!pure_density_observation(row_payload)) {
+            final_variables.push_back(variables[1]);
+        }
         evaluate_problem(
             table,
             row_payload,
@@ -2396,6 +2599,89 @@ PyObject* rows_to_python(
         }
         return result;
     }
+    if (pure_density_observation(payload)) {
+        for (
+            std::size_t index = 0;
+            index < payload.training_rows.size();
+            ++index
+        ) {
+            const Row& row = payload.training_rows[index];
+            const double volume = primary_evaluation_available
+                ? row.liquid_volume_origin
+                    * std::exp(primary.variables[1 + index])
+                : row.liquid_volume_start;
+            const std::vector<double> residuals =
+                primary_evaluation_available
+                ? std::vector<double>(
+                    primary.evaluation.residuals.begin() + 2 * index,
+                    primary.evaluation.residuals.begin() + 2 * index + 2
+                )
+                : std::vector<double>(
+                    2, std::numeric_limits<double>::quiet_NaN()
+                );
+            PyObject* item = row_to_python(
+                row,
+                volume,
+                std::numeric_limits<double>::quiet_NaN(),
+                residuals,
+                primary_evaluation_available,
+                primary_evaluation_available ? "" : unavailable_reason,
+                primary_evaluation_available
+                    ? primary.evaluation.modeled_values[index]
+                    : std::numeric_limits<double>::quiet_NaN(),
+                primary_evaluation_available
+                    ? primary.evaluation.provider_derivatives[index]
+                    : std::numeric_limits<double>::quiet_NaN()
+            );
+            if (item == nullptr) {
+                Py_DECREF(result);
+                return nullptr;
+            }
+            PyTuple_SET_ITEM(result, static_cast<Py_ssize_t>(index), item);
+        }
+        for (
+            std::size_t index = 0;
+            index < payload.reporting_rows.size();
+            ++index
+        ) {
+            const Row& row = payload.reporting_rows[index];
+            const RowOutcome outcome = primary_evaluation_available
+                ? solve_reporting(table, payload, row, primary.variables[0])
+                : RowOutcome{
+                    row,
+                    row.liquid_volume_start,
+                    std::numeric_limits<double>::quiet_NaN(),
+                    {},
+                    false,
+                    unavailable_reason,
+                };
+            PyObject* item = row_to_python(
+                outcome.row,
+                outcome.liquid_volume,
+                outcome.vapor_volume,
+                std::vector<double>(
+                    outcome.residuals.begin(),
+                    outcome.residuals.begin() + 2
+                ),
+                outcome.usable,
+                outcome.failure_reason,
+                std::numeric_limits<double>::quiet_NaN(),
+                std::numeric_limits<double>::quiet_NaN()
+            );
+            if (item == nullptr) {
+                Py_DECREF(result);
+                return nullptr;
+            }
+            PyTuple_SET_ITEM(
+                result,
+                static_cast<Py_ssize_t>(
+                    payload.training_rows.size() + index
+                ),
+                item
+            );
+        }
+        return result;
+    }
     for (std::size_t index = 0; index < payload.training_rows.size(); ++index) {
         const Row& row = payload.training_rows[index];
         const double liquid_volume = primary_evaluation_available
@@ -2512,6 +2798,10 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
                     == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_ANION_KIJ_V1
                 || descriptor.capability
                     == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_CATION_ANION_KIJ_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_ENERGY_HELMHOLTZ_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1
             )
                 ? descriptor_to_python(descriptor)
                 : unsupported_descriptor_to_python(descriptor);

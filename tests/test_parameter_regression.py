@@ -25,6 +25,8 @@ from epcsaft_regression import (
     PairParameterIdentity,
     ParameterCoordinate,
     ParameterFamily,
+    PureDensityObservation,
+    PureDensityRowDiagnostic,
     PureSaturationObservation,
     PureSaturationRowDiagnostic,
     RegressionProblem,
@@ -57,6 +59,108 @@ def _pure_model() -> EPCSAFT:
         "gross-2001-methane-ethane", version=1
     ).select(("methane",))
     return EPCSAFT(parameters)
+
+
+def _associating_pure_model() -> EPCSAFT:
+    parameters = ParameterBundle.from_catalog(
+        "figiel-2025-reference-electrolytes", version=1
+    ).select(("ethanol",))
+    return EPCSAFT(parameters)
+
+
+def _pure_density_problem(
+    model: EPCSAFT,
+    family: ParameterFamily,
+) -> RegressionProblem:
+    capability = _capability(model, family)
+    row = PureDensityObservation(
+        row_id="held-2012-ethanol-density-298-15-k",
+        source_id="held-2012-pure-ethanol-density",
+        source_locator=(
+            "Validation data/held-2012-pure-ethanol-density.csv:2; "
+            "DOI 10.1016/j.ces.2011.09.040, section 2.2"
+        ),
+        component_id="ethanol",
+        temperature_k=298.15,
+        pressure_pa=100_000.0,
+        density_kg_per_m3=785.54,
+        molar_mass_kg_per_mol=0.046069,
+        pressure_scale_pa=100_000.0,
+        density_scale_kg_per_m3=785.54,
+        volume_origin_m3_per_mol=0.046069 / 785.54,
+        volume_start_m3_per_mol=0.046069 / 785.54,
+        volume_bounds_m3_per_mol=(4.0e-5, 1.0e-4),
+        partition=ObservationPartition.TRAINING,
+    )
+    if family is ParameterFamily.ASSOCIATION_ENERGY_OVER_K:
+        origin, scale, bounds, starts, unit = (
+            2653.4,
+            500.0,
+            (1000.0, 5000.0),
+            (2200.0, 3200.0),
+            "K",
+        )
+    else:
+        origin, scale, bounds, starts, unit = (
+            0.03238,
+            0.01,
+            (0.005, 0.1),
+            (0.02, 0.05),
+            "1",
+        )
+    source = SourceDescriptor(
+        source_id=row.source_id,
+        citation=(
+            "Held, Prinz, Wallmeyer, and Sadowski (2012), Chemical "
+            "Engineering Science 68, 328-339, DOI 10.1016/j.ces.2011.09.040"
+        ),
+        durable_locator=row.source_locator,
+        source_artifact_sha256=(
+            "25e3be94ee3cfb5eb13df89827f4368673f87f96d6b0225c12e35f9396b8779c"
+        ),
+        canonical_dataset_sha256=canonical_dataset_sha256((row,)),
+        transformation_record=(
+            "The SI density is transcribed unchanged. The source reports "
+            "ambient pressure; the model evaluation uses the predeclared "
+            "Validation convention of 1 bar."
+        ),
+        units_and_bases=(
+            "T/K and mass density/(kg/m3) from the source; model pressure/Pa."
+        ),
+        use_basis=(
+            "Direct experimental pure-liquid density anchor with 1 bar as "
+            "the explicit model-pressure approximation."
+        ),
+        residual_scale_rationale=(
+            "Observed pressure and density magnitudes are numerical scales, "
+            "not experimental uncertainties."
+        ),
+    )
+    return RegressionProblem(
+        sources=(source,),
+        parameters=(
+            ParameterCoordinate(
+                family=family,
+                identity=ModelParameterIdentity(),
+                capability_id=capability.capability_id,
+                provider_parameter_fingerprint=capability.parameter_fingerprint,
+                provider_topology_fingerprint=capability.topology_fingerprint,
+                unit=unit,
+                transform=AffineParameterTransform(origin=origin, scale=scale),
+                lower_bound=bounds[0],
+                upper_bound=bounds[1],
+                starts=starts,
+            ),
+        ),
+        observations=(row,),
+        maximum_condition_number=1.0e12,
+        maximum_iterations=100,
+        function_tolerance=1.0e-12,
+        gradient_tolerance=1.0e-12,
+        parameter_tolerance=1.0e-12,
+        confirmation_parameter_scaled_max_delta=1.0e-7,
+        confirmation_cost_relative_delta=1.0e-8,
+    )
 
 
 def _aqueous_model(
@@ -1162,6 +1266,102 @@ def test_installed_provider_advertises_scalar_pure_parameter_contracts() -> None
         for capability in capabilities
     )
     assert all(capability.state_coordinate_count == 2 for capability in capabilities)
+
+
+def test_installed_provider_advertises_bounded_pure_association_contracts() -> None:
+    capabilities = tuple(
+        capability
+        for capability in parameter_capabilities(_associating_pure_model())
+        if not isinstance(capability, UnsupportedParameterCapability)
+    )
+    assert tuple(capability.family for capability in capabilities) == (
+        ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
+        ParameterFamily.ASSOCIATION_VOLUME,
+    )
+    assert tuple(capability.capability_id for capability in capabilities) == (
+        "neutral_pure_2b_association_energy_over_k_v1",
+        "neutral_pure_2b_association_volume_v1",
+    )
+    assert tuple(capability.coordinate_kinds for capability in capabilities) == (
+        ("amount", "volume", "association_energy_over_k"),
+        ("amount", "volume", "association_volume"),
+    )
+    assert tuple(capability.coordinate_units[-1] for capability in capabilities) == (
+        "kelvin",
+        "dimensionless",
+    )
+    assert all(capability.identity_shape == "model" for capability in capabilities)
+    assert all(
+        capability.model_domain == "neutral_associating_pure_2b"
+        for capability in capabilities
+    )
+
+
+@pytest.mark.parametrize(
+    "family",
+    (
+        ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
+        ParameterFamily.ASSOCIATION_VOLUME,
+    ),
+)
+def test_exact_pure_density_association_jacobian_matches_directional_difference(
+    family: ParameterFamily,
+) -> None:
+    model = _associating_pure_model()
+    problem = _pure_density_problem(model, family)
+    variables = (0.0, math.log(1.01))
+    direction = (2.0e-4, -3.0e-5)
+    residuals, jacobian = _evaluate_parameters(problem, model, variables)
+    step = 1.0e-3
+    lower, _ = _evaluate_parameters(
+        problem,
+        model,
+        tuple(
+            value - step * delta
+            for value, delta in zip(variables, direction, strict=True)
+        ),
+    )
+    upper, _ = _evaluate_parameters(
+        problem,
+        model,
+        tuple(
+            value + step * delta
+            for value, delta in zip(variables, direction, strict=True)
+        ),
+    )
+    assert len(residuals) == 2
+    assert len(jacobian) == 4
+    for row in range(2):
+        exact = sum(jacobian[2 * row + column] * direction[column] for column in range(2))
+        finite_difference = (upper[row] - lower[row]) / (2.0 * step)
+        assert exact == pytest.approx(finite_difference, rel=3.0e-6, abs=1.0e-9)
+
+
+@pytest.mark.parametrize(
+    "family",
+    (
+        ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
+        ParameterFamily.ASSOCIATION_VOLUME,
+    ),
+)
+def test_pure_density_association_surface_reports_nonconverged_rank_diagnostics(
+    family: ParameterFamily,
+) -> None:
+    model = _associating_pure_model()
+    result = fit_parameters(_pure_density_problem(model, family), model)
+    assert result.solution_usable
+    assert result.jacobian.residual_count == 2
+    assert result.jacobian.variable_count == 2
+    assert result.jacobian.full_rank == 2
+    assert result.jacobian.projected_parameter_rank == 1
+    assert result.parameter.active_bound is None
+    assert math.isfinite(result.parameter.final)
+    assert not result.solver_converged
+    assert not result.numerically_converged
+    assert isinstance(result.rows[0], PureDensityRowDiagnostic)
+    assert result.rows[0].evaluated
+    assert all(math.isfinite(value) for value in result.rows[0].scaled_residuals)
+    assert result.scientific_status == "NOT_ADJUDICATED_NO_APPROVED_SCIENTIFIC_CUTOFF"
 
 
 @pytest.mark.parametrize(
