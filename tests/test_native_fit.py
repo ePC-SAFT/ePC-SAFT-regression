@@ -6,7 +6,7 @@ import math
 import sys
 
 import pytest
-from epcsaft import EPCSAFT, ParameterBundle, native_sdk
+from epcsaft import Mixture, Parameters, native_sdk
 
 import epcsaft_regression._native as native
 from epcsaft_regression.records import (
@@ -66,16 +66,18 @@ class _NativeSdkTable(ctypes.Structure):
     )
 
 
-def _model(component_id: str) -> EPCSAFT:
+def _model(component_id: str) -> Mixture:
     bundle_id = (
         "gross-2001-propane"
         if component_id == "propane"
         else "gross-2001-methane-ethane"
     )
-    parameters = ParameterBundle.from_catalog(
-        bundle_id, version=1
-    ).select((component_id,))
-    return EPCSAFT(parameters)
+    parameters = Parameters.from_catalog(
+        bundle_id,
+        components=(component_id,),
+        version=1,
+    )
+    return Mixture(parameters)
 
 
 def _capsule(component_id: str) -> object:

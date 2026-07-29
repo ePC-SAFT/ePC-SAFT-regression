@@ -56,6 +56,16 @@ with no added runtime test seam.
 
 `multi_parameter_core_status: IMPLEMENTED_ACCEPTED_PURE_WORKFLOWS_CUT_OVER_LOCAL`
 
+`provider_frontend_status: PARAMETERS_MIXTURE_0_2`
+
+The active package consumes Provider frontend `0.2.0.dev0` through the public
+`Parameters` and `Mixture` types. The exact integration artifact is Provider
+commit `06fb933e0b02ea87eb553a0a27d7a5ddb2077d72`, wheel SHA-256
+`1b8d69aba5f24936040de52eda6db1d7c8306b1cca38a48b105986fa6b657806`.
+This frontend migration changes type names, construction, and generic native
+capability names; it does not change accepted authority, target contracts, or
+numerical acceptance criteria.
+
 The canonical general design and native core now implement one ordered
 `[N fitted | Q lifted]` Ceres layout, complete ordered fitted-parameter start
 vectors, observation-owned lifted starts, an

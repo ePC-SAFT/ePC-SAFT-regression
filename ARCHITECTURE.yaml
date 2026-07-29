@@ -47,6 +47,13 @@ scope: >-
   dispersion energy over k from caller-supplied pure-saturation pressure and
   liquid-density rows on a matching neutral pure capability.
 
+provider_frontend:
+  version: 0.2.0.dev0
+  public_types: [Parameters, Mixture]
+  provider_subject: 06fb933e0b02ea87eb553a0a27d7a5ddb2077d72
+  wheel_sha256: 1b8d69aba5f24936040de52eda6db1d7c8306b1cca38a48b105986fa6b657806
+  migration_effect: frontend-only-no-authority-or-scientific-contract-change
+
 general_parameter_regression:
   status: TEN_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
   design_owner: docs/science/general-parameter-regression.md
@@ -179,7 +186,7 @@ general_parameter_regression:
     authority_effect: none
     predictive_effect: none
   fit_ready_direct_observable_families:
-    families: [born_diameter, solvation_factor, dielectric_ion_suppression_coefficient, ionic_region_relative_permittivity, relative_permittivity]
+    families: [born_diameter, solvation_factor, ion_fraction_suppression_coefficient, ionic_region_relative_permittivity, relative_permittivity]
     parameter_count_per_problem: 1
     nuisance_variables: 0
     provider_derivative_order: 1
@@ -559,7 +566,7 @@ public_surface:
     - MethaneFitResult
     - fit_methane_saturation
   runtime_dependencies:
-    - epcsaft==0.1.0.dev0
+    - epcsaft==0.2.0.dev0
   direct_build_dependencies:
     - scikit-build-core
     - CMake
@@ -594,14 +601,14 @@ component_contracts:
   methane:
     status: authoritative-workflow
     dataset: nist-webbook-methane-saturation-100-180-k-v1
-    expected_provider_fingerprint: sha256:5f836aa84935df70be2e5cffae51b178a7b797c2cee036e9ff47d8097ca94bbf
+    expected_provider_fingerprint: sha256:905e7a6e22eb1073347575bf833d5aa059d9ccf562e4408cb186d74f580ba36f
     training_temperatures_k: [110.0, 130.0, 150.0, 170.0]
     held_out_temperatures_k: [100.0, 120.0, 140.0, 160.0, 180.0]
     stress_temperatures_k: []
   ethane:
     status: authoritative-workflow-publication-verified
     dataset: nist-webbook-ethane-saturation-100-280-k-v1
-    expected_provider_fingerprint: sha256:288fbcaa1304881c16f64c3a784eeed19b75c58cca4558f92a21268e5e91258a
+    expected_provider_fingerprint: sha256:b81f32e44adb46080dfa91026c6428045e04a219900305767672d0547f9a9fb9
     training_temperatures_k: [140.0, 180.0, 220.0, 260.0]
     held_out_temperatures_k: [120.0, 160.0, 200.0, 240.0]
     stress_temperatures_k: [100.0, 280.0]
@@ -611,7 +618,7 @@ component_contracts:
     dataset: glos-2004-experimental-propane-saturation-110-340-k-v1
     source_packet_commit: 7e51590757f1cb85f51df98e9fe1f88cd4255a88
     source_packet_tree: 05af9e948c786ddfcf43dba701970f1cbb6435a2
-    expected_provider_fingerprint: sha256:9bfbc8d7789e51609945e61dbdf7a020decc8f9e31b408b0977724c7cb3e1551
+    expected_provider_fingerprint: sha256:1194db349d0608c89419e70c56ccec9ada2ae0884dd8e64e519e9560e7e8ae42
     training_temperatures_k: [150.0, 210.0, 270.0, 330.0]
     held_out_row_count: 18
     stress_temperatures_k: [110.0, 340.0]
@@ -675,7 +682,7 @@ parameter_family_readiness:
   mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
   mixture_independent_born_diameter: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_solvation_factor: FIT_READY_ADVERTISED_MEAN_IONIC_ACTIVITY_DOMAIN
-  model_dielectric_ion_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
+  model_ion_fraction_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
   mixture_independent_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   model_ionic_region_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_association: NOT_FIT_READY_SCALAR_DERIVATIVE_MECHANICS_ONLY

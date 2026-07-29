@@ -5,8 +5,13 @@ import math
 from dataclasses import replace
 from pathlib import Path
 
-from epcsaft import EPCSAFT, ParameterBundle, native_sdk
-from epcsaft.records import PairParameterRecord, SingleParameterRecord
+from epcsaft import Mixture, Parameters, native_sdk
+from epcsaft.records import (
+    ModelParameterRecord,
+    PairParameterRecord,
+    SingleParameterRecord,
+    SourceRecord,
+)
 import pytest
 
 import epcsaft_regression.parameter_regression as parameter_regression
@@ -52,20 +57,26 @@ _MAY_METHANE_PROPANE_CANONICAL_SHA256 = (
 )
 
 
-def _model() -> EPCSAFT:
-    parameters = ParameterBundle.from_catalog(
-        "gross-2001-methane-ethane", version=1
-    ).select(("methane", "ethane"))
-    return EPCSAFT(parameters)
-
-
-def _methane_propane_bundle() -> ParameterBundle:
-    """Build the campaign's public user-provided two-component bundle."""
-    methane_catalog = ParameterBundle.from_catalog(
-        "gross-2001-methane-ethane", version=1
+def _model() -> Mixture:
+    parameters = Parameters.from_catalog(
+        "gross-2001-methane-ethane",
+        components=("methane", "ethane"),
+        version=1,
     )
-    propane_catalog = ParameterBundle.from_catalog(
-        "gross-2001-propane", version=1
+    return Mixture(parameters)
+
+
+def _methane_propane_parameters() -> Parameters:
+    """Build the campaign's public user-provided two-component parameters."""
+    methane_catalog = Parameters.from_catalog(
+        "gross-2001-methane-ethane",
+        components=("methane",),
+        version=1,
+    )
+    propane_catalog = Parameters.from_catalog(
+        "gross-2001-propane",
+        components=("propane",),
+        version=1,
     )
     methane_records = tuple(
         record
@@ -79,7 +90,16 @@ def _methane_propane_bundle() -> ParameterBundle:
         if isinstance(record, SingleParameterRecord)
         and record.component_id == "propane"
     )
-    source = methane_catalog.sources[0]
+    source = SourceRecord(
+        "gross-sadowski-2001",
+        (
+            "Gross, J.; Sadowski, G. PC-SAFT: An Equation of State Based on a "
+            "Perturbation Theory for Chain Molecules. Industrial & Engineering "
+            "Chemistry Research 2001, 40, 1244-1260."
+        ),
+        "source-backed installed parameter catalog",
+        "10.1021/ie0003887",
+    )
     domains = tuple(
         {domain.domain_id: domain for domain in (*methane_catalog.domains, *propane_catalog.domains)}.values()
     )
@@ -98,7 +118,7 @@ def _methane_propane_bundle() -> ParameterBundle:
         "test-only zero active-pair initialization",
         "gross-pair-unknown",
     )
-    bundle = ParameterBundle.from_records(
+    return Parameters.from_records(
         bundle_id="may-2015-methane-propane-kij-fixture",
         bundle_version=1,
         purpose="user-provided",
@@ -107,30 +127,39 @@ def _methane_propane_bundle() -> ParameterBundle:
         components=components,
         singles=(*methane_records, *propane_records),
         pairs=(pair,),
+        models=(
+            record
+            for record in methane_catalog.records
+            if isinstance(record, ModelParameterRecord)
+        ),
+        selected_components=("methane", "propane"),
     )
-    return bundle
 
 
-def _methane_propane_model() -> EPCSAFT:
-    return EPCSAFT(_methane_propane_bundle().select(("methane", "propane")))
+def _methane_propane_model() -> Mixture:
+    return Mixture(_methane_propane_parameters())
 
 
-def _pure_model() -> EPCSAFT:
-    parameters = ParameterBundle.from_catalog(
-        "gross-2001-methane-ethane", version=1
-    ).select(("methane",))
-    return EPCSAFT(parameters)
+def _pure_model() -> Mixture:
+    parameters = Parameters.from_catalog(
+        "gross-2001-methane-ethane",
+        components=("methane",),
+        version=1,
+    )
+    return Mixture(parameters)
 
 
-def _associating_pure_model() -> EPCSAFT:
-    parameters = ParameterBundle.from_catalog(
-        "figiel-2025-reference-electrolytes", version=1
-    ).select(("ethanol",))
-    return EPCSAFT(parameters)
+def _associating_pure_model() -> Mixture:
+    parameters = Parameters.from_catalog(
+        "figiel-2025-reference-electrolytes",
+        components=("ethanol",),
+        version=1,
+    )
+    return Mixture(parameters)
 
 
 def _pure_density_problem(
-    model: EPCSAFT,
+    model: Mixture,
     family: ParameterFamily,
 ) -> RegressionProblem:
     capability = _capability(model, family)
@@ -232,15 +261,17 @@ def _aqueous_model(
         "sodium-cation",
         "bromide-anion",
     ),
-) -> EPCSAFT:
-    parameters = ParameterBundle.from_catalog(
-        "figiel-2025-reference-electrolytes", version=1
-    ).select(component_ids)
-    return EPCSAFT(parameters)
+) -> Mixture:
+    parameters = Parameters.from_catalog(
+        "figiel-2025-reference-electrolytes",
+        components=component_ids,
+        version=1,
+    )
+    return Mixture(parameters)
 
 
 def _capability(
-    model: EPCSAFT,
+    model: Mixture,
     family: ParameterFamily = ParameterFamily.K_IJ,
 ):
     return next(
@@ -277,7 +308,7 @@ def _row(
 
 
 def _problem(
-    model: EPCSAFT,
+    model: Mixture,
     rows: tuple[FixedCompositionVleObservation, ...] | None = None,
     family: ParameterFamily = ParameterFamily.K_IJ,
 ) -> RegressionProblem:
@@ -383,7 +414,7 @@ def _general_result_signature(result: RegressionResult) -> tuple[object, ...]:
 
 
 def _pure_problem(
-    model: EPCSAFT,
+    model: Mixture,
     family: ParameterFamily,
     *,
     all_training_rows: bool = False,
@@ -486,7 +517,7 @@ def _pure_problem(
     )
 
 
-def _joint_pure_problem(model: EPCSAFT) -> RegressionProblem:
+def _joint_pure_problem(model: Mixture) -> RegressionProblem:
     families = (
         ParameterFamily.SEGMENT_COUNT,
         ParameterFamily.SEGMENT_DIAMETER,
@@ -509,7 +540,7 @@ def _joint_pure_problem(model: EPCSAFT) -> RegressionProblem:
     )
 
 
-def _solvation_factor_problem(model: EPCSAFT) -> RegressionProblem:
+def _solvation_factor_problem(model: Mixture) -> RegressionProblem:
     specification = FIGIEL_WATER_SOLVATION_FACTOR_V1
     capability = _capability(model, ParameterFamily.SOLVATION_FACTOR)
     observations = tuple(
@@ -586,7 +617,7 @@ def _solvation_factor_problem(model: EPCSAFT) -> RegressionProblem:
     )
 
 
-def _aqueous_kij_problem(model: EPCSAFT) -> RegressionProblem:
+def _aqueous_kij_problem(model: Mixture) -> RegressionProblem:
     specification = FIGIEL_AQUEOUS_KIJ_V1
     capability = next(
         capability
@@ -670,7 +701,7 @@ def _aqueous_kij_problem(model: EPCSAFT) -> RegressionProblem:
 
 
 def _born_diameter_problem(
-    model: EPCSAFT, target_index: int
+    model: Mixture, target_index: int
 ) -> RegressionProblem:
     specification = FIGIEL_BORN_DIAMETER_TRACER_V1
     target = specification.targets[target_index]
@@ -750,7 +781,7 @@ def _born_diameter_problem(
     )
 
 
-def _ionic_region_permittivity_problem(model: EPCSAFT) -> RegressionProblem:
+def _ionic_region_permittivity_problem(model: Mixture) -> RegressionProblem:
     specification = FIGIEL_BORN_DIAMETER_TRACER_V1
     target = specification.targets[1]
     capability = _capability(
@@ -822,7 +853,7 @@ def _ionic_region_permittivity_problem(model: EPCSAFT) -> RegressionProblem:
     )
 
 
-def _solvent_relative_permittivity_problem(model: EPCSAFT) -> RegressionProblem:
+def _solvent_relative_permittivity_problem(model: Mixture) -> RegressionProblem:
     specification = FIGIEL_BORN_DIAMETER_TRACER_V1
     target = specification.targets[1]
     capability = _capability(model, ParameterFamily.RELATIVE_PERMITTIVITY)
@@ -892,10 +923,10 @@ def _solvent_relative_permittivity_problem(model: EPCSAFT) -> RegressionProblem:
     )
 
 
-def _dielectric_suppression_problem(model: EPCSAFT) -> RegressionProblem:
+def _dielectric_suppression_problem(model: Mixture) -> RegressionProblem:
     capability = _capability(
         model,
-        ParameterFamily.DIELECTRIC_ION_SUPPRESSION_COEFFICIENT,
+        ParameterFamily.ION_FRACTION_SUPPRESSION_COEFFICIENT,
     )
     source_rows = (
         ("figiel2025-dielectric-water-008", 0.010880829, 71.61417323),
@@ -943,7 +974,7 @@ def _dielectric_suppression_problem(model: EPCSAFT) -> RegressionProblem:
         ),
     )
     parameter = ParameterCoordinate(
-        family=ParameterFamily.DIELECTRIC_ION_SUPPRESSION_COEFFICIENT,
+        family=ParameterFamily.ION_FRACTION_SUPPRESSION_COEFFICIENT,
         identity=ModelParameterIdentity(),
         capability_id=capability.capability_id,
         provider_parameter_fingerprint=capability.parameter_fingerprint,
@@ -971,7 +1002,7 @@ def _dielectric_suppression_problem(model: EPCSAFT) -> RegressionProblem:
 
 
 def _ion_solvation_kij_problem(
-    model: EPCSAFT,
+    model: Mixture,
     *,
     capability_id: str = "ion_solvation_solvent_cation_kij_v1",
     active_component_id: str = "potassium-cation",
@@ -1177,7 +1208,7 @@ def test_installed_provider_advertises_exact_direct_observable_contracts() -> No
 
     dielectric = _capability(
         _aqueous_model(),
-        ParameterFamily.DIELECTRIC_ION_SUPPRESSION_COEFFICIENT,
+        ParameterFamily.ION_FRACTION_SUPPRESSION_COEFFICIENT,
     )
     assert (
         dielectric.capability_id,
@@ -1189,8 +1220,8 @@ def test_installed_provider_advertises_exact_direct_observable_contracts() -> No
         dielectric.model_domain,
         dielectric.active_component_ids,
     ) == (
-        "figiel_dielectric_suppression_v1",
-        ("dielectric_ion_suppression_coefficient",),
+        "ion_fraction_suppression_v1",
+        ("ion_fraction_suppression_coefficient",),
         ("dimensionless",),
         1,
         "model",
@@ -2084,7 +2115,7 @@ def _may_methane_propane_rows() -> tuple[FixedCompositionVleObservation, ...]:
 
 
 def _may_methane_propane_problem(
-    model: EPCSAFT,
+    model: Mixture,
     rows: tuple[FixedCompositionVleObservation, ...] | None = None,
 ) -> RegressionProblem:
     observations = rows or _may_methane_propane_rows()
@@ -2221,13 +2252,13 @@ def test_may_methane_propane_source_identity_and_transform() -> None:
     assert observed == expected
     rows = _may_methane_propane_rows()
     problem = _may_methane_propane_problem(_methane_propane_model(), rows)
-    bundle = _methane_propane_bundle()
+    parameters = _methane_propane_parameters()
     pair_records = tuple(
         record
-        for record in bundle.records
+        for record in parameters.records
         if isinstance(record, PairParameterRecord)
     )
-    assert bundle.purpose == "user-provided"
+    assert parameters.bundle_purpose == "user-provided"
     assert problem.observations[0].component_ids == ("methane", "propane")
     assert len(pair_records) == 1
     assert pair_records[0].component_id_a == "methane"

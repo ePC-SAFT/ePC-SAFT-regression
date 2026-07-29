@@ -198,7 +198,7 @@ def main() -> int:
 
     import epcsaft
     import epcsaft_regression
-    from epcsaft import EPCSAFT, ParameterBundle
+    from epcsaft import Mixture, Parameters
     from epcsaft_regression import (
         ETHANE_SATURATION_FIT_V1,
         METHANE_SATURATION_FIT_V1,
@@ -232,10 +232,12 @@ def main() -> int:
         if component_id == "propane"
         else "gross-2001-methane-ethane"
     )
-    parameters = ParameterBundle.from_catalog(
-        bundle_id, version=1
-    ).select((component_id,))
-    model = EPCSAFT(parameters)
+    parameters = Parameters.from_catalog(
+        bundle_id,
+        components=(component_id,),
+        version=1,
+    )
+    model = Mixture(parameters)
     result = fit_pure_saturation(
         model=model,
         dataset=dataset,

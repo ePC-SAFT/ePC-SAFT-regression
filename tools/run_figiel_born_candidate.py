@@ -42,7 +42,7 @@ def main() -> int:
     import epcsaft
     import epcsaft_regression
     import epcsaft_regression._native as native
-    from epcsaft import EPCSAFT, ParameterBundle, native_sdk
+    from epcsaft import Mixture, Parameters, native_sdk
     from epcsaft_regression import (
         FIGIEL_BORN_DIAMETER_TRACER_V1,
         fit_figiel_born_diameters,
@@ -63,9 +63,15 @@ def main() -> int:
     artifact_binding._require_hash(provider_header, PROVIDER_HEADER_SHA256, "provider header")
 
     specification = FIGIEL_BORN_DIAMETER_TRACER_V1
-    catalog = ParameterBundle.from_catalog("figiel-2025-reference-electrolytes", version=1)
     models = tuple(
-        EPCSAFT(catalog.select(target.component_order)) for target in specification.targets
+        Mixture(
+            Parameters.from_catalog(
+                "figiel-2025-reference-electrolytes",
+                components=target.component_order,
+                version=1,
+            )
+        )
+        for target in specification.targets
     )
     capsules = tuple(native_sdk(model) for model in models)
     payload = _born_native_payload(specification)

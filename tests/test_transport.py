@@ -8,16 +8,18 @@ from zipfile import ZipFile
 
 import pytest
 
-from epcsaft import EPCSAFT, ParameterBundle, native_sdk
+from epcsaft import Mixture, Parameters, native_sdk
 
 import epcsaft_regression._native as native
 
 
-def _provider_model(component_id: str) -> EPCSAFT:
-    parameters = ParameterBundle.from_catalog(
-        "gross-2001-methane-ethane", version=1
-    ).select((component_id,))
-    return EPCSAFT(parameters)
+def _provider_model(component_id: str) -> Mixture:
+    parameters = Parameters.from_catalog(
+        "gross-2001-methane-ethane",
+        components=(component_id,),
+        version=1,
+    )
+    return Mixture(parameters)
 
 
 @pytest.mark.parametrize("component_id", ("methane", "ethane"))
@@ -55,11 +57,11 @@ def test_receipt_runner_rejects_wheel_that_differs_from_installed_runtime(
     assert module_spec is not None and module_spec.loader is not None
     runner = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(runner)
-    fake_wheel = tmp_path / "epcsaft_regression-0.1.0.dev0-py3-none-any.whl"
+    fake_wheel = tmp_path / "epcsaft_regression-0.2.0.dev0-py3-none-any.whl"
     with ZipFile(fake_wheel, "w") as wheel:
         wheel.writestr(
-            "epcsaft_regression-0.1.0.dev0.dist-info/METADATA",
-            "Metadata-Version: 2.1\nName: epcsaft-regression\nVersion: 0.1.0.dev0\n",
+            "epcsaft_regression-0.2.0.dev0.dist-info/METADATA",
+            "Metadata-Version: 2.1\nName: epcsaft-regression\nVersion: 0.2.0.dev0\n",
         )
         wheel.writestr("epcsaft_regression/__init__.py", "not the installed package\n")
 
