@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 import math
 
-from epcsaft import EPCSAFT, ParameterBundle, native_sdk, unit_registry
+from epcsaft import Mixture, Parameters, native_sdk, unit_registry
 from epcsaft.records import (
     AssociationParameterRecord,
     ConstantCorrelation,
@@ -12,6 +12,7 @@ from epcsaft.records import (
     PairParameterRecord,
     SingleParameterRecord,
     SiteRecord,
+    SourceRecord,
 )
 
 from . import _native
@@ -56,6 +57,47 @@ BORN_JACOBIAN = "J_ij = delta_ij * G_i_prime(d_i) * 1 angstrom / abs(G_i_target)
 WATER_FACTOR_RESIDUAL = "r_q = 1 - gamma_q_model / gamma_q_observed"
 WATER_FACTOR_JACOBIAN = (
     "dr_q/df_water = -(gamma_q_model/gamma_q_observed) * dln(gamma_q_model)/df_water"
+)
+_FIGIEL_COMPONENT_IDS = (
+    "water",
+    "methanol",
+    "ethanol",
+    "lithium-cation",
+    "sodium-cation",
+    "potassium-cation",
+    "chloride-anion",
+    "bromide-anion",
+)
+_FIGIEL_SOURCES = (
+    SourceRecord(
+        source_id="figiel-yu-held-2025",
+        citation=(
+            "Figiel, P.; Yu, G.; Held, C. Predicting Thermodynamic Properties "
+            "of Ions in Single Solvents and in Mixed Solvents Using a Modified "
+            "Born Term within the ePC-SAFT Framework. Industrial & Engineering "
+            "Chemistry Research 2025, 64, 9406-9418."
+        ),
+        doi="10.1021/acs.iecr.5c00475",
+        use_basis=(
+            "primary equations and parameters for bounded water, methanol, and "
+            "ethanol alkali-halide reference states"
+        ),
+    ),
+    SourceRecord(
+        source_id="nist-srd-69-water",
+        citation="NIST Chemistry WebBook, SRD 69, Water, CAS 7732-18-5.",
+        use_basis="water identity and molecular weight",
+    ),
+    SourceRecord(
+        source_id="nist-srd-69-methanol",
+        citation="NIST Chemistry WebBook, SRD 69, Methanol, CAS 67-56-1.",
+        use_basis="methanol identity and molecular weight",
+    ),
+    SourceRecord(
+        source_id="nist-srd-69-ethanol",
+        citation="NIST Chemistry WebBook, SRD 69, Ethanol, CAS 64-17-5.",
+        use_basis="ethanol identity and molecular weight",
+    ),
 )
 
 
@@ -1319,14 +1361,17 @@ def fit_figiel_born_diameters(*, models: tuple[object, ...]) -> BornDiameterFitR
     )
 
 
-def _figiel_aqueous_bundle(
+def _figiel_aqueous_parameters(
     fixed_born_diameters_angstrom: tuple[float, ...],
     *,
     water_solvation_factor: float | None,
+    selected_components: tuple[str, ...],
     bundle_id: str = "figiel-water-factor-fixed-inputs",
-) -> ParameterBundle:
-    catalog = ParameterBundle.from_catalog(
-        "figiel-2025-reference-electrolytes", version=1
+) -> Parameters:
+    catalog = Parameters.from_catalog(
+        "figiel-2025-reference-electrolytes",
+        components=_FIGIEL_COMPONENT_IDS,
+        version=1,
     )
     born_by_component = {
         target.active_component_id: diameter
@@ -1357,11 +1402,11 @@ def _figiel_aqueous_bundle(
         )
         for record in catalog.records
     )
-    return ParameterBundle.from_records(
+    return Parameters.from_records(
         bundle_id=bundle_id,
         bundle_version=1,
         purpose="user-provided",
-        sources=catalog.sources,
+        sources=_FIGIEL_SOURCES,
         domains=catalog.domains,
         components=catalog.components,
         singles=(
@@ -1388,17 +1433,19 @@ def _figiel_aqueous_bundle(
         models=(
             record for record in records if isinstance(record, ModelParameterRecord)
         ),
+        selected_components=selected_components,
     )
 
 
 def _fixed_water_factor_model(
     specification: FigielWaterSolvationFactorSpecification,
-) -> EPCSAFT:
-    bundle = _figiel_aqueous_bundle(
+) -> Mixture:
+    parameters = _figiel_aqueous_parameters(
         specification.fixed_born_diameters_angstrom,
         water_solvation_factor=None,
+        selected_components=("water", "sodium-cation", "bromide-anion"),
     )
-    return EPCSAFT(bundle.select(("water", "sodium-cation", "bromide-anion")))
+    return Mixture(parameters)
 
 
 def _water_factor_native_payload(
@@ -1618,14 +1665,16 @@ def fit_figiel_water_solvation_factor() -> FigielWaterSolvationFactorFitResult:
 
 def _aqueous_kij_models(
     specification: FigielAqueousKijSpecification,
-) -> tuple[EPCSAFT, ...]:
-    bundle = _figiel_aqueous_bundle(
-        specification.fixed_born_diameters_angstrom,
-        water_solvation_factor=specification.fixed_water_solvation_factor,
-        bundle_id="figiel-stage-c-fixed-inputs",
-    )
+) -> tuple[Mixture, ...]:
     return tuple(
-        EPCSAFT(bundle.select(("water", cation, anion)))
+        Mixture(
+            _figiel_aqueous_parameters(
+                specification.fixed_born_diameters_angstrom,
+                water_solvation_factor=specification.fixed_water_solvation_factor,
+                selected_components=("water", cation, anion),
+                bundle_id="figiel-stage-c-fixed-inputs",
+            )
+        )
         for _, cation, anion, _ in specification.salt_contracts
     )
 

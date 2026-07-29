@@ -153,7 +153,7 @@ EXPECTED_DATA_SHA256 = METHANE_DATA_SHA256
 EXPECTED_PACKAGED_DATA_SHA256 = METHANE_PACKAGED_DATA_SHA256
 
 FIGIEL_TARGETS_PACKAGED_SHA256 = (
-    "ed6fdcaf3fc9b2cf7b6dd8d1e95933ab1b28908441b334a4586aa2e2a3222087"
+    "23f4b9fd5deaff251f7bc6d5100b12e75c3177ca35a65bbfc1f24199000e4317"
 )
 FIGIEL_VALIDATION_LEDGER_SHA256 = (
     "f405a3e48d21cd979a8dd480d5f8cb3be40754f5d6babf368b505b5f305607f0"
@@ -238,7 +238,7 @@ class BornDiameterTracerSpecification:
                 -486.2,
                 -486_200.0,
                 2.784,
-                "sha256:1bb528ebe8f5612757e148608fc55821f9fb03737dbcec6d0bc4fffd0f4cbc4c",
+                "sha256:dbed1c05a92d922369b9b631e89fe10add759e7c8d004ea53bc0a0c90d2d6f4a",
             ),
             (
                 "figiel2025-s5-Nap-reported-average",
@@ -248,7 +248,7 @@ class BornDiameterTracerSpecification:
                 -381.1,
                 -381_100.0,
                 3.445,
-                "sha256:7c637771bc9f717b8f47b44bb2a61044c3fe83084dca7c3c16102fba0989912d",
+                "sha256:d01bc3e64f19293902c00d9cc52060fccc3945ce736f0cd3e2f756be226cf5bf",
             ),
             (
                 "figiel2025-s5-Kp-reported-average",
@@ -258,7 +258,7 @@ class BornDiameterTracerSpecification:
                 -309.1,
                 -309_100.0,
                 4.150,
-                "sha256:d29cef0c0f63034436d547d0aafa57934effe06783c8dffd89c94fa85e6940f4",
+                "sha256:05f2db21ad51a27e7b7b8fca267e8a38eb663145c980eae6bee7dce02700af5b",
             ),
             (
                 "figiel2025-s5-Clm-reported-average",
@@ -268,7 +268,7 @@ class BornDiameterTracerSpecification:
                 -314.9,
                 -314_900.0,
                 4.100,
-                "sha256:7551f1eee5903b66061cf7520f3bb59b169896ce372f3df3d48aa7ec778c39d4",
+                "sha256:a8383fb8f70a1bb8c258f1662c792cd5507af1d23db71ad4575026b5dcab55ea",
             ),
             (
                 "figiel2025-s5-Brm-reported-average",
@@ -278,7 +278,7 @@ class BornDiameterTracerSpecification:
                 -290.9,
                 -290_900.0,
                 4.480,
-                "sha256:70ae04599dfa8338175e793bac6b9e4dfad37a9b96a568b5484dc87f104ef1a9",
+                "sha256:f313c30e9471daed0638ab70ff43eb033ed828724547c4b32857442ed35f1107",
             ),
         )
         observed_targets = tuple(
@@ -634,7 +634,7 @@ class FigielWaterSolvationFactorSpecification:
             FIGIEL_FIXED_BORN_DIAMETERS_ANGSTROM,
             FIGIEL_AQUEOUS_KIJ_COORDINATES,
             FIGIEL_AQUEOUS_PUBLISHED_KIJ,
-            "sha256:89d400b3641da07053da0823fe2fbcfd951dd97aaf339c1651a4338c954a7caf",
+            "sha256:9209085595a3d29fad59032e65a220b6386ef6341fd4e9507bb69dd825f3db1d",
             (
                 0.001,
                 0.002,
@@ -730,7 +730,7 @@ FIGIEL_WATER_SOLVATION_FACTOR_V1 = FigielWaterSolvationFactorSpecification(
     fixed_aqueous_kij_coordinate_order=FIGIEL_AQUEOUS_KIJ_COORDINATES,
     fixed_aqueous_kij=FIGIEL_AQUEOUS_PUBLISHED_KIJ,
     expected_provider_fingerprint=(
-        "sha256:89d400b3641da07053da0823fe2fbcfd951dd97aaf339c1651a4338c954a7caf"
+        "sha256:9209085595a3d29fad59032e65a220b6386ef6341fd4e9507bb69dd825f3db1d"
     ),
     temperature_k=298.15,
     pressure_pa=100_000.0,
@@ -762,12 +762,12 @@ FIGIEL_AQUEOUS_SALT_CONTRACTS = (
     ("KBr", "potassium-cation", "bromide-anion", (2, 4, 10)),
 )
 FIGIEL_AQUEOUS_KIJ_PROVIDER_FINGERPRINTS = (
-    "sha256:2e86bfea7ba8d860482189c50b5c8c9ab20736e216d7dff511fc32fc8b66156f",
-    "sha256:7a88365c8a238c0d3d650a6d9b49e477e9f5e762e51abf779d0f65fe3aa1cb73",
-    "sha256:f598133ee5894859c95c58ff03c0fc9c8be48b6033890d26a753c2db3c94d2fe",
-    "sha256:0f3795c2e83813a7c06d2d12d534284e729b5b2c836bfe9602ab6f3be4806807",
-    "sha256:1102deed6b08dbab82db24aea4187056db4432b9674187fb126cf19470ed65e1",
-    "sha256:bef74bbf5556b32a1e440da9500c4e9740af457d370ec5ee900c0e59bcd79a25",
+    "sha256:68d76fd6e0d960b01f5f9c34c978dbe5407f1701bf9f05e3a1f55c26888c521c",
+    "sha256:68c3afa26cd7a33884fd9b34ee5072ee6ede14dad22a34b6da28f974bed3db9e",
+    "sha256:e347ca7be00fabe412dc2c508f556b1bc3266577549e211eb4300fda791fb767",
+    "sha256:abb8e4c7b2343bcb35d541e591eb0a14dc87883cbcdb841a3ee718feb18db3e5",
+    "sha256:57d294a7a1a62001c2c7a3abe1dff449e5d8760ac793ee5aec727846e7688ea8",
+    "sha256:906f9c82ba9364527c3bc53cd439f0eae8d39f799f226180c84739b8dbc1592b",
 )
 
 
@@ -1324,7 +1324,7 @@ class PureSaturationFitSpecification:
                 "pure-methane-saturation-lifted-volumes-v1",
                 "nist-webbook-methane-saturation-100-180-k-v1",
                 METHANE_SOURCE_ID,
-                "sha256:5f836aa84935df70be2e5cffae51b178a7b797c2cee036e9ff47d8097ca94bbf",
+                "sha256:905e7a6e22eb1073347575bf833d5aa059d9ccf562e4408cb186d74f580ba36f",
                 (1.08, 3.555744, 157.5315),
                 0.016043,
                 (2.0e-5, 1.0e-4),
@@ -1337,7 +1337,7 @@ class PureSaturationFitSpecification:
                 "pure-ethane-saturation-lifted-volumes-v1",
                 "nist-webbook-ethane-saturation-100-280-k-v1",
                 ETHANE_SOURCE_ID,
-                "sha256:288fbcaa1304881c16f64c3a784eeed19b75c58cca4558f92a21268e5e91258a",
+                "sha256:b81f32e44adb46080dfa91026c6428045e04a219900305767672d0547f9a9fb9",
                 (1.6069, 3.5206, 191.42),
                 0.030070,
                 (2.0e-5, 1.0e-4),
@@ -1350,7 +1350,7 @@ class PureSaturationFitSpecification:
                 "pure-propane-saturation-lifted-volumes-v1",
                 "glos-2004-experimental-propane-saturation-110-340-k-v1",
                 PROPANE_SOURCE_ID,
-                "sha256:9bfbc8d7789e51609945e61dbdf7a020decc8f9e31b408b0977724c7cb3e1551",
+                "sha256:1194db349d0608c89419e70c56ccec9ada2ae0884dd8e64e519e9560e7e8ae42",
                 (2.002, 3.6184, 208.11),
                 0.044096,
                 (2.0e-5, 1.2e-4),
@@ -1555,7 +1555,7 @@ METHANE_SATURATION_FIT_V1 = _fit_specification(
     dataset_id="nist-webbook-methane-saturation-100-180-k-v1",
     source_id=METHANE_SOURCE_ID,
     expected_provider_fingerprint=(
-        "sha256:5f836aa84935df70be2e5cffae51b178a7b797c2cee036e9ff47d8097ca94bbf"
+        "sha256:905e7a6e22eb1073347575bf833d5aa059d9ccf562e4408cb186d74f580ba36f"
     ),
     start=(1.08, 3.555744, 157.5315),
     molar_mass_kg_per_mol=0.016043,
@@ -1569,7 +1569,7 @@ ETHANE_SATURATION_FIT_V1 = _fit_specification(
     dataset_id="nist-webbook-ethane-saturation-100-280-k-v1",
     source_id=ETHANE_SOURCE_ID,
     expected_provider_fingerprint=(
-        "sha256:288fbcaa1304881c16f64c3a784eeed19b75c58cca4558f92a21268e5e91258a"
+        "sha256:b81f32e44adb46080dfa91026c6428045e04a219900305767672d0547f9a9fb9"
     ),
     start=(1.6069, 3.5206, 191.42),
     molar_mass_kg_per_mol=0.030070,
@@ -1583,7 +1583,7 @@ PROPANE_SATURATION_FIT_V1 = _fit_specification(
     dataset_id="glos-2004-experimental-propane-saturation-110-340-k-v1",
     source_id=PROPANE_SOURCE_ID,
     expected_provider_fingerprint=(
-        "sha256:9bfbc8d7789e51609945e61dbdf7a020decc8f9e31b408b0977724c7cb3e1551"
+        "sha256:1194db349d0608c89419e70c56ccec9ada2ae0884dd8e64e519e9560e7e8ae42"
     ),
     start=(2.002, 3.6184, 208.11),
     molar_mass_kg_per_mol=0.044096,

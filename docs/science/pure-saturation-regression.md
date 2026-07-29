@@ -85,7 +85,7 @@ Propane starts from the provider's source-backed Gross 2001 propane bundle:
 ```text
 start = (2.0020, 3.6184 angstrom, 208.11 K)
 scale = (0.1, 0.1 angstrom, 10 K)
-provider fingerprint = sha256:9bfbc8d7789e51609945e61dbdf7a020decc8f9e31b408b0977724c7cb3e1551
+provider fingerprint = sha256:1194db349d0608c89419e70c56ccec9ada2ae0884dd8e64e519e9560e7e8ae42
 ```
 
 Both specifications use bounds `[0.5, 3.5]`, `[2, 5] angstrom`, and

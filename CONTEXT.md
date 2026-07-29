@@ -5,6 +5,10 @@ diagnostics, and results. Methane and ethane pure-saturation workflows are the
 accepted production capabilities. Other completed campaigns remain
 authority-neutral evidence unless separately admitted.
 
+The active Python package is version `0.2.0.dev0` and consumes exactly
+`epcsaft==0.2.0.dev0`. Public workflows construct Provider `Parameters` and
+`Mixture` objects; source-bound trial models use `Parameters.from_records`.
+
 `governance_doctrine_revision: 4`
 
 Canonical local doctrine: `../ePC-SAFT-organization/GOVERNANCE.md`.

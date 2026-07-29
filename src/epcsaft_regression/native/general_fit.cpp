@@ -132,7 +132,7 @@ bool direct_observation(const Payload& payload) {
         || payload.capability_id == "aqueous_water_cation_kij_miac_v1"
         || payload.capability_id == "aqueous_water_anion_kij_miac_v1"
         || payload.capability_id == "aqueous_cation_anion_kij_miac_v1"
-        || payload.capability_id == "figiel_dielectric_suppression_v1"
+        || payload.capability_id == "ion_fraction_suppression_v1"
         || payload.capability_id
             == "ion_solvation_solvent_cation_kij_v1"
         || payload.capability_id
@@ -440,7 +440,7 @@ Payload parse_payload(PyObject* object) {
         ? ObservationKind::solvation_gibbs
         : payload.capability_id == "aqueous_solvation_factor_miac_v1"
             ? ObservationKind::mean_ionic_activity
-        : payload.capability_id == "figiel_dielectric_suppression_v1"
+        : payload.capability_id == "ion_fraction_suppression_v1"
                 ? ObservationKind::relative_permittivity_ratio
             : payload.capability_id
                         == "ion_solvation_solvent_cation_kij_v1"
@@ -716,7 +716,7 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
             || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1
             || candidate.capability
-                == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1
+                == EPCSAFT_NATIVE_CAPABILITY_ION_FRACTION_SUPPRESSION_V1
             || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1
             || candidate.capability
@@ -762,8 +762,8 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
             == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_ANION_KIJ_MIAC_V1
         || descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1;
-    const bool dielectric = descriptor.capability
-        == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1;
+    const bool ion_fraction_suppression = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_ION_FRACTION_SUPPRESSION_V1;
     const bool ion_solvation_kij =
         descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1
@@ -776,7 +776,8 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
     const bool solvent_permittivity = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_PERMITTIVITY_V1;
     const bool binary = kij || lij;
-    const bool direct = born || solvation_factor || aqueous_kij || dielectric
+    const bool direct = born || solvation_factor || aqueous_kij
+        || ion_fraction_suppression
         || ion_solvation_kij || ionic_permittivity
         || solvent_permittivity;
     const bool callback_available = kij
@@ -803,16 +804,16 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
                         ? table.evaluate_aqueous_miac_kij_batch != nullptr
                             && table.aqueous_miac_kij_result_size
                                 == sizeof(epcsaft_aqueous_miac_kij_result_v1)
-                    : dielectric
+                    : ion_fraction_suppression
                         ? table.table_size
                                 >= offsetof(
                                     epcsaft_native_sdk_v1,
-                                    evaluate_figiel_permittivity
-                                ) + sizeof(table.evaluate_figiel_permittivity)
-                            && table.evaluate_figiel_permittivity != nullptr
-                            && table.figiel_permittivity_result_size
+                                    evaluate_ion_fraction_suppression
+                                ) + sizeof(table.evaluate_ion_fraction_suppression)
+                            && table.evaluate_ion_fraction_suppression != nullptr
+                            && table.ion_fraction_suppression_result_size
                                 == sizeof(
-                                    epcsaft_figiel_permittivity_result_v1
+                                    epcsaft_ion_fraction_suppression_result_v1
                                 )
                     : ion_solvation_kij
                         ? table.table_size
@@ -955,8 +956,8 @@ const char* capability_id(std::uint32_t value) {
         return "aqueous_cation_anion_kij_miac_v1";
     }
     if (value
-        == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1) {
-        return "figiel_dielectric_suppression_v1";
+        == EPCSAFT_NATIVE_CAPABILITY_ION_FRACTION_SUPPRESSION_V1) {
+        return "ion_fraction_suppression_v1";
     }
     if (value
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1) {
@@ -1007,8 +1008,8 @@ const char* parameter_family(std::uint32_t value) {
         return "solvation_factor";
     }
     if (value
-        == EPCSAFT_NATIVE_PARAMETER_FAMILY_DIELECTRIC_ION_SUPPRESSION_V1) {
-        return "dielectric_ion_suppression_coefficient";
+        == EPCSAFT_NATIVE_PARAMETER_FAMILY_ION_FRACTION_SUPPRESSION_V1) {
+        return "ion_fraction_suppression_coefficient";
     }
     if (value
         == EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_ENERGY_OVER_K_V1) {
@@ -1047,8 +1048,8 @@ const char* coordinate_kind(std::uint32_t value) {
             return "born_diameter";
         case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SOLVATION_FACTOR_V1:
             return "solvation_factor";
-        case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_DIELECTRIC_ION_SUPPRESSION_V1:
-            return "dielectric_ion_suppression_coefficient";
+        case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ION_FRACTION_SUPPRESSION_V1:
+            return "ion_fraction_suppression_coefficient";
         case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_ENERGY_OVER_K_V1:
             return "association_energy_over_k";
         case EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_VOLUME_V1:
@@ -1093,8 +1094,8 @@ void validate_descriptor(
             == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_ANION_KIJ_MIAC_V1
         || descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1;
-    const bool dielectric = descriptor.capability
-        == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1;
+    const bool ion_fraction_suppression = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_ION_FRACTION_SUPPRESSION_V1;
     const bool ion_solvation_kij =
         descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1
@@ -1109,7 +1110,8 @@ void validate_descriptor(
     const bool binary = kij || lij;
     const bool pure = segment_count || segment_diameter || dispersion_energy
         || association;
-    const bool direct = born || solvation_factor || aqueous_kij || dielectric
+    const bool direct = born || solvation_factor || aqueous_kij
+        || ion_fraction_suppression
         || ion_solvation_kij || ionic_permittivity
         || solvent_permittivity;
     const bool matching_family =
@@ -1146,9 +1148,9 @@ void validate_descriptor(
         || (ion_solvation_kij
             && descriptor.parameter_family
                 == EPCSAFT_NATIVE_PARAMETER_FAMILY_BINARY_INTERACTION_KIJ_V1)
-        || (dielectric
-            && descriptor.parameter_family
-                == EPCSAFT_NATIVE_PARAMETER_FAMILY_DIELECTRIC_ION_SUPPRESSION_V1)
+            || (ion_fraction_suppression
+                && descriptor.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_ION_FRACTION_SUPPRESSION_V1)
         || (ionic_permittivity
             && descriptor.parameter_family
                 == EPCSAFT_NATIVE_PARAMETER_FAMILY_IONIC_REGION_RELATIVE_PERMITTIVITY_V1)
@@ -1161,7 +1163,7 @@ void validate_descriptor(
         ? EPCSAFT_NATIVE_OBSERVATION_ION_SOLVATION_GIBBS_V1
         : solvation_factor || aqueous_kij
             ? EPCSAFT_NATIVE_OBSERVATION_AQUEOUS_MEAN_IONIC_ACTIVITY_V1
-            : dielectric
+            : ion_fraction_suppression
                 ? EPCSAFT_NATIVE_OBSERVATION_RELATIVE_PERMITTIVITY_RATIO_V1
             : EPCSAFT_NATIVE_OBSERVATION_FIXED_COMPOSITION_HELMHOLTZ_PHASE_V1;
     const std::uint32_t expected_domain = binary
@@ -1171,12 +1173,12 @@ void validate_descriptor(
         : pure
             ? EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_NONASSOCIATING_PURE_V1
             : born || ionic_permittivity || solvent_permittivity
-                ? EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_WATER_SINGLE_ION_V1
-                : dielectric
-                    ? EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_DIELECTRIC_V1
+            ? EPCSAFT_NATIVE_MODEL_DOMAIN_AQUEOUS_SINGLE_ION_V1
+            : ion_fraction_suppression
+                ? EPCSAFT_NATIVE_MODEL_DOMAIN_ION_FRACTION_SUPPRESSION_V1
                 : ion_solvation_kij
-                    ? EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_SINGLE_ION_SOLVATION_V1
-                : EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_AQUEOUS_NABR_V1;
+                    ? EPCSAFT_NATIVE_MODEL_DOMAIN_ORGANIC_SINGLE_ION_SOLVATION_V1
+                : EPCSAFT_NATIVE_MODEL_DOMAIN_AQUEOUS_NABR_V1;
     const std::size_t expected_component_count =
         binary ? 2u : pure ? 1u : 3u;
     const std::size_t expected_state_count =
@@ -1190,7 +1192,7 @@ void validate_descriptor(
         || (!binary && !pure && !direct)
         || !matching_family
         || descriptor.parameter_identity
-            != (dielectric || association || ionic_permittivity
+            != (ion_fraction_suppression || association || ionic_permittivity
                     ? EPCSAFT_NATIVE_PARAMETER_IDENTITY_MODEL_V1
                 : binary || aqueous_kij || ion_solvation_kij
                     ? EPCSAFT_NATIVE_PARAMETER_IDENTITY_UNORDERED_COMPONENT_PAIR_V1
@@ -1260,8 +1262,8 @@ void validate_descriptor(
         kinds.push_back(
             born
                 ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_BORN_DIAMETER_V1
-                : dielectric
-                    ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_DIELECTRIC_ION_SUPPRESSION_V1
+                : ion_fraction_suppression
+                ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ION_FRACTION_SUPPRESSION_V1
                 : ionic_permittivity
                     ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_IONIC_REGION_RELATIVE_PERMITTIVITY_V1
                 : solvent_permittivity
@@ -1269,7 +1271,7 @@ void validate_descriptor(
                 : EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SOLVATION_FACTOR_V1
         );
         components.push_back(
-            dielectric || ionic_permittivity ? -1
+            ion_fraction_suppression || ionic_permittivity ? -1
             : born ? 1
             : 0
         );
@@ -1443,8 +1445,8 @@ PyObject* descriptor_to_python(
             == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_WATER_ANION_KIJ_MIAC_V1
         || descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1;
-    const bool dielectric = descriptor.capability
-        == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1;
+    const bool ion_fraction_suppression = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_ION_FRACTION_SUPPRESSION_V1;
     const bool association = descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_ENERGY_HELMHOLTZ_V1
         || descriptor.capability
@@ -1472,17 +1474,17 @@ PyObject* descriptor_to_python(
                 : "fixed_composition_helmholtz_phase";
     const char* model_domain =
         descriptor.model_domain
-                == EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_WATER_SINGLE_ION_V1
-            ? "figiel_water_single_ion"
+            == EPCSAFT_NATIVE_MODEL_DOMAIN_AQUEOUS_SINGLE_ION_V1
+            ? "aqueous_single_ion"
             : descriptor.model_domain
-                    == EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_AQUEOUS_NABR_V1
-                ? "figiel_aqueous_nabr"
+                == EPCSAFT_NATIVE_MODEL_DOMAIN_AQUEOUS_NABR_V1
+                ? "aqueous_nabr"
                 : descriptor.model_domain
-                        == EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_DIELECTRIC_V1
-                    ? "figiel_dielectric"
-                : descriptor.model_domain
-                        == EPCSAFT_NATIVE_MODEL_DOMAIN_FIGIEL_SINGLE_ION_SOLVATION_V1
-                    ? "figiel_single_ion_solvation"
+                    == EPCSAFT_NATIVE_MODEL_DOMAIN_ION_FRACTION_SUPPRESSION_V1
+                    ? "ion_fraction_suppression"
+                    : descriptor.model_domain
+                        == EPCSAFT_NATIVE_MODEL_DOMAIN_ORGANIC_SINGLE_ION_SOLVATION_V1
+                        ? "organic_single_ion_solvation"
                 : association
                     ? "neutral_associating_pure_2b"
                 : binary
@@ -1491,7 +1493,7 @@ PyObject* descriptor_to_python(
     const auto& parameter_coordinate =
         descriptor.coordinates[descriptor.coordinate_count - 1];
     const std::size_t active_component_count =
-        dielectric || association || ionic_permittivity
+        ion_fraction_suppression || association || ionic_permittivity
         ? 0u
         : pair_coordinate ? 2u : 1u;
     PyObject* active_components = PyTuple_New(
@@ -1539,7 +1541,7 @@ PyObject* descriptor_to_python(
         "NONE",
         descriptor.temperature_min_k,
         descriptor.temperature_max_k,
-        dielectric || association || ionic_permittivity
+        ion_fraction_suppression || association || ionic_permittivity
             ? "model"
             : pair_coordinate ? "unordered_component_pair" : "component",
         observation_contract,
@@ -1903,12 +1905,12 @@ void evaluate_direct_problem(
         return;
     }
 
-    if (payload.capability_id == "figiel_dielectric_suppression_v1") {
+    if (payload.capability_id == "ion_fraction_suppression_v1") {
         for (std::size_t index = 0; index < row_count; ++index) {
             const Row& row = payload.training_rows[index];
-            epcsaft_figiel_permittivity_result_v1 result{};
+            epcsaft_ion_fraction_suppression_result_v1 result{};
             result.struct_size = sizeof(result);
-            const int status = table.evaluate_figiel_permittivity(
+            const int status = table.evaluate_ion_fraction_suppression(
                 table.model_context,
                 payload.parameter_fingerprint.c_str(),
                 row.temperature,
@@ -1927,7 +1929,9 @@ void evaluate_direct_problem(
                 || !std::isfinite(result.derivative)
                 || !std::isfinite(result.salt_free_relative_permittivity)) {
                 throw std::runtime_error(
-                    std::string("Provider Figiel permittivity evaluation failed: ")
+                    std::string(
+                        "Provider ion-fraction suppression evaluation failed: "
+                    )
                     + result.error
                 );
             }
@@ -3320,7 +3324,7 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
                 || descriptor.capability
                     == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1
                 || descriptor.capability
-                    == EPCSAFT_NATIVE_CAPABILITY_FIGIEL_DIELECTRIC_SUPPRESSION_V1
+                    == EPCSAFT_NATIVE_CAPABILITY_ION_FRACTION_SUPPRESSION_V1
                 || descriptor.capability
                     == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1
                 || descriptor.capability

@@ -11,8 +11,8 @@ import platform
 from zipfile import ZipFile
 
 
-PROVIDER_COMMIT = "4b10cb899c94687cae734980285badb224dc95e6"
-PROVIDER_WHEEL_SHA256 = "f92f79c8d6f614660e5c201b7061c9b02b5cd1a25a4ed8c8fee0b59adaabf2bf"
+PROVIDER_COMMIT = "06fb933e0b02ea87eb553a0a27d7a5ddb2077d72"
+PROVIDER_WHEEL_SHA256 = "1b8d69aba5f24936040de52eda6db1d7c8306b1cca38a48b105986fa6b657806"
 PROVIDER_TEST_RECEIPT_SHA256 = "07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480"
 
 
@@ -198,7 +198,7 @@ def main() -> int:
 
     import epcsaft
     import epcsaft_regression
-    from epcsaft import EPCSAFT, ParameterBundle
+    from epcsaft import Mixture, Parameters
     from epcsaft_regression import (
         ETHANE_SATURATION_FIT_V1,
         METHANE_SATURATION_FIT_V1,
@@ -232,10 +232,10 @@ def main() -> int:
         if component_id == "propane"
         else "gross-2001-methane-ethane"
     )
-    parameters = ParameterBundle.from_catalog(
-        bundle_id, version=1
-    ).select((component_id,))
-    model = EPCSAFT(parameters)
+    parameters = Parameters.from_catalog(
+        bundle_id, components=(component_id,), version=1
+    )
+    model = Mixture(parameters)
     result = fit_pure_saturation(
         model=model,
         dataset=dataset,

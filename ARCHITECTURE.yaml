@@ -179,7 +179,7 @@ general_parameter_regression:
     authority_effect: none
     predictive_effect: none
   fit_ready_direct_observable_families:
-    families: [born_diameter, solvation_factor, dielectric_ion_suppression_coefficient, ionic_region_relative_permittivity, relative_permittivity]
+    families: [born_diameter, solvation_factor, ion_fraction_suppression_coefficient, ionic_region_relative_permittivity, relative_permittivity]
     parameter_count_per_problem: 1
     nuisance_variables: 0
     provider_derivative_order: 1
@@ -559,7 +559,7 @@ public_surface:
     - MethaneFitResult
     - fit_methane_saturation
   runtime_dependencies:
-    - epcsaft==0.1.0.dev0
+    - epcsaft==0.2.0.dev0
   direct_build_dependencies:
     - scikit-build-core
     - CMake
@@ -675,7 +675,7 @@ parameter_family_readiness:
   mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
   mixture_independent_born_diameter: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_solvation_factor: FIT_READY_ADVERTISED_MEAN_IONIC_ACTIVITY_DOMAIN
-  model_dielectric_ion_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
+  model_ion_fraction_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
   mixture_independent_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   model_ionic_region_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_association: NOT_FIT_READY_SCALAR_DERIVATIVE_MECHANICS_ONLY

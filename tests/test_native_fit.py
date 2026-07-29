@@ -2,18 +2,16 @@ from __future__ import annotations
 
 import ctypes
 import gc
-import math
 import sys
 
 import pytest
-from epcsaft import EPCSAFT, ParameterBundle, native_sdk
+from epcsaft import Mixture, Parameters, native_sdk
 
 import epcsaft_regression._native as native
 from epcsaft_regression.records import (
     ETHANE_SATURATION_FIT_V1,
     METHANE_SATURATION_FIT_V1,
     PROPANE_SATURATION_FIT_V1,
-    PureSaturationFitSpecification,
     load_pure_saturation_dataset,
 )
 import epcsaft_regression.workflow as workflow
@@ -66,16 +64,16 @@ class _NativeSdkTable(ctypes.Structure):
     )
 
 
-def _model(component_id: str) -> EPCSAFT:
+def _model(component_id: str) -> Mixture:
     bundle_id = (
         "gross-2001-propane"
         if component_id == "propane"
         else "gross-2001-methane-ethane"
     )
-    parameters = ParameterBundle.from_catalog(
-        bundle_id, version=1
-    ).select((component_id,))
-    return EPCSAFT(parameters)
+    parameters = Parameters.from_catalog(
+        bundle_id, components=(component_id,), version=1
+    )
+    return Mixture(parameters)
 
 
 def _capsule(component_id: str) -> object:
@@ -411,7 +409,9 @@ def test_malformed_native_sequences_do_not_leak_references(
         identity[0] = object()
         tracked = tuple(identity)
         malformed_payload = (tracked, *payload[1:])
-        call = lambda: native.evaluate(capsule, malformed_payload, variables)
+        def call() -> object:
+            return native.evaluate(capsule, malformed_payload, variables)
+
         expected_exception = ValueError
     elif malformed_path == "training_row":
         row = list(payload[1][0])
@@ -419,22 +419,28 @@ def test_malformed_native_sequences_do_not_leak_references(
         tracked = tuple(row)
         malformed_rows = (tracked, *payload[1][1:])
         malformed_payload = (payload[0], malformed_rows, *payload[2:])
-        call = lambda: native.evaluate(capsule, malformed_payload, variables)
+        def call() -> object:
+            return native.evaluate(capsule, malformed_payload, variables)
+
         expected_exception = ValueError
     elif malformed_path == "payload_field":
         fields = list(payload)
         fields[2] = (object(), *payload[2][1:])
         tracked = tuple(fields)
-        call = lambda: native.evaluate(capsule, tracked, variables)
+        def call() -> object:
+            return native.evaluate(capsule, tracked, variables)
+
         expected_exception = ValueError
     else:
         row = list(reporting[0])
         row[0] = object()
         malformed_reporting = (tuple(row), *reporting[1:])
         tracked = tuple(malformed_reporting)
-        call = lambda: native.report_pure_saturation(
-            capsule, payload, tracked, payload[2]
-        )
+        def call() -> object:
+            return native.report_pure_saturation(
+                capsule, payload, tracked, payload[2]
+            )
+
         expected_exception = ValueError
 
     gc.collect()

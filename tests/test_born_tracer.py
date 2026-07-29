@@ -4,7 +4,7 @@ from dataclasses import replace
 import math
 
 import pytest
-from epcsaft import EPCSAFT, ParameterBundle, native_sdk
+from epcsaft import Mixture, Parameters, native_sdk
 
 import epcsaft_regression
 import epcsaft_regression._native as native
@@ -12,10 +12,15 @@ from epcsaft_regression.records import FIGIEL_BORN_DIAMETER_TRACER_V1
 from epcsaft_regression.workflow import _born_native_payload
 
 
-def _models() -> tuple[EPCSAFT, ...]:
-    catalog = ParameterBundle.from_catalog("figiel-2025-reference-electrolytes", version=1)
+def _models() -> tuple[Mixture, ...]:
     return tuple(
-        EPCSAFT(catalog.select(target.component_order))
+        Mixture(
+            Parameters.from_catalog(
+                "figiel-2025-reference-electrolytes",
+                components=target.component_order,
+                version=1,
+            )
+        )
         for target in FIGIEL_BORN_DIAMETER_TRACER_V1.targets
     )
 
