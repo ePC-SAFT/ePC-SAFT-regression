@@ -50,12 +50,14 @@ scope: >-
 provider_frontend:
   version: 0.2.0.dev0
   public_types: [Parameters, Mixture]
-  provider_subject: 06fb933e0b02ea87eb553a0a27d7a5ddb2077d72
-  provider_tree: bdf255c3eb9eaca8bff156e718356704b2d101a6
-  wheel_sha256: 1b8d69aba5f24936040de52eda6db1d7c8306b1cca38a48b105986fa6b657806
-  installed_header_sha256: 3c7bcce4748edb14b19c2ba486fd8f7ddddc0593ed333037fe06e09ae55237ba
-  verification_pr: ePC-SAFT/ePC-SAFT#39
-  verification_summary: 274-passed-1-skipped
+  provider_commit: 14fa3745264db66b8e59c12268737d694c706f2f
+  provider_tree: eb04f10f445957cc768bad1ef4f330038c69a293
+  wheel_path: /home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/ePC-SAFT-EoS/dist/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl
+  wheel_sha256: 48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594
+  installed_header_sha256: 2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b
+  provider_test_receipt_path: /home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-python-frontend-v0.2/14fa374/provider-tests.xml
+  provider_test_receipt_sha256: 56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf
+  provider_test_receipt_summary: 276-passed-1-skipped
   migration_effect: frontend-only-no-authority-or-scientific-contract-change
   retained_receipt_policy: immutable-provider-0.1-history-not-regenerated
 
@@ -82,6 +84,7 @@ general_parameter_regression:
   reference_campaign_role: evidence-not-component-restriction
   forbidden_interpretation: every-provider-parameter-is-fit-ready-now
   immediate_provider_gate: SATISFIED_FOR_TEN_FAMILIES
+  artifact_identity_role: historical-reference-campaign-evidence; active-frontend-binding-is-provider_frontend
   pure_association_recovery:
     status: NOT_FIT_READY_SOURCE_CONTRACT_INCOMPLETE
     design_owner: docs/science/general-parameter-regression.md
@@ -356,7 +359,8 @@ parallel_regression_track:
       parameter_packet_sha256: 932e8baa90fcefbaa8c3a8730cdeadd83a4c01f0a3b109f4e4cd0319aee9312b
       metadata_sha256: 8ea06c6ca5452d01448a03f9a76cf7d0c35bb99c9abe23ccb1729d56c71d468f
     provider:
-      status: migration-bound-implemented-installed-artifact
+      status: historical-migration-bound-candidate-artifact
+      historical_binding: provider_frontend
       commit: 907b077ec6f841a8a028fc759df14f899c79339c
       tree: 2b315113c9961a16f75c776783f704db54d75e44
       wheel_sha256: c327b9a176e54bfc79b625cca7f0c87f2a62fc7d87059826e40c9d70e214f0cd
@@ -468,6 +472,8 @@ figiel_aqueous_kij_design:
   current_provider_status: exact-stage-b-and-stage-c-batch-callback-artifact-retained
   required_provider_addition: none
   provider_artifact:
+    role: historical-stage-candidate-evidence
+    historical_binding: provider_frontend
     implementation_commit: 8af6e5467cba70ade226cb28f93688ce88048c29
     implementation_tree: 2ec243429600de75ccaeb51955044bf2e7557fbe
     wheel_sha256: 1d77a46aca369269fd97b32a722e8b548617a4ae840e07645040a138f63863db
@@ -763,6 +769,8 @@ propane_candidate_artifact:
     scaled_liquid_pressure_closure: 3.293761527412009e-8
     required_scaled_pressure_closure: 1.0e-8
   provider:
+    role: historical-blocked-candidate-evidence
+    historical_binding: provider_frontend
     commit: 4b10cb899c94687cae734980285badb224dc95e6
     wheel_sha256: f92f79c8d6f614660e5c201b7061c9b02b5cd1a25a4ed8c8fee0b59adaabf2bf
     installed_public_header_sha256: 414c257d28322d6be41809a8dc6b98023859dd156202a5205079d674b28b4070

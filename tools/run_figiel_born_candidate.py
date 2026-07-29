@@ -11,7 +11,8 @@ import run_candidate as artifact_binding
 PROVIDER_COMMIT = artifact_binding.PROVIDER_COMMIT
 PROVIDER_TREE = artifact_binding.PROVIDER_TREE
 PROVIDER_WHEEL_SHA256 = artifact_binding.PROVIDER_WHEEL_SHA256
-PROVIDER_HEADER_SHA256 = "3c7bcce4748edb14b19c2ba486fd8f7ddddc0593ed333037fe06e09ae55237ba"
+PROVIDER_HEADER_SHA256 = artifact_binding.PROVIDER_HEADER_SHA256
+PROVIDER_TEST_RECEIPT_SHA256 = artifact_binding.PROVIDER_TEST_RECEIPT_SHA256
 
 
 def _canonical_evidence_bytes(payload: dict[str, object]) -> bytes:
@@ -23,6 +24,7 @@ def _canonical_evidence_bytes(payload: dict[str, object]) -> bytes:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate the Figiel Born-tracer candidate evidence.")
     parser.add_argument("--provider-wheel", type=Path, required=True)
+    parser.add_argument("--provider-test-receipt", type=Path, required=True)
     parser.add_argument("--regression-wheel", type=Path, required=True)
     parser.add_argument("--regression-commit", required=True)
     parser.add_argument("--regression-tree", required=True)
@@ -32,6 +34,7 @@ def main() -> int:
     artifact_binding._require_hash(
         arguments.provider_wheel, PROVIDER_WHEEL_SHA256, "provider wheel"
     )
+    artifact_binding._require_provider_test_receipt(arguments.provider_test_receipt)
     provider_binding = artifact_binding._require_installed_distribution_matches_wheel(
         arguments.provider_wheel, "epcsaft"
     )
@@ -134,6 +137,8 @@ def main() -> int:
             "tree": PROVIDER_TREE,
             "wheel": arguments.provider_wheel.name,
             "wheel_sha256": PROVIDER_WHEEL_SHA256,
+            "test_receipt": arguments.provider_test_receipt.name,
+            "test_receipt_sha256": PROVIDER_TEST_RECEIPT_SHA256,
             "installed_header_sha256": PROVIDER_HEADER_SHA256,
             "capsule": "epcsaft.native_sdk.v1",
             "entry": "evaluate_ion_solvation_born",

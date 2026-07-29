@@ -15,6 +15,19 @@ neither coupled-reactive capability nor downstream readiness. This document is
 the sole Regression design owner for the first Figiel tracer. It creates no
 second plan or generic parameter-family contract.
 
+Active installed-artifact replay binds Provider frontend `0.2.0.dev0` to
+commit `14fa3745264db66b8e59c12268737d694c706f2f`, tree
+`eb04f10f445957cc768bad1ef4f330038c69a293`, wheel SHA-256
+`48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594`, and
+installed-header SHA-256
+`2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b`.
+The final Provider JUnit receipt is
+`/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
+SHA-256
+`56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`.
+The retained D-027 candidate result below remains bound to its historical
+Provider artifact and is not re-described as final-artifact evidence.
+
 ## Decision and problem shape
 
 The first tracer is one bounded Ceres problem with one contiguous five-vector
@@ -92,7 +105,7 @@ inferred here.
 
 The Provider contract originated in the independently reviewed design at commit
 `da9660481f08bb5557cc03da528edec15cc15e1f`, tree
-`e34575ae646c40f3fb63b5994c957e30bb035f69`. Migration D-027 bound Provider
+`e34575ae646c40f3fb63b5994c957e30bb035f69`. Migration D-027 historically bound Provider
 implementation `907b077ec6f841a8a028fc759df14f899c79339c`, tree
 `2b315113c9961a16f75c776783f704db54d75e44`, wheel SHA-256
 `c327b9a176e54bfc79b625cca7f0c87f2a62fc7d87059826e40c9d70e214f0cd`,

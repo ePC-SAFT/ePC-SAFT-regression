@@ -21,6 +21,22 @@ This repository is limited to strict target datasets, fitted parameters,
 Ceres, fit receipts, and regression results. It consumes a compatible
 installed provider and does not own provider internals, equilibrium, or Ipopt.
 
+The active Provider frontend binding is `epcsaft==0.2.0.dev0`, using commit
+`14fa3745264db66b8e59c12268737d694c706f2f`, tree
+`eb04f10f445957cc768bad1ef4f330038c69a293`, wheel
+`/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/ePC-SAFT-EoS/dist/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl`
+with SHA-256
+`48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594`, and
+installed public header SHA-256
+`2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b`.
+Active runner receipts must bind this complete identity. Retained Provider
+0.1 receipts and their replay commands are historical evidence only. The final
+0.2 JUnit receipt is
+`/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
+SHA-256
+`56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`, with
+276 passed and 1 skipped Provider tests.
+
 ## Agent home and Validation work
 
 - The Regression agent remains rooted in this repository and is the sole owner
@@ -53,9 +69,9 @@ authority-neutral, non-production provenance and are not active blockers.
 Migration D-023 preserves a source-bound Ceres tracer for current-catalog ion
 Born diameters. Provider design `da966048` and Validation source packet
 `8944d34f` are immutable reviewed inputs; the sole Regression design owner is
-`docs/science/figiel-born-diameter-tracer.md`. Migration D-027 bound Provider
-implementation `907b077` and authorized the bounded Regression package
-implementation. Current status is
+`docs/science/figiel-born-diameter-tracer.md`. The D-027 Provider artifact
+`907b077` is retained as historical candidate evidence; the active installed
+frontend binding is the exact 0.2 subject above. Current status is
 `FIGIEL_BORN_TRACER_PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED`.
 The user-approved 2026-07-21 contract correction keeps the Table 3 diameters
 and their `0.0005 angstrom` reporting half-increment as descriptive comparison
@@ -78,9 +94,10 @@ implemented as eleven conditional scalar Ceres fits with an assembled
 the approved `0.05` printed-value comparison; worst is Li+--Br- at
 `0.26079436319380545`, and Li+--Cl- reaches its upper bound. This is retained as
 `SOURCE_DESCRIBED_STAGED_RECOVERY_DID_NOT_REPRODUCE_PRINTED_TUPLE`, not a
-catalog candidate. Provider artifact `fa766e5` supplies Stage B; bounded
-artifact `8af6e54` supplies the exact Stage-C batch derivative/cancellation
-contract.
+catalog candidate. Historical Provider artifact `fa766e5` supplies the retained
+Stage-B result; bounded historical artifact `8af6e54` supplies the retained
+Stage-C batch derivative/cancellation contract. Active replays bind the exact
+0.2 subject above.
 The retained exact isolated log and relative fits are falsification evidence,
 not proof that the staged route is impossible. Keep the user-approved Table
 4/5 maximum parameter difference at `0.05`; do not tune rows, weights, bounds,

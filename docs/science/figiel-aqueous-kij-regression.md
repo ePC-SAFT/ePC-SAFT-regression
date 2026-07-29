@@ -14,6 +14,19 @@ fixed-family `164 x 11` fit should recover every printed Table 4/5 interaction.
 The rejected fit remains immutable evidence; it is not proof that the
 source-described staged procedure is impossible.
 
+Active installed-artifact replay binds Provider frontend `0.2.0.dev0` to
+commit `14fa3745264db66b8e59c12268737d694c706f2f`, tree
+`eb04f10f445957cc768bad1ef4f330038c69a293`, wheel SHA-256
+`48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594`, and
+installed-header SHA-256
+`2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b`.
+The final Provider JUnit receipt is
+`/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
+SHA-256
+`56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`.
+The retained Stage B/C results below remain bound to their historical Provider
+subjects; they are not rewritten as final-artifact evidence.
+
 ## Bounded claim and sequence
 
 The smallest source-backed sequence is:
@@ -164,7 +177,8 @@ gamma_model = exp(log_gamma_model)
 dr/df_water = -(gamma_model/gamma_observed) * dlog_gamma_model/df_water.
 ```
 
-Stage C consumes the bounded installed Provider callback from commit
+The retained Stage-C result consumed the bounded historical Provider callback
+from commit
 `8af6e5467cba70ade226cb28f93688ce88048c29`, tree
 `2ec243429600de75ccaeb51955044bf2e7557fbe`. The retained wheel SHA-256 is
 `1d77a46aca369269fd97b32a722e8b548617a4ae840e07645040a138f63863db`;
@@ -244,7 +258,7 @@ invented acceptance tolerance and not experimental uncertainty.
 
 ## Conditional Stage-C result
 
-The bounded Provider subject is commit
+The retained bounded Provider subject is commit
 `8af6e5467cba70ade226cb28f93688ce88048c29`, tree
 `2ec243429600de75ccaeb51955044bf2e7557fbe`. Its wheel and installed-header
 SHA-256 values are

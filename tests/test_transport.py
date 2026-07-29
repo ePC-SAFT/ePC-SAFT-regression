@@ -72,37 +72,45 @@ def test_receipt_runner_rejects_wheel_that_differs_from_installed_runtime(
         )
 
 
-def test_candidate_runners_bind_provider_frontend_0_2(
+def test_candidate_runners_share_final_provider_identity_and_reject_mixed_receipt(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     tools_path = Path(__file__).parents[1] / "tools"
     monkeypatch.syspath_prepend(str(tools_path))
 
     candidate_spec = importlib.util.spec_from_file_location(
-        "run_candidate",
-        tools_path / "run_candidate.py",
+        "run_candidate_identity", tools_path / "run_candidate.py"
     )
     assert candidate_spec is not None and candidate_spec.loader is not None
     candidate = importlib.util.module_from_spec(candidate_spec)
     candidate_spec.loader.exec_module(candidate)
 
     born_spec = importlib.util.spec_from_file_location(
-        "run_figiel_born_candidate",
-        tools_path / "run_figiel_born_candidate.py",
+        "run_figiel_born_identity", tools_path / "run_figiel_born_candidate.py"
     )
     assert born_spec is not None and born_spec.loader is not None
     born = importlib.util.module_from_spec(born_spec)
     born_spec.loader.exec_module(born)
 
-    expected_commit = "06fb933e0b02ea87eb553a0a27d7a5ddb2077d72"
-    expected_wheel = "1b8d69aba5f24936040de52eda6db1d7c8306b1cca38a48b105986fa6b657806"
-    expected_header = "3c7bcce4748edb14b19c2ba486fd8f7ddddc0593ed333037fe06e09ae55237ba"
+    expected_commit = "14fa3745264db66b8e59c12268737d694c706f2f"
+    expected_tree = "eb04f10f445957cc768bad1ef4f330038c69a293"
+    expected_wheel = "48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594"
+    expected_header = "2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b"
+    expected_receipt = "56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf"
+    legacy_receipt = "07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480"
 
     assert candidate.PROVIDER_COMMIT == born.PROVIDER_COMMIT == expected_commit
+    assert candidate.PROVIDER_TREE == born.PROVIDER_TREE == expected_tree
     assert candidate.PROVIDER_WHEEL_SHA256 == born.PROVIDER_WHEEL_SHA256 == expected_wheel
-    assert born.PROVIDER_HEADER_SHA256 == expected_header
-    assert not hasattr(candidate, "PROVIDER_TEST_RECEIPT_SHA256")
-    assert "provider_test_receipt" not in (tools_path / "run_candidate.py").read_text()
+    assert candidate.PROVIDER_HEADER_SHA256 == born.PROVIDER_HEADER_SHA256 == expected_header
+    assert candidate.PROVIDER_TEST_RECEIPT_SHA256 == born.PROVIDER_TEST_RECEIPT_SHA256 == expected_receipt
+    assert candidate.PROVIDER_TEST_RECEIPT_SHA256 != legacy_receipt
+
+    mixed_receipt = tmp_path / "provider-tests.xml"
+    mixed_receipt.write_bytes(b"Provider 0.1 JUnit receipt")
+    with pytest.raises(SystemExit, match="provider test receipt SHA-256 mismatch"):
+        candidate._require_provider_test_receipt(mixed_receipt)
 
 
 def test_candidate_receipt_has_one_canonical_reproducible_subject() -> None:

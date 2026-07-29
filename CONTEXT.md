@@ -5,6 +5,28 @@ diagnostics, and results. Methane and ethane pure-saturation workflows are the
 accepted production capabilities. Other completed campaigns remain
 authority-neutral evidence unless separately admitted.
 
+The active Python package is version `0.2.0.dev0` and consumes exactly
+`epcsaft==0.2.0.dev0`. Public workflows construct Provider `Parameters` and
+`Mixture` objects; source-bound trial models use `Parameters.from_records`.
+
+`provider_frontend_status: PARAMETERS_MIXTURE_0_2`
+
+The active installed Provider subject is commit
+`14fa3745264db66b8e59c12268737d694c706f2f`, tree
+`eb04f10f445957cc768bad1ef4f330038c69a293`, wheel SHA-256
+`48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594`, and
+installed public-header SHA-256
+`2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b`.
+The frontend migration changes public construction and generic capability
+names only; it does not change accepted authority, target contracts, or
+numerical acceptance criteria. Retained Provider 0.1 receipt identities remain
+immutable historical evidence and are not active replay inputs.
+The final active Provider 0.2 JUnit receipt is
+`/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
+SHA-256
+`56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`, with
+276 passed and 1 skipped tests.
+
 `governance_doctrine_revision: 4`
 
 Canonical local doctrine: `../ePC-SAFT-organization/GOVERNANCE.md`.
@@ -56,19 +78,6 @@ with no added runtime test seam.
 
 `multi_parameter_core_status: IMPLEMENTED_ACCEPTED_PURE_WORKFLOWS_CUT_OVER_LOCAL`
 
-`provider_frontend_status: PARAMETERS_MIXTURE_0_2`
-
-The active package consumes Provider frontend `0.2.0.dev0` through the public
-`Parameters` and `Mixture` types. The exact integration artifact is Provider
-commit `06fb933e0b02ea87eb553a0a27d7a5ddb2077d72`, wheel SHA-256
-`1b8d69aba5f24936040de52eda6db1d7c8306b1cca38a48b105986fa6b657806`.
-This frontend migration changes type names, construction, and generic native
-capability names; it does not change accepted authority, target contracts, or
-numerical acceptance criteria.
-Tracked receipts and their Provider `0.1` fingerprints remain immutable
-historical evidence. The active `0.2` runners create new artifact-bound
-subjects; they do not regenerate or reinterpret those retained receipts.
-
 The canonical general design and native core now implement one ordered
 `[N fitted | Q lifted]` Ceres layout, complete ordered fitted-parameter start
 vectors, observation-owned lifted starts, an
@@ -96,6 +105,11 @@ The installed pure callback returns value, gradient, and Hessian together;
 residual-only Ceres calls avoid copying a Regression Jacobian but cannot avoid
 the Provider derivative computation. That artifact limitation is not reported
 as a sensitivity-free value-only evaluation.
+
+The campaign-specific Provider subjects and artifact hashes recorded below are
+retained historical evidence for their named reference campaigns. The active
+installed frontend binding for new replay is the `provider_frontend` subject
+above; historical evidence is not rewritten as if it had used that artifact.
 
 Pure 2B `association_energy_over_k` and `association_volume` have exact scalar
 Provider-derivative and generic Regression-mechanics evidence, but they are
@@ -387,10 +401,12 @@ user's engineering judgment; it is not a second numeric acceptance gate.
 Every row is training evidence and predictive status remains
 `NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF`.
 
-Provider artifact `fa766e5` supplies the exact installed NaBr batch value and
-water-solvation-factor derivative used by Stage B. Bounded Provider artifact
-`8af6e54` supplies Stage C's exact installed batch derivatives and cancellation
-contract. Stage C fits each of the eleven Table 4/5 interactions conditionally
+Historical Provider artifact `fa766e5` supplies the exact installed NaBr batch
+value and water-solvation-factor derivative used by the retained Stage-B
+result. Bounded historical Provider artifact `8af6e54` supplies the retained
+Stage-C exact installed batch derivatives and cancellation contract. Active
+replays bind the `provider_frontend` subject above. Stage C fits each of the
+eleven Table 4/5 interactions conditionally
 against all affected Hamer--Wu rows while holding the other ten at the printed
 tuple. Both starts converge and agree within `1.3809200687386891e-6`; the
 assembled Jacobian remains full rank. Nine coordinates miss the user-approved

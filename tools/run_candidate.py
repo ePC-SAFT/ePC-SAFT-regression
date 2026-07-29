@@ -11,11 +11,11 @@ import platform
 from zipfile import ZipFile
 
 
-PROVIDER_COMMIT = "06fb933e0b02ea87eb553a0a27d7a5ddb2077d72"
-PROVIDER_TREE = "bdf255c3eb9eaca8bff156e718356704b2d101a6"
-PROVIDER_WHEEL_SHA256 = "1b8d69aba5f24936040de52eda6db1d7c8306b1cca38a48b105986fa6b657806"
-PROVIDER_VERIFICATION_PR = "ePC-SAFT/ePC-SAFT#39"
-PROVIDER_VERIFICATION_SUMMARY = "274 passed, 1 skipped"
+PROVIDER_COMMIT = "14fa3745264db66b8e59c12268737d694c706f2f"
+PROVIDER_TREE = "eb04f10f445957cc768bad1ef4f330038c69a293"
+PROVIDER_WHEEL_SHA256 = "48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594"
+PROVIDER_HEADER_SHA256 = "2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b"
+PROVIDER_TEST_RECEIPT_SHA256 = "56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf"
 
 
 def _sha256(path: Path) -> str:
@@ -30,6 +30,10 @@ def _require_hash(path: Path, expected: str, label: str) -> None:
     actual = _sha256(path)
     if actual != expected:
         raise SystemExit(f"{label} SHA-256 mismatch: expected {expected}, got {actual}")
+
+
+def _require_provider_test_receipt(path: Path) -> None:
+    _require_hash(path, PROVIDER_TEST_RECEIPT_SHA256, "provider test receipt")
 
 
 def _normalized_distribution_name(name: str) -> str:
@@ -155,6 +159,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Generate one pure-saturation regression receipt.")
     parser.add_argument("--component", choices=("methane", "ethane", "propane"), required=True)
     parser.add_argument("--provider-wheel", type=Path, required=True)
+    parser.add_argument("--provider-test-receipt", type=Path, required=True)
     parser.add_argument("--regression-wheel", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--reviewer")
@@ -162,6 +167,7 @@ def main() -> int:
     parser.add_argument("--review-sha256")
     arguments = parser.parse_args()
     _require_hash(arguments.provider_wheel, PROVIDER_WHEEL_SHA256, "provider wheel")
+    _require_provider_test_receipt(arguments.provider_test_receipt)
     regression_wheel_sha256 = _sha256(arguments.regression_wheel)
     repository_root = Path(__file__).resolve().parents[1]
     review_arguments = (arguments.reviewer, arguments.review_path, arguments.review_sha256)
@@ -276,8 +282,9 @@ def main() -> int:
             "tree": PROVIDER_TREE,
             "wheel": arguments.provider_wheel.name,
             "wheel_sha256": PROVIDER_WHEEL_SHA256,
-            "verification_pr": PROVIDER_VERIFICATION_PR,
-            "verification_summary": PROVIDER_VERIFICATION_SUMMARY,
+            "test_receipt": arguments.provider_test_receipt.name,
+            "test_receipt_sha256": PROVIDER_TEST_RECEIPT_SHA256,
+            "installed_header_sha256": PROVIDER_HEADER_SHA256,
             "capsule": "epcsaft.native_sdk.v1",
             "entry": "evaluate_pure_phase_parameters",
             "coordinate_order": [
@@ -360,6 +367,7 @@ def main() -> int:
         "execution": {
             "artifacts": {
                 "provider_wheel": arguments.provider_wheel.name,
+                "provider_test_receipt": arguments.provider_test_receipt.name,
                 "regression_wheel": arguments.regression_wheel.name,
             },
             "python": platform.python_version(),
