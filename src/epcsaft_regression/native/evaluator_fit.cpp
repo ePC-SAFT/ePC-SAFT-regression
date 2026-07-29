@@ -410,17 +410,17 @@ void validate_contract(
             "evaluator handle ABI, sizes, context, or callback is invalid"
         );
     }
+    if (sdk.row_count > static_cast<std::size_t>(INT_MAX)
+        || sdk.parameter_count > static_cast<std::size_t>(INT_MAX)) {
+        throw std::invalid_argument(
+            "evaluator row or parameter count exceeds Ceres limits"
+        );
+    }
     if (problem.parameters.empty() || problem.rows.empty()
         || sdk.parameter_count != problem.parameters.size()
         || sdk.row_count != problem.rows.size()) {
         throw std::invalid_argument(
             "evaluator row or parameter shape does not match the problem"
-        );
-    }
-    if (sdk.row_count > static_cast<std::size_t>(INT_MAX)
-        || sdk.parameter_count > static_cast<std::size_t>(INT_MAX)) {
-        throw std::invalid_argument(
-            "evaluator row or parameter count exceeds Ceres limits"
         );
     }
     static_cast<void>(checked_product(

@@ -50,8 +50,13 @@ public:
             jacobian_requested ? jacobians[0] : nullptr,
             failure
         );
-        failure_reason_ = std::move(failure);
+        if (!had_failure_) {
+            failure_reason_ = std::move(failure);
+        }
         if (!usable) {
+            if (!had_failure_ && failure_reason_.empty()) {
+                failure_reason_ = "exact evaluator callback rejected evaluation";
+            }
             had_failure_ = true;
             return false;
         }
@@ -69,9 +74,11 @@ public:
                 [](double value) { return std::isfinite(value); }
             );
         if (!complete_residuals || !complete_jacobian) {
-            failure_reason_ =
-                "exact evaluator left a nonfinite or incomplete residual "
-                "or Jacobian buffer";
+            if (!had_failure_) {
+                failure_reason_ =
+                    "exact evaluator left a nonfinite or incomplete residual "
+                    "or Jacobian buffer";
+            }
             had_failure_ = true;
             return false;
         }

@@ -325,22 +325,6 @@ class PositiveEvaluatorProblem:
         )
 
     @property
-    def held_out_observations(self) -> tuple[PositiveScalarObservation, ...]:
-        return tuple(
-            row
-            for row in self.observations
-            if row.partition is ObservationPartition.HELD_OUT
-        )
-
-    @property
-    def stress_observations(self) -> tuple[PositiveScalarObservation, ...]:
-        return tuple(
-            row
-            for row in self.observations
-            if row.partition is ObservationPartition.STRESS
-        )
-
-    @property
     def solver_start_vectors(self) -> tuple[tuple[float, ...], ...]:
         return tuple(
             tuple(

@@ -211,6 +211,8 @@ int main() {
         controls,
         transient_failure
     );
+    require(transient_calls > 1);
+    require(!transient_result.summary.IsSolutionUsable());
     require(
         transient_result.failure_reason.find("transient evaluator failure")
         != std::string::npos

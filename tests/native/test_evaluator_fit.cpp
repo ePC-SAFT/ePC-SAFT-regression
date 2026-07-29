@@ -12,6 +12,38 @@
 
 namespace {
 
+static_assert(
+    offsetof(
+        epcsaft_regression_evaluator_sdk_v1,
+        source_locators
+    ) > offsetof(epcsaft_regression_evaluator_sdk_v1, evaluate)
+);
+static_assert(
+    sizeof(epcsaft_regression_evaluator_sdk_v1)
+    >= offsetof(epcsaft_regression_evaluator_sdk_v1, source_locators)
+        + sizeof(const char* const*)
+);
+static_assert(
+    offsetof(epcsaft_regression_evaluator_result_v1, values)
+    < offsetof(epcsaft_regression_evaluator_result_v1, jacobian)
+);
+static_assert(
+    sizeof(epcsaft_regression_evaluator_result_v1)
+    >= offsetof(epcsaft_regression_evaluator_result_v1, error)
+        + EPCSAFT_REGRESSION_EVALUATOR_V1_TEXT_CAPACITY
+);
+static_assert(
+    offsetof(epcsaft_regression_evaluator_row_result_v1, reason)
+    < offsetof(epcsaft_regression_evaluator_row_result_v1, kkt_dimension)
+);
+static_assert(
+    sizeof(epcsaft_regression_evaluator_row_result_v1)
+    >= offsetof(
+            epcsaft_regression_evaluator_row_result_v1,
+            kkt_condition_number_inf
+        ) + sizeof(double)
+);
+
 struct AnalyticContext final {
     std::size_t value_calls{0};
     std::size_t jacobian_calls{0};
@@ -350,6 +382,20 @@ void test_evaluator_fit() {
     }
     if (!rejected) {
         throw std::runtime_error("missing source locator table was not rejected");
+    }
+    constexpr const char* wrong_source_locators[] = {
+        "table-1:wrong", "table-2:id"
+    };
+    invalid = sdk;
+    invalid.source_locators = wrong_source_locators;
+    rejected = false;
+    try {
+        epcsaft_regression::evaluator::validate_contract(invalid, problem);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    if (!rejected) {
+        throw std::runtime_error("source locator mismatch was not rejected");
     }
     invalid = sdk;
     invalid.parameter_count = static_cast<std::size_t>(INT_MAX) + 1u;
