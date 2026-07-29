@@ -11,9 +11,11 @@ import platform
 from zipfile import ZipFile
 
 
-PROVIDER_COMMIT = "4b10cb899c94687cae734980285badb224dc95e6"
-PROVIDER_WHEEL_SHA256 = "f92f79c8d6f614660e5c201b7061c9b02b5cd1a25a4ed8c8fee0b59adaabf2bf"
-PROVIDER_TEST_RECEIPT_SHA256 = "07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480"
+PROVIDER_COMMIT = "06fb933e0b02ea87eb553a0a27d7a5ddb2077d72"
+PROVIDER_TREE = "bdf255c3eb9eaca8bff156e718356704b2d101a6"
+PROVIDER_WHEEL_SHA256 = "1b8d69aba5f24936040de52eda6db1d7c8306b1cca38a48b105986fa6b657806"
+PROVIDER_VERIFICATION_PR = "ePC-SAFT/ePC-SAFT#39"
+PROVIDER_VERIFICATION_SUMMARY = "274 passed, 1 skipped"
 
 
 def _sha256(path: Path) -> str:
@@ -153,7 +155,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Generate one pure-saturation regression receipt.")
     parser.add_argument("--component", choices=("methane", "ethane", "propane"), required=True)
     parser.add_argument("--provider-wheel", type=Path, required=True)
-    parser.add_argument("--provider-test-receipt", type=Path, required=True)
     parser.add_argument("--regression-wheel", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--reviewer")
@@ -161,11 +162,6 @@ def main() -> int:
     parser.add_argument("--review-sha256")
     arguments = parser.parse_args()
     _require_hash(arguments.provider_wheel, PROVIDER_WHEEL_SHA256, "provider wheel")
-    _require_hash(
-        arguments.provider_test_receipt,
-        PROVIDER_TEST_RECEIPT_SHA256,
-        "provider test receipt",
-    )
     regression_wheel_sha256 = _sha256(arguments.regression_wheel)
     repository_root = Path(__file__).resolve().parents[1]
     review_arguments = (arguments.reviewer, arguments.review_path, arguments.review_sha256)
@@ -277,10 +273,11 @@ def main() -> int:
         "stress_row_ids": [row.row_id for row in dataset.stress_rows],
         "provider": {
             "commit": PROVIDER_COMMIT,
+            "tree": PROVIDER_TREE,
             "wheel": arguments.provider_wheel.name,
             "wheel_sha256": PROVIDER_WHEEL_SHA256,
-            "test_receipt": arguments.provider_test_receipt.name,
-            "test_receipt_sha256": PROVIDER_TEST_RECEIPT_SHA256,
+            "verification_pr": PROVIDER_VERIFICATION_PR,
+            "verification_summary": PROVIDER_VERIFICATION_SUMMARY,
             "capsule": "epcsaft.native_sdk.v1",
             "entry": "evaluate_pure_phase_parameters",
             "coordinate_order": [

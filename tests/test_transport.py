@@ -72,6 +72,38 @@ def test_receipt_runner_rejects_wheel_that_differs_from_installed_runtime(
         )
 
 
+def test_candidate_runners_bind_provider_frontend_0_2(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tools_path = Path(__file__).parents[1] / "tools"
+    monkeypatch.syspath_prepend(str(tools_path))
+
+    candidate_spec = importlib.util.spec_from_file_location(
+        "run_candidate",
+        tools_path / "run_candidate.py",
+    )
+    assert candidate_spec is not None and candidate_spec.loader is not None
+    candidate = importlib.util.module_from_spec(candidate_spec)
+    candidate_spec.loader.exec_module(candidate)
+
+    born_spec = importlib.util.spec_from_file_location(
+        "run_figiel_born_candidate",
+        tools_path / "run_figiel_born_candidate.py",
+    )
+    assert born_spec is not None and born_spec.loader is not None
+    born = importlib.util.module_from_spec(born_spec)
+    born_spec.loader.exec_module(born)
+
+    expected_commit = "06fb933e0b02ea87eb553a0a27d7a5ddb2077d72"
+    expected_wheel = "1b8d69aba5f24936040de52eda6db1d7c8306b1cca38a48b105986fa6b657806"
+    expected_header = "3c7bcce4748edb14b19c2ba486fd8f7ddddc0593ed333037fe06e09ae55237ba"
+
+    assert candidate.PROVIDER_COMMIT == born.PROVIDER_COMMIT == expected_commit
+    assert candidate.PROVIDER_WHEEL_SHA256 == born.PROVIDER_WHEEL_SHA256 == expected_wheel
+    assert born.PROVIDER_HEADER_SHA256 == expected_header
+    assert not hasattr(candidate, "PROVIDER_TEST_RECEIPT_SHA256")
+
+
 def test_candidate_receipt_has_one_canonical_reproducible_subject() -> None:
     runner_path = Path(__file__).parents[1] / "tools" / "run_candidate.py"
     module_spec = importlib.util.spec_from_file_location("candidate_runner_canonical", runner_path)

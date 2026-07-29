@@ -65,6 +65,9 @@ commit `06fb933e0b02ea87eb553a0a27d7a5ddb2077d72`, wheel SHA-256
 This frontend migration changes type names, construction, and generic native
 capability names; it does not change accepted authority, target contracts, or
 numerical acceptance criteria.
+Tracked receipts and their Provider `0.1` fingerprints remain immutable
+historical evidence. The active `0.2` runners create new artifact-bound
+subjects; they do not regenerate or reinterpret those retained receipts.
 
 The canonical general design and native core now implement one ordered
 `[N fitted | Q lifted]` Ceres layout, complete ordered fitted-parameter start

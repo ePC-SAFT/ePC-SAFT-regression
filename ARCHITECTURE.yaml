@@ -51,8 +51,13 @@ provider_frontend:
   version: 0.2.0.dev0
   public_types: [Parameters, Mixture]
   provider_subject: 06fb933e0b02ea87eb553a0a27d7a5ddb2077d72
+  provider_tree: bdf255c3eb9eaca8bff156e718356704b2d101a6
   wheel_sha256: 1b8d69aba5f24936040de52eda6db1d7c8306b1cca38a48b105986fa6b657806
+  installed_header_sha256: 3c7bcce4748edb14b19c2ba486fd8f7ddddc0593ed333037fe06e09ae55237ba
+  verification_pr: ePC-SAFT/ePC-SAFT#39
+  verification_summary: 274-passed-1-skipped
   migration_effect: frontend-only-no-authority-or-scientific-contract-change
+  retained_receipt_policy: immutable-provider-0.1-history-not-regenerated
 
 general_parameter_regression:
   status: TEN_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
