@@ -21,11 +21,13 @@ The frontend migration changes public construction and generic capability
 names only; it does not change accepted authority, target contracts, or
 numerical acceptance criteria. Retained Provider 0.1 receipt identities remain
 immutable historical evidence and are not active replay inputs.
-The final active Provider 0.2 JUnit receipt is
-`/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
+The final active Provider 0.2 JUnit receipt artifact is
+`provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
 SHA-256
 `56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`, with
-276 passed and 1 skipped tests.
+276 passed and 1 skipped tests. It and the matching wheel artifact are resolved
+relative to an executor-supplied immutable artifact root; workstation paths
+are execution metadata only.
 
 `governance_doctrine_revision: 4`
 

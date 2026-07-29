@@ -23,19 +23,21 @@ installed provider and does not own provider internals, equilibrium, or Ipopt.
 
 The active Provider frontend binding is `epcsaft==0.2.0.dev0`, using commit
 `14fa3745264db66b8e59c12268737d694c706f2f`, tree
-`eb04f10f445957cc768bad1ef4f330038c69a293`, wheel
-`/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/ePC-SAFT-EoS/dist/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl`
+`eb04f10f445957cc768bad1ef4f330038c69a293`, portable wheel artifact
+`provider-python-frontend-v0.2/14fa374/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl`
 with SHA-256
 `48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594`, and
 installed public header SHA-256
 `2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b`.
 Active runner receipts must bind this complete identity. Retained Provider
 0.1 receipts and their replay commands are historical evidence only. The final
-0.2 JUnit receipt is
-`/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
+0.2 JUnit receipt artifact is
+`provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
 SHA-256
 `56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`, with
-276 passed and 1 skipped Provider tests.
+276 passed and 1 skipped Provider tests. Resolve both portable artifact names
+relative to an executor-supplied immutable artifact root; local filesystem
+paths are execution metadata, not authority.
 
 ## Agent home and Validation work
 

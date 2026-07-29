@@ -52,10 +52,11 @@ New installed-artifact replay binds Provider frontend `0.2.0.dev0` to commit
 `48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594`, and
 installed-header SHA-256
 `2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b`.
-Its Provider test receipt is
-`/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
+Its Provider test receipt artifact is
+`provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
 SHA-256
 `56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`.
+The artifact name is relative to an executor-supplied immutable artifact root.
 The older Provider artifacts referenced by the retained propane diagnostic are
 historical evidence and are not active replay inputs.
 

@@ -20,10 +20,11 @@ commit `14fa3745264db66b8e59c12268737d694c706f2f`, tree
 `48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594`, and
 installed-header SHA-256
 `2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b`.
-The final Provider JUnit receipt is
-`/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
+The final Provider JUnit receipt artifact is
+`provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
 SHA-256
 `56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`.
+The artifact name is relative to an executor-supplied immutable artifact root.
 The retained Stage B/C results below remain bound to their historical Provider
 subjects; they are not rewritten as final-artifact evidence.
 
