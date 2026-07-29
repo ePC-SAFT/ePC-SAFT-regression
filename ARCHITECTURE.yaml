@@ -52,12 +52,14 @@ provider_frontend:
   public_types: [Parameters, Mixture]
   provider_commit: 14fa3745264db66b8e59c12268737d694c706f2f
   provider_tree: eb04f10f445957cc768bad1ef4f330038c69a293
-  wheel_path: /home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/ePC-SAFT-EoS/dist/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl
+  artifact_root: executor-supplied-immutable-artifact-store
+  wheel_artifact: provider-python-frontend-v0.2/14fa374/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl
   wheel_sha256: 48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594
   installed_header_sha256: 2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b
-  provider_test_receipt_path: /home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-python-frontend-v0.2/14fa374/provider-tests.xml
+  provider_test_receipt_artifact: provider-python-frontend-v0.2/14fa374/provider-tests.xml
   provider_test_receipt_sha256: 56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf
   provider_test_receipt_summary: 276-passed-1-skipped
+  local_path_authority: none-execution-metadata-only
   migration_effect: frontend-only-no-authority-or-scientific-contract-change
   retained_receipt_policy: immutable-provider-0.1-history-not-regenerated
 
