@@ -102,6 +102,7 @@ def test_candidate_runners_bind_provider_frontend_0_2(
     assert candidate.PROVIDER_WHEEL_SHA256 == born.PROVIDER_WHEEL_SHA256 == expected_wheel
     assert born.PROVIDER_HEADER_SHA256 == expected_header
     assert not hasattr(candidate, "PROVIDER_TEST_RECEIPT_SHA256")
+    assert "provider_test_receipt" not in (tools_path / "run_candidate.py").read_text()
 
 
 def test_candidate_receipt_has_one_canonical_reproducible_subject() -> None:

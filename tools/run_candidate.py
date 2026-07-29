@@ -360,7 +360,6 @@ def main() -> int:
         "execution": {
             "artifacts": {
                 "provider_wheel": arguments.provider_wheel.name,
-                "provider_test_receipt": arguments.provider_test_receipt.name,
                 "regression_wheel": arguments.regression_wheel.name,
             },
             "python": platform.python_version(),
