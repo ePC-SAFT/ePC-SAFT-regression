@@ -45,6 +45,16 @@ from .parameter_regression import (
     fit_parameters,
     parameter_capabilities,
 )
+from .evaluator_regression import (
+    ComposedPositiveRowDiagnostic,
+    EvaluatorContract,
+    PositiveEvaluatorCapability,
+    PositiveEvaluatorProblem,
+    PositiveObservationTransform,
+    PositiveScalarObservation,
+    canonical_positive_dataset_sha256,
+    fit_positive_observations,
+)
 
 __all__ = (
     "METHANE_SATURATION_FIT_V1",
@@ -88,4 +98,12 @@ __all__ = (
     "canonical_dataset_sha256",
     "fit_parameters",
     "parameter_capabilities",
+    "ComposedPositiveRowDiagnostic",
+    "EvaluatorContract",
+    "PositiveEvaluatorCapability",
+    "PositiveEvaluatorProblem",
+    "PositiveObservationTransform",
+    "PositiveScalarObservation",
+    "canonical_positive_dataset_sha256",
+    "fit_positive_observations",
 )
