@@ -810,8 +810,8 @@ manifest:
   retained_binary_input_evidence_files: 1
   retained_binary_result_evidence_files: 1
   ide_project_files: 7
-  physical_production_lines: 16037
-  physical_package_test_lines: 5321
+  physical_production_lines: 16184
+  physical_package_test_lines: 5518
   tracked_generated_evidence_files_after_figiel_candidate: 7
   generated_file_policy: >-
     The accepted methane and ethane fit receipts bind deterministic

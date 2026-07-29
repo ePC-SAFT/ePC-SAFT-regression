@@ -71,6 +71,7 @@ def _contract() -> EvaluatorContract:
             "owner==0.2.0.dev0;RECORD=sha256:" + "6" * 64 + ";HEADER=sha256:" + "7" * 64
         ),
         contract_fingerprint="sha256:" + "8" * 64,
+        model_fingerprint="sha256:" + "9" * 64,
         artifact_identity="sha256:" + "c" * 64,
     )
 
@@ -92,7 +93,7 @@ def _problem() -> PositiveEvaluatorProblem:
         ParameterCoordinate(
             family=ParameterFamily.SEGMENT_DIAMETER,
             identity=ComponentParameterIdentity(component_id),
-            capability_id="reacting_phase_active_parameter_v1",
+            capability_id="homogeneous-liquid-positive-scalars-v1",
             provider_parameter_fingerprint="sha256:" + "a" * 64,
             provider_topology_fingerprint="sha256:" + "b" * 64,
             unit="angstrom",
@@ -159,6 +160,15 @@ def test_positive_evaluator_problem_rejects_parameter_or_fingerprint_mismatch() 
     with pytest.raises(ValueError, match="parameter_ids"):
         replace(_problem(), parameter_ids=("segment_diameter;component;cation",))
 
+    with pytest.raises(ValueError, match="typed parameter identities"):
+        replace(
+            _problem(),
+            parameter_ids=(
+                "segment_diameter;component;not-cation",
+                "segment_diameter;component;carbamate",
+            ),
+        )
+
     with pytest.raises(ValueError, match="Provider parameter fingerprint"):
         replace(
             _problem(),
@@ -170,3 +180,52 @@ def test_positive_evaluator_problem_rejects_parameter_or_fingerprint_mismatch() 
                 ),
             ),
         )
+
+    with pytest.raises(ValueError, match="capability_id"):
+        replace(
+            _problem(),
+            parameters=(
+                _problem().parameters[0],
+                replace(
+                    _problem().parameters[1],
+                    capability_id="different-positive-scalars-v1",
+                ),
+            ),
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "identity"),
+    (
+        (
+            "provider_artifact_identity",
+            "provider;RECORD=sha256:abcd;HEADER=sha256:" + "5" * 64,
+        ),
+        (
+            "owner_artifact_identity",
+            "owner;RECORD=sha256:"
+            + "6" * 64
+            + ";HEADER=sha256:"
+            + "A" * 64,
+        ),
+        (
+            "provider_artifact_identity",
+            "provider;RECORD=sha256:"
+            + "4" * 64
+            + ";RECORD=sha256:"
+            + "4" * 64
+            + ";HEADER=sha256:"
+            + "5" * 64,
+        ),
+        (
+            "owner_artifact_identity",
+            "owner;RECORD=sha256:" + "6" * 64,
+        ),
+    ),
+)
+def test_evaluator_contract_rejects_malformed_installed_artifact_identities(
+    field: str,
+    identity: str,
+) -> None:
+    with pytest.raises(ValueError):
+        replace(_contract(), **{field: identity})

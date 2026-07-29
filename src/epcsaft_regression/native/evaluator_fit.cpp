@@ -112,6 +112,20 @@ Batch evaluate(
         request_mode,
         &output
     );
+    if (output.struct_size != sizeof(output)
+        || output.row_count != problem.rows.size()
+        || output.parameter_count != problem.parameters.size()
+        || output.value_capacity != batch.values.size()
+        || output.jacobian_capacity != batch.jacobian.size()
+        || output.row_result_capacity != batch.rows.size()
+        || output.values != batch.values.data()
+        || output.jacobian
+            != (with_jacobian ? batch.jacobian.data() : nullptr)
+        || output.row_results != batch.rows.data()) {
+        throw std::runtime_error(
+            "evaluator callback mutated the result shape or buffers"
+        );
+    }
     if (returned != output.status) {
         throw std::runtime_error(
             "evaluator callback returned inconsistent aggregate status"
@@ -178,26 +192,41 @@ Batch evaluate(
                 spec.id + ": successful evaluator row returned a reason"
             );
         }
-        static_cast<void>(required_bounded_text(
+        const std::string solver_status = required_bounded_text(
             certificate.solver_status,
             sizeof(certificate.solver_status),
             "row solver status"
-        ));
-        static_cast<void>(required_bounded_text(
+        );
+        const std::string numerical_status = required_bounded_text(
             certificate.numerical_status,
             sizeof(certificate.numerical_status),
             "row numerical status"
-        ));
-        static_cast<void>(required_bounded_text(
+        );
+        const std::string physical_status = required_bounded_text(
             certificate.physical_status,
             sizeof(certificate.physical_status),
             "row physical status"
-        ));
-        static_cast<void>(required_bounded_text(
+        );
+        const std::string derivative_status = required_bounded_text(
             certificate.derivative_status,
             sizeof(certificate.derivative_status),
             "row derivative status"
-        ));
+        );
+        if (solver_status
+                != EPCSAFT_REGRESSION_EVALUATOR_V1_SOLVER_STATUS_SOLVE_SUCCEEDED
+            || numerical_status
+                != EPCSAFT_REGRESSION_EVALUATOR_V1_NUMERICAL_STATUS_PASSED
+            || physical_status
+                != EPCSAFT_REGRESSION_EVALUATOR_V1_PHYSICAL_STATUS_PASSED
+            || (
+                with_jacobian
+                && derivative_status
+                    != EPCSAFT_REGRESSION_EVALUATOR_V1_DERIVATIVE_STATUS_AVAILABLE
+            )) {
+            throw std::runtime_error(
+                spec.id + ": evaluator row acceptance status is not canonical"
+            );
+        }
         static_cast<void>(required_bounded_text(
             certificate.chart_topology,
             sizeof(certificate.chart_topology),
@@ -275,6 +304,64 @@ std::vector<std::size_t> training_indices(const Problem& problem) {
         }
     }
     return indices;
+}
+
+bool evaluate_training(
+    const epcsaft_regression_evaluator_sdk_v1& sdk,
+    const Problem& problem,
+    const std::vector<std::size_t>& training,
+    const double* variables,
+    std::size_t count,
+    bool jacobian_requested,
+    double* residuals,
+    double* jacobian,
+    std::string& failure_reason
+) {
+    try {
+        const auto physical = to_physical(problem, variables, count);
+        const Batch batch = evaluate(
+            sdk, problem, physical, jacobian_requested
+        );
+        for (std::size_t output = 0; output < training.size(); ++output) {
+            const std::size_t row_index = training[output];
+            const auto& row = problem.rows[row_index];
+            const double value = batch.values[row_index];
+            residuals[output] =
+                row.transform == "natural_log"
+                ? (std::log(value) - std::log(row.observed)) / row.scale
+                : (value - row.observed) / row.scale;
+            if (jacobian_requested) {
+                for (std::size_t parameter = 0;
+                     parameter < problem.parameters.size();
+                     ++parameter) {
+                    const double physical_derivative =
+                        batch.jacobian[
+                            row_index * problem.parameters.size()
+                            + parameter
+                        ];
+                    jacobian[
+                        output * problem.parameters.size() + parameter
+                    ] =
+                        physical_derivative
+                        * problem.parameters[parameter].scale
+                        / row.scale
+                        / (
+                            row.transform == "natural_log"
+                            ? value
+                            : 1.0
+                        );
+                }
+            }
+        }
+        failure_reason.clear();
+        return true;
+    } catch (const std::exception& error) {
+        failure_reason = error.what();
+        return false;
+    } catch (...) {
+        failure_reason = "unknown evaluator adapter failure";
+        return false;
+    }
 }
 
 }  // namespace
@@ -384,7 +471,8 @@ void validate_contract(
             "evaluator Provider SDK artifact contract is incomplete"
         );
     }
-    if (sdk.single_thread_non_reentrant != 1
+    if ((sdk.single_thread_non_reentrant != 0
+         && sdk.single_thread_non_reentrant != 1)
         || (sdk.value_only_avoids_derivative_work != 0
             && sdk.value_only_avoids_derivative_work != 1)) {
         throw std::invalid_argument(
@@ -493,51 +581,17 @@ FitResult solve(
         double* jacobian,
         std::string& failure_reason
     ) {
-        try {
-            const auto physical = to_physical(problem, variables, count);
-            const Batch batch = evaluate(
-                sdk, problem, physical, jacobian_requested
-            );
-            for (std::size_t output = 0; output < training.size(); ++output) {
-                const std::size_t row_index = training[output];
-                const auto& row = problem.rows[row_index];
-                const double value = batch.values[row_index];
-                residuals[output] =
-                    row.transform == "natural_log"
-                    ? std::log(value / row.observed) / row.scale
-                    : (value - row.observed) / row.scale;
-                if (jacobian_requested) {
-                    for (std::size_t parameter = 0;
-                         parameter < problem.parameters.size();
-                         ++parameter) {
-                        const double physical_derivative =
-                            batch.jacobian[
-                                row_index * problem.parameters.size()
-                                + parameter
-                            ];
-                        jacobian[
-                            output * problem.parameters.size() + parameter
-                        ] =
-                            physical_derivative
-                            * problem.parameters[parameter].scale
-                            / row.scale
-                            / (
-                                row.transform == "natural_log"
-                                ? value
-                                : 1.0
-                            );
-                    }
-                }
-            }
-            failure_reason.clear();
-            return true;
-        } catch (const std::exception& error) {
-            failure_reason = error.what();
-            return false;
-        } catch (...) {
-            failure_reason = "unknown evaluator adapter failure";
-            return false;
-        }
+        return evaluate_training(
+            sdk,
+            problem,
+            training,
+            variables,
+            count,
+            jacobian_requested,
+            residuals,
+            jacobian,
+            failure_reason
+        );
     };
 
     FitResult fit;
@@ -609,7 +663,7 @@ FitResult solve(
         row.value = value;
         row.residual =
             spec.transform == "natural_log"
-            ? std::log(value / spec.observed) / spec.scale
+            ? (std::log(value) - std::log(spec.observed)) / spec.scale
             : (value - spec.observed) / spec.scale;
         row.physical_jacobian.assign(
             final.jacobian.begin()
@@ -628,6 +682,36 @@ FitResult solve(
         problem.metadata.provider_parameter_fingerprint;
     return fit;
 }
+
+#ifdef EPCSAFT_REGRESSION_EVALUATOR_CORE_ONLY
+bool evaluate_at_for_test(
+    const epcsaft_regression_evaluator_sdk_v1& sdk,
+    const Problem& problem,
+    const std::vector<double>& solver_parameters,
+    std::vector<double>& residuals,
+    std::vector<double>& jacobian,
+    std::string& failure_reason
+) {
+    validate_contract(sdk, problem);
+    const auto training = training_indices(problem);
+    residuals.assign(training.size(), std::numeric_limits<double>::quiet_NaN());
+    jacobian.assign(
+        training.size() * problem.parameters.size(),
+        std::numeric_limits<double>::quiet_NaN()
+    );
+    return evaluate_training(
+        sdk,
+        problem,
+        training,
+        solver_parameters.data(),
+        solver_parameters.size(),
+        true,
+        residuals.data(),
+        jacobian.data(),
+        failure_reason
+    );
+}
+#endif
 
 }  // namespace epcsaft_regression::evaluator
 

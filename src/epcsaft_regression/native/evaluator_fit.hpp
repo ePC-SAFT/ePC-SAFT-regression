@@ -88,6 +88,17 @@ FitResult solve(
     const Problem& problem
 );
 
+#ifdef EPCSAFT_REGRESSION_EVALUATOR_CORE_ONLY
+bool evaluate_at_for_test(
+    const epcsaft_regression_evaluator_sdk_v1& sdk,
+    const Problem& problem,
+    const std::vector<double>& solver_parameters,
+    std::vector<double>& residuals,
+    std::vector<double>& jacobian,
+    std::string& failure_reason
+);
+#endif
+
 }  // namespace epcsaft_regression::evaluator
 
 namespace epcsaft_regression {

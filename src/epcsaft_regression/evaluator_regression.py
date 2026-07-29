@@ -9,9 +9,12 @@ from typing import Iterable
 
 from . import _native
 from .parameter_regression import (
+    ComponentParameterIdentity,
     FittedParameterDiagnostic,
     GeneralJacobianDiagnostics,
+    ModelParameterIdentity,
     ObservationPartition,
+    PairParameterIdentity,
     ParameterCoordinate,
     RegressionResult,
     SourceDescriptor,
@@ -39,6 +42,33 @@ def _sha256(value: str, field: str) -> None:
         character not in "0123456789abcdef" for character in body
     ):
         raise ValueError(f"{field} must be a lowercase SHA-256 identity")
+
+
+def _installed_artifact_identity(value: str, field: str) -> None:
+    _nonempty(value, field)
+    fields = value.split(";")
+    for label in ("RECORD", "HEADER"):
+        matches = tuple(
+            item.removeprefix(f"{label}=")
+            for item in fields
+            if item.startswith(f"{label}=")
+        )
+        if len(matches) != 1:
+            raise ValueError(f"{field} must contain exactly one {label} identity")
+        _sha256(matches[0], f"{field} {label}")
+
+
+def _parameter_id(parameter: ParameterCoordinate) -> str:
+    if isinstance(parameter.identity, ComponentParameterIdentity):
+        identity = "component"
+    elif isinstance(parameter.identity, PairParameterIdentity):
+        identity = "unordered_component_pair"
+    elif isinstance(parameter.identity, ModelParameterIdentity):
+        identity = "model"
+    else:
+        raise TypeError("parameter identity is unsupported")
+    components = ",".join(parameter.identity.canonical_component_ids)
+    return f"{parameter.family.value};{identity};{components}"
 
 
 class PositiveObservationTransform(StrEnum):
@@ -133,6 +163,7 @@ class EvaluatorContract:
     provider_artifact_identity: str
     owner_artifact_identity: str
     contract_fingerprint: str
+    model_fingerprint: str
     artifact_identity: str
 
     def __post_init__(self) -> None:
@@ -146,15 +177,14 @@ class EvaluatorContract:
         for field in (
             "capability_fingerprint",
             "contract_fingerprint",
+            "model_fingerprint",
             "artifact_identity",
         ):
             _sha256(getattr(self, field), field.replace("_", " "))
         for field in ("provider_artifact_identity", "owner_artifact_identity"):
-            identity = getattr(self, field)
-            if ";RECORD=sha256:" not in identity or ";HEADER=sha256:" not in identity:
-                raise ValueError(
-                    f"{field} must bind installed RECORD and public-header identities"
-                )
+            _installed_artifact_identity(
+                getattr(self, field), field.replace("_", " ")
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -189,6 +219,13 @@ class PositiveEvaluatorProblem:
             )
         for parameter_id in self.parameter_ids:
             _nonempty(parameter_id, "parameter_id")
+        expected_parameter_ids = tuple(
+            _parameter_id(parameter) for parameter in self.parameters
+        )
+        if self.parameter_ids != expected_parameter_ids:
+            raise ValueError(
+                "parameter_ids must match the ordered typed parameter identities"
+            )
         if len(self.start_vectors) < 2:
             raise ValueError(
                 "start_vectors must contain a primary and at least one confirmation"
@@ -250,6 +287,13 @@ class PositiveEvaluatorProblem:
             != 1
         ):
             raise ValueError("parameters must bind one Provider topology fingerprint")
+        if any(
+            parameter.capability_id != self.evaluator.capability_id
+            for parameter in self.parameters
+        ):
+            raise ValueError(
+                "parameter capability_id must match the evaluator capability_id"
+            )
         _finite(
             self.maximum_condition_number,
             "maximum condition number",
@@ -364,7 +408,7 @@ def _native_payload(problem: PositiveEvaluatorProblem) -> tuple[object, ...]:
             contract.provider_artifact_identity,
             contract.owner_artifact_identity,
             contract.contract_fingerprint,
-            problem.parameters[0].provider_parameter_fingerprint,
+            contract.model_fingerprint,
             problem.parameters[0].provider_parameter_fingerprint,
             problem.parameters[0].provider_topology_fingerprint,
             contract.artifact_identity,
@@ -506,7 +550,7 @@ def fit_positive_observations(
         provider_artifact_identity=problem.evaluator.provider_artifact_identity,
         owner_artifact_identity=problem.evaluator.owner_artifact_identity,
         contract_fingerprint=problem.evaluator.contract_fingerprint,
-        model_fingerprint=problem.parameters[0].provider_parameter_fingerprint,
+        model_fingerprint=problem.evaluator.model_fingerprint,
         artifact_identity=problem.evaluator.artifact_identity,
         provider_sdk_capsule_name=str(capability_record[0]),
         provider_sdk_abi_version=int(capability_record[1]),
