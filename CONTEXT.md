@@ -165,15 +165,23 @@ They remain representable Provider inputs where applicable, but no Regression
 derivative, residual, fit, or validation work is planned for them. This does
 not relabel them unsupported Provider physics.
 
-The selected next engineering investment, after Migration's required D-026
-installed two-liquid Stage-II/III gate, is the exact installed Equilibrium
-reactive-state value plus implicit parameter-sensitivity contract required by
-MEA, paired with exact Provider partials for MEA's application-selected
-parameter block. Only after both prerequisites exist may Regression add the
-reduced two-row mixed-observable Ceres tracer. Acquiring the missing
-Gross--Sadowski/Cameretti pure-association series or a standalone
-cross-association recovery dataset remains useful optional evidence, but it is
-not the MEA critical path.
+The coordinated MEA path is owned by
+`docs/science/mea-coupled-regression-master-plan.md`. The first coupled tracer
+is one admitted CO2 partial-pressure observation plus one eligible liquid
+speciation equality or aggregate with at most two fitted coordinates. Loading
+is a state input; heat is not admitted because no source-complete heat contract
+exists. The current MEA convention requires a certified reactive-bubble result.
+Equilibrium issue 36 supplies conditioned implicit sensitivities only for its
+declared totals, Provider-basis `ln(K)`, and pressure scope; active Provider
+parameter columns, the source-reference transform, reactive bubble issue 37,
+and installed MEA evidence issue 38 remain prerequisites. The application
+candidate is a staged three-coordinate ion block, not the stale historical
+12-parameter block. The frozen pressure/speciation split has at most 297
+eligible training and 267 eligible reserved residuals.
+
+Acquiring the missing Gross--Sadowski/Cameretti pure-association series or a
+standalone cross-association recovery dataset remains useful optional evidence,
+but it is not the MEA critical path.
 
 Caller-supplied pure-saturation pressure and liquid-density rows may
 independently fit one component `segment_count`, `segment_diameter`, or

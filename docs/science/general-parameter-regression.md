@@ -163,7 +163,7 @@ conditioning, non-bound diagnostics, and confirmation-start agreement.
 | `segment_count` (`m`) | component | Multiple pure rows with `T`, observed saturation pressure and liquid density, molar mass, phase-volume bounds/starts, partitions, and scales | Provider `(n,V,m)` value/gradient/Hessian; Regression lifted liquid/vapor volumes with pressure, chemical-potential, and density residuals | `FIT_READY`, one family at a time. Standalone recovery is optional for MEA unless `m` is selected in MEA's application-owned parameter block. |
 | `segment_diameter` (`sigma`) | component | Same pure saturation pressure/liquid-density contract, over a range that gives nonzero independent sensitivity | Provider `(n,V,sigma)` value/gradient/Hessian; same lifted Ceres owner | `FIT_READY` for a constant coordinate. Named temperature-correlation coefficients are separately `NOT_READY`. Optional for MEA unless selected. |
 | `dispersion_energy_over_k` (`epsilon/k`) | component | Same pure saturation pressure/liquid-density contract with enough vapor-pressure sensitivity | Provider `(n,V,epsilon/k)` value/gradient/Hessian; same lifted Ceres owner | `FIT_READY`, one family at a time. Optional for MEA unless selected. |
-| `k_ij` | unordered component pair | One supported domain: fixed measured `T,P,x,y` VLE rows; source-bound MIAC rows with formula molality; or single-ion solvation-Gibbs targets. Rows must vary enough to identify the selected pair. | Exact Provider Hessian for lifted neutral VLE or exact first derivative for the admitted aqueous/solvation direct observable; one typed pair coordinate | `FIT_READY` in the advertised neutral-VLE, aqueous-MIAC, and organic-ion-solvation domains. MEA needs only the exact pair derivatives for pairs actually selected in its 12-parameter block. |
+| `k_ij` | unordered component pair | One supported domain: fixed measured `T,P,x,y` VLE rows; source-bound MIAC rows with formula molality; or single-ion solvation-Gibbs targets. Rows must vary enough to identify the selected pair. | Exact Provider Hessian for lifted neutral VLE or exact first derivative for the admitted aqueous/solvation direct observable; one typed pair coordinate | `FIT_READY` in the advertised neutral-VLE, aqueous-MIAC, and organic-ion-solvation domains. MEA needs exact pair derivatives only if a preregistered amendment selects a pair coordinate; the current staged three-coordinate block selects none. |
 | `l_ij` | unordered component pair | Fixed measured `T,P,x,y` VLE rows sensitive to cross diameter, with explicit source sign convention | Exact Provider `(n1,n2,V,l_ij)` Hessian for the currently admitted neutral nonassociating binary domain | `FIT_READY` only for fixed-composition neutral VLE. Density, excess-volume, associating, and electrolyte observation domains are `NOT_READY`; standalone expansion is not an MEA prerequisite unless selected. |
 | `born_diameter` | ion component | One or more source-defined single-ion solvation-Gibbs targets with exact x-process convention, state, component order, and numerical scale | Exact Provider solvation-Gibbs value/first derivative for the active ion; direct-observable Ceres row | `FIT_READY`; five Figiel ions are reference evidence. It is parallel parameter groundwork, not coupled-MEA readiness. |
 | `solvation_factor` | component | Source-bound MIAC rows at declared `T,P` and formula-unit molality, with solvent/ion identities and scale | Exact Provider MIAC value/first derivative for one active factor; direct-observable Ceres rows | `FIT_READY` for the advertised constant factor. A temperature correlation is separately `NOT_READY`; not on the MEA critical path unless selected. |
@@ -193,48 +193,27 @@ campaigns can demonstrate individual Provider/Regression contracts, but they
 do not establish the coupled state sensitivities needed by
 MEA-Thermodynamics.
 
-MEA's critical Regression path is:
+The complete cross-owner sequence is controlled by
+`docs/science/mea-coupled-regression-master-plan.md`. Its corrections are:
 
-1. Migration's D-026 installed two-liquid Stage-II/III gate passes. This
-   remains the required public prerequisite; the MEA sequence must not infer
-   admission from private reacting-phase foundations or skip the installed
-   two-liquid evidence.
-2. Provider exposes exact parameter partials for only the parameter identities
-   selected by the MEA application. Regression must not infer a broader
-   chemistry block or persist fitted values to the Provider catalog.
-3. Equilibrium returns converged reactive-liquid and reactive-bubble values
-   together with exact implicit sensitivities to those parameters. The value
-   solve remains outside the tape and the sensitivity contract follows
-   `u_z = -H_u^{-1} H_z`, with conditioning and failure diagnostics. Regression
-   must not copy reaction/EOS equations, run a second equilibrium formulation,
-   or finite-difference a black-box solve.
-4. Regression reuses its one native Ceres engine/result/target and adds only
-   the schema-driven parameter sharing plus three observation semantics that
-   real MEA evidence requires: positive equality, linear aggregate, and
-   one-sided censored observations. Every row retains its ID, provenance,
-   partition, scale/weight or censor policy, and evaluated/skipped/failed
-   accounting with complete Jacobian columns.
-5. The first installed falsification slice is the reduced two-row MEA fit: one
-   accepted reactive-liquid CO2-loading equality and one accepted
-   reactive-bubble heat-of-absorption/enthalpy equality. It must pass exact
-   Jacobian, rank/conditioning, bound/KKT, solver, numerical, equilibrium
-   physical-validity, and row-accounting gates before broadening.
-6. Only then may the application-owned frozen campaign use MEA's 9 species,
-   5 reactions, 12-parameter block, starts/bounds/regularization, 147-state
-   training partition with 297 observations, and untouched 220-state reserved
-   partition with 435 observations. Reserved states are evaluated without
-   refitting; application-owned promotion cutoffs remain separate.
+- loading is a fixed state input, not the pressure residual;
+- the first tracer uses one admitted CO2 partial-pressure observation and one
+  eligible speciation equality or aggregate with `N <= 2`;
+- heat remains excluded because no source-complete heat contract exists;
+- the application-selected production candidate is a staged three-coordinate
+  ion block, not the stale historical 12-parameter block;
+- the frozen pressure/speciation partitions contain 297 maximum eligible
+  training residuals and 267, not 435, reserved residuals; and
+- the current pressure convention requires a certified reactive-bubble result
+  unless MEA explicitly preregisters and supports a different vapor convention.
 
-Therefore:
-
-`NEXT_ENGINEERING_INVESTMENT_AFTER_D026: EQUILIBRIUM_EXACT_IMPLICIT_PARAMETER_SENSITIVITY_FOR_MEA`
-
-This is chosen over acquiring the missing pure/cross-association recovery
-series. Those sources remain useful for optional standalone validation, but
-they do not unblock the first coupled MEA tracer. The immediate implementation
-must still wait for D-026, an exact installed Equilibrium value/sensitivity
-artifact, and the matching Provider parameter-partial contract; this document
-does not authorize speculative Regression runtime.
+Regression still reuses its one native Ceres engine/result/target and consumes
+only complete exact downstream-composed value and Jacobian blocks. It does not
+copy reaction/EOS equations, run a second equilibrium formulation, or
+finite-difference a black-box solve. Runtime remains blocked on the exact
+installed Provider parameter partials, Equilibrium active-parameter
+sensitivities and reactive-bubble result, the source-complete MEA contract, and
+the model-bound transport in issue 15.
 
 ### `k_hb_ij` rule
 
@@ -878,11 +857,12 @@ prediction evidence, or Provider-catalog authority.
    observation contracts, and exact Provider derivative seams. Paper-specific
    executable branches are not retained as substitutes. Polar families are
    excluded from this roadmap.
-10. **Selected next investment: coupled MEA prerequisite.** After the required
-    D-026 installed two-liquid Stage-II/III gate, obtain an exact installed
-    Equilibrium reactive-state value/implicit-parameter-sensitivity contract,
-    paired with exact Provider parameter partials, before adding the reduced
-    two-row mixed-observable Ceres tracer.
+10. **Selected next investment: coupled MEA prerequisite.** Complete the
+    source-bound application contract, exact installed Equilibrium
+    value/active-parameter-sensitivity and reactive-bubble contracts, matching
+    Provider parameter partials, and the model-bound transport before adding
+    the corrected pressure-plus-speciation two-row Ceres tracer. The exact
+    sequence is in `docs/science/mea-coupled-regression-master-plan.md`.
 
 Every standalone family admitted in steps 1--9 must be independently
 fit-ready and reference-validated. Step 10 is a separate coupled capability:
