@@ -245,6 +245,11 @@ class PositiveEvaluatorProblem:
             raise ValueError("source identities must be unique")
         source_map = {source.source_id: source for source in self.sources}
         for row in self.observations:
+            if row.partition is not ObservationPartition.TRAINING:
+                raise ValueError(
+                    "positive evaluator observations must all be training rows; "
+                    "reserved partitions require a separately admitted workflow"
+                )
             if row.source_id not in source_map:
                 raise ValueError(f"row {row.row_id!r} references an unknown source")
         for source in self.sources:
@@ -375,6 +380,7 @@ class ComposedPositiveRowDiagnostic:
     state_id: str
     state_schema_id: str
     source_id: str
+    source_locator: str
     primitive_id: str
     primitive_unit: str
     transform: str
@@ -383,7 +389,7 @@ class ComposedPositiveRowDiagnostic:
     observed_value: float
     modeled_value: float
     scaled_residual: float
-    physical_parameter_derivatives: tuple[float, ...]
+    scaled_solver_jacobian: tuple[float, ...]
     solver_status: str
     numerical_status: str
     physical_status: str
@@ -393,9 +399,6 @@ class ComposedPositiveRowDiagnostic:
     kkt_dimension: int
     kkt_rank: int
     kkt_condition_number_inf: float
-    status: str
-    evaluated: bool
-    failure_reason: str
 
 
 def _native_payload(problem: PositiveEvaluatorProblem) -> tuple[object, ...]:
@@ -432,6 +435,7 @@ def _native_payload(problem: PositiveEvaluatorProblem) -> tuple[object, ...]:
                 row.state_id,
                 row.state_schema_id,
                 row.source_id,
+                row.source_locator,
                 row.primitive_id,
                 row.primitive_unit,
                 row.transform.value,
@@ -462,6 +466,8 @@ def fit_positive_observations(
     if not isinstance(problem, PositiveEvaluatorProblem):
         raise TypeError("problem must be a PositiveEvaluatorProblem")
     native = _native.solve_evaluator(evaluator_handle, _native_payload(problem))
+    if native[21]:
+        raise RuntimeError(str(native[21]))
     physical_parameters = tuple(float(value) for value in native[5])
     bound_distances = tuple(float(value) for value in native[6])
     active_bounds = tuple(str(value) for value in native[7])
@@ -473,6 +479,7 @@ def fit_positive_observations(
             state_id=observation.state_id,
             state_schema_id=observation.state_schema_id,
             source_id=observation.source_id,
+            source_locator=observation.source_locator,
             primitive_id=observation.primitive_id,
             primitive_unit=observation.primitive_unit,
             transform=observation.transform.value,
@@ -481,7 +488,7 @@ def fit_positive_observations(
             observed_value=observation.observed_value,
             modeled_value=float(record[0]),
             scaled_residual=float(record[1]),
-            physical_parameter_derivatives=tuple(record[2]),
+            scaled_solver_jacobian=tuple(record[2]),
             solver_status=str(record[3]),
             numerical_status=str(record[4]),
             physical_status=str(record[5]),
@@ -491,9 +498,6 @@ def fit_positive_observations(
             kkt_dimension=int(record[9]),
             kkt_rank=int(record[10]),
             kkt_condition_number_inf=float(record[11]),
-            status="evaluated" if not record[12] else "failed",
-            evaluated=not bool(record[12]),
-            failure_reason=str(record[12]),
         )
         for observation, record in zip(problem.observations, row_records, strict=True)
     )
@@ -539,9 +543,7 @@ def fit_positive_observations(
         and jacobian.projected_parameter_condition_number
         <= problem.maximum_condition_number
     )
-    workflow_valid = len(rows) == len(problem.observations) and all(
-        row.evaluated and not row.failure_reason for row in rows
-    )
+    workflow_valid = len(rows) == len(problem.observations)
     capability_record = native[26]
     capability = PositiveEvaluatorCapability(
         evaluator_identity=problem.evaluator.evaluator_identity,
@@ -562,18 +564,6 @@ def fit_positive_observations(
         provider_sdk_reacting_phase_parameter_result_size=int(capability_record[7]),
         single_thread_non_reentrant=bool(capability_record[8]),
         value_only_avoids_derivative_work=bool(capability_record[9]),
-    )
-    failures = tuple(
-        reason
-        for reason in (
-            str(native[21]),
-            *(
-                f"{row.row_id}: {row.failure_reason}"
-                for row in rows
-                if row.failure_reason
-            ),
-        )
-        if reason
     )
     return RegressionResult(
         problem=problem,
@@ -607,12 +597,12 @@ def fit_positive_observations(
         confirmation_cost_relative_max_delta=float(native[18]),
         confirmations_usable=confirmations_usable,
         training_row_count=len(problem.training_observations),
-        held_out_row_count=len(problem.held_out_observations),
-        stress_row_count=len(problem.stress_observations),
-        evaluated_row_count=sum(row.evaluated for row in rows),
+        held_out_row_count=0,
+        stress_row_count=0,
+        evaluated_row_count=len(rows),
         skipped_row_count=0,
-        failed_row_count=sum(not row.evaluated for row in rows),
-        failure_reasons=failures,
+        failed_row_count=0,
+        failure_reasons=(),
     )
 
 

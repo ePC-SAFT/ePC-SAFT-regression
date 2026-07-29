@@ -1,6 +1,7 @@
 #include "evaluator_fit.hpp"
 
 #include <algorithm>
+#include <climits>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -18,16 +19,28 @@ struct Batch final {
     std::vector<epcsaft_regression_evaluator_row_result_v1> rows;
 };
 
+std::string bounded_text(
+    const char* value, std::size_t capacity, const char* field
+);
+
 std::string text(const char* value, const char* field) {
-    if (value == nullptr || value[0] == '\0') {
+    const std::string result = bounded_text(
+        value,
+        EPCSAFT_REGRESSION_EVALUATOR_V1_TEXT_CAPACITY,
+        field
+    );
+    if (result.empty()) {
         throw std::invalid_argument(std::string(field) + " is missing");
     }
-    return value;
+    return result;
 }
 
 std::string bounded_text(
     const char* value, std::size_t capacity, const char* field
 ) {
+    if (value == nullptr) {
+        throw std::runtime_error(std::string(field) + " is missing");
+    }
     const std::size_t length = strnlen(value, capacity);
     if (length == capacity) {
         throw std::runtime_error(std::string(field) + " is not terminated");
@@ -60,12 +73,25 @@ void require_table(
         throw std::invalid_argument(std::string(field) + " table is missing");
     }
     for (std::size_t index = 0; index < count; ++index) {
-        if (values[index] == nullptr || values[index][0] == '\0') {
+        if (bounded_text(
+                values[index],
+                EPCSAFT_REGRESSION_EVALUATOR_V1_TEXT_CAPACITY,
+                field
+            ).empty()) {
             throw std::invalid_argument(
                 std::string(field) + " table is incomplete"
             );
         }
     }
+}
+
+std::size_t checked_product(
+    std::size_t left, std::size_t right, const char* field
+) {
+    if (right != 0 && left > std::numeric_limits<std::size_t>::max() / right) {
+        throw std::invalid_argument(std::string(field) + " size overflows");
+    }
+    return left * right;
 }
 
 Batch evaluate(
@@ -80,7 +106,11 @@ Batch evaluate(
     );
     if (with_jacobian) {
         batch.jacobian.assign(
-            problem.rows.size() * problem.parameters.size(),
+            checked_product(
+                problem.rows.size(),
+                problem.parameters.size(),
+                "evaluator Jacobian"
+            ),
             std::numeric_limits<double>::quiet_NaN()
         );
     }
@@ -387,6 +417,15 @@ void validate_contract(
             "evaluator row or parameter shape does not match the problem"
         );
     }
+    if (sdk.row_count > static_cast<std::size_t>(INT_MAX)
+        || sdk.parameter_count > static_cast<std::size_t>(INT_MAX)) {
+        throw std::invalid_argument(
+            "evaluator row or parameter count exceeds Ceres limits"
+        );
+    }
+    static_cast<void>(checked_product(
+        sdk.row_count, sdk.parameter_count, "evaluator Jacobian"
+    ));
     require_table(sdk.row_ids, sdk.row_count, "row identity");
     require_table(sdk.state_ids, sdk.row_count, "state identity");
     require_table(
@@ -395,6 +434,7 @@ void validate_contract(
     require_table(
         sdk.observation_source_ids, sdk.row_count, "observation source"
     );
+    require_table(sdk.source_locators, sdk.row_count, "source locator");
     require_table(sdk.primitive_ids, sdk.row_count, "primitive identity");
     require_table(sdk.primitive_units, sdk.row_count, "primitive unit");
     require_table(sdk.transform_ids, sdk.row_count, "transform identity");
@@ -485,6 +525,7 @@ void validate_contract(
             || sdk.state_ids[index] != row.state_id
             || sdk.state_schema_ids[index] != row.state_schema_id
             || sdk.observation_source_ids[index] != row.source_id
+            || sdk.source_locators[index] != row.source_locator
             || sdk.primitive_ids[index] != row.primitive_id
             || sdk.primitive_units[index] != row.primitive_unit
             || sdk.transform_ids[index] != row.transform
@@ -501,9 +542,7 @@ void validate_contract(
                 row.id + ": evaluator transform is unsupported"
             );
         }
-        if ((row.partition != "training"
-             && row.partition != "held_out"
-             && row.partition != "stress")
+        if (row.partition != "training"
             || !std::isfinite(row.observed) || row.observed <= 0.0
             || !std::isfinite(row.scale) || row.scale <= 0.0) {
             throw std::invalid_argument(
@@ -665,16 +704,23 @@ FitResult solve(
             spec.transform == "natural_log"
             ? (std::log(value) - std::log(spec.observed)) / spec.scale
             : (value - spec.observed) / spec.scale;
-        row.physical_jacobian.assign(
-            final.jacobian.begin()
-                + static_cast<std::ptrdiff_t>(
-                    row_index * problem.parameters.size()
-                ),
-            final.jacobian.begin()
-                + static_cast<std::ptrdiff_t>(
-                    (row_index + 1) * problem.parameters.size()
-                )
-        );
+        row.scaled_solver_jacobian.resize(problem.parameters.size());
+        for (std::size_t parameter = 0;
+             parameter < problem.parameters.size();
+             ++parameter) {
+            const double provider_derivative = final.jacobian[
+                checked_product(
+                    row_index,
+                    problem.parameters.size(),
+                    "evaluator row offset"
+                ) + parameter
+            ];
+            row.scaled_solver_jacobian[parameter] =
+                provider_derivative
+                * problem.parameters[parameter].scale
+                / spec.scale
+                / (spec.transform == "natural_log" ? value : 1.0);
+        }
         row.certificate = final.rows[row_index];
         fit.rows.push_back(std::move(row));
     }
@@ -696,7 +742,11 @@ bool evaluate_at_for_test(
     const auto training = training_indices(problem);
     residuals.assign(training.size(), std::numeric_limits<double>::quiet_NaN());
     jacobian.assign(
-        training.size() * problem.parameters.size(),
+        checked_product(
+            training.size(),
+            problem.parameters.size(),
+            "evaluator test Jacobian"
+        ),
         std::numeric_limits<double>::quiet_NaN()
     );
     return evaluate_training(
@@ -719,6 +769,15 @@ bool evaluate_at_for_test(
 namespace epcsaft_regression {
 namespace {
 
+struct PyOwned final {
+    PyObject* value;
+
+    explicit PyOwned(PyObject* object) : value(object) {}
+    ~PyOwned() { Py_XDECREF(value); }
+    PyOwned(const PyOwned&) = delete;
+    PyOwned& operator=(const PyOwned&) = delete;
+};
+
 PyObject* fast_sequence(PyObject* value, const char* field) {
     PyObject* result = PySequence_Fast(value, field);
     if (result == nullptr) {
@@ -734,6 +793,12 @@ std::string py_text(PyObject* value, const char* field) {
     const char* text_value = PyUnicode_AsUTF8(value);
     if (text_value == nullptr || text_value[0] == '\0') {
         throw std::invalid_argument(std::string(field) + " must be nonempty");
+    }
+    if (strnlen(
+            text_value,
+            EPCSAFT_REGRESSION_EVALUATOR_V1_TEXT_CAPACITY
+        ) >= EPCSAFT_REGRESSION_EVALUATOR_V1_TEXT_CAPACITY) {
+        throw std::invalid_argument(std::string(field) + " is too long");
     }
     return text_value;
 }
@@ -755,44 +820,37 @@ long py_integer(PyObject* value, const char* field) {
 }
 
 std::vector<double> py_doubles(PyObject* value, const char* field) {
-    PyObject* sequence = fast_sequence(value, field);
+    PyOwned sequence(fast_sequence(value, field));
     std::vector<double> result;
-    try {
-        const Py_ssize_t count = PySequence_Fast_GET_SIZE(sequence);
-        result.reserve(static_cast<std::size_t>(count));
-        for (Py_ssize_t index = 0; index < count; ++index) {
-            result.push_back(py_number(
-                PySequence_Fast_GET_ITEM(sequence, index), field
-            ));
-        }
-    } catch (...) {
-        Py_DECREF(sequence);
-        throw;
+    const Py_ssize_t count = PySequence_Fast_GET_SIZE(sequence.value);
+    result.reserve(static_cast<std::size_t>(count));
+    for (Py_ssize_t index = 0; index < count; ++index) {
+        result.push_back(py_number(
+            PySequence_Fast_GET_ITEM(sequence.value, index), field
+        ));
     }
-    Py_DECREF(sequence);
     return result;
 }
 
 evaluator::Problem parse_problem(PyObject* payload) {
-    PyObject* root = fast_sequence(payload, "evaluator payload");
+    PyOwned root(fast_sequence(payload, "evaluator payload"));
     evaluator::Problem problem;
-    try {
-        if (PySequence_Fast_GET_SIZE(root) != 5) {
-            throw std::invalid_argument(
-                "evaluator payload must contain five contract blocks"
-            );
-        }
-        PyObject* metadata = fast_sequence(
-            PySequence_Fast_GET_ITEM(root, 0), "evaluator metadata"
+    if (PySequence_Fast_GET_SIZE(root.value) != 5) {
+        throw std::invalid_argument(
+            "evaluator payload must contain five contract blocks"
         );
-        if (PySequence_Fast_GET_SIZE(metadata) != 10) {
-            Py_DECREF(metadata);
+    }
+    PyOwned metadata(fast_sequence(
+        PySequence_Fast_GET_ITEM(root.value, 0), "evaluator metadata"
+    ));
+    {
+        if (PySequence_Fast_GET_SIZE(metadata.value) != 10) {
             throw std::invalid_argument(
                 "evaluator metadata must contain ten identities"
             );
         }
         auto meta = [&](Py_ssize_t index, const char* field) {
-            return py_text(PySequence_Fast_GET_ITEM(metadata, index), field);
+            return py_text(PySequence_Fast_GET_ITEM(metadata.value, index), field);
         };
         problem.metadata = {
             meta(0, "evaluator identity"),
@@ -806,108 +864,105 @@ evaluator::Problem parse_problem(PyObject* payload) {
             meta(8, "Provider topology fingerprint"),
             meta(9, "artifact identity"),
         };
-        Py_DECREF(metadata);
+    }
 
-        PyObject* parameters = fast_sequence(
-            PySequence_Fast_GET_ITEM(root, 1), "evaluator parameters"
-        );
+    PyOwned parameters(fast_sequence(
+        PySequence_Fast_GET_ITEM(root.value, 1), "evaluator parameters"
+    ));
+    {
         const Py_ssize_t parameter_count =
-            PySequence_Fast_GET_SIZE(parameters);
+            PySequence_Fast_GET_SIZE(parameters.value);
         problem.parameters.reserve(
             static_cast<std::size_t>(parameter_count)
         );
         for (Py_ssize_t index = 0; index < parameter_count; ++index) {
-            PyObject* item = fast_sequence(
-                PySequence_Fast_GET_ITEM(parameters, index),
+            PyOwned item(fast_sequence(
+                PySequence_Fast_GET_ITEM(parameters.value, index),
                 "evaluator parameter"
-            );
-            if (PySequence_Fast_GET_SIZE(item) != 6) {
-                Py_DECREF(item);
-                Py_DECREF(parameters);
+            ));
+            if (PySequence_Fast_GET_SIZE(item.value) != 6) {
                 throw std::invalid_argument(
                     "evaluator parameter must contain six fields"
                 );
             }
             problem.parameters.push_back({
-                py_text(PySequence_Fast_GET_ITEM(item, 0), "parameter id"),
-                py_text(PySequence_Fast_GET_ITEM(item, 1), "parameter unit"),
-                py_number(PySequence_Fast_GET_ITEM(item, 2), "parameter origin"),
-                py_number(PySequence_Fast_GET_ITEM(item, 3), "parameter scale"),
-                py_number(PySequence_Fast_GET_ITEM(item, 4), "parameter lower"),
-                py_number(PySequence_Fast_GET_ITEM(item, 5), "parameter upper"),
+                py_text(PySequence_Fast_GET_ITEM(item.value, 0), "parameter id"),
+                py_text(PySequence_Fast_GET_ITEM(item.value, 1), "parameter unit"),
+                py_number(PySequence_Fast_GET_ITEM(item.value, 2), "parameter origin"),
+                py_number(PySequence_Fast_GET_ITEM(item.value, 3), "parameter scale"),
+                py_number(PySequence_Fast_GET_ITEM(item.value, 4), "parameter lower"),
+                py_number(PySequence_Fast_GET_ITEM(item.value, 5), "parameter upper"),
             });
-            Py_DECREF(item);
         }
-        Py_DECREF(parameters);
+    }
 
-        PyObject* starts = fast_sequence(
-            PySequence_Fast_GET_ITEM(root, 2), "evaluator starts"
-        );
-        const Py_ssize_t start_count = PySequence_Fast_GET_SIZE(starts);
+    PyOwned starts(fast_sequence(
+        PySequence_Fast_GET_ITEM(root.value, 2), "evaluator starts"
+    ));
+    {
+        const Py_ssize_t start_count = PySequence_Fast_GET_SIZE(starts.value);
         problem.starts.reserve(static_cast<std::size_t>(start_count));
         for (Py_ssize_t index = 0; index < start_count; ++index) {
             problem.starts.push_back(py_doubles(
-                PySequence_Fast_GET_ITEM(starts, index), "parameter start"
+                PySequence_Fast_GET_ITEM(starts.value, index), "parameter start"
             ));
         }
-        Py_DECREF(starts);
+    }
 
-        PyObject* rows = fast_sequence(
-            PySequence_Fast_GET_ITEM(root, 3), "evaluator rows"
-        );
-        const Py_ssize_t row_count = PySequence_Fast_GET_SIZE(rows);
+    PyOwned rows(fast_sequence(
+        PySequence_Fast_GET_ITEM(root.value, 3), "evaluator rows"
+    ));
+    {
+        const Py_ssize_t row_count = PySequence_Fast_GET_SIZE(rows.value);
         problem.rows.reserve(static_cast<std::size_t>(row_count));
         for (Py_ssize_t index = 0; index < row_count; ++index) {
-            PyObject* item = fast_sequence(
-                PySequence_Fast_GET_ITEM(rows, index), "evaluator row"
-            );
-            if (PySequence_Fast_GET_SIZE(item) != 12) {
-                Py_DECREF(item);
-                Py_DECREF(rows);
+            PyOwned item(fast_sequence(
+                PySequence_Fast_GET_ITEM(rows.value, index), "evaluator row"
+            ));
+            if (PySequence_Fast_GET_SIZE(item.value) != 13) {
                 throw std::invalid_argument(
-                    "evaluator row must contain twelve fields"
+                    "evaluator row must contain thirteen fields"
                 );
             }
             problem.rows.push_back({
-                py_text(PySequence_Fast_GET_ITEM(item, 0), "row id"),
-                py_text(PySequence_Fast_GET_ITEM(item, 1), "partition"),
-                py_text(PySequence_Fast_GET_ITEM(item, 2), "state id"),
-                py_text(PySequence_Fast_GET_ITEM(item, 3), "state schema id"),
-                py_text(PySequence_Fast_GET_ITEM(item, 4), "source id"),
-                py_text(PySequence_Fast_GET_ITEM(item, 5), "primitive id"),
-                py_text(PySequence_Fast_GET_ITEM(item, 6), "primitive unit"),
-                py_text(PySequence_Fast_GET_ITEM(item, 7), "transform"),
-                py_text(PySequence_Fast_GET_ITEM(item, 8), "reference id"),
+                py_text(PySequence_Fast_GET_ITEM(item.value, 0), "row id"),
+                py_text(PySequence_Fast_GET_ITEM(item.value, 1), "partition"),
+                py_text(PySequence_Fast_GET_ITEM(item.value, 2), "state id"),
+                py_text(PySequence_Fast_GET_ITEM(item.value, 3), "state schema id"),
+                py_text(PySequence_Fast_GET_ITEM(item.value, 4), "source id"),
+                py_text(PySequence_Fast_GET_ITEM(item.value, 5), "source locator"),
+                py_text(PySequence_Fast_GET_ITEM(item.value, 6), "primitive id"),
+                py_text(PySequence_Fast_GET_ITEM(item.value, 7), "primitive unit"),
+                py_text(PySequence_Fast_GET_ITEM(item.value, 8), "transform"),
+                py_text(PySequence_Fast_GET_ITEM(item.value, 9), "reference id"),
                 py_text(
-                    PySequence_Fast_GET_ITEM(item, 9),
+                    PySequence_Fast_GET_ITEM(item.value, 10),
                     "reference fingerprint"
                 ),
-                py_number(PySequence_Fast_GET_ITEM(item, 10), "observed value"),
-                py_number(PySequence_Fast_GET_ITEM(item, 11), "residual scale"),
+                py_number(PySequence_Fast_GET_ITEM(item.value, 11), "observed value"),
+                py_number(PySequence_Fast_GET_ITEM(item.value, 12), "residual scale"),
             });
-            Py_DECREF(item);
         }
-        Py_DECREF(rows);
+    }
 
-        PyObject* controls = fast_sequence(
-            PySequence_Fast_GET_ITEM(root, 4), "evaluator controls"
-        );
-        if (PySequence_Fast_GET_SIZE(controls) != 8) {
-            Py_DECREF(controls);
+    PyOwned controls(fast_sequence(
+        PySequence_Fast_GET_ITEM(root.value, 4), "evaluator controls"
+    ));
+    {
+        if (PySequence_Fast_GET_SIZE(controls.value) != 8) {
             throw std::invalid_argument(
                 "evaluator controls must contain eight values"
             );
         }
         problem.maximum_condition_number = py_number(
-            PySequence_Fast_GET_ITEM(controls, 0),
+            PySequence_Fast_GET_ITEM(controls.value, 0),
             "maximum condition number"
         );
         const long iterations = py_integer(
-            PySequence_Fast_GET_ITEM(controls, 1), "maximum iterations"
+            PySequence_Fast_GET_ITEM(controls.value, 1), "maximum iterations"
         );
         if (iterations <= 0
             || iterations > std::numeric_limits<int>::max()) {
-            Py_DECREF(controls);
             throw std::invalid_argument(
                 "maximum iterations is outside the supported range"
             );
@@ -915,36 +970,31 @@ evaluator::Problem parse_problem(PyObject* payload) {
         problem.controls = {
             static_cast<int>(iterations),
             py_number(
-                PySequence_Fast_GET_ITEM(controls, 2),
+                PySequence_Fast_GET_ITEM(controls.value, 2),
                 "maximum solver time"
             ),
             py_number(
-                PySequence_Fast_GET_ITEM(controls, 3),
+                PySequence_Fast_GET_ITEM(controls.value, 3),
                 "function tolerance"
             ),
             py_number(
-                PySequence_Fast_GET_ITEM(controls, 4),
+                PySequence_Fast_GET_ITEM(controls.value, 4),
                 "gradient tolerance"
             ),
             py_number(
-                PySequence_Fast_GET_ITEM(controls, 5),
+                PySequence_Fast_GET_ITEM(controls.value, 5),
                 "parameter tolerance"
             ),
         };
         problem.confirmation_parameter_delta = py_number(
-            PySequence_Fast_GET_ITEM(controls, 6),
+            PySequence_Fast_GET_ITEM(controls.value, 6),
             "confirmation parameter delta"
         );
         problem.confirmation_cost_delta = py_number(
-            PySequence_Fast_GET_ITEM(controls, 7),
+            PySequence_Fast_GET_ITEM(controls.value, 7),
             "confirmation cost delta"
         );
-        Py_DECREF(controls);
-    } catch (...) {
-        Py_DECREF(root);
-        throw;
     }
-    Py_DECREF(root);
     return problem;
 }
 
@@ -1045,7 +1095,7 @@ PyObject* rows_tuple(const evaluator::FitResult& fit) {
     for (std::size_t index = 0; index < fit.rows.size(); ++index) {
         const auto& row = fit.rows[index];
         PyObject* item = PyTuple_New(13);
-        PyObject* derivatives = doubles_tuple(row.physical_jacobian);
+        PyObject* derivatives = doubles_tuple(row.scaled_solver_jacobian);
         if (item == nullptr || derivatives == nullptr) {
             Py_XDECREF(item);
             Py_XDECREF(derivatives);
@@ -1142,7 +1192,9 @@ PyObject* solve_evaluator_python(
         const auto* sdk = checked_sdk(capsule);
         const evaluator::Problem problem = parse_problem(payload);
         evaluator::FitResult fit;
-        {
+        if (sdk->single_thread_non_reentrant != 0) {
+            fit = evaluator::solve(*sdk, problem);
+        } else {
             ThreadRelease release;
             fit = evaluator::solve(*sdk, problem);
         }

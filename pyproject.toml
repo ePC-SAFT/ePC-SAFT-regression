@@ -15,7 +15,7 @@ dependencies = ["epcsaft==0.2.0.dev0"]
 cmake.build-type = "Release"
 wheel.packages = ["src/epcsaft_regression"]
 wheel.install-dir = ""
-wheel.exclude = ["**/native/*.cpp", "**/native/*.hpp", "**/native/*.h"]
+wheel.exclude = ["**/native/*.cpp", "**/native/*.hpp"]
 sdist.include = [
   "CMakeLists.txt",
   "src/epcsaft_regression/native/*.cpp",

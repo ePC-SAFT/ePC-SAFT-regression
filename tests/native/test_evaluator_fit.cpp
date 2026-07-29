@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -127,6 +128,7 @@ void test_evaluator_fit() {
     constexpr const char* states[] = {"state", "state"};
     constexpr const char* state_schemas[] = {"fixed-state-v1", "fixed-state-v1"};
     constexpr const char* sources[] = {"source", "source"};
+    constexpr const char* source_locators[] = {"table-1:log", "table-2:id"};
     constexpr const char* primitives[] = {"primitive-a", "primitive-b"};
     constexpr const char* primitive_units[] = {"1", "1"};
     constexpr const char* transforms[] = {"natural_log", "identity"};
@@ -148,6 +150,7 @@ void test_evaluator_fit() {
     sdk.state_ids = states;
     sdk.state_schema_ids = state_schemas;
     sdk.observation_source_ids = sources;
+    sdk.source_locators = source_locators;
     sdk.primitive_ids = primitives;
     sdk.primitive_units = primitive_units;
     sdk.transform_ids = transforms;
@@ -211,6 +214,7 @@ void test_evaluator_fit() {
                 "state",
                 "fixed-state-v1",
                 "source",
+                "table-1:log",
                 "primitive-a",
                 "1",
                 "natural_log",
@@ -225,6 +229,7 @@ void test_evaluator_fit() {
                 "state",
                 "fixed-state-v1",
                 "source",
+                "table-2:id",
                 "primitive-b",
                 "1",
                 "identity",
@@ -300,6 +305,8 @@ void test_evaluator_fit() {
         || std::abs(fit.solves.front().variables[1] - 2.0) > 1.0e-8
         || !fit.confirmations_usable
         || fit.confirmation_parameter_delta > 1.0e-8
+        || std::abs(fit.rows.front().scaled_solver_jacobian[0] - 1.0) > 1.0e-12
+        || std::abs(fit.rows.front().scaled_solver_jacobian[1] - 0.5) > 1.0e-12
         || context.value_calls == 0 || context.jacobian_calls == 0) {
         throw std::runtime_error(
             "exact analytic evaluator did not satisfy the fit contract"
@@ -332,6 +339,53 @@ void test_evaluator_fit() {
         throw std::runtime_error(
             "mismatched evaluator model fingerprint was not rejected"
         );
+    }
+    invalid = sdk;
+    invalid.source_locators = nullptr;
+    rejected = false;
+    try {
+        epcsaft_regression::evaluator::validate_contract(invalid, problem);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    if (!rejected) {
+        throw std::runtime_error("missing source locator table was not rejected");
+    }
+    invalid = sdk;
+    invalid.parameter_count = static_cast<std::size_t>(INT_MAX) + 1u;
+    rejected = false;
+    try {
+        epcsaft_regression::evaluator::validate_contract(invalid, problem);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    if (!rejected) {
+        throw std::runtime_error("Ceres count overflow was not rejected");
+    }
+    std::array<char, EPCSAFT_REGRESSION_EVALUATOR_V1_TEXT_CAPACITY + 1> overlong{};
+    std::fill(overlong.begin(), overlong.end() - 1, 'x');
+    const char* overlong_parameter_ids[] = {overlong.data(), "parameter-b"};
+    invalid = sdk;
+    invalid.parameter_ids = overlong_parameter_ids;
+    rejected = false;
+    try {
+        epcsaft_regression::evaluator::validate_contract(invalid, problem);
+    } catch (const std::runtime_error&) {
+        rejected = true;
+    }
+    if (!rejected) {
+        throw std::runtime_error("overlong metadata was not rejected");
+    }
+    auto reserved = problem;
+    reserved.rows[0].partition = "held_out";
+    rejected = false;
+    try {
+        epcsaft_regression::evaluator::validate_contract(sdk, reserved);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    if (!rejected) {
+        throw std::runtime_error("reserved evaluator row was not rejected");
     }
     invalid = sdk;
     invalid.single_thread_non_reentrant = 0;

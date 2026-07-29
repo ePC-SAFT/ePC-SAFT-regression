@@ -564,6 +564,16 @@ starts. It contains no backend selector.
 - separate solver, numerical, physical-validity, workflow, scientific, and
   predictive statuses.
 
+The current installed positive-observation adapter is deliberately narrower
+than this general result vocabulary: it accepts only solved-state,
+KKT-certified training rows (`N >= 1`, one ordered slot per fitted
+parameter), rejects held-out and stress rows at construction, and either
+evaluates every required row or fails closed. Its row diagnostics preserve the
+source locator and expose the exact scaled Ceres-coordinate Jacobian; they do
+not claim reserved-partition evaluation or partial-row accounting. Future
+reserved evaluation, lifted coordinates, sharing, aggregate, and censored
+observations are separate admitted slices.
+
 The canonical general result exposes only the ordered `parameters`
 collection; it has no scalar `parameter` compatibility alias. Accepted
 paper-specific entry points may retain their established presentation wrappers

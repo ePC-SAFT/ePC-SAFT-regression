@@ -99,6 +99,7 @@ typedef struct epcsaft_regression_evaluator_sdk_v1 {
     const char* expected_provider_topology_fingerprint;
     const char* provider_sdk_capsule_name;
     uint32_t provider_sdk_abi_version;
+    /* Provider SDK sizes are opaque, immutable artifact declarations. */
     size_t provider_sdk_table_size;
     size_t provider_sdk_result_size;
     size_t provider_sdk_mixture_result_size;
@@ -111,6 +112,7 @@ typedef struct epcsaft_regression_evaluator_sdk_v1 {
     size_t result_size;
     size_t row_result_size;
     epcsaft_regression_evaluator_evaluate_v1 evaluate;
+    const char* const* source_locators;
 } epcsaft_regression_evaluator_sdk_v1;
 
 /*
@@ -119,7 +121,12 @@ typedef struct epcsaft_regression_evaluator_sdk_v1 {
  * complete handle lifetime. Calls are synchronous; the caller owns all result
  * buffers. The callback is native and does not require the Python GIL. A v1
  * consumer must provide exact result and row-result struct sizes. The table's
- * declared single-thread/non-reentrant mode is authoritative.
+ * declared single-thread/non-reentrant mode is authoritative. The Provider SDK
+ * size fields are carried as opaque declarations and are not interpreted by
+ * this ABI owner beyond requiring nonzero values. Row and parameter arrays
+ * remain in the declared order; Jacobian entries are row-major at
+ * `row_index * parameter_count + parameter_index`, with capacities declared
+ * in the result table.
  */
 
 #ifdef __cplusplus

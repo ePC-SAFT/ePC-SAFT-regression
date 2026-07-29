@@ -180,6 +180,41 @@ int main() {
         incomplete_result.failure_reason.find("incomplete")
         != std::string::npos
     );
+    int transient_calls = 0;
+    const auto transient_failure = [&](
+        const double* variables,
+        std::size_t variable_count,
+        bool jacobian_requested,
+        double* residuals,
+        double* row_major_jacobian,
+        std::string& failure_reason
+    ) {
+        if (variable_count != 1) {
+            failure_reason = "unexpected variable count";
+            return false;
+        }
+        if (transient_calls++ == 0) {
+            failure_reason = "transient evaluator failure";
+            return false;
+        }
+        residuals[0] = variables[0] - 1.0;
+        if (jacobian_requested) {
+            row_major_jacobian[0] = 1.0;
+        }
+        failure_reason.clear();
+        return true;
+    };
+    const auto transient_result = epcsaft_regression::internal::solve(
+        ProblemShape{1, 0, 1},
+        {0.0},
+        std::vector<CoordinateBound>(1, {-10.0, 10.0}),
+        controls,
+        transient_failure
+    );
+    require(
+        transient_result.failure_reason.find("transient evaluator failure")
+        != std::string::npos
+    );
     test_evaluator_fit();
     return 0;
 }

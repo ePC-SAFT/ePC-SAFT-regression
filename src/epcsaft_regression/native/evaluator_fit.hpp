@@ -42,6 +42,7 @@ struct Row final {
     std::string state_id;
     std::string state_schema_id;
     std::string source_id;
+    std::string source_locator;
     std::string primitive_id;
     std::string primitive_unit;
     std::string transform;
@@ -65,7 +66,7 @@ struct Problem final {
 struct RowEvaluation final {
     double value;
     double residual;
-    std::vector<double> physical_jacobian;
+    std::vector<double> scaled_solver_jacobian;
     epcsaft_regression_evaluator_row_result_v1 certificate;
 };
 

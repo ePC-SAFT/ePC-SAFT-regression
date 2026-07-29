@@ -140,6 +140,17 @@ def test_positive_evaluator_problem_binds_sources_rows_parameters_and_transforms
     assert problem.observations[1].transform is PositiveObservationTransform.IDENTITY
 
 
+def test_positive_evaluator_problem_rejects_reserved_partitions() -> None:
+    with pytest.raises(ValueError, match="all be training rows"):
+        replace(
+            _problem(),
+            observations=(
+                _rows()[0],
+                replace(_rows()[1], partition=ObservationPartition.HELD_OUT),
+            ),
+        )
+
+
 @pytest.mark.parametrize(
     ("index", "changes"),
     (
