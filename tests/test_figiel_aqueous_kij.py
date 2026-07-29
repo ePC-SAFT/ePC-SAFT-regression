@@ -154,12 +154,12 @@ def test_aqueous_kij_contract_is_eleven_parameters_over_all_rows() -> None:
     assert specification.start_agreement_max_abs == 1.0e-5
     assert specification.published_parameter_max_abs_delta == 0.05
     assert specification.expected_provider_fingerprints == (
-        "sha256:2e86bfea7ba8d860482189c50b5c8c9ab20736e216d7dff511fc32fc8b66156f",
-        "sha256:7a88365c8a238c0d3d650a6d9b49e477e9f5e762e51abf779d0f65fe3aa1cb73",
-        "sha256:f598133ee5894859c95c58ff03c0fc9c8be48b6033890d26a753c2db3c94d2fe",
-        "sha256:0f3795c2e83813a7c06d2d12d534284e729b5b2c836bfe9602ab6f3be4806807",
-        "sha256:1102deed6b08dbab82db24aea4187056db4432b9674187fb126cf19470ed65e1",
-        "sha256:bef74bbf5556b32a1e440da9500c4e9740af457d370ec5ee900c0e59bcd79a25",
+        "sha256:00d5bc709841bffd8cbde9df6afafaa9520d23a500be59aae54ecd63b4369ad9",
+        "sha256:569f4ace0d776e8b631df0ff563a2686356b28ad5e24556c38909b371fd811ac",
+        "sha256:17955d601749bc94802325dbc88cdc62b3ee954f1e5e1ad02c0547d8187b27d4",
+        "sha256:31f40e1441358b8729c0963c808cb5290cde6d455f6f910a5c7abe95315a8aea",
+        "sha256:8fedd3d395a20591b05ee7fff2c1e698872c97b07e82a0668923d656f818790e",
+        "sha256:c0af15d984b8324ebc4b622a9ab68153c43eb13026bd74a6bcd08bba7d49dea5",
     )
 
 

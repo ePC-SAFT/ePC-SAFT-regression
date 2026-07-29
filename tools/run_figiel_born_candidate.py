@@ -8,10 +8,11 @@ from pathlib import Path
 import run_candidate as artifact_binding
 
 
-PROVIDER_COMMIT = "907b077ec6f841a8a028fc759df14f899c79339c"
-PROVIDER_TREE = "2b315113c9961a16f75c776783f704db54d75e44"
-PROVIDER_WHEEL_SHA256 = "c327b9a176e54bfc79b625cca7f0c87f2a62fc7d87059826e40c9d70e214f0cd"
-PROVIDER_HEADER_SHA256 = "610cc480f05c3e17e431d26fd1b2c8628eec3e2adb412102a284d4d5d6eb8171"
+PROVIDER_COMMIT = artifact_binding.PROVIDER_COMMIT
+PROVIDER_TREE = artifact_binding.PROVIDER_TREE
+PROVIDER_WHEEL_SHA256 = artifact_binding.PROVIDER_WHEEL_SHA256
+PROVIDER_HEADER_SHA256 = artifact_binding.PROVIDER_HEADER_SHA256
+PROVIDER_TEST_RECEIPT_SHA256 = artifact_binding.PROVIDER_TEST_RECEIPT_SHA256
 
 
 def _canonical_evidence_bytes(payload: dict[str, object]) -> bytes:
@@ -23,6 +24,7 @@ def _canonical_evidence_bytes(payload: dict[str, object]) -> bytes:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate the Figiel Born-tracer candidate evidence.")
     parser.add_argument("--provider-wheel", type=Path, required=True)
+    parser.add_argument("--provider-test-receipt", type=Path, required=True)
     parser.add_argument("--regression-wheel", type=Path, required=True)
     parser.add_argument("--regression-commit", required=True)
     parser.add_argument("--regression-tree", required=True)
@@ -32,6 +34,7 @@ def main() -> int:
     artifact_binding._require_hash(
         arguments.provider_wheel, PROVIDER_WHEEL_SHA256, "provider wheel"
     )
+    artifact_binding._require_provider_test_receipt(arguments.provider_test_receipt)
     provider_binding = artifact_binding._require_installed_distribution_matches_wheel(
         arguments.provider_wheel, "epcsaft"
     )
@@ -42,7 +45,7 @@ def main() -> int:
     import epcsaft
     import epcsaft_regression
     import epcsaft_regression._native as native
-    from epcsaft import EPCSAFT, ParameterBundle, native_sdk
+    from epcsaft import Mixture, Parameters, native_sdk
     from epcsaft_regression import (
         FIGIEL_BORN_DIAMETER_TRACER_V1,
         fit_figiel_born_diameters,
@@ -63,9 +66,15 @@ def main() -> int:
     artifact_binding._require_hash(provider_header, PROVIDER_HEADER_SHA256, "provider header")
 
     specification = FIGIEL_BORN_DIAMETER_TRACER_V1
-    catalog = ParameterBundle.from_catalog("figiel-2025-reference-electrolytes", version=1)
     models = tuple(
-        EPCSAFT(catalog.select(target.component_order)) for target in specification.targets
+        Mixture(
+            Parameters.from_catalog(
+                "figiel-2025-reference-electrolytes",
+                components=target.component_order,
+                version=1,
+            )
+        )
+        for target in specification.targets
     )
     capsules = tuple(native_sdk(model) for model in models)
     payload = _born_native_payload(specification)
@@ -128,6 +137,8 @@ def main() -> int:
             "tree": PROVIDER_TREE,
             "wheel": arguments.provider_wheel.name,
             "wheel_sha256": PROVIDER_WHEEL_SHA256,
+            "test_receipt": arguments.provider_test_receipt.name,
+            "test_receipt_sha256": PROVIDER_TEST_RECEIPT_SHA256,
             "installed_header_sha256": PROVIDER_HEADER_SHA256,
             "capsule": "epcsaft.native_sdk.v1",
             "entry": "evaluate_ion_solvation_born",

@@ -346,9 +346,9 @@ def test_relative_permittivity_ratio_observation_binds_one_model_parameter() -> 
         partition=ObservationPartition.TRAINING,
     )
     coordinate = ParameterCoordinate(
-        family=ParameterFamily.DIELECTRIC_ION_SUPPRESSION_COEFFICIENT,
+        family=ParameterFamily.ION_FRACTION_SUPPRESSION_COEFFICIENT,
         identity=ModelParameterIdentity(),
-        capability_id="figiel_dielectric_suppression_v1",
+        capability_id="ion_fraction_suppression_v1",
         provider_parameter_fingerprint=PARAMETER_HASH,
         provider_topology_fingerprint=TOPOLOGY_HASH,
         unit="1",

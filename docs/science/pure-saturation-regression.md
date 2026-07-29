@@ -46,6 +46,19 @@ strings, retrieval date, and use basis.
 
 ## Provider contract
 
+New installed-artifact replay binds Provider frontend `0.2.0.dev0` to commit
+`14fa3745264db66b8e59c12268737d694c706f2f`, tree
+`eb04f10f445957cc768bad1ef4f330038c69a293`, wheel SHA-256
+`48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594`, and
+installed-header SHA-256
+`2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b`.
+Its Provider test receipt is
+`/home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
+SHA-256
+`56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`.
+The older Provider artifacts referenced by the retained propane diagnostic are
+historical evidence and are not active replay inputs.
+
 Each phase evaluation fixes `n = 1 mol` and sends
 
 ```text
@@ -85,7 +98,7 @@ Propane starts from the provider's source-backed Gross 2001 propane bundle:
 ```text
 start = (2.0020, 3.6184 angstrom, 208.11 K)
 scale = (0.1, 0.1 angstrom, 10 K)
-provider fingerprint = sha256:9bfbc8d7789e51609945e61dbdf7a020decc8f9e31b408b0977724c7cb3e1551
+provider fingerprint = sha256:1194db349d0608c89419e70c56ccec9ada2ae0884dd8e64e519e9560e7e8ae42
 ```
 
 Both specifications use bounds `[0.5, 3.5]`, `[2, 5] angstrom`, and

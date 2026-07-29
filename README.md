@@ -9,16 +9,18 @@ installed `epcsaft.native_sdk.v1` provider capsule.
 The public workflow is:
 
 ```python
-from epcsaft import EPCSAFT, ParameterBundle
+from epcsaft import Mixture, Parameters
 from epcsaft_regression import (
     ETHANE_SATURATION_FIT_V1,
     fit_pure_saturation,
     load_pure_saturation_dataset,
 )
 
-model = EPCSAFT(
-    ParameterBundle.from_catalog("gross-2001-methane-ethane", version=1).select(
-        ("ethane",)
+model = Mixture(
+    Parameters.from_catalog(
+        "gross-2001-methane-ethane",
+        components=("ethane",),
+        version=1,
     )
 )
 result = fit_pure_saturation(

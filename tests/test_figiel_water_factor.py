@@ -45,7 +45,7 @@ def test_water_factor_contract_is_one_parameter_over_all_nabr_rows() -> None:
         -0.35,
     )
     assert specification.expected_provider_fingerprint == (
-        "sha256:89d400b3641da07053da0823fe2fbcfd951dd97aaf339c1651a4338c954a7caf"
+        "sha256:80ec4bde74ef7af307e44098e2e495e20a5be57d7cb23452ff321cb644816783"
     )
     assert len(specification.observations) == 21
     assert {row.salt for row in specification.observations} == {"NaBr"}

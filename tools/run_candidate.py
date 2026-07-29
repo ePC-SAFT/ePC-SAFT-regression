@@ -11,9 +11,11 @@ import platform
 from zipfile import ZipFile
 
 
-PROVIDER_COMMIT = "4b10cb899c94687cae734980285badb224dc95e6"
-PROVIDER_WHEEL_SHA256 = "f92f79c8d6f614660e5c201b7061c9b02b5cd1a25a4ed8c8fee0b59adaabf2bf"
-PROVIDER_TEST_RECEIPT_SHA256 = "07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480"
+PROVIDER_COMMIT = "14fa3745264db66b8e59c12268737d694c706f2f"
+PROVIDER_TREE = "eb04f10f445957cc768bad1ef4f330038c69a293"
+PROVIDER_WHEEL_SHA256 = "48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594"
+PROVIDER_HEADER_SHA256 = "2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b"
+PROVIDER_TEST_RECEIPT_SHA256 = "56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf"
 
 
 def _sha256(path: Path) -> str:
@@ -28,6 +30,10 @@ def _require_hash(path: Path, expected: str, label: str) -> None:
     actual = _sha256(path)
     if actual != expected:
         raise SystemExit(f"{label} SHA-256 mismatch: expected {expected}, got {actual}")
+
+
+def _require_provider_test_receipt(path: Path) -> None:
+    _require_hash(path, PROVIDER_TEST_RECEIPT_SHA256, "provider test receipt")
 
 
 def _normalized_distribution_name(name: str) -> str:
@@ -161,11 +167,7 @@ def main() -> int:
     parser.add_argument("--review-sha256")
     arguments = parser.parse_args()
     _require_hash(arguments.provider_wheel, PROVIDER_WHEEL_SHA256, "provider wheel")
-    _require_hash(
-        arguments.provider_test_receipt,
-        PROVIDER_TEST_RECEIPT_SHA256,
-        "provider test receipt",
-    )
+    _require_provider_test_receipt(arguments.provider_test_receipt)
     regression_wheel_sha256 = _sha256(arguments.regression_wheel)
     repository_root = Path(__file__).resolve().parents[1]
     review_arguments = (arguments.reviewer, arguments.review_path, arguments.review_sha256)
@@ -198,7 +200,7 @@ def main() -> int:
 
     import epcsaft
     import epcsaft_regression
-    from epcsaft import EPCSAFT, ParameterBundle
+    from epcsaft import Mixture, Parameters
     from epcsaft_regression import (
         ETHANE_SATURATION_FIT_V1,
         METHANE_SATURATION_FIT_V1,
@@ -232,10 +234,12 @@ def main() -> int:
         if component_id == "propane"
         else "gross-2001-methane-ethane"
     )
-    parameters = ParameterBundle.from_catalog(
-        bundle_id, version=1
-    ).select((component_id,))
-    model = EPCSAFT(parameters)
+    parameters = Parameters.from_catalog(
+        bundle_id,
+        components=(component_id,),
+        version=1,
+    )
+    model = Mixture(parameters)
     result = fit_pure_saturation(
         model=model,
         dataset=dataset,
@@ -275,10 +279,12 @@ def main() -> int:
         "stress_row_ids": [row.row_id for row in dataset.stress_rows],
         "provider": {
             "commit": PROVIDER_COMMIT,
+            "tree": PROVIDER_TREE,
             "wheel": arguments.provider_wheel.name,
             "wheel_sha256": PROVIDER_WHEEL_SHA256,
             "test_receipt": arguments.provider_test_receipt.name,
             "test_receipt_sha256": PROVIDER_TEST_RECEIPT_SHA256,
+            "installed_header_sha256": PROVIDER_HEADER_SHA256,
             "capsule": "epcsaft.native_sdk.v1",
             "entry": "evaluate_pure_phase_parameters",
             "coordinate_order": [

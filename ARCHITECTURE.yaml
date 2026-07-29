@@ -47,6 +47,20 @@ scope: >-
   dispersion energy over k from caller-supplied pure-saturation pressure and
   liquid-density rows on a matching neutral pure capability.
 
+provider_frontend:
+  version: 0.2.0.dev0
+  public_types: [Parameters, Mixture]
+  provider_commit: 14fa3745264db66b8e59c12268737d694c706f2f
+  provider_tree: eb04f10f445957cc768bad1ef4f330038c69a293
+  wheel_path: /home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/ePC-SAFT-EoS/dist/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl
+  wheel_sha256: 48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594
+  installed_header_sha256: 2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b
+  provider_test_receipt_path: /home/tnnrpolley21/Workspaces/Engineering/ePC-SAFT-project/artifacts/provider-python-frontend-v0.2/14fa374/provider-tests.xml
+  provider_test_receipt_sha256: 56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf
+  provider_test_receipt_summary: 276-passed-1-skipped
+  migration_effect: frontend-only-no-authority-or-scientific-contract-change
+  retained_receipt_policy: immutable-provider-0.1-history-not-regenerated
+
 general_parameter_regression:
   status: TEN_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
   design_owner: docs/science/general-parameter-regression.md
@@ -70,6 +84,7 @@ general_parameter_regression:
   reference_campaign_role: evidence-not-component-restriction
   forbidden_interpretation: every-provider-parameter-is-fit-ready-now
   immediate_provider_gate: SATISFIED_FOR_TEN_FAMILIES
+  artifact_identity_role: historical-reference-campaign-evidence; active-frontend-binding-is-provider_frontend
   pure_association_recovery:
     status: NOT_FIT_READY_SOURCE_CONTRACT_INCOMPLETE
     design_owner: docs/science/general-parameter-regression.md
@@ -179,7 +194,7 @@ general_parameter_regression:
     authority_effect: none
     predictive_effect: none
   fit_ready_direct_observable_families:
-    families: [born_diameter, solvation_factor, dielectric_ion_suppression_coefficient, ionic_region_relative_permittivity, relative_permittivity]
+    families: [born_diameter, solvation_factor, ion_fraction_suppression_coefficient, ionic_region_relative_permittivity, relative_permittivity]
     parameter_count_per_problem: 1
     nuisance_variables: 0
     provider_derivative_order: 1
@@ -344,7 +359,8 @@ parallel_regression_track:
       parameter_packet_sha256: 932e8baa90fcefbaa8c3a8730cdeadd83a4c01f0a3b109f4e4cd0319aee9312b
       metadata_sha256: 8ea06c6ca5452d01448a03f9a76cf7d0c35bb99c9abe23ccb1729d56c71d468f
     provider:
-      status: migration-bound-implemented-installed-artifact
+      status: historical-migration-bound-candidate-artifact
+      historical_binding: provider_frontend
       commit: 907b077ec6f841a8a028fc759df14f899c79339c
       tree: 2b315113c9961a16f75c776783f704db54d75e44
       wheel_sha256: c327b9a176e54bfc79b625cca7f0c87f2a62fc7d87059826e40c9d70e214f0cd
@@ -456,6 +472,8 @@ figiel_aqueous_kij_design:
   current_provider_status: exact-stage-b-and-stage-c-batch-callback-artifact-retained
   required_provider_addition: none
   provider_artifact:
+    role: historical-stage-candidate-evidence
+    historical_binding: provider_frontend
     implementation_commit: 8af6e5467cba70ade226cb28f93688ce88048c29
     implementation_tree: 2ec243429600de75ccaeb51955044bf2e7557fbe
     wheel_sha256: 1d77a46aca369269fd97b32a722e8b548617a4ae840e07645040a138f63863db
@@ -559,7 +577,7 @@ public_surface:
     - MethaneFitResult
     - fit_methane_saturation
   runtime_dependencies:
-    - epcsaft==0.1.0.dev0
+    - epcsaft==0.2.0.dev0
   direct_build_dependencies:
     - scikit-build-core
     - CMake
@@ -594,14 +612,14 @@ component_contracts:
   methane:
     status: authoritative-workflow
     dataset: nist-webbook-methane-saturation-100-180-k-v1
-    expected_provider_fingerprint: sha256:5f836aa84935df70be2e5cffae51b178a7b797c2cee036e9ff47d8097ca94bbf
+    expected_provider_fingerprint: sha256:905e7a6e22eb1073347575bf833d5aa059d9ccf562e4408cb186d74f580ba36f
     training_temperatures_k: [110.0, 130.0, 150.0, 170.0]
     held_out_temperatures_k: [100.0, 120.0, 140.0, 160.0, 180.0]
     stress_temperatures_k: []
   ethane:
     status: authoritative-workflow-publication-verified
     dataset: nist-webbook-ethane-saturation-100-280-k-v1
-    expected_provider_fingerprint: sha256:288fbcaa1304881c16f64c3a784eeed19b75c58cca4558f92a21268e5e91258a
+    expected_provider_fingerprint: sha256:b81f32e44adb46080dfa91026c6428045e04a219900305767672d0547f9a9fb9
     training_temperatures_k: [140.0, 180.0, 220.0, 260.0]
     held_out_temperatures_k: [120.0, 160.0, 200.0, 240.0]
     stress_temperatures_k: [100.0, 280.0]
@@ -611,7 +629,7 @@ component_contracts:
     dataset: glos-2004-experimental-propane-saturation-110-340-k-v1
     source_packet_commit: 7e51590757f1cb85f51df98e9fe1f88cd4255a88
     source_packet_tree: 05af9e948c786ddfcf43dba701970f1cbb6435a2
-    expected_provider_fingerprint: sha256:9bfbc8d7789e51609945e61dbdf7a020decc8f9e31b408b0977724c7cb3e1551
+    expected_provider_fingerprint: sha256:1194db349d0608c89419e70c56ccec9ada2ae0884dd8e64e519e9560e7e8ae42
     training_temperatures_k: [150.0, 210.0, 270.0, 330.0]
     held_out_row_count: 18
     stress_temperatures_k: [110.0, 340.0]
@@ -675,7 +693,7 @@ parameter_family_readiness:
   mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
   mixture_independent_born_diameter: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_solvation_factor: FIT_READY_ADVERTISED_MEAN_IONIC_ACTIVITY_DOMAIN
-  model_dielectric_ion_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
+  model_ion_fraction_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
   mixture_independent_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   model_ionic_region_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_association: NOT_FIT_READY_SCALAR_DERIVATIVE_MECHANICS_ONLY
@@ -751,6 +769,8 @@ propane_candidate_artifact:
     scaled_liquid_pressure_closure: 3.293761527412009e-8
     required_scaled_pressure_closure: 1.0e-8
   provider:
+    role: historical-blocked-candidate-evidence
+    historical_binding: provider_frontend
     commit: 4b10cb899c94687cae734980285badb224dc95e6
     wheel_sha256: f92f79c8d6f614660e5c201b7061c9b02b5cd1a25a4ed8c8fee0b59adaabf2bf
     installed_public_header_sha256: 414c257d28322d6be41809a8dc6b98023859dd156202a5205079d674b28b4070

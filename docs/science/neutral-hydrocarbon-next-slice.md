@@ -245,6 +245,12 @@ widen the candidate.
 
 ### Frozen artifacts and commands
 
+This section is immutable historical provenance, not an executable guide for
+the current `main` runner. Replaying it requires the exact Regression subject
+and its contemporaneous `tools/run_candidate.py`; the active Provider `0.2`
+runner must not be combined with these Provider `0.1` arguments or used to
+rewrite the retained receipts.
+
 The immutable pure subject is:
 
 | Item | Identity |

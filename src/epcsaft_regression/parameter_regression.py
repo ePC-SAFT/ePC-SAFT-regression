@@ -29,7 +29,7 @@ class ParameterFamily(StrEnum):
     L_IJ = "l_ij"
     ASSOCIATION_ENERGY_OVER_K = "association_energy_over_k"
     ASSOCIATION_VOLUME = "association_volume"
-    DIELECTRIC_ION_SUPPRESSION_COEFFICIENT = "dielectric_ion_suppression_coefficient"
+    ION_FRACTION_SUPPRESSION_COEFFICIENT = "ion_fraction_suppression_coefficient"
     IONIC_REGION_RELATIVE_PERMITTIVITY = "ionic_region_relative_permittivity"
 
 
@@ -374,7 +374,7 @@ class ParameterCoordinate:
             ParameterFamily.SOLVATION_FACTOR: "1",
         }
         model_units = {
-            ParameterFamily.DIELECTRIC_ION_SUPPRESSION_COEFFICIENT: "1",
+            ParameterFamily.ION_FRACTION_SUPPRESSION_COEFFICIENT: "1",
             ParameterFamily.IONIC_REGION_RELATIVE_PERMITTIVITY: "1",
             ParameterFamily.ASSOCIATION_ENERGY_OVER_K: "K",
             ParameterFamily.ASSOCIATION_VOLUME: "1",
@@ -404,7 +404,7 @@ class ParameterCoordinate:
                 "segment_count, segment_diameter, and "
                 "dispersion_energy_over_k, relative_permittivity, "
                 "born_diameter, or "
-                "solvation_factor, or dielectric_ion_suppression_coefficient"
+                "solvation_factor, or ion_fraction_suppression_coefficient"
                 ", ionic_region_relative_permittivity, "
                 "association_energy_over_k, or association_volume"
             )
