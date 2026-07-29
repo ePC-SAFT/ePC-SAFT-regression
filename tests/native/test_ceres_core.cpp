@@ -17,6 +17,8 @@ void require(bool condition) {
 
 }  // namespace
 
+void test_evaluator_fit();
+
 int main() {
     using epcsaft_regression::internal::CoordinateBound;
     using epcsaft_regression::internal::ProblemShape;
@@ -178,5 +180,6 @@ int main() {
         incomplete_result.failure_reason.find("incomplete")
         != std::string::npos
     );
+    test_evaluator_fit();
     return 0;
 }

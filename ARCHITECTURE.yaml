@@ -300,6 +300,9 @@ owners:
   aqueous_kij_residual_jacobian_and_ceres: src/epcsaft_regression/native/figiel_kij_fit.cpp
   general_parameter_contract_and_result: src/epcsaft_regression/parameter_regression.py
   general_parameter_capability_residual_jacobian_and_ceres: src/epcsaft_regression/native/general_fit.cpp
+  positive_evaluator_contract_and_result: src/epcsaft_regression/evaluator_regression.py
+  positive_evaluator_residual_jacobian_and_ceres: src/epcsaft_regression/native/evaluator_fit.cpp
+  positive_evaluator_private_fixed_abi: src/epcsaft_regression/native/regression_evaluator_v1.h
   provider_capsule_gate: src/epcsaft_regression/native/module.cpp
   component_receipt_runner: tools/run_candidate.py
   figiel_candidate_evidence_runner: tools/run_figiel_born_candidate.py
@@ -709,7 +712,7 @@ parameter_family_readiness:
       projected_parameter_rank: 2
       derivative_oracle: closed-form-no-finite-difference
       packaging: build-testing-only-not-installed
-    generic_downstream_transport: AUTHORIZED_BY_ORGANIZATION_ISSUE_1_IMPLEMENTATION_PENDING_ARTIFACT
+    generic_downstream_transport: PACKAGE_ADAPTER_IMPLEMENTED_LOCAL_INSTALLED_ARTIFACT_REPLAY_PENDING
     generic_downstream_transport_decision: https://github.com/ePC-SAFT/.github/issues/1
   mixture_independent_scalar_pure: FIT_READY_PURE_SATURATION_PRESSURE_AND_LIQUID_DENSITY
   mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_VLE_ADVERTISED_AQUEOUS_MIAC_AND_ADVERTISED_ORGANIC_ION_SOLVATION
@@ -721,7 +724,7 @@ parameter_family_readiness:
   model_ionic_region_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_association: NOT_FIT_READY_SCALAR_DERIVATIVE_MECHANICS_ONLY
   khb_ij: NOT_READY_NOT_A_CURRENT_PROVIDER_PARAMETER_FAMILY
-  next_engineering_investment: INSTALLED_HOMOGENEOUS_LIQUID_OBSERVABLE_HANDLE_AND_REGRESSION_TRANSPORT
+  next_engineering_investment: EXACT_INSTALLED_EVALUATOR_REPLAY_THEN_REDUCED_MEA_TRACER
   optional_standalone_association_source_acquisition: DEFERRED_NOT_MEA_CRITICAL_PATH
   mea_mixed_observable_regression: WAITING_MASTER_PLAN_GATES
   full_parameter_family_coverage: NOT_READY
@@ -799,16 +802,16 @@ propane_candidate_artifact:
     test_receipt_sha256: 07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480
 
 manifest:
-  tracked_files_after_stage_c_candidate: 79
-  production_python_files: 4
-  native_source_files: 13
+  tracked_files_after_stage_c_candidate: 85
+  production_python_files: 5
+  native_source_files: 16
   installed_data_files: 7
-  package_test_files: 8
+  package_test_files: 9
   retained_binary_input_evidence_files: 1
   retained_binary_result_evidence_files: 1
   ide_project_files: 7
-  physical_production_lines: 14130
-  physical_package_test_lines: 4466
+  physical_production_lines: 16037
+  physical_package_test_lines: 5321
   tracked_generated_evidence_files_after_figiel_candidate: 7
   generated_file_policy: >-
     The accepted methane and ethane fit receipts bind deterministic

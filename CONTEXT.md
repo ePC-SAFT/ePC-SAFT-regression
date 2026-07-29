@@ -174,8 +174,11 @@ exists. The first tracer uses the user-approved low-pressure
 `p_CO2 = f_CO2_liquid` convention from a certified homogeneous reacting
 liquid; it needs no vapor composition or bubble solve. Provider exact active
 parameter partials and Equilibrium conditioned active-parameter amount/volume
-sensitivities are implemented. The exact installed composed-observable handle
-and its receipt remain prerequisites; reactive bubble issue 37 is deferred.
+sensitivities are implemented. The generic process-local positive-observation
+adapter is implemented locally over the existing Ceres core with exact
+value/Jacobian request propagation and fail-closed metadata and certificate
+checks. An exact installed composed-observable replay and its receipt remain
+prerequisites; reactive bubble issue 37 is deferred.
 The application
 candidate is a staged three-coordinate ion block, not the stale historical
 12-parameter block. The frozen pressure/speciation split has at most 297

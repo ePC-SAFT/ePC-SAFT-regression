@@ -15,12 +15,13 @@ dependencies = ["epcsaft==0.2.0.dev0"]
 cmake.build-type = "Release"
 wheel.packages = ["src/epcsaft_regression"]
 wheel.install-dir = ""
-wheel.exclude = ["**/native/*.cpp", "**/native/*.hpp"]
+wheel.exclude = ["**/native/*.cpp", "**/native/*.hpp", "**/native/*.h"]
 sdist.include = [
   "CMakeLists.txt",
   "src/epcsaft_regression/native/*.cpp",
   "src/epcsaft_regression/native/*.hpp",
-  "tests/native/test_ceres_core.cpp",
+  "src/epcsaft_regression/native/*.h",
+  "tests/native/*.cpp",
 ]
 
 [tool.pytest.ini_options]
