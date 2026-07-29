@@ -22,21 +22,21 @@ CO2 loading is a fixed state input, not the measured response. Heat of
 absorption is excluded from the first tracer because no source-complete heat
 row or observation definition is admitted.
 
-Under the current MEA application contract, the pressure prediction is
+Under the user-approved low-pressure first-tracer convention, the pressure
+prediction is
 
 ```text
-p_CO2 = y_CO2 * P_bubble
+p_CO2 = f_CO2_liquid
 ```
 
-from a certified reactive-bubble calculation with Provider fugacity equality.
-The bubble result must additionally certify a zero minimized Provider
-phase-potential/TPD condition, vapor incidence and normalization, transfer
-equilibrium, positivity, packing/domain validity, and an independently
-recomputed final state. Multiple roots, finite-search completion, and
-`globality = not_guaranteed` remain separate diagnostics. No ideal-vapor
-shortcut is frozen. Replacing this contract with
-`p_CO2 = f_CO2_liquid` would require a new MEA-owned source and domain
-justification; Regression shall not infer that approximation.
+for neutral CO2 in the certified homogeneous reacting liquid. This is the
+liquid-fugacity equivalent of the measured low-pressure gas partial pressure
+with vapor fugacity coefficient fixed to one. It is an explicit application
+convention for this reduced engineering tracer, not an experimental
+uncertainty, a general vapor-phase approximation, or a predictive claim.
+There is no vapor composition, bubble root, or phase-equilibrium solve in the
+first tracer. Reactive-bubble capability remains a separate later path for
+applications that require nonideal vapor or phase-boundary results.
 
 The old proposed tracer—CO2-loading equality plus heat equality—is rejected as
 unexecutable from the admitted source packet. The old historical 12-parameter
@@ -48,22 +48,23 @@ block and 435 reserved-observation count are also stale.
 |---|---|---|
 | MEA-Thermodynamics | species and reactions; equilibrium-constant sources; standard-state convention; feed/state construction; source rows; target eligibility; measurement mapping; parameter selection; bounds, scales, starts, sharing, regularization, partitions, and scientific gates | Provider equations, Equilibrium algorithms, Ceres, or fitted-value persistence |
 | Provider | typed parameters and topology; Helmholtz/reference calculations; phase and caloric primitives; exact explicit parameter partials; domain/applicability and artifact identity | reaction equilibrium, Ceres, application datasets, or promotion |
-| Equilibrium | source-to-Provider reference transformation; reacting-liquid and reactive-bubble solves; exact implicit state sensitivities; solver/numerical/physical certificates | parameter selection, residual weights, regression objectives, or application promotion |
+| Equilibrium | source-to-Provider reference transformation; reacting-liquid solves; exact implicit state sensitivities; solver/numerical/physical certificates; separately admitted later reactive-bubble solves | parameter selection, residual weights, regression objectives, or application promotion |
 | Regression | source-bound observation validation; parameter transforms and sharing execution; residual/Jacobian assembly; Ceres; rank, conditioning, active-bound and confirmation diagnostics; immutable authority-neutral results | chemistry defaults, a second equilibrium formulation, copied EOS/reaction equations, or Provider catalog mutation |
 | Validation campaign | installed-artifact black-box replay and durable cross-package evidence authored by the accountable package task | production algorithms or private source imports |
 
-Once organization doctrine admits the proposed transport, the downstream
-application constructs the model-bound evaluator from exact installed Provider
-and Equilibrium artifacts and supplies the versioned process-local handle
-described by Regression issue 15. Regression does not import or link
-Equilibrium.
+Organization decision
+[`ePC-SAFT/.github#1`](https://github.com/ePC-SAFT/.github/issues/1) admits the
+transport. The downstream application constructs the model-bound evaluator
+from exact installed Provider and Equilibrium artifacts and supplies the
+versioned process-local handle described by Regression issue 15. Regression
+does not import or link Equilibrium.
 
 ## 3. Current source contract
 
-The authoritative MEA application baseline is
-`MEA-Thermodynamics@c3a92740dfd1a53b5ef5197d26cc0af4d227afe3`.
-Later exploratory SciPy fits are rejected evidence and do not define this
-contract.
+The current exact Gate-0 application subject is
+`MEA-Thermodynamics@269c954230b73bffe19d157137143a52d9c685f6`, tree
+`7d58f7b50b2d3e0682a862b92e8f1c998501cf80`, merged through PR 51. Later
+exploratory SciPy fits are rejected evidence and do not define this contract.
 
 ### 3.1 Chemistry
 
@@ -188,10 +189,14 @@ source table/figure/row locator
 residual transform, scale, and rationale
 ```
 
-`model_derived` rows are never fit targets. The current source packet does not
-yet classify pressure origin. Only `vle_obs_0171` presently carries a numeric
-pressure uncertainty, 0.077 kPa; that makes it a useful tracer candidate but
-does not freeze it.
+`model_derived` rows are never fit targets. The merged Gate-0 packet classifies
+Hilliard `vle_obs_0137` as
+`calibration_derived_partial_pressure` and freezes it as the first tracer row;
+its `574 Pa` value comes from the source's calibrated gas composition and
+measured total pressure. That classification does not turn the derived value
+into a direct partial-pressure measurement or assign experimental uncertainty.
+Only `vle_obs_0171` presently carries a numeric pressure uncertainty,
+`0.077 kPa`; it is not substituted for the preregistered tracer row.
 
 ### 4.3 Liquid speciation
 
@@ -279,23 +284,29 @@ the transformed reference vector. Missing terms make the Jacobian unavailable;
 neither Equilibrium nor Regression substitutes finite differences or frozen
 speciation.
 
-CO2 pressure additionally requires Equilibrium to re-solve the reacting liquid
-at each trial pressure, solve and certify the installed-Provider incipient
-vapor condition, and root-find the reactive bubble boundary. A
-frozen-speciation flash is initialization only. The complete derivative
+The first-tracer CO2 pressure primitive is the liquid fugacity of neutral CO2.
+For the Provider Helmholtz basis `Phi = A/(R T n_ref)` with
+`n_ref = 1 mol` and `rho_ref = 1 mol/m^3`,
 
 ```text
-d(y_CO2 * P_bubble)/dtheta
+ln(f_CO2_liquid / (rho_ref R T)) = partial(Phi)/partial(n_CO2)
 ```
 
-also requires exact Provider parameter partials and implicit sensitivities for
-the vapor-incidence residual and vapor-composition solve, together with the
-source-reference pressure and parameter derivatives. A missing liquid, vapor,
-reference, or incidence term makes the entire pressure Jacobian unavailable.
-The bubble derivative also fails closed for vanishing or ill-conditioned
-`partial(B)/partial(P)`, a singular vapor-composition Jacobian, root
-swap/coalescence, or a vapor active-set/topology change. The liquid KKT
-condition threshold does not certify this separate bubble-root system.
+at fixed temperature. Its exact total derivative is
+
+```text
+d ln(f_CO2_liquid)/dtheta_j
+  = sum_l Phi_(n_CO2,n_l) * dn_l/dtheta_j
+  + Phi_(n_CO2,V) * dV/dtheta_j
+  + Phi_(n_CO2,theta_j)
+```
+
+Provider supplies the gradient, Hessian, and explicit active-parameter
+chemical-potential partial. Equilibrium supplies exact amount and volume
+sensitivities. This composition uses first-order implicit sensitivities and
+Provider second derivatives; it needs no third derivative, density root,
+vapor-incidence residual, or bubble solve. A missing, reordered, nonfinite, or
+unsupported term makes that observation Jacobian unavailable.
 
 ## 6. Equilibrium value and certificate contract
 
@@ -316,9 +327,9 @@ The future installed composed evaluator receipt must retain:
 The current public homogeneous-liquid result already exposes the core state and
 certificate values but does not expose all ordered balance/reaction matrices,
 artifact hashes, sensitivity active sets/chart topology, or
-search/root-completeness fields above. For homogeneous liquid results, search
-and root fields are `not_applicable`; for reactive-bubble results they are
-mandatory.
+search/root-completeness fields above. For the first homogeneous-liquid
+tracer, search and root fields are `not_applicable`. Later reactive-bubble
+results require their own complete search and root evidence.
 
 Current Equilibrium value gates independently recompute:
 
@@ -335,19 +346,19 @@ condition estimate above `1e6`, bound activity within the `1e-7` margin,
 trace/structural-face activity, topology change, missing Provider mixed
 partial, or missing transformed-reference derivative.
 
-Equilibrium issue 36 is closed for exact conditioned sensitivities to balance
-totals, Provider-basis `ln(K)`, and pressure. It does not yet supply active
-Provider-parameter sensitivities or source-bound reference derivatives.
-Issue 37 remains open for the reactive bubble. Issue 38 remains open for
-installed-artifact MEA liquid and bubble evidence.
+Equilibrium issue 36 is complete. The accepted public sensitivity result
+includes exact active Provider-parameter amount and volume columns with
+conditioning and failure evidence. Issue 37 remains open for later reactive
+bubble capability and does not block this tracer. Issue 38 supplies the
+installed homogeneous-liquid evidence needed here before any later bubble
+campaign.
 
-Current public `chemical_equilibrium` execution exposes values only.
-Sensitivity data remain in a private underscored payload and source-bound
-sensitivities fail closed. Before Regression issue 15 can bind the composed
-evaluator, Equilibrium must expose one typed, versioned installed
-value/Jacobian contract—not the private `_chemical_equilibrium` seam—that binds
-wheel and ABI identity, state and parameter ordering, units, reference
-identity, chart topology, and Provider fingerprint.
+Before Regression issue 15 can execute, the downstream application must
+construct one typed, versioned installed evaluator handle that composes the
+public Provider and Equilibrium contracts into ordered primitive values and
+complete exact parameter columns. The handle binds artifact identity, units,
+state and parameter ordering, reference identity, chart topology, and Provider
+fingerprints. Regression must not consume a private underscored API.
 
 ## 7. Regression residual and Jacobian assembly
 
@@ -447,28 +458,58 @@ coordinate subset. Equilibrium extends issue 36's implicit solve to those
 columns and the source-reference transform. Value-valid but
 Jacobian-unavailable states remain unusable for Ceres.
 
-### Gate 3 — reactive pressure
+### Gate 3 — homogeneous-liquid observable composition
 
-Equilibrium issue 37 supplies the certified reactive-bubble result and exact
-total derivatives needed for `p_CO2 = y_CO2 P_bubble`. Issue 38 then retains
-installed MEA bubble evidence.
+The installed downstream evaluator composes the certified reacting-liquid
+state, neutral CO2 liquid fugacity, eligible speciation primitive, and every
+exact selected parameter column. The two first-tracer rows are independent
+source observations; they are not relabeled a paired experiment. A retained
+installed-artifact receipt must prove the values, Jacobian columns,
+fingerprints, status propagation, and failure behavior.
 
 ### Gate 4 — cross-package evaluator transport
 
-Equilibrium first exposes the typed installed public value/Jacobian contract in
-section 6. After the organization-level transport decision, Regression issue
-15 binds a downstream-composed, model-bound, versioned evaluator through the
-admitted process-local transport. It supports value-only and
-value-plus-Jacobian responses, deterministic ordering, batching, complete
+Organization decision
+[`ePC-SAFT/.github#1`](https://github.com/ePC-SAFT/.github/issues/1) admits the
+inverted process-local transport. Regression issue 15 binds the
+downstream-composed, model-bound, versioned evaluator through that transport.
+The first executable slice supports positive identity and log equalities,
+value-only and value-plus-Jacobian responses, deterministic ordering, complete
 fingerprints, per-row failures, and no Regression-to-Equilibrium dependency.
+Linear aggregates and censoring remain frozen designs until a real
+source-bound row requires their runtime surface.
 
 ### Gate 5 — reduced coupled tracer
 
-Regression issue 16 is corrected to fit one or two predeclared coordinates
-against exactly:
+Regression issue 16 fits one or two predeclared coordinates against exactly:
 
-- one admitted CO2 partial-pressure equality; and
-- one eligible speciation equality or aggregate.
+- Hilliard `vle_obs_0137`, observed `p_CO2 = 574 Pa`, modeled as neutral
+  `f_CO2_liquid` at `T = 313.15 K`, total pressure `7326.7 Pa`, unloaded MEA
+  mass fraction `0.30`, and loading `0.466 mol CO2/mol MEA`; and
+- Böttinger `cheq_canon_00194`, observed `x_MEACOO- = 0.0502` at the same
+  temperature, unloaded MEA mass fraction, and loading.
+
+The Böttinger source reports no pressure. Its evaluation pressure is the
+application-declared fixed state anchor, not a Böttinger measurement. Both
+rows are positive equalities; no loading residual, heat residual, aggregate,
+censor, bubble calculation, or vapor composition is present.
+
+The exact merged MEA subject binds the row payloads through:
+
+- `data/reference/MEA/observations/vapor_liquid_equilibrium/Canonical_VLE_Observations.csv`,
+  SHA-256
+  `9e7d9ba5fead8bfa83a311dad341e3e2e8df1806d5249642a23562e99a72cb73`,
+  and `data/reference/MEA/manifests/pco2_metrology_manifest.csv`, SHA-256
+  `0d14803873a60534ec5d7df382cfbd0ae03e4aaeba68bb5d54be7e4def8397cc`;
+- `data/reference/MEA/observations/liquid_speciation/Canonical_Combined_ChEq.csv`,
+  SHA-256
+  `8c07df9efd1c1ecbd775ccdd42791e0cef1880b3837e5749a60d2142aa85809e`,
+  and `data/reference/MEA/manifests/speciation_target_membership.csv`,
+  SHA-256
+  `a89a3f0373a86813482158f180939cf57f74be038cd59f244dfadcb689923190`.
+
+Regression consumes the installed application contract or immutable campaign
+copy of these rows; it does not read a sibling MEA source checkout at runtime.
 
 The two-row sensitivity matrix must have rank `N` at every declared start
 before optimization. If no source/physics-selected subset with `N <= 2` has
@@ -523,9 +564,9 @@ specifications and equilibrium operations are identical:
 4. request all exact fitted columns once for Jacobian calls;
 5. return deterministic row order and one status for every input.
 
-A fixed-`T,P` liquid, reactive-bubble boundary, and calorimetric path are
-different operations even when temperature, loading, and composition match.
-Every bubble pressure trial still re-solves the reacting liquid. A
+A fixed-`T,P` liquid, later reactive-bubble boundary, and later calorimetric
+path are different operations even when temperature, loading, and composition
+match. A
 residual-only response may omit returned fitted-parameter columns, but
 Equilibrium still consumes the exact state derivatives and Provider tensors
 required internally by Ipopt and certification; it cannot replace them with a
@@ -574,14 +615,13 @@ Provider-catalog authority, or promotion by itself.
 |---|---|---|
 | Regression multi-parameter Ceres core | ready for admitted exact evaluators | none |
 | Generic observation equations | design frozen | bind real downstream evaluator in issue 15 |
-| MEA chemistry/source transform | blocked | complete Provider-basis transform and explicit carbonate identity |
-| MEA pressure metrology | blocked | classify every candidate pressure row and exclude model-derived rows |
-| MEA speciation payload | blocked | enforce eligibility and executable aggregate/censor semantics |
+| MEA chemistry/source transform | Gate-0 contract frozen | retain exact merged application subject and source hashes |
+| MEA pressure metrology | first row selected | Hilliard `vle_obs_0137`; no model-derived row |
+| MEA speciation payload | first row selected | Böttinger `cheq_canon_00194`; direct positive equality |
 | MEA heat | not admitted | source-complete packet plus caloric value/sensitivity contract |
-| Equilibrium reacting-liquid values | implemented generically, not yet MEA-evidenced | one installed source-complete MEA sentinel |
-| Equilibrium active-Provider-parameter sensitivities | blocked | exact Provider mixed partials and source-reference derivatives |
-| Equilibrium reactive bubble | blocked | issue 37 |
-| Installed MEA campaign | blocked | issue 38 after its liquid and bubble gates |
+| Equilibrium reacting-liquid values and sensitivities | package implementation complete | installed source-complete homogeneous MEA evidence |
+| Equilibrium reactive bubble | deferred, not a tracer gate | issue 37 remains separate |
+| Installed MEA campaign | homogeneous Gate-0 checkpoint merged and frozen | retain the composed-observable receipt against exact PR 51 subject |
 | Regression downstream transport | blocked | issue 15 after exact installed evaluator artifact |
 | Reduced coupled fit | blocked | corrected issue 16 after gates 0–4 |
 | Full mixed campaign | not ready | successful tracer, frozen three-coordinate contract, and rank-sufficient admitted rows |
@@ -593,17 +633,16 @@ observations or derivatives.
 
 ## 13. Required issue reconciliation
 
-- Regression issue 16 must replace “CO2-loading plus heat” with “CO2 partial
-  pressure plus eligible speciation,” correct the reserved maximum from 435 to
-  267, and retain `N <= 2`.
+- Regression issue 16 must name the Hilliard pressure and Böttinger speciation
+  rows, use the liquid-fugacity-equivalent convention, remove heat/loading and
+  bubble gates, correct the reserved maximum from 435 to 267, and retain
+  `N <= 2`.
 - Regression issue 15 remains the transport gate; it must not be bypassed by a
   Python callback or source checkout.
-- MEA issues 12 and 13 must bind the corrected split, observation roles,
-  three-coordinate plan, and exact installed artifact identities.
-- MEA issues 35–37 own the remaining source, Provider-basis, and sentinel
-  preparation.
-- Equilibrium issue 36 is complete only for its declared totals, `ln(K)`, and
-  pressure sensitivity scope. Issues 37 and 38 remain open.
+- MEA PR 51 owns the exact first-tracer source/state preparation.
+- Equilibrium issue 36 is complete for exact active-parameter state
+  sensitivities. Issue 37 is deferred for later bubble work; issue 38 is
+  narrowed to installed homogeneous-liquid evidence first.
 
 This document controls the coordinated sequence. Application manifests,
 installed artifact receipts, and owner-specific implementation contracts

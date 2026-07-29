@@ -68,7 +68,7 @@ general_parameter_regression:
   design_owner: docs/science/general-parameter-regression.md
   mea_coupled_regression:
     design_owner: docs/science/mea-coupled-regression-master-plan.md
-    status: WAITING_SOURCE_CONTRACT_PROVIDER_PARAMETER_PARTIALS_REACTIVE_BUBBLE_AND_INSTALLED_MEA_EVIDENCE
+    status: WAITING_INSTALLED_HOMOGENEOUS_LIQUID_OBSERVABLE_HANDLE
     first_tracer_observations:
       - one-admitted-co2-partial-pressure-equality
       - one-eligible-speciation-equality-or-linear-aggregate
@@ -79,12 +79,13 @@ general_parameter_regression:
     stale_parameter_plan: historical-12-coordinate-block-rejected
     training: {states: 147, maximum_eligible_residuals: 297}
     reserved: {states: 220, maximum_eligible_residuals: 267}
-    pressure_prediction: certified-reactive-bubble-yco2-times-pressure
-    equilibrium_issue_36: CLOSED_TOTALS_LNK_PRESSURE_ONLY
-    equilibrium_issue_37: OPEN_REACTIVE_BUBBLE
-    equilibrium_issue_38: OPEN_INSTALLED_MEA_EVIDENCE
+    pressure_prediction: user-approved-low-pressure-liquid-co2-fugacity-equivalent
+    phase_equilibrium_required: false
+    equilibrium_issue_36: CLOSED_EXACT_ACTIVE_PARAMETER_STATE_SENSITIVITIES
+    equilibrium_issue_37: DEFERRED_REACTIVE_BUBBLE_NOT_FIRST_TRACER_GATE
+    equilibrium_issue_38: OPEN_INSTALLED_HOMOGENEOUS_MEA_EVIDENCE
     regression_issue_15: BLOCKED_MODEL_BOUND_TRANSPORT
-    regression_issue_16: REQUIRES_OBSERVATION_AND_COUNT_CORRECTION
+    regression_issue_16: CORRECTED_WAITING_ISSUE_15_INSTALLED_EVALUATOR_AND_RANK_PREFLIGHT
   objective: >-
     Fit any admitted continuous ePC-SAFT parameter for any Provider-supported
     component set when the caller supplies source-bound typed observations and
@@ -708,7 +709,8 @@ parameter_family_readiness:
       projected_parameter_rank: 2
       derivative_oracle: closed-form-no-finite-difference
       packaging: build-testing-only-not-installed
-    generic_downstream_transport: DESIGN_ONLY_GOVERNANCE_DECISION_REQUIRED
+    generic_downstream_transport: AUTHORIZED_BY_ORGANIZATION_ISSUE_1_IMPLEMENTATION_PENDING_ARTIFACT
+    generic_downstream_transport_decision: https://github.com/ePC-SAFT/.github/issues/1
   mixture_independent_scalar_pure: FIT_READY_PURE_SATURATION_PRESSURE_AND_LIQUID_DENSITY
   mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_VLE_ADVERTISED_AQUEOUS_MIAC_AND_ADVERTISED_ORGANIC_ION_SOLVATION
   mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
@@ -719,7 +721,7 @@ parameter_family_readiness:
   model_ionic_region_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_association: NOT_FIT_READY_SCALAR_DERIVATIVE_MECHANICS_ONLY
   khb_ij: NOT_READY_NOT_A_CURRENT_PROVIDER_PARAMETER_FAMILY
-  next_engineering_investment: MEA_SOURCE_CONTRACT_AND_EQUILIBRIUM_ACTIVE_PARAMETER_SENSITIVITY_PLUS_REACTIVE_BUBBLE
+  next_engineering_investment: INSTALLED_HOMOGENEOUS_LIQUID_OBSERVABLE_HANDLE_AND_REGRESSION_TRANSPORT
   optional_standalone_association_source_acquisition: DEFERRED_NOT_MEA_CRITICAL_PATH
   mea_mixed_observable_regression: WAITING_MASTER_PLAN_GATES
   full_parameter_family_coverage: NOT_READY

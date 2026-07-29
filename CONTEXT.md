@@ -170,11 +170,13 @@ The coordinated MEA path is owned by
 is one admitted CO2 partial-pressure observation plus one eligible liquid
 speciation equality or aggregate with at most two fitted coordinates. Loading
 is a state input; heat is not admitted because no source-complete heat contract
-exists. The current MEA convention requires a certified reactive-bubble result.
-Equilibrium issue 36 supplies conditioned implicit sensitivities only for its
-declared totals, Provider-basis `ln(K)`, and pressure scope; active Provider
-parameter columns, the source-reference transform, reactive bubble issue 37,
-and installed MEA evidence issue 38 remain prerequisites. The application
+exists. The first tracer uses the user-approved low-pressure
+`p_CO2 = f_CO2_liquid` convention from a certified homogeneous reacting
+liquid; it needs no vapor composition or bubble solve. Provider exact active
+parameter partials and Equilibrium conditioned active-parameter amount/volume
+sensitivities are implemented. The exact installed composed-observable handle
+and its receipt remain prerequisites; reactive bubble issue 37 is deferred.
+The application
 candidate is a staged three-coordinate ion block, not the stale historical
 12-parameter block. The frozen pressure/speciation split has at most 297
 eligible training and 267 eligible reserved residuals.

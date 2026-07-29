@@ -204,16 +204,18 @@ The complete cross-owner sequence is controlled by
   ion block, not the stale historical 12-parameter block;
 - the frozen pressure/speciation partitions contain 297 maximum eligible
   training residuals and 267, not 435, reserved residuals; and
-- the current pressure convention requires a certified reactive-bubble result
-  unless MEA explicitly preregisters and supports a different vapor convention.
+- the first tracer uses the explicitly application-approved low-pressure
+  `p_CO2 = f_CO2_liquid` convention; a reactive bubble is a later independent
+  capability, not a prerequisite.
 
 Regression still reuses its one native Ceres engine/result/target and consumes
 only complete exact downstream-composed value and Jacobian blocks. It does not
 copy reaction/EOS equations, run a second equilibrium formulation, or
 finite-difference a black-box solve. Runtime remains blocked on the exact
-installed Provider parameter partials, Equilibrium active-parameter
-sensitivities and reactive-bubble result, the source-complete MEA contract, and
-the model-bound transport in issue 15.
+installed downstream-composed evaluator receipt and the model-bound transport
+in issue 15. Provider exact parameter partials and Equilibrium
+active-parameter state sensitivities are implemented inputs to that
+composition; reactive-bubble work is deferred.
 
 ### `k_hb_ij` rule
 
@@ -343,12 +345,15 @@ the active quadratic branch. It is a censor penalty, never an experimental
 uncertainty model. These semantics may enter runtime only with a real
 source-bound observation and an authorized evaluator transport.
 
-The current dependency doctrine permits Regression to consume Provider only.
-Therefore predicted bubble/dew/flash, reactive, or other
-eliminated-equilibrium observations are not authorized by this design. They
-require a future doctrine amendment and separately accepted value/sensitivity
-transport contract; Regression must not import Equilibrium, run a second
-equilibrium implementation, or finite-difference a black-box solve.
+The package dependency remains Provider-only. Organization decision
+[`ePC-SAFT/.github#1`](https://github.com/ePC-SAFT/.github/issues/1) additionally
+permits a caller to supply one typed process-local evaluator composed from
+installed owner artifacts without creating a Regression-to-Equilibrium
+dependency. Only observations explicitly advertised by that exact handle are
+authorized. Regression still must not import Equilibrium, run a second
+equilibrium implementation, infer phase behavior, or finite-difference a
+black-box solve. Predicted bubble/dew/flash and other unadvertised operations
+remain unsupported.
 
 The loader rejects missing units, ambiguous composition bases, duplicate row
 identities, unsupported phases, nonfinite values, missing source identities,
@@ -634,11 +639,14 @@ the requested mode or buffer contract fails closed; Regression does not
 silently calculate a missing derivative or pretend that a derivative-bearing
 call was value-only.
 
-### Proposed downstream evaluator transport
+### Downstream evaluator transport
 
-The following is a design constraint, not an authorized runtime ABI. A future
-Provider/Equilibrium transport must be model-bound and immutable for the
-lifetime of a solve. It declares schema version; evaluator capability ID;
+Organization decision
+[`ePC-SAFT/.github#1`](https://github.com/ePC-SAFT/.github/issues/1) authorizes
+this exact inverted process-local direction. Each concrete installed evaluator
+ABI still requires package evidence before Regression may consume it. The
+transport is model-bound and immutable for the lifetime of a solve. It declares
+schema version; evaluator capability ID;
 ordered parameter-slot, primitive-output, and lifted-coordinate identities
 with units; fixed `S` dimensions and entries; row and batch shapes; row-major
 buffer sizes; supported `VALUES_ONLY` and `VALUES_AND_JACOBIAN` requests;
@@ -653,8 +661,8 @@ output. Unsupported requests, identity or unit mismatch, short buffers,
 nonfinite values, incomplete columns, topology/branch changes, failed
 sensitivities, and cancellation return explicit failure with the affected row
 identities. No partial batch is accepted as a complete residual evaluation.
-Production transfer remains blocked until Organization governance authorizes
-the cross-package direction and exact artifact contracts.
+Production transfer remains blocked only until the exact installed artifact
+contract and its replay evidence exist.
 
 Performance evidence cannot relax derivative, rank, or physical-validity
 gates.
@@ -857,11 +865,10 @@ prediction evidence, or Provider-catalog authority.
    observation contracts, and exact Provider derivative seams. Paper-specific
    executable branches are not retained as substitutes. Polar families are
    excluded from this roadmap.
-10. **Selected next investment: coupled MEA prerequisite.** Complete the
-    source-bound application contract, exact installed Equilibrium
-    value/active-parameter-sensitivity and reactive-bubble contracts, matching
-    Provider parameter partials, and the model-bound transport before adding
-    the corrected pressure-plus-speciation two-row Ceres tracer. The exact
+10. **Selected next investment: coupled MEA prerequisite.** Retain the
+    source-bound application contract, exact installed homogeneous-liquid
+    observable value/Jacobian composition, and the model-bound transport before
+    adding the corrected pressure-plus-speciation two-row Ceres tracer. The exact
     sequence is in `docs/science/mea-coupled-regression-master-plan.md`.
 
 Every standalone family admitted in steps 1--9 must be independently

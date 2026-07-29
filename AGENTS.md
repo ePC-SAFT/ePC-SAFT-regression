@@ -149,10 +149,11 @@ uses one admitted CO2 partial-pressure observation and one eligible liquid
 speciation equality or aggregate with at most two fitted coordinates. Loading
 is a state input and heat remains excluded until a source-complete caloric
 contract exists. Exact active-parameter Provider partials, Equilibrium
-implicit sensitivities and reactive bubble, the source-complete MEA contract,
-and the model-bound installed transport remain prerequisites. Missing pure or
-cross-association recovery sources are optional standalone work and do not
-block that MEA path.
+implicit sensitivities, the source-complete MEA contract, and the model-bound
+installed composed-observable transport remain prerequisites. The first tracer
+uses the application-approved homogeneous liquid-fugacity equivalent and does
+not depend on reactive-bubble work. Missing pure or cross-association recovery
+sources are optional standalone work and do not block that MEA path.
 
 ## Agent skills
 
