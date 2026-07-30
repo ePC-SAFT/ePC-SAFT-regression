@@ -143,12 +143,17 @@ for source-faithful replay are absent. The Baygi--Pahlavanzadeh source analysis
 is provenance only; no MEA-specific dataset, dispatch branch, equilibrium
 solver, or result contract is packaged.
 Polar parameter regression is excluded from this repository's roadmap by user
-decision. The selected next engineering investment is the exact installed
-Equilibrium reactive-state value and implicit parameter-sensitivity contract
-needed by MEA, but Migration's D-026 installed two-liquid Stage-II/III gate
-must pass first. The reduced mixed-observable tracer follows both
-prerequisites. Missing pure or cross-association recovery sources remain
-optional standalone work and do not block that MEA path.
+decision. The coordinated MEA path is owned by
+`docs/science/mea-coupled-regression-master-plan.md`. Its first coupled tracer
+uses one admitted CO2 partial-pressure observation and one eligible liquid
+speciation equality or aggregate with at most two fitted coordinates. Loading
+is a state input and heat remains excluded until a source-complete caloric
+contract exists. Exact active-parameter Provider partials, Equilibrium
+implicit sensitivities, the source-complete MEA contract, and the model-bound
+installed composed-observable transport remain prerequisites. The first tracer
+uses the application-approved homogeneous liquid-fugacity equivalent and does
+not depend on reactive-bubble work. Missing pure or cross-association recovery
+sources are optional standalone work and do not block that MEA path.
 
 ## Agent skills
 

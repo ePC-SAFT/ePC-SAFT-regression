@@ -18,6 +18,7 @@ endif()
 Python_add_library(_native MODULE WITH_SOABI
   src/epcsaft_regression/native/born_diameter_fit.cpp
   src/epcsaft_regression/native/ceres_core.cpp
+  src/epcsaft_regression/native/evaluator_fit.cpp
   src/epcsaft_regression/native/figiel_kij_fit.cpp
   src/epcsaft_regression/native/figiel_water_factor_fit.cpp
   src/epcsaft_regression/native/general_fit.cpp
@@ -39,9 +40,14 @@ include(CTest)
 if(BUILD_TESTING)
   add_executable(ceres_core_test EXCLUDE_FROM_ALL
     tests/native/test_ceres_core.cpp
+    tests/native/test_evaluator_fit.cpp
     src/epcsaft_regression/native/ceres_core.cpp
+    src/epcsaft_regression/native/evaluator_fit.cpp
   )
   target_compile_features(ceres_core_test PRIVATE cxx_std_17)
+  target_compile_definitions(ceres_core_test PRIVATE
+    EPCSAFT_REGRESSION_EVALUATOR_CORE_ONLY
+  )
   target_compile_options(ceres_core_test PRIVATE
     -Wall -Wextra -Wpedantic -Werror
   )

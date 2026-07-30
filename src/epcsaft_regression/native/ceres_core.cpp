@@ -50,8 +50,14 @@ public:
             jacobian_requested ? jacobians[0] : nullptr,
             failure
         );
-        failure_reason_ = std::move(failure);
+        if (!had_failure_) {
+            failure_reason_ = std::move(failure);
+        }
         if (!usable) {
+            if (!had_failure_ && failure_reason_.empty()) {
+                failure_reason_ = "exact evaluator callback rejected evaluation";
+            }
+            had_failure_ = true;
             return false;
         }
         const bool complete_residuals = std::all_of(
@@ -68,9 +74,12 @@ public:
                 [](double value) { return std::isfinite(value); }
             );
         if (!complete_residuals || !complete_jacobian) {
-            failure_reason_ =
-                "exact evaluator left a nonfinite or incomplete residual "
-                "or Jacobian buffer";
+            if (!had_failure_) {
+                failure_reason_ =
+                    "exact evaluator left a nonfinite or incomplete residual "
+                    "or Jacobian buffer";
+            }
+            had_failure_ = true;
             return false;
         }
         return true;
@@ -80,10 +89,15 @@ public:
         return failure_reason_;
     }
 
+    bool had_failure() const noexcept {
+        return had_failure_;
+    }
+
 private:
     ProblemShape shape_;
     ExactEvaluator evaluator_;
     mutable std::string failure_reason_;
+    mutable bool had_failure_{false};
 };
 
 MatrixDiagnostics diagnose(const Eigen::MatrixXd& matrix) {
@@ -294,7 +308,7 @@ SolveResult solve(
         }
         return result;
     }
-    if (result.summary.IsSolutionUsable()) {
+    if (result.summary.IsSolutionUsable() && !cost.had_failure()) {
         result.failure_reason.clear();
     }
     diagnose_jacobian(shape, result.jacobian, result);

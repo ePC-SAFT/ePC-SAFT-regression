@@ -20,7 +20,8 @@ sdist.include = [
   "CMakeLists.txt",
   "src/epcsaft_regression/native/*.cpp",
   "src/epcsaft_regression/native/*.hpp",
-  "tests/native/test_ceres_core.cpp",
+  "src/epcsaft_regression/native/*.h",
+  "tests/native/*.cpp",
 ]
 
 [tool.pytest.ini_options]
