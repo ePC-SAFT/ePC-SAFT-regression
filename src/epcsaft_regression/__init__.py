@@ -19,6 +19,7 @@ from .workflow import (
 )
 from .parameter_regression import (
     AffineParameterTransform,
+    AssociationPairParameterIdentity,
     AqueousKijMeanIonicActivityObservation,
     ComponentParameterIdentity,
     DirectObservationRowDiagnostic,
@@ -37,6 +38,8 @@ from .parameter_regression import (
     PureDensityRowDiagnostic,
     PureSaturationObservation,
     PureSaturationRowDiagnostic,
+    PureVaporPressureObservation,
+    PureVaporPressureRowDiagnostic,
     RelativePermittivityRatioObservation,
     SolvationGibbsObservation,
     SourceDescriptor,
@@ -65,6 +68,7 @@ __all__ = (
     "ParameterCapability",
     "ParameterFamily",
     "AffineParameterTransform",
+    "AssociationPairParameterIdentity",
     "AqueousKijMeanIonicActivityObservation",
     "ComponentParameterIdentity",
     "DirectObservationRowDiagnostic",
@@ -78,6 +82,8 @@ __all__ = (
     "PureDensityRowDiagnostic",
     "PureSaturationObservation",
     "PureSaturationRowDiagnostic",
+    "PureVaporPressureObservation",
+    "PureVaporPressureRowDiagnostic",
     "RelativePermittivityRatioObservation",
     "SolvationGibbsObservation",
     "ParameterCoordinate",

@@ -12,8 +12,10 @@
 #include <cstring>
 #include <limits>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace epcsaft_regression {
@@ -25,6 +27,7 @@ enum class ObservationKind {
     pair_phase,
     pure_phase,
     pure_density,
+    pure_vapor_pressure,
     mean_ionic_activity,
     aqueous_kij_activity,
     ion_solvation_kij,
@@ -92,8 +95,8 @@ struct Payload final {
 
 struct Phase final {
     double pressure;
-    std::array<double, 5> gradient;
-    std::array<double, 25> hessian;
+    std::vector<double> gradient;
+    std::vector<double> hessian;
     std::size_t coordinate_count;
 };
 
@@ -145,23 +148,50 @@ bool pure_density_observation(const Payload& payload) {
     return payload.observation_shape == "pure_density";
 }
 
-bool joint_pure_observation(const Payload& payload) {
-    return payload.capability_id == "neutral_pure_segment_count_v1"
-        && payload.parameter_origins.size() == 3
+bool mixed_pure_associating_observation(const Payload& payload) {
+    return payload.capability_id == "neutral_pure_associating_joint_v1"
+        && payload.parameter_origins.size() >= 5
+        && (payload.parameter_origins.size() - 3) % 2 == 0
         && payload.component_ids.size() == 1
-        && payload.observation_shape == "phase_or_direct";
+        && payload.observation_shape == "mixed_pure_associating";
+}
+
+bool joint_pure_observation(const Payload& payload) {
+    return mixed_pure_associating_observation(payload)
+        || (payload.capability_id == "neutral_pure_segment_count_v1"
+            && payload.parameter_origins.size() == 3
+            && payload.component_ids.size() == 1
+            && payload.observation_shape == "phase_or_direct");
+}
+
+std::size_t row_residual_count(const Row& row) {
+    return row.kind == ObservationKind::pure_density
+        ? 2u
+        : row.kind == ObservationKind::pure_vapor_pressure ? 3u : 4u;
+}
+
+std::size_t row_nuisance_count(const Row& row) {
+    return row.kind == ObservationKind::pure_density ? 1u : 2u;
 }
 
 std::size_t residual_count(const Payload& payload) {
-    return (direct_observation(payload)
-            ? 1u
-            : pure_density_observation(payload) ? 2u : 4u)
-        * payload.training_rows.size();
+    if (direct_observation(payload)) {
+        return payload.training_rows.size();
+    }
+    std::size_t count = 0;
+    for (const Row& row : payload.training_rows) {
+        count += row_residual_count(row);
+    }
+    return count;
 }
 
 std::size_t variable_count(const Payload& payload) {
     if (joint_pure_observation(payload)) {
-        return 3u + 2u * payload.training_rows.size();
+        std::size_t count = payload.parameter_origins.size();
+        for (const Row& row : payload.training_rows) {
+            count += row_nuisance_count(row);
+        }
+        return count;
     }
     return direct_observation(payload)
         ? 1u
@@ -238,6 +268,7 @@ Row parse_row(PyObject* object, ObservationKind kind) {
                 || kind == ObservationKind::ion_solvation_kij
             ? 10
             : kind == ObservationKind::pure_density ? 12
+            : kind == ObservationKind::pure_vapor_pressure ? 14
             : direct ? 7 : 17;
     if (!sequence
         || PySequence_Fast_GET_SIZE(sequence.get()) != expected_size) {
@@ -302,6 +333,55 @@ Row parse_row(PyObject* object, ObservationKind kind) {
               && row.liquid_volume_start <= row.liquid_volume_bounds[1])) {
             throw std::invalid_argument(
                 "pure-density observation state, scales, and volume are invalid"
+            );
+        }
+        return row;
+    }
+    if (kind == ObservationKind::pure_vapor_pressure) {
+        row.pressure_scale = number(item(4), "pressure scale");
+        row.chemical_potential_scales = {
+            number(item(5), "chemical-potential scale"),
+            0.0,
+        };
+        row.liquid_first = 1.0;
+        row.vapor_first = 1.0;
+        row.liquid_volume_origin = number(item(6), "liquid volume origin");
+        row.liquid_volume_start = number(item(7), "liquid volume start");
+        row.liquid_volume_bounds = {
+            number(item(8), "liquid volume lower bound"),
+            number(item(9), "liquid volume upper bound"),
+        };
+        row.vapor_volume_origin = number(item(10), "vapor volume origin");
+        row.vapor_volume_start = number(item(11), "vapor volume start");
+        row.vapor_volume_bounds = {
+            number(item(12), "vapor volume lower bound"),
+            number(item(13), "vapor volume upper bound"),
+        };
+        const auto valid_volume = [](
+            double origin, double start, const auto& bounds
+        ) {
+            return origin > 0.0 && start > 0.0 && bounds[0] > 0.0
+                && bounds[0] < bounds[1] && start >= bounds[0]
+                && start <= bounds[1];
+        };
+        if (!(row.temperature > 0.0 && row.pressure > 0.0
+              && row.pressure_scale > 0.0
+              && row.chemical_potential_scales[0] > 0.0
+              && valid_volume(
+                  row.liquid_volume_origin,
+                  row.liquid_volume_start,
+                  row.liquid_volume_bounds
+              )
+              && valid_volume(
+                  row.vapor_volume_origin,
+                  row.vapor_volume_start,
+                  row.vapor_volume_bounds
+              )
+              && row.liquid_volume_bounds[1]
+                  < row.vapor_volume_bounds[0])) {
+            throw std::invalid_argument(
+                "pure-vapor-pressure state, scales, and separated phase "
+                "volume contracts are invalid"
             );
         }
         return row;
@@ -385,9 +465,25 @@ std::vector<Row> parse_rows(
     std::vector<Row> rows;
     rows.reserve(static_cast<std::size_t>(count));
     for (Py_ssize_t index = 0; index < count; ++index) {
-        rows.push_back(parse_row(
-            PySequence_Fast_GET_ITEM(sequence.get(), index), kind
-        ));
+        PyObject* item = PySequence_Fast_GET_ITEM(sequence.get(), index);
+        ObservationKind row_kind = kind;
+        if (kind == ObservationKind::pure_vapor_pressure) {
+            OwnedPyObject row_sequence{
+                PySequence_Fast(item, "mixed pure observation must be a sequence")
+            };
+            if (!row_sequence) {
+                PyErr_Clear();
+                throw std::invalid_argument(
+                    "mixed pure observation must be a sequence"
+                );
+            }
+            const Py_ssize_t size =
+                PySequence_Fast_GET_SIZE(row_sequence.get());
+            row_kind = size == 12 ? ObservationKind::pure_density
+                : size == 14 ? ObservationKind::pure_vapor_pressure
+                             : ObservationKind::pure_phase;
+        }
+        rows.push_back(parse_row(item, row_kind));
     }
     return rows;
 }
@@ -457,6 +553,8 @@ Payload parse_payload(PyObject* object) {
                 ? ObservationKind::aqueous_kij_activity
             : payload.observation_shape == "pure_density"
                 ? ObservationKind::pure_density
+            : payload.observation_shape == "mixed_pure_associating"
+                ? ObservationKind::pure_vapor_pressure
             : component_count == 1
                 ? ObservationKind::pure_phase
                 : ObservationKind::pair_phase;
@@ -514,25 +612,35 @@ Payload parse_payload(PyObject* object) {
                 static_cast<std::size_t>(value)
             );
         }
-        if (payload.parameter_origins.size() != 3
-            || payload.parameter_scales.size() != 3
-            || payload.parameter_lower_bounds.size() != 3
-            || payload.parameter_upper_bounds.size() != 3
+        const std::size_t parameter_count =
+            payload.observation_shape == "mixed_pure_associating"
+            ? payload.parameter_origins.size()
+            : 3u;
+        if (payload.parameter_origins.size() != parameter_count
+            || payload.parameter_scales.size() != parameter_count
+            || payload.parameter_lower_bounds.size() != parameter_count
+            || payload.parameter_upper_bounds.size() != parameter_count
             || payload.start_vectors.size() < 2
-            || payload.parameter_slot_indices.size() != 3) {
+            || payload.parameter_slot_indices.size() != parameter_count) {
             throw std::invalid_argument(
-                "joint-pure adapter requires three parameter coordinates, "
-                "two full starts, and three slot indices"
+                "joint-pure adapter has inconsistent parameter coordinates, "
+                "starts, or slot indices"
             );
         }
-        if (payload.parameter_slot_indices
-            != std::vector<std::size_t>{0, 1, 2}) {
+        std::vector<std::size_t> expected_slots(parameter_count);
+        for (std::size_t index = 0; index < parameter_count; ++index) {
+            expected_slots[index] = index;
+        }
+        if (payload.parameter_slot_indices != expected_slots) {
             throw std::invalid_argument(
-                "joint-pure adapter requires the declared m, sigma, "
-                "epsilon/k slot order"
+                parameter_count == 3
+                    ? "joint-pure adapter requires the declared m, sigma, "
+                      "epsilon/k slot order"
+                    : "joint-pure adapter requires contiguous declared "
+                      "parameter slot order"
             );
         }
-        for (std::size_t index = 0; index < 3; ++index) {
+        for (std::size_t index = 0; index < parameter_count; ++index) {
             if (!std::isfinite(payload.parameter_origins[index])
                 || !std::isfinite(payload.parameter_scales[index])
                 || payload.parameter_scales[index] == 0.0
@@ -540,21 +648,22 @@ Payload parse_payload(PyObject* object) {
                 || !std::isfinite(payload.parameter_upper_bounds[index])
                 || payload.parameter_lower_bounds[index]
                     >= payload.parameter_upper_bounds[index]
-                || payload.parameter_slot_indices[index] >= 3) {
+                    || payload.parameter_slot_indices[index]
+                        >= parameter_count) {
                 throw std::invalid_argument(
                     "joint-pure parameter transforms or slots are invalid"
                 );
             }
         }
         for (const auto& vector : payload.start_vectors) {
-            if (vector.size() != 3
+            if (vector.size() != parameter_count
                 || !std::all_of(vector.cbegin(), vector.cend(),
                     [](double value) { return std::isfinite(value); })) {
                 throw std::invalid_argument(
-                    "joint-pure starts must contain three finite values"
+                    "joint-pure starts have the wrong finite dimension"
                 );
             }
-            for (std::size_t index = 0; index < 3; ++index) {
+            for (std::size_t index = 0; index < parameter_count; ++index) {
                 if (vector[index] < payload.parameter_lower_bounds[index]
                     || vector[index] > payload.parameter_upper_bounds[index]) {
                     throw std::invalid_argument(
@@ -706,6 +815,8 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
             || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1
             || candidate.capability
+                == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1
+            || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1
             || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_SOLVATION_FACTOR_MIAC_V1
@@ -775,6 +886,8 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_IONIC_REGION_PERMITTIVITY_V1;
     const bool solvent_permittivity = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_PERMITTIVITY_V1;
+    const bool associating_joint = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1;
     const bool binary = kij || lij;
     const bool direct = born || solvation_factor || aqueous_kij || dielectric
         || ion_solvation_kij || ionic_permittivity
@@ -853,6 +966,26 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
                                 == sizeof(
                                     epcsaft_ion_solvation_solvent_permittivity_result_v1
                                 )
+                    : associating_joint
+                        ? table.table_size
+                                >= offsetof(
+                                    epcsaft_native_sdk_v1,
+                                    evaluate_associating_pure_phase_parameters
+                                ) + sizeof(
+                                    table.evaluate_associating_pure_phase_parameters
+                                )
+                            && table.mixture_result_size
+                                == sizeof(epcsaft_mixture_phase_block_result_v1)
+                            && table.evaluate_associating_pure_phase_parameters
+                                != nullptr
+                            && table.association_site_count > 0
+                            && table.association_site_ids != nullptr
+                            && table.association_site_components != nullptr
+                            && table.association_site_multiplicities != nullptr
+                            && table.association_pair_count
+                                == (descriptor.active_parameter_count - 3) / 2
+                            && table.association_pair_site_a != nullptr
+                            && table.association_pair_site_b != nullptr
                     : joint_pure_observation(payload)
                         ? table.table_size
                                 >= offsetof(
@@ -896,7 +1029,7 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
         )
         || !components_match
         || !callback_available
-        || (!direct
+        || (!direct && !associating_joint
             && table.mixture_result_size
                 != sizeof(epcsaft_mixture_phase_block_result_v1))) {
         throw std::runtime_error(
@@ -934,6 +1067,12 @@ const char* capability_id(std::uint32_t value) {
     if (value
         == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1) {
         return "neutral_pure_2b_association_volume_v1";
+    }
+    if (
+        value
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1
+    ) {
+        return "neutral_pure_associating_joint_v1";
     }
     if (value == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1) {
         return "ion_solvation_born_v1";
@@ -1024,6 +1163,9 @@ const char* parameter_family(std::uint32_t value) {
     if (value == EPCSAFT_NATIVE_PARAMETER_FAMILY_RELATIVE_PERMITTIVITY_V1) {
         return "relative_permittivity";
     }
+    if (value == EPCSAFT_NATIVE_PARAMETER_FAMILY_PURE_ASSOCIATING_JOINT_V1) {
+        return "pure_associating_joint";
+    }
     throw std::runtime_error("provider advertised an unknown parameter family");
 }
 
@@ -1081,7 +1223,10 @@ void validate_descriptor(
         == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_ENERGY_HELMHOLTZ_V1;
     const bool association_volume = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1;
-    const bool association = association_energy || association_volume;
+    const bool associating_joint = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1;
+    const bool association =
+        association_energy || association_volume || associating_joint;
     const bool born = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1;
     const bool solvation_factor = descriptor.capability
@@ -1134,6 +1279,9 @@ void validate_descriptor(
         || (association_volume
             && descriptor.parameter_family
                 == EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_VOLUME_V1)
+        || (associating_joint
+            && descriptor.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_PURE_ASSOCIATING_JOINT_V1)
         || (born
             && descriptor.parameter_family
                 == EPCSAFT_NATIVE_PARAMETER_FAMILY_BORN_DIAMETER_V1)
@@ -1181,8 +1329,11 @@ void validate_descriptor(
         binary ? 2u : pure ? 1u : 3u;
     const std::size_t expected_state_count =
         binary ? 3u : pure ? 2u : 0u;
+    const std::size_t expected_active_parameter_count =
+        associating_joint ? descriptor.active_parameter_count : 1u;
     const std::size_t expected_coordinate_count =
-        binary ? 4u : pure ? 3u : 1u;
+        associating_joint ? 2u + expected_active_parameter_count
+        : binary ? 4u : pure ? 3u : 1u;
     if (descriptor.struct_size
             != sizeof(epcsaft_native_capability_descriptor_v1)
         || descriptor.schema_version
@@ -1208,7 +1359,10 @@ void validate_descriptor(
             != EPCSAFT_NATIVE_STATUS_UNSUPPORTED_MODEL_V1
         || descriptor.domain_status != EPCSAFT_NATIVE_STATUS_DOMAIN_ERROR_V1
         || descriptor.state_coordinate_count != expected_state_count
-        || descriptor.active_parameter_count != 1
+        || (associating_joint
+            && (expected_active_parameter_count < 5
+                || (expected_active_parameter_count - 3) % 2 != 0))
+        || descriptor.active_parameter_count != expected_active_parameter_count
         || descriptor.coordinate_count != expected_coordinate_count
         || descriptor.component_count != expected_component_count
         || descriptor.coordinates == nullptr
@@ -1276,7 +1430,7 @@ void validate_descriptor(
         pair_a.push_back(-1);
         pair_b.push_back(-1);
         units.push_back(born ? "angstrom" : "dimensionless");
-    } else {
+    } else if (!associating_joint) {
         kinds.push_back(EPCSAFT_NATIVE_CAPABILITY_COORDINATE_AMOUNT_V1);
         components.push_back(0);
         pair_a.push_back(-1);
@@ -1290,7 +1444,7 @@ void validate_descriptor(
         pair_b.push_back(-1);
         units.push_back("mol");
     }
-    if (!direct) {
+    if (!direct && !associating_joint) {
         kinds.push_back(EPCSAFT_NATIVE_CAPABILITY_COORDINATE_VOLUME_V1);
         components.push_back(-1);
         pair_a.push_back(-1);
@@ -1305,7 +1459,7 @@ void validate_descriptor(
         pair_a.push_back(0);
         pair_b.push_back(1);
         units.push_back("dimensionless");
-    } else if (pure) {
+    } else if (pure && !associating_joint) {
         kinds.push_back(
             segment_count
                 ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SEGMENT_COUNT_V1
@@ -1325,6 +1479,38 @@ void validate_descriptor(
                 ? "dimensionless"
                 : segment_diameter ? "angstrom" : "kelvin"
         );
+    } else if (associating_joint) {
+        kinds = {
+            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_AMOUNT_V1,
+            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_VOLUME_V1,
+            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SEGMENT_COUNT_V1,
+            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SEGMENT_DIAMETER_V1,
+            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_DISPERSION_ENERGY_OVER_K_V1,
+        };
+        components = {0, -1, 0, 0, 0};
+        pair_a.assign(5, -1);
+        pair_b.assign(5, -1);
+        units = {
+            "mol",
+            "m3",
+            "dimensionless",
+            "angstrom",
+            "kelvin",
+        };
+        const std::size_t pair_count =
+            (expected_active_parameter_count - 3) / 2;
+        for (std::size_t pair = 0; pair < pair_count; ++pair) {
+            kinds.push_back(
+                EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_ENERGY_OVER_K_V1
+            );
+            kinds.push_back(
+                EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_VOLUME_V1
+            );
+            components.insert(components.end(), {-1, -1});
+            pair_a.insert(pair_a.end(), {-1, -1});
+            pair_b.insert(pair_b.end(), {-1, -1});
+            units.insert(units.end(), {"kelvin", "dimensionless"});
+        }
     }
     for (std::size_t index = 0; index < kinds.size(); ++index) {
         const auto& coordinate = descriptor.coordinates[index];
@@ -1374,7 +1560,118 @@ PyObject* string_tuple(
     return tuple;
 }
 
+PyObject* integer_tuple(const int32_t* values, std::size_t count) {
+    PyObject* tuple = PyTuple_New(static_cast<Py_ssize_t>(count));
+    if (tuple == nullptr) return nullptr;
+    for (std::size_t index = 0; index < count; ++index) {
+        PyObject* item = PyLong_FromLong(values[index]);
+        if (item == nullptr) {
+            Py_DECREF(tuple);
+            return nullptr;
+        }
+        PyTuple_SET_ITEM(tuple, static_cast<Py_ssize_t>(index), item);
+    }
+    return tuple;
+}
+
+PyObject* association_pair_tuple(const epcsaft_native_sdk_v1& table) {
+    PyObject* tuple = PyTuple_New(
+        static_cast<Py_ssize_t>(table.association_pair_count)
+    );
+    if (tuple == nullptr) return nullptr;
+    for (std::size_t index = 0; index < table.association_pair_count; ++index) {
+        PyObject* item = Py_BuildValue(
+            "(ii)",
+            table.association_pair_site_a[index],
+            table.association_pair_site_b[index]
+        );
+        if (item == nullptr) {
+            Py_DECREF(tuple);
+            return nullptr;
+        }
+        PyTuple_SET_ITEM(tuple, static_cast<Py_ssize_t>(index), item);
+    }
+    return tuple;
+}
+
+bool association_metadata_tail_available(
+    const epcsaft_native_sdk_v1& table
+) {
+    constexpr std::size_t required_size =
+        offsetof(
+            epcsaft_native_sdk_v1,
+            evaluate_associating_pure_phase_parameters
+        )
+        + sizeof(table.evaluate_associating_pure_phase_parameters);
+    return table.table_size >= required_size;
+}
+
+void validate_association_metadata(
+    const epcsaft_native_sdk_v1& table,
+    const epcsaft_native_capability_descriptor_v1& descriptor,
+    bool joint
+) {
+    if (!association_metadata_tail_available(table)) {
+        throw std::runtime_error(
+            "provider SDK lacks the association-topology metadata tail"
+        );
+    }
+    if (table.association_site_count == 0
+        || table.association_site_ids == nullptr
+        || table.association_site_components == nullptr
+        || table.association_site_multiplicities == nullptr
+        || table.association_pair_count == 0
+        || table.association_pair_site_a == nullptr
+        || table.association_pair_site_b == nullptr) {
+        throw std::runtime_error(
+            "provider association-topology metadata is incomplete"
+        );
+    }
+    if (joint
+        && (descriptor.active_parameter_count < 5
+            || (descriptor.active_parameter_count - 3) % 2 != 0
+            || table.association_pair_count
+                != (descriptor.active_parameter_count - 3) / 2)) {
+        throw std::runtime_error(
+            "provider association-pair count does not match the capability"
+        );
+    }
+
+    std::set<std::string> site_ids;
+    for (std::size_t index = 0; index < table.association_site_count; ++index) {
+        const char* site_id = table.association_site_ids[index];
+        const std::int32_t component = table.association_site_components[index];
+        if (site_id == nullptr || site_id[0] == '\0'
+            || !site_ids.emplace(site_id).second
+            || component < 0
+            || static_cast<std::size_t>(component)
+                >= descriptor.component_count
+            || table.association_site_multiplicities[index] <= 0) {
+            throw std::runtime_error(
+                "provider association-site metadata is invalid"
+            );
+        }
+    }
+
+    std::set<std::pair<std::int32_t, std::int32_t>> pairs;
+    for (std::size_t index = 0; index < table.association_pair_count; ++index) {
+        const std::int32_t left = table.association_pair_site_a[index];
+        const std::int32_t right = table.association_pair_site_b[index];
+        if (left < 0 || right < 0 || left > right
+            || static_cast<std::size_t>(left)
+                >= table.association_site_count
+            || static_cast<std::size_t>(right)
+                >= table.association_site_count
+            || !pairs.emplace(left, right).second) {
+            throw std::runtime_error(
+                "provider association-pair endpoints are invalid"
+            );
+        }
+    }
+}
+
 PyObject* descriptor_to_python(
+    const epcsaft_native_sdk_v1& table,
     const epcsaft_native_capability_descriptor_v1& descriptor
 ) {
     validate_descriptor(descriptor);
@@ -1448,7 +1745,16 @@ PyObject* descriptor_to_python(
     const bool association = descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_ENERGY_HELMHOLTZ_V1
         || descriptor.capability
-            == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1;
+            == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1
+        || descriptor.capability
+            == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1;
+    const bool associating_joint = descriptor.capability
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1;
+    const bool association_metadata =
+        association && association_metadata_tail_available(table);
+    if (associating_joint || association_metadata) {
+        validate_association_metadata(table, descriptor, associating_joint);
+    }
     const bool ion_solvation_kij =
         descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1
@@ -1484,7 +1790,7 @@ PyObject* descriptor_to_python(
                         == EPCSAFT_NATIVE_MODEL_DOMAIN_ORGANIC_SINGLE_ION_SOLVATION_V1
                     ? "figiel_single_ion_solvation"
                 : association
-                    ? "neutral_associating_pure_2b"
+                    ? "neutral_associating_pure"
                 : binary
                     ? "neutral_nonassociating_binary"
                     : "neutral_nonassociating_pure";
@@ -1523,8 +1829,32 @@ PyObject* descriptor_to_python(
             active_components, static_cast<Py_ssize_t>(index), component
         );
     }
+    PyObject* association_site_ids = association_metadata
+        ? string_tuple(table.association_site_ids, table.association_site_count)
+        : PyTuple_New(0);
+    PyObject* association_site_multiplicities = association_metadata
+        ? integer_tuple(
+              table.association_site_multiplicities,
+              table.association_site_count
+          )
+        : PyTuple_New(0);
+    PyObject* association_pairs = association_metadata
+        ? association_pair_tuple(table)
+        : PyTuple_New(0);
+    if (association_site_ids == nullptr
+        || association_site_multiplicities == nullptr
+        || association_pairs == nullptr) {
+        Py_XDECREF(association_site_ids);
+        Py_XDECREF(association_site_multiplicities);
+        Py_XDECREF(association_pairs);
+        Py_DECREF(components);
+        Py_DECREF(kinds);
+        Py_DECREF(units);
+        Py_DECREF(active_components);
+        return nullptr;
+    }
     PyObject* result = Py_BuildValue(
-        "(ssNNNs#s#issddssssnns#ssN)",
+        "(ssNNNs#s#issddssssnns#ssNNNN)",
         capability_id(descriptor.capability),
         parameter_family(descriptor.parameter_family),
         components,
@@ -1551,7 +1881,10 @@ PyObject* descriptor_to_python(
         static_cast<Py_ssize_t>(basis_length),
         "UNSUPPORTED_MODEL",
         "DOMAIN_ERROR",
-        active_components
+        active_components,
+        association_site_ids,
+        association_site_multiplicities,
+        association_pairs
     );
     return result;
 }
@@ -1584,8 +1917,13 @@ Phase evaluate_phase(
     Phase phase{};
     const bool pure = payload.component_ids.size() == 1;
     phase.coordinate_count = pure ? 3 : 4;
-    phase.gradient.fill(std::numeric_limits<double>::quiet_NaN());
-    phase.hessian.fill(std::numeric_limits<double>::quiet_NaN());
+    phase.gradient.assign(
+        phase.coordinate_count, std::numeric_limits<double>::quiet_NaN()
+    );
+    phase.hessian.assign(
+        phase.coordinate_count * phase.coordinate_count,
+        std::numeric_limits<double>::quiet_NaN()
+    );
     epcsaft_mixture_phase_block_result_v1 result{};
     result.struct_size = sizeof(result);
     result.coordinate_count = phase.coordinate_count;
@@ -1734,6 +2072,8 @@ Phase evaluate_joint_pure_phase(
     }
     Phase phase{};
     phase.coordinate_count = 5;
+    phase.gradient.resize(phase.coordinate_count);
+    phase.hessian.resize(phase.coordinate_count * phase.coordinate_count);
     phase.pressure = result.pressure_pa;
     std::copy(std::begin(result.gradient), std::end(result.gradient),
               phase.gradient.begin());
@@ -1761,6 +2101,177 @@ Phase evaluate_joint_pure_phase(
         );
     }
     return phase;
+}
+
+Phase evaluate_associating_joint_pure_phase(
+    const epcsaft_native_sdk_v1& table,
+    const Payload& payload,
+    const Row& row,
+    double volume,
+    const std::vector<double>& parameters
+) {
+    if (parameters.size() < 5 || (parameters.size() - 3) % 2 != 0
+        || table.evaluate_associating_pure_phase_parameters == nullptr) {
+        throw std::runtime_error(
+            "Provider does not expose a compatible generic associating "
+            "pure-phase callback"
+        );
+    }
+    const std::size_t pair_count = (parameters.size() - 3) / 2;
+    std::vector<double> energies(pair_count);
+    std::vector<double> volumes(pair_count);
+    for (std::size_t pair = 0; pair < pair_count; ++pair) {
+        energies[pair] = parameters[3 + 2 * pair];
+        volumes[pair] = parameters[4 + 2 * pair];
+    }
+    Phase phase{};
+    phase.coordinate_count = 5 + 2 * pair_count;
+    phase.gradient.resize(phase.coordinate_count);
+    phase.hessian.resize(phase.coordinate_count * phase.coordinate_count);
+    epcsaft_mixture_phase_block_result_v1 result{};
+    result.struct_size = sizeof(result);
+    result.coordinate_count = phase.coordinate_count;
+    result.gradient_capacity = phase.gradient.size();
+    result.hessian_capacity = phase.hessian.size();
+    result.gradient = phase.gradient.data();
+    result.hessian = phase.hessian.data();
+    const int status =
+        table.evaluate_associating_pure_phase_parameters(
+            table.model_context,
+            row.temperature,
+            1.0,
+            volume,
+            parameters[0],
+            parameters[1],
+            parameters[2],
+            energies.data(),
+            energies.size(),
+            volumes.data(),
+            volumes.size(),
+            &result
+        );
+    if (status != EPCSAFT_NATIVE_STATUS_OK_V1 || result.status != status) {
+        const std::size_t error_length = strnlen(
+            result.error, EPCSAFT_NATIVE_SDK_V1_ERROR_SIZE
+        );
+        throw std::runtime_error(
+            std::string(
+                "Provider ordinary-sigma associating pure-phase evaluation "
+                "failed: "
+            ) + std::string(result.error, error_length)
+        );
+    }
+    phase.pressure = result.pressure_pa;
+    if (result.coordinate_count != phase.coordinate_count
+        || result.gradient != phase.gradient.data()
+        || result.hessian != phase.hessian.data()
+        || !bounded_field_equal(
+            payload.parameter_fingerprint, result.parameter_fingerprint
+        )
+        || !std::isfinite(phase.pressure)
+        || !std::all_of(
+            phase.gradient.cbegin(),
+            phase.gradient.cbegin()
+                + static_cast<std::ptrdiff_t>(phase.coordinate_count),
+            [](double value) { return std::isfinite(value); }
+        )
+        || !std::all_of(
+            phase.hessian.cbegin(),
+            phase.hessian.cbegin()
+                + static_cast<std::ptrdiff_t>(
+                    phase.coordinate_count * phase.coordinate_count
+                ),
+            [](double value) { return std::isfinite(value); }
+        )) {
+        throw std::runtime_error(
+            "Provider ordinary-sigma associating pure-phase result is "
+            "incomplete or has an identity mismatch"
+        );
+    }
+    return phase;
+}
+
+double associating_pressure_root_start(
+    const epcsaft_native_sdk_v1& table,
+    const Payload& payload,
+    const Row& row,
+    const std::vector<double>& parameters,
+    double initial,
+    const std::array<double, 2>& bounds
+) {
+    const std::size_t coordinates = parameters.size() + 2;
+    const auto evaluate = [&](double volume) {
+        return evaluate_associating_joint_pure_phase(
+            table, payload, row, volume, parameters
+        );
+    };
+    double volume = initial;
+    for (std::size_t iteration = 0; iteration < 24; ++iteration) {
+        const Phase phase = evaluate(volume);
+        const double residual = phase.pressure - row.pressure;
+        if (std::abs(residual)
+                <= std::max(1.0e-4, 1.0e-10 * row.pressure)
+            && phase.hessian[coordinates + 1] > 0.0) {
+            return volume;
+        }
+        const double derivative = -gas_constant * row.temperature
+            * phase.hessian[coordinates + 1];
+        if (!(std::isfinite(derivative) && derivative != 0.0)) break;
+        const double candidate = volume - residual / derivative;
+        if (!(candidate > bounds[0] && candidate < bounds[1])) break;
+        volume = candidate;
+    }
+
+    constexpr std::size_t intervals = 32;
+    const double log_lower = std::log(bounds[0]);
+    const double log_upper = std::log(bounds[1]);
+    double left = bounds[0];
+    double left_residual = evaluate(left).pressure - row.pressure;
+    std::vector<double> roots;
+    for (std::size_t index = 1; index <= intervals; ++index) {
+        double right = std::exp(
+            log_lower
+            + static_cast<double>(index) / intervals
+                * (log_upper - log_lower)
+        );
+        double right_residual = evaluate(right).pressure - row.pressure;
+        if (left_residual == 0.0
+            || std::signbit(left_residual) != std::signbit(right_residual)) {
+            double bracket_left = left;
+            double bracket_right = right;
+            double bracket_residual = left_residual;
+            for (std::size_t bisection = 0; bisection < 60; ++bisection) {
+                const double middle =
+                    0.5 * (bracket_left + bracket_right);
+                const double middle_residual =
+                    evaluate(middle).pressure - row.pressure;
+                if (std::signbit(middle_residual)
+                    == std::signbit(bracket_residual)) {
+                    bracket_left = middle;
+                    bracket_residual = middle_residual;
+                } else {
+                    bracket_right = middle;
+                }
+            }
+            const double root = 0.5 * (bracket_left + bracket_right);
+            const Phase phase = evaluate(root);
+            if (phase.hessian[coordinates + 1] > 0.0) roots.push_back(root);
+        }
+        left = right;
+        left_residual = right_residual;
+    }
+    if (roots.empty()) {
+        throw std::runtime_error(
+            "associating vapor-pressure row has no mechanically stable "
+            "pressure root inside its declared phase-volume bounds"
+        );
+    }
+    return *std::min_element(
+        roots.begin(), roots.end(), [initial](double left, double right) {
+            return std::abs(std::log(left / initial))
+                < std::abs(std::log(right / initial));
+        }
+    );
 }
 
 void evaluate_direct_problem(
@@ -2292,6 +2803,212 @@ void evaluate_joint_pure_problem(
     }
 }
 
+void evaluate_mixed_pure_associating_problem(
+    const epcsaft_native_sdk_v1& table,
+    const Payload& payload,
+    const double* variables,
+    Evaluation& evaluation
+) {
+    const std::size_t parameter_count = payload.parameter_origins.size();
+    constexpr std::size_t amount_coordinate = 0;
+    constexpr std::size_t volume_coordinate = 1;
+    constexpr std::size_t parameter_coordinate = 2;
+    const std::size_t coordinate_count = parameter_count + 2;
+    const std::size_t variable_total = variable_count(payload);
+    std::vector<double> parameters(parameter_count);
+    for (std::size_t parameter = 0; parameter < parameter_count; ++parameter) {
+        const double solver_value =
+            variables[payload.parameter_slot_indices[parameter]];
+        parameters[parameter] = payload.parameter_origins[parameter]
+            + payload.parameter_scales[parameter] * solver_value;
+        if (!std::isfinite(parameters[parameter])
+            || parameters[parameter]
+                < payload.parameter_lower_bounds[parameter]
+            || parameters[parameter]
+                > payload.parameter_upper_bounds[parameter]) {
+            throw std::invalid_argument(
+                "ordinary-sigma associating parameter is outside its "
+                "declared bounds"
+            );
+        }
+    }
+    std::size_t nuisance_offset = parameter_count;
+    std::size_t residual_offset = 0;
+    for (std::size_t row_index = 0;
+         row_index < payload.training_rows.size();
+         ++row_index) {
+        const Row& row = payload.training_rows[row_index];
+        const std::size_t liquid_column = nuisance_offset;
+        const double liquid_volume = row.liquid_volume_origin
+            * std::exp(variables[liquid_column]);
+        if (!std::isfinite(liquid_volume)
+            || liquid_volume < row.liquid_volume_bounds[0]
+            || liquid_volume > row.liquid_volume_bounds[1]) {
+            throw std::invalid_argument(
+                "ordinary-sigma associating liquid volume violates bounds"
+            );
+        }
+        const Phase liquid = evaluate_associating_joint_pure_phase(
+            table, payload, row, liquid_volume, parameters
+        );
+        if (!(liquid.hessian[
+                volume_coordinate * coordinate_count + volume_coordinate
+            ] > 0.0)) {
+            throw std::runtime_error(
+                "ordinary-sigma associating liquid phase is not mechanically "
+                "stable"
+            );
+        }
+        auto jacobian = [&](std::size_t residual, std::size_t column)
+            -> double& {
+            return evaluation.jacobian[residual * variable_total + column];
+        };
+        const double pressure_factor = 1.0 / row.pressure_scale;
+        evaluation.residuals[residual_offset] =
+            (liquid.pressure - row.pressure) * pressure_factor;
+        for (std::size_t parameter = 0;
+             parameter < parameter_count;
+             ++parameter) {
+            const std::size_t coordinate = parameter_coordinate + parameter;
+            const std::size_t column =
+                payload.parameter_slot_indices[parameter];
+            jacobian(residual_offset, column) =
+                -gas_constant * row.temperature
+                * liquid.hessian[
+                    volume_coordinate * coordinate_count + coordinate
+                ]
+                * payload.parameter_scales[parameter] * pressure_factor;
+        }
+        jacobian(residual_offset, liquid_column) =
+            -gas_constant * row.temperature
+            * liquid.hessian[
+                volume_coordinate * coordinate_count + volume_coordinate
+            ]
+            * liquid_volume * pressure_factor;
+
+        if (row.kind == ObservationKind::pure_density) {
+            const double density = row.molar_mass / liquid_volume;
+            evaluation.residuals[residual_offset + 1] =
+                (density - row.liquid_density) / row.liquid_density_scale;
+            jacobian(residual_offset + 1, liquid_column) =
+                -density / row.liquid_density_scale;
+            evaluation.modeled_values[row_index] = density;
+            evaluation.provider_derivatives[row_index] =
+                liquid.hessian[
+                    volume_coordinate * coordinate_count
+                    + parameter_coordinate
+                ];
+            nuisance_offset += 1;
+            residual_offset += 2;
+            continue;
+        }
+
+        const std::size_t vapor_column = liquid_column + 1;
+        const double vapor_volume = row.vapor_volume_origin
+            * std::exp(variables[vapor_column]);
+        if (!std::isfinite(vapor_volume)
+            || vapor_volume < row.vapor_volume_bounds[0]
+            || vapor_volume > row.vapor_volume_bounds[1]
+            || liquid_volume >= vapor_volume) {
+            throw std::invalid_argument(
+                "ordinary-sigma associating vapor volume violates bounds or "
+                "phase ordering"
+            );
+        }
+        const Phase vapor = evaluate_associating_joint_pure_phase(
+            table, payload, row, vapor_volume, parameters
+        );
+        if (!(vapor.hessian[
+                volume_coordinate * coordinate_count + volume_coordinate
+            ] > 0.0)) {
+            throw std::runtime_error(
+                "ordinary-sigma associating vapor phase is not mechanically "
+                "stable"
+            );
+        }
+        const double mu_factor =
+            1.0 / row.chemical_potential_scales[0];
+        evaluation.residuals[residual_offset + 1] =
+            (vapor.pressure - row.pressure) * pressure_factor;
+        evaluation.residuals[residual_offset + 2] =
+            (liquid.gradient[amount_coordinate]
+             - vapor.gradient[amount_coordinate])
+            * mu_factor;
+        const bool includes_density =
+            row.kind == ObservationKind::pure_phase;
+        const double density = row.molar_mass / liquid_volume;
+        if (includes_density) {
+            evaluation.residuals[residual_offset + 3] =
+                (density - row.liquid_density)
+                / row.liquid_density_scale;
+        }
+        for (std::size_t parameter = 0;
+             parameter < parameter_count;
+             ++parameter) {
+            const std::size_t coordinate = parameter_coordinate + parameter;
+            const std::size_t column =
+                payload.parameter_slot_indices[parameter];
+            jacobian(residual_offset + 1, column) =
+                -gas_constant * row.temperature
+                * vapor.hessian[
+                    volume_coordinate * coordinate_count + coordinate
+                ]
+                * payload.parameter_scales[parameter] * pressure_factor;
+            jacobian(residual_offset + 2, column) =
+                (liquid.hessian[
+                     amount_coordinate * coordinate_count + coordinate
+                 ]
+                 - vapor.hessian[
+                     amount_coordinate * coordinate_count + coordinate
+                 ])
+                * payload.parameter_scales[parameter] * mu_factor;
+        }
+        jacobian(residual_offset + 1, vapor_column) =
+            -gas_constant * row.temperature
+            * vapor.hessian[
+                volume_coordinate * coordinate_count + volume_coordinate
+            ]
+            * vapor_volume * pressure_factor;
+        jacobian(residual_offset + 2, liquid_column) =
+            liquid.hessian[
+                amount_coordinate * coordinate_count + volume_coordinate
+            ]
+            * liquid_volume * mu_factor;
+        jacobian(residual_offset + 2, vapor_column) =
+            -vapor.hessian[
+                amount_coordinate * coordinate_count + volume_coordinate
+            ]
+            * vapor_volume * mu_factor;
+        if (includes_density) {
+            jacobian(residual_offset + 3, liquid_column) =
+                -density / row.liquid_density_scale;
+        }
+        evaluation.modeled_values[row_index] =
+            includes_density ? density : liquid.pressure;
+        evaluation.provider_derivatives[row_index] =
+            liquid.hessian[
+                volume_coordinate * coordinate_count + parameter_coordinate
+            ];
+        nuisance_offset += 2;
+        residual_offset += includes_density ? 4 : 3;
+    }
+    if (nuisance_offset != variable_total
+        || residual_offset != evaluation.residuals.size()
+        || !std::all_of(
+            evaluation.residuals.cbegin(), evaluation.residuals.cend(),
+            [](double value) { return std::isfinite(value); }
+        )
+        || !std::all_of(
+            evaluation.jacobian.cbegin(), evaluation.jacobian.cend(),
+            [](double value) { return std::isfinite(value); }
+        )) {
+        throw std::runtime_error(
+            "assembled ordinary-sigma associating residual or Jacobian is "
+            "incomplete or nonfinite"
+        );
+    }
+}
+
 void evaluate_problem(
     const epcsaft_native_sdk_v1& table,
     const Payload& payload,
@@ -2312,6 +3029,12 @@ void evaluate_problem(
         throw std::logic_error("evaluation scratch dimensions are invalid");
     }
     std::fill(evaluation.jacobian.begin(), evaluation.jacobian.end(), 0.0);
+    if (mixed_pure_associating_observation(payload)) {
+        evaluate_mixed_pure_associating_problem(
+            table, payload, variables, evaluation
+        );
+        return;
+    }
     if (joint_pure_observation(payload)) {
         evaluate_joint_pure_problem(table, payload, variables, evaluation);
         return;
@@ -2703,8 +3426,7 @@ SolveOutcome solve_joint_pure_training(
     const std::vector<double>& physical_start
 ) {
     const std::size_t fitted_count = payload.parameter_origins.size();
-    const std::size_t row_count = payload.training_rows.size();
-    const std::size_t total = fitted_count + 2 * row_count;
+    const std::size_t total = variable_count(payload);
     std::vector<double> start(total, 0.0);
     for (std::size_t parameter = 0; parameter < fitted_count; ++parameter) {
         const std::size_t slot = payload.parameter_slot_indices[parameter];
@@ -2712,14 +3434,40 @@ SolveOutcome solve_joint_pure_training(
                        - payload.parameter_origins[parameter])
             / payload.parameter_scales[parameter];
     }
-    for (std::size_t row = 0; row < row_count; ++row) {
-        const Row& source = payload.training_rows[row];
-        start[fitted_count + 2 * row] = std::log(
-            source.liquid_volume_start / source.liquid_volume_origin
+    std::size_t nuisance_offset = fitted_count;
+    for (const Row& source : payload.training_rows) {
+        const bool associating_phase_equilibrium =
+            mixed_pure_associating_observation(payload)
+            && source.kind != ObservationKind::pure_density;
+        const double liquid_start = associating_phase_equilibrium
+            ? associating_pressure_root_start(
+                  table,
+                  payload,
+                  source,
+                  physical_start,
+                  source.liquid_volume_start,
+                  source.liquid_volume_bounds
+              )
+            : source.liquid_volume_start;
+        start[nuisance_offset] = std::log(
+            liquid_start / source.liquid_volume_origin
         );
-        start[fitted_count + 2 * row + 1] = std::log(
-            source.vapor_volume_start / source.vapor_volume_origin
-        );
+        if (row_nuisance_count(source) == 2) {
+            const double vapor_start = associating_phase_equilibrium
+                ? associating_pressure_root_start(
+                      table,
+                      payload,
+                      source,
+                      physical_start,
+                      source.vapor_volume_start,
+                      source.vapor_volume_bounds
+                  )
+                : source.vapor_volume_start;
+            start[nuisance_offset + 1] = std::log(
+                vapor_start / source.vapor_volume_origin
+            );
+        }
+        nuisance_offset += row_nuisance_count(source);
     }
     std::vector<internal::CoordinateBound> bounds(total);
     for (std::size_t parameter = 0; parameter < fitted_count; ++parameter) {
@@ -2732,18 +3480,31 @@ SolveOutcome solve_joint_pure_training(
             / payload.parameter_scales[parameter];
         bounds[slot] = {std::min(lower, upper), std::max(lower, upper)};
     }
-    for (std::size_t row = 0; row < row_count; ++row) {
-        const Row& source = payload.training_rows[row];
-        bounds[fitted_count + 2 * row] = {
+    nuisance_offset = fitted_count;
+    for (const Row& source : payload.training_rows) {
+        bounds[nuisance_offset] = {
             std::log(source.liquid_volume_bounds[0] / source.liquid_volume_origin),
             std::log(source.liquid_volume_bounds[1] / source.liquid_volume_origin),
         };
-        bounds[fitted_count + 2 * row + 1] = {
-            std::log(source.vapor_volume_bounds[0] / source.vapor_volume_origin),
-            std::log(source.vapor_volume_bounds[1] / source.vapor_volume_origin),
-        };
+        if (row_nuisance_count(source) == 2) {
+            bounds[nuisance_offset + 1] = {
+                std::log(
+                    source.vapor_volume_bounds[0]
+                    / source.vapor_volume_origin
+                ),
+                std::log(
+                    source.vapor_volume_bounds[1]
+                    / source.vapor_volume_origin
+                ),
+            };
+        }
+        nuisance_offset += row_nuisance_count(source);
     }
-    const internal::ProblemShape shape{fitted_count, 2 * row_count, 4 * row_count};
+    const internal::ProblemShape shape{
+        fitted_count,
+        total - fitted_count,
+        residual_count(payload),
+    };
     const internal::SolverControls controls{
         payload.maximum_iterations,
         payload.maximum_solver_time_seconds,
@@ -2798,9 +3559,11 @@ public:
         payload_(payload),
         fitted_solver_values_(std::move(fitted_solver_values)),
         scratch_(make_evaluation(payload)) {
-        const bool density = pure_density_observation(payload_);
-        set_num_residuals(density ? 2 : 4);
-        mutable_parameter_block_sizes()->push_back(density ? 1 : 2);
+        const Row& row = payload_.training_rows.front();
+        set_num_residuals(static_cast<int>(row_residual_count(row)));
+        mutable_parameter_block_sizes()->push_back(
+            static_cast<int>(row_nuisance_count(row))
+        );
     }
 
     bool Evaluate(
@@ -2808,8 +3571,9 @@ public:
     ) const override {
         try {
             std::vector<double> variables = fitted_solver_values_;
+            const Row& source = payload_.training_rows.front();
             const std::size_t nuisance_count =
-                pure_density_observation(payload_) ? 1u : 2u;
+                row_nuisance_count(source);
             for (std::size_t index = 0; index < nuisance_count; ++index) {
                 variables.push_back(values[0][index]);
             }
@@ -2826,13 +3590,13 @@ public:
             );
             if (jacobians != nullptr && jacobians[0] != nullptr) {
                 const std::size_t nuisance_count =
-                    pure_density_observation(payload_) ? 1u : 2u;
-                const std::size_t row_count =
-                    pure_density_observation(payload_) ? 2u : 4u;
+                    row_nuisance_count(source);
+                const std::size_t residual_count =
+                    row_residual_count(source);
                 const std::size_t fitted_count =
                     joint_pure_observation(payload_)
                     ? payload_.parameter_origins.size() : 1u;
-                for (std::size_t row = 0; row < row_count; ++row) {
+                for (std::size_t row = 0; row < residual_count; ++row) {
                     for (
                         std::size_t column = 0;
                         column < nuisance_count;
@@ -2892,7 +3656,7 @@ RowOutcome solve_reporting(
         variables.data(), 0,
         std::log(row.liquid_volume_bounds[1] / row.liquid_volume_origin)
     );
-    if (!pure_density_observation(row_payload)) {
+    if (row_nuisance_count(row) == 2) {
         problem.SetParameterLowerBound(
             variables.data(), 1,
             std::log(row.vapor_volume_bounds[0] / row.vapor_volume_origin)
@@ -2907,7 +3671,7 @@ RowOutcome solve_reporting(
     RowOutcome outcome{
         row,
         row.liquid_volume_origin * std::exp(variables[0]),
-        pure_density_observation(row_payload)
+        row_nuisance_count(row) == 1
             ? std::numeric_limits<double>::quiet_NaN()
             : row.vapor_volume_origin * std::exp(variables[1]),
         {},
@@ -2918,7 +3682,7 @@ RowOutcome solve_reporting(
         Evaluation evaluation = make_evaluation(row_payload);
         std::vector<double> final_variables = fitted_solver_values;
         final_variables.push_back(variables[0]);
-        if (!pure_density_observation(row_payload)) {
+        if (row_nuisance_count(row) == 2) {
             final_variables.push_back(variables[1]);
         }
         evaluate_problem(
@@ -3099,6 +3863,116 @@ PyObject* rows_to_python(
                 usable
                     ? evaluation.provider_derivatives[0]
                     : std::numeric_limits<double>::quiet_NaN()
+            );
+            if (item == nullptr) {
+                Py_DECREF(result);
+                return nullptr;
+            }
+            PyTuple_SET_ITEM(
+                result,
+                static_cast<Py_ssize_t>(
+                    payload.training_rows.size() + index
+                ),
+                item
+            );
+        }
+        return result;
+    }
+    if (mixed_pure_associating_observation(payload)) {
+        const std::size_t fitted_count = payload.parameter_origins.size();
+        std::size_t nuisance_offset = fitted_count;
+        std::size_t residual_offset = 0;
+        for (std::size_t index = 0;
+             index < payload.training_rows.size();
+             ++index) {
+            const Row& row = payload.training_rows[index];
+            const std::size_t nuisance_count = row_nuisance_count(row);
+            const std::size_t row_residuals = row_residual_count(row);
+            const double liquid_volume = primary_evaluation_available
+                ? row.liquid_volume_origin
+                    * std::exp(primary.variables[nuisance_offset])
+                : row.liquid_volume_start;
+            const double vapor_volume =
+                nuisance_count == 1
+                ? std::numeric_limits<double>::quiet_NaN()
+                : primary_evaluation_available
+                    ? row.vapor_volume_origin
+                        * std::exp(primary.variables[nuisance_offset + 1])
+                    : row.vapor_volume_start;
+            const std::vector<double> residuals =
+                primary_evaluation_available
+                ? std::vector<double>(
+                    primary.evaluation.residuals.begin()
+                        + static_cast<std::ptrdiff_t>(residual_offset),
+                    primary.evaluation.residuals.begin()
+                        + static_cast<std::ptrdiff_t>(
+                            residual_offset + row_residuals
+                        )
+                )
+                : std::vector<double>(
+                    row_residuals,
+                    std::numeric_limits<double>::quiet_NaN()
+                );
+            PyObject* item = row_to_python(
+                row,
+                liquid_volume,
+                vapor_volume,
+                residuals,
+                primary_evaluation_available,
+                primary_evaluation_available ? "" : unavailable_reason,
+                primary_evaluation_available
+                    ? primary.evaluation.modeled_values[index]
+                    : std::numeric_limits<double>::quiet_NaN(),
+                primary_evaluation_available
+                    ? primary.evaluation.provider_derivatives[index]
+                    : std::numeric_limits<double>::quiet_NaN()
+            );
+            if (item == nullptr) {
+                Py_DECREF(result);
+                return nullptr;
+            }
+            PyTuple_SET_ITEM(result, static_cast<Py_ssize_t>(index), item);
+            nuisance_offset += nuisance_count;
+            residual_offset += row_residuals;
+        }
+        const std::vector<double> fitted_solver_values(
+            primary.variables.cbegin(),
+            primary.variables.cbegin()
+                + static_cast<std::ptrdiff_t>(fitted_count)
+        );
+        for (std::size_t index = 0;
+             index < payload.reporting_rows.size();
+             ++index) {
+            const Row& row = payload.reporting_rows[index];
+            const RowOutcome outcome = primary_evaluation_available
+                ? solve_reporting(
+                    table, payload, row, fitted_solver_values
+                )
+                : RowOutcome{
+                    row,
+                    row.liquid_volume_start,
+                    row.kind == ObservationKind::pure_density
+                        ? std::numeric_limits<double>::quiet_NaN()
+                        : row.vapor_volume_start,
+                    {},
+                    false,
+                    unavailable_reason,
+                };
+            PyObject* item = row_to_python(
+                outcome.row,
+                outcome.liquid_volume,
+                outcome.vapor_volume,
+                std::vector<double>(
+                    outcome.residuals.begin(),
+                    outcome.residuals.begin()
+                        + static_cast<std::ptrdiff_t>(
+                            row_residual_count(outcome.row)
+                        )
+                ),
+                outcome.usable,
+                outcome.failure_reason,
+                std::numeric_limits<double>::quiet_NaN(),
+                std::numeric_limits<double>::quiet_NaN()
             );
             if (item == nullptr) {
                 Py_DECREF(result);
@@ -3337,8 +4211,10 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
                     == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_IONIC_REGION_PERMITTIVITY_V1
                 || descriptor.capability
                     == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_PERMITTIVITY_V1
+                || descriptor.capability
+                    == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1
             )
-                ? descriptor_to_python(descriptor)
+                ? descriptor_to_python(*table, descriptor)
                 : unsupported_descriptor_to_python(descriptor);
             if (item == nullptr) {
                 Py_DECREF(result);
