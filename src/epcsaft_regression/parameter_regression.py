@@ -58,9 +58,6 @@ class ParameterCapability:
     unsupported_status: str
     domain_status: str
     active_component_ids: tuple[str, ...]
-    association_site_ids: tuple[str, ...]
-    association_site_multiplicities: tuple[int, ...]
-    association_pairs: tuple[tuple[str, str], ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,7 +71,6 @@ class UnsupportedParameterCapability:
 class FittedParameterDiagnostic:
     family: ParameterFamily
     component_ids: tuple[str, ...]
-    association_site_ids: tuple[str, ...]
     unit: str
     transform_origin: float
     transform_scale: float
@@ -269,11 +265,6 @@ def parameter_capabilities(
                     if raw[12] == "unordered_component_pair"
                     else tuple(raw[21])
                 ),
-                association_site_ids=tuple(raw[22]),
-                association_site_multiplicities=tuple(raw[23]),
-                association_pairs=tuple(
-                    (raw[22][pair[0]], raw[22][pair[1]]) for pair in raw[24]
-                ),
             )
         )
     return tuple(capabilities)
@@ -360,33 +351,6 @@ class ModelParameterIdentity:
 
 
 @dataclass(frozen=True, slots=True)
-class AssociationPairParameterIdentity:
-    component_id: str
-    site_id_a: str
-    site_id_b: str
-
-    def __post_init__(self) -> None:
-        _require_nonempty_string(self.component_id, "component_id")
-        _require_nonempty_string(self.site_id_a, "site_id_a")
-        _require_nonempty_string(self.site_id_b, "site_id_b")
-        canonical = tuple(sorted((self.site_id_a, self.site_id_b)))
-        object.__setattr__(self, "site_id_a", canonical[0])
-        object.__setattr__(self, "site_id_b", canonical[1])
-
-    @property
-    def component_ids(self) -> tuple[str]:
-        return (self.component_id,)
-
-    @property
-    def canonical_component_ids(self) -> tuple[str]:
-        return self.component_ids
-
-    @property
-    def canonical_site_ids(self) -> tuple[str, str]:
-        return (self.site_id_a, self.site_id_b)
-
-
-@dataclass(frozen=True, slots=True)
 class AffineParameterTransform:
     origin: float
     scale: float
@@ -409,12 +373,7 @@ class AffineParameterTransform:
 @dataclass(frozen=True, slots=True)
 class ParameterCoordinate:
     family: ParameterFamily
-    identity: (
-        PairParameterIdentity
-        | ComponentParameterIdentity
-        | AssociationPairParameterIdentity
-        | ModelParameterIdentity
-    )
+    identity: PairParameterIdentity | ComponentParameterIdentity | ModelParameterIdentity
     capability_id: str
     provider_parameter_fingerprint: str
     provider_topology_fingerprint: str
@@ -438,6 +397,8 @@ class ParameterCoordinate:
         model_units = {
             ParameterFamily.ION_FRACTION_SUPPRESSION_COEFFICIENT: "1",
             ParameterFamily.IONIC_REGION_RELATIVE_PERMITTIVITY: "1",
+            ParameterFamily.ASSOCIATION_ENERGY_OVER_K: "K",
+            ParameterFamily.ASSOCIATION_VOLUME: "1",
         }
         if self.family in pair_families:
             if not isinstance(self.identity, PairParameterIdentity):
@@ -451,18 +412,6 @@ class ParameterCoordinate:
                     "component-parameter identity must be a ComponentParameterIdentity"
                 )
             expected_unit = component_units[self.family]
-        elif self.family in (
-            ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
-            ParameterFamily.ASSOCIATION_VOLUME,
-        ):
-            if not isinstance(self.identity, AssociationPairParameterIdentity):
-                raise TypeError(
-                    "association parameter identity must name one component "
-                    "and one unordered site pair"
-                )
-            expected_unit = (
-                "K" if self.family is ParameterFamily.ASSOCIATION_ENERGY_OVER_K else "1"
-            )
         elif self.family in model_units:
             if not isinstance(self.identity, ModelParameterIdentity):
                 raise TypeError(
@@ -1266,11 +1215,6 @@ class RegressionProblem:
             (
                 parameter.family,
                 parameter.identity.canonical_component_ids,
-                (
-                    parameter.identity.canonical_site_ids
-                    if isinstance(parameter.identity, AssociationPairParameterIdentity)
-                    else ()
-                ),
             )
             for parameter in self.parameters
         )
@@ -1533,22 +1477,12 @@ def _row_payload(row: RegressionObservation) -> tuple[object, ...]:
 
 def _is_associating_parameter_block(problem: RegressionProblem) -> bool:
     families = tuple(parameter.family for parameter in problem.parameters)
-    return (
-        len(families) >= 5
-        and families[:3]
-        == (
-            ParameterFamily.SEGMENT_COUNT,
-            ParameterFamily.SEGMENT_DIAMETER,
-            ParameterFamily.DISPERSION_ENERGY_OVER_K,
-        )
-        and all(
-            families[index : index + 2]
-            == (
-                ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
-                ParameterFamily.ASSOCIATION_VOLUME,
-            )
-            for index in range(3, len(families), 2)
-        )
+    return families == (
+        ParameterFamily.SEGMENT_COUNT,
+        ParameterFamily.SEGMENT_DIAMETER,
+        ParameterFamily.DISPERSION_ENERGY_OVER_K,
+        ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
+        ParameterFamily.ASSOCIATION_VOLUME,
     )
 
 
@@ -1646,19 +1580,6 @@ def _matched_capability(
         raise ValueError(
             "regression parameter unit does not match the installed Provider capability"
         )
-    if parameter.family in (
-        ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
-        ParameterFamily.ASSOCIATION_VOLUME,
-    ) and (
-        not isinstance(parameter.identity, AssociationPairParameterIdentity)
-        or parameter.identity.canonical_component_ids != capability.component_ids
-        or len(capability.association_pairs) != 1
-        or parameter.identity.canonical_site_ids
-        != tuple(sorted(capability.association_pairs[0]))
-    ):
-        raise ValueError(
-            "association parameter does not match the Provider site-pair identity"
-        )
     for row in problem.observations:
         if row.component_ids != capability.component_ids:
             raise ValueError(
@@ -1746,12 +1667,13 @@ def _matched_capabilities(
             capability
             for capability in parameter_capabilities(model)
             if isinstance(capability, ParameterCapability)
-            and capability.capability_id == "neutral_pure_associating_joint_v1"
+            and capability.capability_id
+            == "neutral_pure_associating_joint_sigma_basis_v1"
         )
         if len(advertised) != 1:
             raise ValueError(
-                "installed Provider does not advertise exactly one generic "
-                "pure-associating joint capability"
+                "installed Provider does not advertise exactly one ordinary-sigma "
+                "pure-2B joint capability"
             )
         capability = advertised[0]
         expected_kinds = (
@@ -1760,14 +1682,8 @@ def _matched_capabilities(
             "segment_count",
             "segment_diameter",
             "dispersion_energy_over_k",
-            *(
-                kind
-                for _ in capability.association_pairs
-                for kind in (
-                    "association_energy_over_k",
-                    "association_volume",
-                )
-            ),
+            "association_energy_over_k",
+            "association_volume",
         )
         expected_units = (
             "mol",
@@ -1775,11 +1691,8 @@ def _matched_capabilities(
             "dimensionless",
             "angstrom",
             "kelvin",
-            *(
-                unit
-                for _ in capability.association_pairs
-                for unit in ("kelvin", "dimensionless")
-            ),
+            "kelvin",
+            "dimensionless",
         )
         if (
             capability.family is not ParameterFamily.PURE_ASSOCIATING_JOINT
@@ -1794,22 +1707,16 @@ def _matched_capabilities(
             or capability.derivative_order != 2
         ):
             raise ValueError(
-                "installed Provider generic pure-associating descriptor does "
-                "not match the requested dynamic coordinate contract"
+                "installed Provider ordinary-sigma pure-2B descriptor does "
+                "not match the requested five-parameter coordinate contract"
             )
-        expected_parameter_units = (
-            "1",
-            "angstrom",
-            "K",
-            *(unit for _ in capability.association_pairs for unit in ("K", "1")),
-        )
+        expected_parameter_units = ("1", "angstrom", "K", "K", "1")
         for index, parameter in enumerate(problem.parameters):
             expected_identity = (
                 ComponentParameterIdentity
                 if index < 3
-                else AssociationPairParameterIdentity
+                else ModelParameterIdentity
             )
-            pair_index = (index - 3) // 2
             if (
                 parameter.capability_id != capability.capability_id
                 or parameter.provider_parameter_fingerprint
@@ -1822,15 +1729,6 @@ def _matched_capabilities(
                     index < 3
                     and parameter.identity.canonical_component_ids
                     != capability.component_ids
-                )
-                or (
-                    index >= 3
-                    and (
-                        parameter.identity.canonical_component_ids
-                        != capability.component_ids
-                        or parameter.identity.canonical_site_ids
-                        != tuple(sorted(capability.association_pairs[pair_index]))
-                    )
                 )
             ):
                 raise ValueError(
@@ -1854,7 +1752,7 @@ def _matched_capabilities(
             ):
                 raise ValueError(
                     f"observation {row.row_id!r} does not match the installed "
-                    "generic pure-associating capability"
+                    "ordinary-sigma pure-2B capability"
                 )
         return tuple(
             replace(capability, family=parameter.family)
@@ -2147,11 +2045,6 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         FittedParameterDiagnostic(
             family=coordinate.family,
             component_ids=coordinate.identity.canonical_component_ids,
-            association_site_ids=(
-                coordinate.identity.canonical_site_ids
-                if isinstance(coordinate.identity, AssociationPairParameterIdentity)
-                else ()
-            ),
             unit=coordinate.unit,
             transform_origin=coordinate.transform.origin,
             transform_scale=coordinate.transform.scale,

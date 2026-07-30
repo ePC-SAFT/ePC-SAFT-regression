@@ -21,7 +21,6 @@ import pytest
 import epcsaft_regression.parameter_regression as parameter_regression
 from epcsaft_regression import (
     AffineParameterTransform,
-    AssociationPairParameterIdentity,
     AqueousKijMeanIonicActivityObservation,
     ComponentParameterIdentity,
     DirectObservationRowDiagnostic,
@@ -169,6 +168,10 @@ def _associating_pure_model() -> Mixture:
 def _generic_associating_model(
     sites: tuple[tuple[str, int], ...],
     pairs: tuple[tuple[str, str, float, float], ...],
+    *,
+    segment_count: float = 3.2,
+    segment_diameter_angstrom: float = 3.5,
+    dispersion_energy_over_k: float = 280.0,
 ) -> Mixture:
     provenance = {
         "source_id": "manufactured-association",
@@ -229,21 +232,21 @@ def _generic_associating_model(
                     "test-m",
                     "test-amine",
                     "segment_count",
-                    3.2,
+                    segment_count,
                     **provenance,
                 ),
                 SingleParameterRecord(
                     "test-sigma",
                     "test-amine",
                     "segment_diameter",
-                    3.5 * unit_registry.angstrom,
+                    segment_diameter_angstrom * unit_registry.angstrom,
                     **provenance,
                 ),
                 SingleParameterRecord(
                     "test-epsilon",
                     "test-amine",
                     "dispersion_energy_over_k",
-                    280.0 * unit_registry.kelvin,
+                    dispersion_energy_over_k * unit_registry.kelvin,
                     **provenance,
                 ),
                 SingleParameterRecord(
@@ -287,7 +290,8 @@ def _generic_associating_problem(
         capability
         for capability in parameter_capabilities(model)
         if not isinstance(capability, UnsupportedParameterCapability)
-        and capability.capability_id == "neutral_pure_associating_joint_v1"
+        and capability.capability_id
+        == "neutral_pure_associating_joint_sigma_basis_v1"
     )
     physical = (
         3.2,
@@ -312,11 +316,8 @@ def _generic_associating_problem(
         ComponentParameterIdentity("test-amine"),
         ComponentParameterIdentity("test-amine"),
         ComponentParameterIdentity("test-amine"),
-        *(
-            AssociationPairParameterIdentity("test-amine", left, right)
-            for left, right, _, _ in pairs
-            for _ in range(2)
-        ),
+        ModelParameterIdentity(),
+        ModelParameterIdentity(),
     )
     units = (
         "1",
@@ -360,7 +361,7 @@ def _generic_associating_problem(
         canonical_dataset_sha256=canonical_dataset_sha256((row,)),
         transformation_record="none",
         units_and_bases="SI",
-        use_basis="dynamic association regression contract",
+        use_basis="fixed ordinary-sigma neutral-pure-2B regression contract",
         residual_scale_rationale="manufactured finite scales",
     )
     return RegressionProblem(
@@ -468,7 +469,7 @@ def _pure_density_problem(
         parameters=(
             ParameterCoordinate(
                 family=family,
-                identity=AssociationPairParameterIdentity("ethanol", "a", "b"),
+                identity=ModelParameterIdentity(),
                 capability_id=capability.capability_id,
                 provider_parameter_fingerprint=capability.parameter_fingerprint,
                 provider_topology_fingerprint=capability.topology_fingerprint,
@@ -1814,7 +1815,7 @@ def test_installed_provider_advertises_bounded_pure_association_contracts() -> N
     assert tuple(capability.capability_id for capability in capabilities) == (
         "neutral_pure_2b_association_energy_over_k_v1",
         "neutral_pure_2b_association_volume_v1",
-        "neutral_pure_associating_joint_v1",
+        "neutral_pure_associating_joint_sigma_basis_v1",
     )
     assert tuple(capability.coordinate_kinds for capability in capabilities) == (
         ("amount", "volume", "association_energy_over_k"),
@@ -1841,54 +1842,25 @@ def test_installed_provider_advertises_bounded_pure_association_contracts() -> N
     )
 
 
-@pytest.mark.parametrize(
-    ("sites", "pairs"),
-    (
-        (
-            (("acceptor", 2), ("donor", 3)),
-            (("acceptor", "donor", 1500.0, 0.01),),
-        ),
-        (
-            (
-                ("a1", 1),
-                ("a2", 1),
-                ("d1", 1),
-                ("d2", 2),
-            ),
-            (
-                ("a1", "d1", 1200.0, 0.01),
-                ("a1", "d2", 1500.0, 0.02),
-                ("a2", "d1", 1800.0, 0.03),
-                ("a2", "d2", 2100.0, 0.04),
-            ),
-        ),
-    ),
-)
-def test_generic_association_block_preserves_topology_and_evaluates(
-    sites: tuple[tuple[str, int], ...],
-    pairs: tuple[tuple[str, str, float, float], ...],
-) -> None:
+def test_ordinary_sigma_2b_block_evaluates_exact_jacobian() -> None:
+    sites = (("acceptor", 1), ("donor", 1))
+    pairs = (("acceptor", "donor", 1500.0, 0.01),)
     model = _generic_associating_model(sites, pairs)
     capability = next(
         capability
         for capability in parameter_capabilities(model)
         if not isinstance(capability, UnsupportedParameterCapability)
-        and capability.capability_id == "neutral_pure_associating_joint_v1"
+        and capability.capability_id
+        == "neutral_pure_associating_joint_sigma_basis_v1"
     )
-    assert capability.association_site_ids == tuple(site for site, _ in sites)
-    assert capability.association_site_multiplicities == tuple(
-        multiplicity for _, multiplicity in sites
-    )
-    assert capability.association_pairs == tuple(
-        tuple(sorted((left, right))) for left, right, _, _ in pairs
-    )
+    assert capability.active_parameter_count == 5
+    assert capability.identity_shape == "model"
     problem = _generic_associating_problem(model, pairs)
-    assert len(problem.parameters) == 3 + 2 * len(pairs)
-    assert problem.parameter_slot_indices == tuple(range(len(problem.parameters)))
-    assert tuple(
-        parameter.identity.canonical_site_ids for parameter in problem.parameters[3:]
-    ) == tuple(
-        tuple(sorted((left, right))) for left, right, _, _ in pairs for _ in range(2)
+    assert len(problem.parameters) == 5
+    assert problem.parameter_slot_indices == tuple(range(5))
+    assert all(
+        isinstance(parameter.identity, ModelParameterIdentity)
+        for parameter in problem.parameters[3:]
     )
     variables = (0.0,) * (len(problem.parameters) + 1)
     residuals, jacobian = _evaluate_parameters(problem, model, variables)
@@ -1910,6 +1882,92 @@ def test_generic_association_block_preserves_topology_and_evaluates(
             assert jacobian[row * len(variables) + column] == pytest.approx(
                 finite_difference, rel=2.0e-5, abs=2.0e-6
             )
+
+    source_row = problem.observations[0]
+    parity_volume = 9.0e-5
+    parity_density = 0.088 / parity_volume
+    parity_rows = []
+    for temperature in (300.0, 325.0, 350.0, 375.0, 400.0):
+        public_state = model.state(
+            T=temperature * unit_registry.kelvin,
+            rho=(1.0 / parity_volume)
+            * unit_registry.mole
+            / unit_registry.meter**3,
+            x=(1.0,),
+        )
+        public_pressure = float(public_state.pressure.to("pascal").magnitude)
+        parity_rows.append(
+            replace(
+                source_row,
+                row_id=f"public-state-parity-{temperature:g}-k",
+                temperature_k=temperature,
+                pressure_pa=public_pressure,
+                pressure_scale_pa=public_pressure,
+                density_kg_per_m3=parity_density,
+                density_scale_kg_per_m3=parity_density,
+                volume_origin_m3_per_mol=parity_volume,
+                volume_start_m3_per_mol=parity_volume,
+                volume_bounds_m3_per_mol=(8.0e-5, 1.0e-4),
+            )
+        )
+    parity_observations = tuple(parity_rows)
+    parity_problem = replace(
+        problem,
+        sources=(
+            replace(
+                problem.sources[0],
+                canonical_dataset_sha256=canonical_dataset_sha256(
+                    parity_observations
+                ),
+            ),
+        ),
+        observations=parity_observations,
+        maximum_iterations=100,
+    )
+    parity_result = fit_parameters(parity_problem, model)
+    assert parity_result.solver_converged
+    assert parity_result.numerically_converged
+    assert parity_result.workflow_valid
+    assert (
+        parity_result.jacobian.full_rank
+        == parity_result.jacobian.variable_count
+        == 10
+    )
+    assert parity_result.jacobian.projected_parameter_rank == 5
+    fitted = tuple(parameter.final for parameter in parity_result.parameters)
+    assert fitted == (
+        3.2,
+        3.5,
+        280.0,
+        1500.0,
+        0.01,
+    )
+    assert max(
+        abs(value)
+        for row in parity_result.rows
+        for value in row.scaled_residuals
+    ) < 1.0e-12
+    assert (
+        parity_result.scientific_status
+        == "NOT_ADJUDICATED_NO_APPROVED_SCIENTIFIC_CUTOFF"
+    )
+    replay_model = _generic_associating_model(
+        sites,
+        ((pairs[0][0], pairs[0][1], fitted[3], fitted[4]),),
+        segment_count=fitted[0],
+        segment_diameter_angstrom=fitted[1],
+        dispersion_energy_over_k=fitted[2],
+    )
+    for row in parity_observations:
+        replay_state = replay_model.state(
+            T=row.temperature_k * unit_registry.kelvin,
+            rho=(1.0 / parity_volume)
+            * unit_registry.mole
+            / unit_registry.meter**3,
+            x=(1.0,),
+        )
+        replay_pressure = float(replay_state.pressure.to("pascal").magnitude)
+        assert replay_pressure == pytest.approx(row.pressure_pa, rel=1.0e-13)
 
 
 def test_generic_association_block_accepts_combined_saturation_rows() -> None:

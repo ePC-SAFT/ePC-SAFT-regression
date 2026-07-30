@@ -22,22 +22,26 @@ Ceres, fit receipts, and regression results. It consumes a compatible
 installed provider and does not own provider internals, equilibrium, or Ipopt.
 
 The active Provider frontend binding is `epcsaft==0.2.0.dev0`, using commit
-`14fa3745264db66b8e59c12268737d694c706f2f`, tree
-`eb04f10f445957cc768bad1ef4f330038c69a293`, portable wheel artifact
-`provider-python-frontend-v0.2/14fa374/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl`
+`dc2ca7681bf8776ba68437f28d8e48d0e27ef441`, tree
+`e4bfe64e78f20ad9cca0f26789ddb6b516b8baf4`, portable wheel artifact
+`provider-deea-ordinary-sigma-sdk-v1/ceffbec2d897/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl`
 with SHA-256
-`48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594`, and
+`ceffbec2d8975fe105461f0af4fb6601a4e2e1b65fd2f6cbf47a877edfef99cb`, and
 installed public header SHA-256
-`2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b`.
+`db37805c1abd9b1a355f41a89154d14756477c7293af940dc298a6b038aee45d`;
+the installed static library SHA-256 is
+`67f8ddd40d794ce6b985ea6fed65256d01e8f50bda23ac65f61b7514c8fd6e51`.
 Active runner receipts must bind this complete identity. Retained Provider
-0.1 receipts and their replay commands are historical evidence only. The final
-0.2 JUnit receipt artifact is
+0.1 receipts and their replay commands are historical evidence only. The
+previous frontend subject's final 0.2 JUnit receipt artifact is
 `provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
 SHA-256
 `56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`, with
-276 passed and 1 skipped Provider tests. Resolve both portable artifact names
-relative to an executor-supplied immutable artifact root; local filesystem
-paths are execution metadata, not authority.
+276 passed and 1 skipped Provider tests. It remains historical evidence for
+that exact prior subject and is not rebound to the active ordinary-sigma
+artifact. Resolve portable artifact names relative to an executor-supplied
+immutable artifact root; local filesystem paths are execution metadata, not
+authority.
 
 ## Agent home and Validation work
 
@@ -135,13 +139,14 @@ organic-solvent/ion pair callback. The four retained Figiel rows are
 constructed nearest-pure endpoint implementation evidence, not exact
 reproduction of the paper's pure-organic fitting data or mixed-solvent
 prediction evidence.
-Pure 2B association energy and volume retain exact scalar Provider-derivative
-and generic Regression-mechanics evidence. They are not fit-ready: the
-available literature fits them jointly with `m`, `sigma`, and `epsilon/k`,
-while the exact author grids, starts, bounds, and optimizer contracts needed
-for source-faithful replay are absent. The Baygi--Pahlavanzadeh source analysis
-is provenance only; no MEA-specific dataset, dispatch branch, equilibrium
-solver, or result contract is packaged.
+Provider-advertised neutral pure 2B models use one ordinary
+`sigma_ij^3*kappa` block for vapor-pressure, fixed-pressure-density, and
+combined saturation pressure/liquid-density rows. The fitted coordinates are
+exactly `m`, `sigma`, `epsilon/k`, association energy, and association volume;
+the discrete 2B topology remains fixed Provider input. This executable
+mechanics contract does not identify a unique parameter tuple or accept any
+MAPA/DEEA result. Case-specific inputs, starts, evidence, and parameter bundles
+remain Validation-owned and are not packaged here.
 Polar parameter regression is excluded from this repository's roadmap by user
 decision. The coordinated MEA path is owned by
 `docs/science/mea-coupled-regression-master-plan.md`. Its first coupled tracer

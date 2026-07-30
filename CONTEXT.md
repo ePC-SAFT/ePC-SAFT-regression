@@ -12,22 +12,25 @@ The active Python package is version `0.2.0.dev0` and consumes exactly
 `provider_frontend_status: PARAMETERS_MIXTURE_0_2`
 
 The active installed Provider subject is commit
-`14fa3745264db66b8e59c12268737d694c706f2f`, tree
-`eb04f10f445957cc768bad1ef4f330038c69a293`, wheel SHA-256
-`48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594`, and
+`dc2ca7681bf8776ba68437f28d8e48d0e27ef441`, tree
+`e4bfe64e78f20ad9cca0f26789ddb6b516b8baf4`, wheel SHA-256
+`ceffbec2d8975fe105461f0af4fb6601a4e2e1b65fd2f6cbf47a877edfef99cb`, and
 installed public-header SHA-256
-`2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b`.
+`db37805c1abd9b1a355f41a89154d14756477c7293af940dc298a6b038aee45d`.
+Its installed static-library SHA-256 is
+`67f8ddd40d794ce6b985ea6fed65256d01e8f50bda23ac65f61b7514c8fd6e51`.
 The frontend migration changes public construction and generic capability
 names only; it does not change accepted authority, target contracts, or
 numerical acceptance criteria. Retained Provider 0.1 receipt identities remain
 immutable historical evidence and are not active replay inputs.
-The final active Provider 0.2 JUnit receipt artifact is
+The previous frontend subject's final Provider 0.2 JUnit receipt artifact is
 `provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
 SHA-256
 `56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`, with
-276 passed and 1 skipped tests. It and the matching wheel artifact are resolved
-relative to an executor-supplied immutable artifact root; workstation paths
-are execution metadata only.
+276 passed and 1 skipped tests. It remains historical evidence for that exact
+subject and is not rebound to the active ordinary-sigma artifact. Portable
+artifacts are resolved relative to an executor-supplied immutable artifact
+root; workstation paths are execution metadata only.
 
 `governance_doctrine_revision: 4`
 
@@ -113,15 +116,14 @@ retained historical evidence for their named reference campaigns. The active
 installed frontend binding for new replay is the `provider_frontend` subject
 above; historical evidence is not rewritten as if it had used that artifact.
 
-Pure 2B `association_energy_over_k` and `association_volume` have exact scalar
-Provider-derivative and generic Regression-mechanics evidence, but they are
-not counted among the ten fit-ready families. The inspected sources fit them
-jointly with `m`, `sigma`, and `epsilon/k`, and do not provide the exact row,
-start, bound, and optimizer contract needed for source-faithful replay.
-Baygi--Pahlavanzadeh and Gross--Sadowski analysis remains provenance only.
-Regression packages no MEA-specific dataset, dispatch branch, equilibrium
-solver, or result contract. Status is
-`ASSOCIATION_SOURCE_CONTRACT_INCOMPLETE_NOT_FIT_READY`.
+The installed Provider advertises one ordinary-`sigma_ij^3*kappa` joint
+neutral-pure-2B callback over `m`, `sigma`, `epsilon/k`, association energy,
+and association volume. Regression executes that fixed five-parameter block
+for mixed vapor-pressure, fixed-pressure-density, and combined saturation
+rows with exact Hessians and lifted volumes. Public-state replay and a compact
+manufactured full-rank solve prove mechanics only. Regression packages no
+MAPA/DEEA dataset or accepted tuple. Status is
+`ASSOCIATION_ORDINARY_SIGMA_2B_BLOCK_EXECUTABLE_NO_PARAMETER_ACCEPTANCE`.
 
 The user-approved 2026-07-27 destination is general parameter-family
 regression, defined in `docs/science/general-parameter-regression.md`. The

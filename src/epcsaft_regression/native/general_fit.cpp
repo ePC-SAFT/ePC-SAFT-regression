@@ -12,10 +12,8 @@
 #include <cstring>
 #include <limits>
 #include <optional>
-#include <set>
 #include <stdexcept>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace epcsaft_regression {
@@ -149,9 +147,9 @@ bool pure_density_observation(const Payload& payload) {
 }
 
 bool mixed_pure_associating_observation(const Payload& payload) {
-    return payload.capability_id == "neutral_pure_associating_joint_v1"
-        && payload.parameter_origins.size() >= 5
-        && (payload.parameter_origins.size() - 3) % 2 == 0
+    return payload.capability_id
+            == "neutral_pure_associating_joint_sigma_basis_v1"
+        && payload.parameter_origins.size() == 5
         && payload.component_ids.size() == 1
         && payload.observation_shape == "mixed_pure_associating";
 }
@@ -815,7 +813,7 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
             || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1
             || candidate.capability
-                == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1
+                == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_SIGMA_BASIS_HELMHOLTZ_V1
             || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1
             || candidate.capability
@@ -887,7 +885,7 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
     const bool solvent_permittivity = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_PERMITTIVITY_V1;
     const bool associating_joint = descriptor.capability
-        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1;
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_SIGMA_BASIS_HELMHOLTZ_V1;
     const bool binary = kij || lij;
     const bool direct = born || solvation_factor || aqueous_kij || dielectric
         || ion_solvation_kij || ionic_permittivity
@@ -970,22 +968,16 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
                         ? table.table_size
                                 >= offsetof(
                                     epcsaft_native_sdk_v1,
-                                    evaluate_associating_pure_phase_parameters
+                                    evaluate_sigma_basis_associating_pure_phase_parameters
                                 ) + sizeof(
-                                    table.evaluate_associating_pure_phase_parameters
+                                    table.evaluate_sigma_basis_associating_pure_phase_parameters
                                 )
-                            && table.mixture_result_size
-                                == sizeof(epcsaft_mixture_phase_block_result_v1)
-                            && table.evaluate_associating_pure_phase_parameters
+                            && table.associating_parameterized_result_size
+                                == sizeof(
+                                    epcsaft_associating_parameterized_phase_block_result_v1
+                                )
+                            && table.evaluate_sigma_basis_associating_pure_phase_parameters
                                 != nullptr
-                            && table.association_site_count > 0
-                            && table.association_site_ids != nullptr
-                            && table.association_site_components != nullptr
-                            && table.association_site_multiplicities != nullptr
-                            && table.association_pair_count
-                                == (descriptor.active_parameter_count - 3) / 2
-                            && table.association_pair_site_a != nullptr
-                            && table.association_pair_site_b != nullptr
                     : joint_pure_observation(payload)
                         ? table.table_size
                                 >= offsetof(
@@ -1070,9 +1062,9 @@ const char* capability_id(std::uint32_t value) {
     }
     if (
         value
-        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_SIGMA_BASIS_HELMHOLTZ_V1
     ) {
-        return "neutral_pure_associating_joint_v1";
+        return "neutral_pure_associating_joint_sigma_basis_v1";
     }
     if (value == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1) {
         return "ion_solvation_born_v1";
@@ -1224,7 +1216,7 @@ void validate_descriptor(
     const bool association_volume = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1;
     const bool associating_joint = descriptor.capability
-        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1;
+        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_SIGMA_BASIS_HELMHOLTZ_V1;
     const bool association =
         association_energy || association_volume || associating_joint;
     const bool born = descriptor.capability
@@ -1359,9 +1351,7 @@ void validate_descriptor(
             != EPCSAFT_NATIVE_STATUS_UNSUPPORTED_MODEL_V1
         || descriptor.domain_status != EPCSAFT_NATIVE_STATUS_DOMAIN_ERROR_V1
         || descriptor.state_coordinate_count != expected_state_count
-        || (associating_joint
-            && (expected_active_parameter_count < 5
-                || (expected_active_parameter_count - 3) % 2 != 0))
+        || (associating_joint && expected_active_parameter_count != 5)
         || descriptor.active_parameter_count != expected_active_parameter_count
         || descriptor.coordinate_count != expected_coordinate_count
         || descriptor.component_count != expected_component_count
@@ -1497,20 +1487,16 @@ void validate_descriptor(
             "angstrom",
             "kelvin",
         };
-        const std::size_t pair_count =
-            (expected_active_parameter_count - 3) / 2;
-        for (std::size_t pair = 0; pair < pair_count; ++pair) {
-            kinds.push_back(
-                EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_ENERGY_OVER_K_V1
-            );
-            kinds.push_back(
-                EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_VOLUME_V1
-            );
-            components.insert(components.end(), {-1, -1});
-            pair_a.insert(pair_a.end(), {-1, -1});
-            pair_b.insert(pair_b.end(), {-1, -1});
-            units.insert(units.end(), {"kelvin", "dimensionless"});
-        }
+        kinds.push_back(
+            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_ENERGY_OVER_K_V1
+        );
+        kinds.push_back(
+            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_VOLUME_V1
+        );
+        components.insert(components.end(), {-1, -1});
+        pair_a.insert(pair_a.end(), {-1, -1});
+        pair_b.insert(pair_b.end(), {-1, -1});
+        units.insert(units.end(), {"kelvin", "dimensionless"});
     }
     for (std::size_t index = 0; index < kinds.size(); ++index) {
         const auto& coordinate = descriptor.coordinates[index];
@@ -1560,118 +1546,7 @@ PyObject* string_tuple(
     return tuple;
 }
 
-PyObject* integer_tuple(const int32_t* values, std::size_t count) {
-    PyObject* tuple = PyTuple_New(static_cast<Py_ssize_t>(count));
-    if (tuple == nullptr) return nullptr;
-    for (std::size_t index = 0; index < count; ++index) {
-        PyObject* item = PyLong_FromLong(values[index]);
-        if (item == nullptr) {
-            Py_DECREF(tuple);
-            return nullptr;
-        }
-        PyTuple_SET_ITEM(tuple, static_cast<Py_ssize_t>(index), item);
-    }
-    return tuple;
-}
-
-PyObject* association_pair_tuple(const epcsaft_native_sdk_v1& table) {
-    PyObject* tuple = PyTuple_New(
-        static_cast<Py_ssize_t>(table.association_pair_count)
-    );
-    if (tuple == nullptr) return nullptr;
-    for (std::size_t index = 0; index < table.association_pair_count; ++index) {
-        PyObject* item = Py_BuildValue(
-            "(ii)",
-            table.association_pair_site_a[index],
-            table.association_pair_site_b[index]
-        );
-        if (item == nullptr) {
-            Py_DECREF(tuple);
-            return nullptr;
-        }
-        PyTuple_SET_ITEM(tuple, static_cast<Py_ssize_t>(index), item);
-    }
-    return tuple;
-}
-
-bool association_metadata_tail_available(
-    const epcsaft_native_sdk_v1& table
-) {
-    constexpr std::size_t required_size =
-        offsetof(
-            epcsaft_native_sdk_v1,
-            evaluate_associating_pure_phase_parameters
-        )
-        + sizeof(table.evaluate_associating_pure_phase_parameters);
-    return table.table_size >= required_size;
-}
-
-void validate_association_metadata(
-    const epcsaft_native_sdk_v1& table,
-    const epcsaft_native_capability_descriptor_v1& descriptor,
-    bool joint
-) {
-    if (!association_metadata_tail_available(table)) {
-        throw std::runtime_error(
-            "provider SDK lacks the association-topology metadata tail"
-        );
-    }
-    if (table.association_site_count == 0
-        || table.association_site_ids == nullptr
-        || table.association_site_components == nullptr
-        || table.association_site_multiplicities == nullptr
-        || table.association_pair_count == 0
-        || table.association_pair_site_a == nullptr
-        || table.association_pair_site_b == nullptr) {
-        throw std::runtime_error(
-            "provider association-topology metadata is incomplete"
-        );
-    }
-    if (joint
-        && (descriptor.active_parameter_count < 5
-            || (descriptor.active_parameter_count - 3) % 2 != 0
-            || table.association_pair_count
-                != (descriptor.active_parameter_count - 3) / 2)) {
-        throw std::runtime_error(
-            "provider association-pair count does not match the capability"
-        );
-    }
-
-    std::set<std::string> site_ids;
-    for (std::size_t index = 0; index < table.association_site_count; ++index) {
-        const char* site_id = table.association_site_ids[index];
-        const std::int32_t component = table.association_site_components[index];
-        if (site_id == nullptr || site_id[0] == '\0'
-            || !site_ids.emplace(site_id).second
-            || component < 0
-            || static_cast<std::size_t>(component)
-                >= descriptor.component_count
-            || table.association_site_multiplicities[index] <= 0) {
-            throw std::runtime_error(
-                "provider association-site metadata is invalid"
-            );
-        }
-    }
-
-    std::set<std::pair<std::int32_t, std::int32_t>> pairs;
-    for (std::size_t index = 0; index < table.association_pair_count; ++index) {
-        const std::int32_t left = table.association_pair_site_a[index];
-        const std::int32_t right = table.association_pair_site_b[index];
-        if (left < 0 || right < 0 || left > right
-            || static_cast<std::size_t>(left)
-                >= table.association_site_count
-            || static_cast<std::size_t>(right)
-                >= table.association_site_count
-            || !pairs.emplace(left, right).second) {
-            throw std::runtime_error(
-                "provider association-pair endpoints are invalid"
-            );
-        }
-    }
-}
-
 PyObject* descriptor_to_python(
-    const epcsaft_native_sdk_v1& table,
     const epcsaft_native_capability_descriptor_v1& descriptor
 ) {
     validate_descriptor(descriptor);
@@ -1747,14 +1622,7 @@ PyObject* descriptor_to_python(
         || descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1
         || descriptor.capability
-            == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1;
-    const bool associating_joint = descriptor.capability
-        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1;
-    const bool association_metadata =
-        association && association_metadata_tail_available(table);
-    if (associating_joint || association_metadata) {
-        validate_association_metadata(table, descriptor, associating_joint);
-    }
+            == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_SIGMA_BASIS_HELMHOLTZ_V1;
     const bool ion_solvation_kij =
         descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1
@@ -1829,32 +1697,8 @@ PyObject* descriptor_to_python(
             active_components, static_cast<Py_ssize_t>(index), component
         );
     }
-    PyObject* association_site_ids = association_metadata
-        ? string_tuple(table.association_site_ids, table.association_site_count)
-        : PyTuple_New(0);
-    PyObject* association_site_multiplicities = association_metadata
-        ? integer_tuple(
-              table.association_site_multiplicities,
-              table.association_site_count
-          )
-        : PyTuple_New(0);
-    PyObject* association_pairs = association_metadata
-        ? association_pair_tuple(table)
-        : PyTuple_New(0);
-    if (association_site_ids == nullptr
-        || association_site_multiplicities == nullptr
-        || association_pairs == nullptr) {
-        Py_XDECREF(association_site_ids);
-        Py_XDECREF(association_site_multiplicities);
-        Py_XDECREF(association_pairs);
-        Py_DECREF(components);
-        Py_DECREF(kinds);
-        Py_DECREF(units);
-        Py_DECREF(active_components);
-        return nullptr;
-    }
     PyObject* result = Py_BuildValue(
-        "(ssNNNs#s#issddssssnns#ssNNNN)",
+        "(ssNNNs#s#issddssssnns#ssN)",
         capability_id(descriptor.capability),
         parameter_family(descriptor.parameter_family),
         components,
@@ -1881,10 +1725,7 @@ PyObject* descriptor_to_python(
         static_cast<Py_ssize_t>(basis_length),
         "UNSUPPORTED_MODEL",
         "DOMAIN_ERROR",
-        active_components,
-        association_site_ids,
-        association_site_multiplicities,
-        association_pairs
+        active_components
     );
     return result;
 }
@@ -2110,33 +1951,27 @@ Phase evaluate_associating_joint_pure_phase(
     double volume,
     const std::vector<double>& parameters
 ) {
-    if (parameters.size() < 5 || (parameters.size() - 3) % 2 != 0
-        || table.evaluate_associating_pure_phase_parameters == nullptr) {
+    if (parameters.size() != 5
+        || table.evaluate_sigma_basis_associating_pure_phase_parameters
+            == nullptr
+        || table.associating_parameterized_result_size
+            != sizeof(
+                epcsaft_associating_parameterized_phase_block_result_v1
+            )) {
         throw std::runtime_error(
-            "Provider does not expose a compatible generic associating "
-            "pure-phase callback"
+            "Provider does not expose a compatible ordinary-sigma 2B "
+            "joint pure-phase callback"
         );
     }
-    const std::size_t pair_count = (parameters.size() - 3) / 2;
-    std::vector<double> energies(pair_count);
-    std::vector<double> volumes(pair_count);
-    for (std::size_t pair = 0; pair < pair_count; ++pair) {
-        energies[pair] = parameters[3 + 2 * pair];
-        volumes[pair] = parameters[4 + 2 * pair];
-    }
     Phase phase{};
-    phase.coordinate_count = 5 + 2 * pair_count;
+    phase.coordinate_count =
+        EPCSAFT_ASSOCIATING_PHASE_PARAMETERIZED_COORDINATE_COUNT_V1;
     phase.gradient.resize(phase.coordinate_count);
     phase.hessian.resize(phase.coordinate_count * phase.coordinate_count);
-    epcsaft_mixture_phase_block_result_v1 result{};
+    epcsaft_associating_parameterized_phase_block_result_v1 result{};
     result.struct_size = sizeof(result);
-    result.coordinate_count = phase.coordinate_count;
-    result.gradient_capacity = phase.gradient.size();
-    result.hessian_capacity = phase.hessian.size();
-    result.gradient = phase.gradient.data();
-    result.hessian = phase.hessian.data();
     const int status =
-        table.evaluate_associating_pure_phase_parameters(
+        table.evaluate_sigma_basis_associating_pure_phase_parameters(
             table.model_context,
             row.temperature,
             1.0,
@@ -2144,10 +1979,8 @@ Phase evaluate_associating_joint_pure_phase(
             parameters[0],
             parameters[1],
             parameters[2],
-            energies.data(),
-            energies.size(),
-            volumes.data(),
-            volumes.size(),
+            parameters[3],
+            parameters[4],
             &result
         );
     if (status != EPCSAFT_NATIVE_STATUS_OK_V1 || result.status != status) {
@@ -2162,25 +1995,31 @@ Phase evaluate_associating_joint_pure_phase(
         );
     }
     phase.pressure = result.pressure_pa;
-    if (result.coordinate_count != phase.coordinate_count
-        || result.gradient != phase.gradient.data()
-        || result.hessian != phase.hessian.data()
-        || !bounded_field_equal(
+    std::copy(
+        std::begin(result.gradient),
+        std::end(result.gradient),
+        phase.gradient.begin()
+    );
+    std::copy(
+        std::begin(result.hessian),
+        std::end(result.hessian),
+        phase.hessian.begin()
+    );
+    if (!bounded_field_equal(
             payload.parameter_fingerprint, result.parameter_fingerprint
+        )
+        || !bounded_field_equal(
+            payload.topology_fingerprint, result.topology_fingerprint
         )
         || !std::isfinite(phase.pressure)
         || !std::all_of(
             phase.gradient.cbegin(),
-            phase.gradient.cbegin()
-                + static_cast<std::ptrdiff_t>(phase.coordinate_count),
+            phase.gradient.cend(),
             [](double value) { return std::isfinite(value); }
         )
         || !std::all_of(
             phase.hessian.cbegin(),
-            phase.hessian.cbegin()
-                + static_cast<std::ptrdiff_t>(
-                    phase.coordinate_count * phase.coordinate_count
-                ),
+            phase.hessian.cend(),
             [](double value) { return std::isfinite(value); }
         )) {
         throw std::runtime_error(
@@ -4212,9 +4051,9 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
                 || descriptor.capability
                     == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_PERMITTIVITY_V1
                 || descriptor.capability
-                    == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_HELMHOLTZ_V1
+                    == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_SIGMA_BASIS_HELMHOLTZ_V1
             )
-                ? descriptor_to_python(*table, descriptor)
+                ? descriptor_to_python(descriptor)
                 : unsupported_descriptor_to_python(descriptor);
             if (item == nullptr) {
                 Py_DECREF(result);
