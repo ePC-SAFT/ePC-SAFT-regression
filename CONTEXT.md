@@ -37,8 +37,9 @@ root; workstation paths are execution metadata only.
 
 Canonical doctrine:
 `https://github.com/ePC-SAFT/ePC-SAFT-management/blob/main/GOVERNANCE.md`.
-The canonical local checkout is `../ePC-SAFT-management/GOVERNANCE.md`; during
-the transition it may still be named `../ePC-SAFT-organization/GOVERNANCE.md`.
+During the local checkout transition, resolve doctrine and the access manifest
+from `../ePC-SAFT-organization/GOVERNANCE.md` and
+`../ePC-SAFT-organization/manifests/management.json`.
 
 EOS is the canonical active repository and role name. Retain `Provider` only
 inside historical receipt prose, artifact paths, schema fields such as

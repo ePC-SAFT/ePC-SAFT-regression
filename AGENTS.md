@@ -11,9 +11,10 @@ preserving their established presentation and reporting contracts. This local
 cutover changes no accepted authority and does not imply a multi-active
 mixture capability without a matching installed EOS evaluator.
 
-Before work, read doctrine revision 5 at
-`../ePC-SAFT-management/GOVERNANCE.md` (the transition checkout may still be
-named `../ePC-SAFT-organization`). Its canonical published home is
+Before work, read doctrine revision 5 and the machine-readable access contract
+from `../ePC-SAFT-management/GOVERNANCE.md` and
+`../ePC-SAFT-management/manifests/management.json`. During the local checkout
+transition, resolve both files from `../ePC-SAFT-organization/`. Its canonical published home is
 `https://github.com/ePC-SAFT/ePC-SAFT-management/blob/main/GOVERNANCE.md`.
 Local policy may narrow that doctrine but must not contradict it.
 
@@ -52,9 +53,10 @@ ABI/API symbols whose spelling is part of an accepted contract.
 - The Regression agent remains rooted in this repository and is the sole owner
   of target contracts, fitted-parameter workflows, Ceres execution, fit
   diagnostics, identifiability evidence, and regression result contracts.
-- When Management assigns a bounded Regression campaign, this same agent may use
-  a clean checkout or worktree of the sibling Validation repository to author
-  and execute it. Its task home does not move to Validation.
+- When Management assigns a bounded Regression campaign, this same agent uses a
+  target-owned Validation worktree created on demand under Validation's
+  `.worktrees/` directory for a task-specific branch and path. Its task home
+  does not move to Validation.
 - Validation work must use exact immutable installed EOS and Regression
   public artifacts. It must not import either source checkout, use private
   seams, copy EOS or fit logic, or silently turn training evidence into
