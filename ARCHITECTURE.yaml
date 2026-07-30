@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-ten-general-families-fit-ready
+status: authoritative-methane-and-ethane-with-general-and-fixed-2b-mechanics
 
 authority:
   accepted_capabilities:
@@ -28,20 +28,25 @@ authority:
   persistence_authority: none
 
 scope: >-
-  Fit one strict pure methane, ethane, or propane saturation dataset per call through a
-  shared lifted-volume Ceres formulation and the installed provider parameter-
-  Hessian entry. Methane preserves the accepted 110, 130, 150, and 170 K fit.
+  Preserve the accepted strict methane and ethane pure-saturation workflows
+  while exposing authority-neutral source-bound general Regression through one
+  Ceres owner and exact installed EOS derivatives. The direct EOS surface fits
+  ten scalar parameter families, one joint pure m/sigma/epsilon-over-k block,
+  and one fixed neutral-pure-2B five-parameter block. A separate typed
+  positive-observation transport consumes downstream-composed exact values and
+  derivatives without importing Equilibrium. Methane preserves the accepted
+  110, 130, 150, and 170 K fit.
   Ethane fits 140, 180, 220, and 260 K, holds out 120, 160, 200, and 240 K,
   and reports 100 and 280 K as domain stress. The authority-neutral propane
   candidate fits 150, 210, 270, and 330 K, holds out 18 interior rows, and
   reports 110 and 340 K as stress. The authority-neutral Figiel package
   candidate fits five current-catalog Born diameters to five reported-average
-  targets through the installed Provider first-derivative callback. It passes
+  targets through the installed EOS first-derivative callback. It passes
   its local gates after the user-approved descriptive-comparison correction
   and has no production authority. The authority-neutral general surface also
   independently fits one shared k_ij or l_ij from caller-supplied
   fixed-composition VLE rows for any
-  neutral, nonassociating binary model whose installed Provider capability
+  neutral, nonassociating binary model whose installed EOS capability
   descriptor supplies the exact active Hessian contract. The same general
   surface independently fits one active segment count, segment diameter, or
   dispersion energy over k from caller-supplied pure-saturation pressure and
@@ -50,12 +55,13 @@ scope: >-
 provider_frontend:
   version: 0.2.0.dev0
   public_types: [Parameters, Mixture]
-  provider_commit: 14fa3745264db66b8e59c12268737d694c706f2f
-  provider_tree: eb04f10f445957cc768bad1ef4f330038c69a293
+  provider_commit: 24ab1bdfb3a1558eb87815e9c3b5d97fbe6a025d
+  provider_tree: 145cf8b6126ad403aa8ee51b1b4623db3da8aa2f
   artifact_root: executor-supplied-immutable-artifact-store
-  wheel_artifact: provider-python-frontend-v0.2/14fa374/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl
-  wheel_sha256: 48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594
-  installed_header_sha256: 2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b
+  wheel_artifact: objects/sha256/66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl
+  wheel_sha256: 66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9
+  installed_header_sha256: db37805c1abd9b1a355f41a89154d14756477c7293af940dc298a6b038aee45d
+  installed_static_library_sha256: 5e5c3e8311c011365471eeff29b2d9ff8486d149745a4bea7cd48bd6e784f9d3
   provider_test_receipt_artifact: provider-python-frontend-v0.2/14fa374/provider-tests.xml
   provider_test_receipt_sha256: 56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf
   provider_test_receipt_summary: 276-passed-1-skipped
@@ -64,11 +70,22 @@ provider_frontend:
   retained_receipt_policy: immutable-provider-0.1-history-not-regenerated
 
 general_parameter_regression:
-  status: TEN_FAMILIES_FIT_READY_AUTHORITY_NEUTRAL
+  status: TEN_SCALAR_FAMILIES_PLUS_JOINT_PURE_AND_FIXED_2B_MECHANICS_AUTHORITY_NEUTRAL
   design_owner: docs/science/general-parameter-regression.md
+  literature_reproduction:
+    contract_owner: docs/science/literature-reproduction-contract.md
+    classes:
+      - EXACT_AUTHOR_METHOD_REPLAY
+      - SOURCE_FAITHFUL_RECONSTRUCTION
+      - PUBLISHED_TUPLE_PROPERTY_REPLAY
+      - MODERN_REFIT
+    regression_test_owner: compact-routine-public-path-numerical-tolerance-sentinels
+    validation_owner: full-literature-benchmarks-profiles-uncertainty-and-transfer
+    missing_author_choice_policy: explicit-reconstruction-never-inferred
+    authority_effect: none
   mea_coupled_regression:
     design_owner: docs/science/mea-coupled-regression-master-plan.md
-    status: WAITING_INSTALLED_HOMOGENEOUS_LIQUID_OBSERVABLE_HANDLE
+    status: BLOCKED_CERTIFIED_STABLE_HOMOGENEOUS_STATE_AND_RANK_PREFLIGHT
     first_tracer_observations:
       - one-admitted-co2-partial-pressure-equality
       - one-eligible-speciation-equality-or-linear-aggregate
@@ -82,12 +99,12 @@ general_parameter_regression:
     pressure_prediction: user-approved-low-pressure-liquid-co2-fugacity-equivalent
     phase_equilibrium_required: false
     equilibrium_issue_36: CLOSED_EXACT_ACTIVE_PARAMETER_STATE_SENSITIVITIES
-    equilibrium_issue_37: DEFERRED_REACTIVE_BUBBLE_NOT_FIRST_TRACER_GATE
-    equilibrium_issue_38: OPEN_INSTALLED_HOMOGENEOUS_MEA_EVIDENCE
-    regression_issue_15: BLOCKED_MODEL_BOUND_TRANSPORT
-    regression_issue_16: CORRECTED_WAITING_ISSUE_15_INSTALLED_EVALUATOR_AND_RANK_PREFLIGHT
+    equilibrium_issue_37: CLOSED_NOT_PLANNED_NOT_FIRST_TRACER_GATE
+    equilibrium_issue_38: CLOSED_FEASIBLE_ONLY_NEGATIVE_CURVATURE_RETAINED
+    regression_issue_15: CLOSED_TRANSPORT_IMPLEMENTED_PR27
+    regression_issue_16: BLOCKED_CERTIFIED_STABLE_STATE_AND_RANK_PREFLIGHT
   objective: >-
-    Fit any admitted continuous ePC-SAFT parameter for any Provider-supported
+    Fit any admitted continuous ePC-SAFT parameter for any EOS-supported
     component set when the caller supplies source-bound typed observations and
     a complete numerical contract.
   capability_states:
@@ -101,14 +118,14 @@ general_parameter_regression:
     result_families: 1
     native_modules: 1
     native_targets: 1
-    parameter_schema: finite-typed-provider-negotiated
+    parameter_schema: finite-typed-eos-negotiated
     observation_schema: finite-typed-source-bound
   reference_campaign_role: evidence-not-component-restriction
-  forbidden_interpretation: every-provider-parameter-is-fit-ready-now
-  immediate_provider_gate: SATISFIED_FOR_TEN_FAMILIES
+  forbidden_interpretation: every-eos-parameter-is-fit-ready-now
+  immediate_eos_gate: SATISFIED_FOR_CURRENT_TYPED_CAPABILITIES
   artifact_identity_role: historical-reference-campaign-evidence; active-frontend-binding-is-provider_frontend
   pure_association_recovery:
-    status: NOT_FIT_READY_SOURCE_CONTRACT_INCOMPLETE
+    status: FIXED_NEUTRAL_PURE_2B_MECHANICS_EXECUTABLE_IDENTIFIABILITY_PENDING
     design_owner: docs/science/general-parameter-regression.md
     evidence_owners:
       - docs/research/gross-sadowski-2002-association-fitting.md
@@ -119,9 +136,17 @@ general_parameter_regression:
       - dispersion_energy_over_k
       - association_energy_over_k
       - association_volume
-    retained_evidence_role: source-and-formulation-provenance-only
+    supported_topology: fixed-neutral-pure-2B
+    supported_observations:
+      - vapor-pressure
+      - fixed-pressure-density
+      - combined-saturation-pressure-liquid-density
+    retained_evidence_role: exact-mechanics-and-source-provenance-no-parameter-acceptance
     packaged_application_specific_runtime: none
-    missing_gate: source-complete-generic-joint-observation-contract
+    missing_gates:
+      - practical-identifiability-profile
+      - source-complete-fixed-2b-campaign
+      - conditional-fixed-kappa-fallback
     forbidden_shortcuts:
       - association-only-fit-from-one-density-row
       - paper-specific-component-dispatch
@@ -663,11 +688,11 @@ component_contracts:
       callback_replay_exact: true
       local_liquid_volume_ulp_fraction_from_continuous_derivative: 0.42624401466815054
       adjacent_volume_pressure_plateau: false
-      interpretation: binary64 resolution measured; no provider defect or model/data finding
+      interpretation: binary64 resolution measured; no EOS defect or model/data finding
 
 parameter_family_readiness:
   rule: >-
-    READY requires a source-backed target, minimum exact provider derivative
+    READY requires a source-backed target, minimum exact EOS derivative
     seam, rank-sufficient formulation, bounds/scaling/confirmation design,
     installed-artifact validation plan, and separately approved scope.
   pure_m_sigma_epsilon_over_k:
@@ -677,7 +702,7 @@ parameter_family_readiness:
   constant_methane_ethane_kij:
     status: NOT_READY_DEFERRED_NONPRODUCTION_UNDER_D023
     retained_evidence_authority: D-022
-  association_parameters: NOT_FIT_READY_SOURCE_CONTRACT_INCOMPLETE
+  association_parameters: FIXED_NEUTRAL_PURE_2B_MECHANICS_EXECUTABLE_IDENTIFIABILITY_PENDING
   polar_parameters: EXCLUDED_FROM_REGRESSION_ROADMAP_BY_USER_DECISION
   electrolyte_born_parameters: FIT_READY_DIRECT_OBSERVABLE_AUTHORITY_NEUTRAL_NO_CATALOG_ADMISSION
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
@@ -712,7 +737,22 @@ parameter_family_readiness:
       projected_parameter_rank: 2
       derivative_oracle: closed-form-no-finite-difference
       packaging: build-testing-only-not-installed
-    generic_downstream_transport: PACKAGE_ADAPTER_IMPLEMENTED_LOCAL_INSTALLED_ARTIFACT_REPLAY_PENDING
+    second_installed_multi_parameter_seam:
+      entry: evaluate_sigma_basis_associating_pure_phase_parameters
+      topology: fixed-neutral-pure-2B
+      sigma_basis: ordinary-sigma-ij-cubed-kappa
+      parameters:
+        - segment_count
+        - segment_diameter
+        - dispersion_energy_over_k
+        - association_energy_over_k
+        - association_volume
+      observations:
+        - vapor-pressure
+        - fixed-pressure-density
+        - combined-saturation-pressure-liquid-density
+      evidence: exact-mechanics-only-no-parameter-acceptance
+    generic_downstream_transport: IMPLEMENTED_PR27_EXACT_POSITIVE_OBSERVATION_TRANSPORT
     generic_downstream_transport_decision: https://github.com/ePC-SAFT/.github/issues/1
   mixture_independent_scalar_pure: FIT_READY_PURE_SATURATION_PRESSURE_AND_LIQUID_DENSITY
   mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_VLE_ADVERTISED_AQUEOUS_MIAC_AND_ADVERTISED_ORGANIC_ION_SOLVATION
@@ -722,11 +762,11 @@ parameter_family_readiness:
   model_ion_fraction_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
   mixture_independent_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   model_ionic_region_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
-  mixture_independent_association: NOT_FIT_READY_SCALAR_DERIVATIVE_MECHANICS_ONLY
-  khb_ij: NOT_READY_NOT_A_CURRENT_PROVIDER_PARAMETER_FAMILY
-  next_engineering_investment: EXACT_INSTALLED_EVALUATOR_REPLAY_THEN_REDUCED_MEA_TRACER
+  mixture_independent_association: FIXED_NEUTRAL_PURE_2B_FIVE_PARAMETER_MECHANICS_IDENTIFIABILITY_PENDING
+  khb_ij: NOT_READY_NOT_A_CURRENT_EOS_PARAMETER_FAMILY
+  next_engineering_investment: CERTIFIED_STABLE_MEA_STATE_THEN_REDUCED_TRACER
   optional_standalone_association_source_acquisition: DEFERRED_NOT_MEA_CRITICAL_PATH
-  mea_mixed_observable_regression: WAITING_MASTER_PLAN_GATES
+  mea_mixed_observable_regression: BLOCKED_UPSTREAM_LOCAL_MINIMUM_AND_RANK_PREFLIGHT
   full_parameter_family_coverage: NOT_READY
 
 accepted_ethane_artifact:
@@ -879,18 +919,18 @@ evidence_limits:
 excluded:
   # These are current runtime exclusions, not denials of the staged design goal.
   - runtime neutral methane/ethane binary interaction regression; the private dependency-gated contract grants no capability
-  - fit-ready association regression beyond scalar derivative/mechanics evidence
-  - electrolyte regression beyond the bounded nonproduction Figiel Born-tracer candidate
+  - association topology beyond fixed neutral-pure-2B or any association parameter acceptance without identifiability evidence
+  - predictive or promoted electrolyte/application campaigns beyond authority-neutral typed mechanics
   - reactive regression
   - arbitrary residual plugins or mutable runtime registries
   - alternate or numerical production derivative backends
-  - provider source, private headers, or copied EOS equations
-  - provider catalog persistence
+  - EOS source, private headers, or copied EOS equations
+  - EOS catalog persistence
   - predictive validation admission
   - runtime authority promotion for the local propane candidate
 
 ratchet:
-  rule: Every increase must serve one approved regression capability and keep EOS ownership in the provider.
+  rule: Every increase must serve one approved regression capability and keep thermodynamic ownership in EOS.
   reject:
     - duplicate input or result representations
     - duplicate equation or derivative owners

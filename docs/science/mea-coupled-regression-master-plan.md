@@ -1,15 +1,16 @@
 # MEA Coupled Regression Master Plan
 
-Status: source-bound coordination contract; runtime not ready.
+Status: Regression transport ready; reduced tracer blocked on a certified
+stable homogeneous state and frozen rank-sufficient coordinates.
 
 This document is the single Regression-owned plan for fitting ePC-SAFT
 parameters to aqueous monoethanolamine observations. It coordinates the
 application contract owned by MEA-Thermodynamics, thermodynamic state and
-sensitivity results owned by Equilibrium, EOS values and exact parameter
-partials owned by Provider, and the Ceres workflow owned by Regression.
+sensitivity results owned by Equilibrium, thermodynamic values and exact
+parameter partials owned by EOS, and the Ceres workflow owned by Regression.
 
 It does not admit a parameter set, authorize a fit, persist values to the
-Provider catalog, or make a predictive claim.
+EOS catalog, or make a predictive claim.
 
 ## 1. Governing decision
 
@@ -46,16 +47,16 @@ block and 435 reserved-observation count are also stale.
 
 | Owner | Owns | Must not own |
 |---|---|---|
-| MEA-Thermodynamics | species and reactions; equilibrium-constant sources; standard-state convention; feed/state construction; source rows; target eligibility; measurement mapping; parameter selection; bounds, scales, starts, sharing, regularization, partitions, and scientific gates | Provider equations, Equilibrium algorithms, Ceres, or fitted-value persistence |
-| Provider | typed parameters and topology; Helmholtz/reference calculations; phase and caloric primitives; exact explicit parameter partials; domain/applicability and artifact identity | reaction equilibrium, Ceres, application datasets, or promotion |
-| Equilibrium | source-to-Provider reference transformation; reacting-liquid solves; exact implicit state sensitivities; solver/numerical/physical certificates; separately admitted later reactive-bubble solves | parameter selection, residual weights, regression objectives, or application promotion |
-| Regression | source-bound observation validation; parameter transforms and sharing execution; residual/Jacobian assembly; Ceres; rank, conditioning, active-bound and confirmation diagnostics; immutable authority-neutral results | chemistry defaults, a second equilibrium formulation, copied EOS/reaction equations, or Provider catalog mutation |
+| MEA-Thermodynamics | species and reactions; equilibrium-constant sources; standard-state convention; feed/state construction; source rows; target eligibility; measurement mapping; parameter selection; bounds, scales, starts, sharing, regularization, partitions, and scientific gates | EOS equations, Equilibrium algorithms, Ceres, or fitted-value persistence |
+| EOS | typed parameters and topology; Helmholtz/reference calculations; phase and caloric primitives; exact explicit parameter partials; domain/applicability and artifact identity | reaction equilibrium, Ceres, application datasets, or promotion |
+| Equilibrium | source-to-EOS reference transformation; reacting-liquid solves; exact implicit state sensitivities; solver/numerical/physical certificates; separately admitted later reactive-bubble solves | parameter selection, residual weights, regression objectives, or application promotion |
+| Regression | source-bound observation validation; parameter transforms and sharing execution; residual/Jacobian assembly; Ceres; rank, conditioning, active-bound and confirmation diagnostics; immutable authority-neutral results | chemistry defaults, a second equilibrium formulation, copied EOS/reaction equations, or EOS catalog mutation |
 | Validation campaign | installed-artifact black-box replay and durable cross-package evidence authored by the accountable package task | production algorithms or private source imports |
 
 Organization decision
 [`ePC-SAFT/.github#1`](https://github.com/ePC-SAFT/.github/issues/1) admits the
 transport. The downstream application constructs the model-bound evaluator
-from exact installed Provider and Equilibrium artifacts and supplies the
+from exact installed EOS and Equilibrium artifacts and supplies the
 versioned process-local handle described by Regression issue 15. Regression
 does not import or link Equilibrium.
 
@@ -94,7 +95,7 @@ The application source contract is
 `data/reference/MEA/manifests/chemical_reaction_source_contract.json`,
 SHA-256
 `77c6c0a705aa2f5bcc5f9ff90722ffadfe9b2ef0ae3cf41b8a1ac8fecbd286d8`.
-Its Provider-basis transform is not yet complete. The source spelling
+Its EOS-basis transform is not yet complete. The source spelling
 `CO3--` and runtime spelling `CO3^2-` must be reconciled by one explicit
 identity mapping in the installed application contract, not by a Regression
 alias.
@@ -235,7 +236,7 @@ Before heat can join the objective, MEA must freeze:
 - energy unit and per-mole-absorbed-CO2 basis;
 - uncertainty, covariance, partition, residual scale, and promotion gate.
 
-Provider must then expose the required caloric primitives and exact temperature
+EOS must then expose the required caloric primitives and exact temperature
 and active-parameter partials, and Equilibrium must expose the corresponding
 total sensitivity through the reacting state. This capability is outside
 Equilibrium issues 36–38.
@@ -277,7 +278,7 @@ dy/dtheta = partial(y)/partial(theta)
           + partial(y)/partial(z) * dz/dtheta
 ```
 
-Provider-parameter sensitivities require exact Provider mixed partials of the
+EOS-parameter sensitivities require exact EOS mixed partials of the
 state gradient with respect to every active physical parameter, exact
 parameter derivatives of packing/domain functions, and exact derivatives of
 the transformed reference vector. Missing terms make the Jacobian unavailable;
@@ -285,7 +286,7 @@ neither Equilibrium nor Regression substitutes finite differences or frozen
 speciation.
 
 The first-tracer CO2 pressure primitive is the liquid fugacity of neutral CO2.
-For the Provider Helmholtz basis `Phi = A/(R T n_ref)` with
+For the EOS Helmholtz basis `Phi = A/(R T n_ref)` with
 `n_ref = 1 mol` and `rho_ref = 1 mol/m^3`,
 
 ```text
@@ -301,21 +302,21 @@ d ln(f_CO2_liquid)/dtheta_j
   + Phi_(n_CO2,theta_j)
 ```
 
-Provider supplies the gradient, Hessian, and explicit active-parameter
+EOS supplies the gradient, Hessian, and explicit active-parameter
 chemical-potential partial. Equilibrium supplies exact amount and volume
 sensitivities. This composition uses first-order implicit sensitivities and
-Provider second derivatives; it needs no third derivative, density root,
+EOS second derivatives; it needs no third derivative, density root,
 vapor-incidence residual, or bubble solve. A missing, reordered, nonfinite, or
 unsupported term makes that observation Jacobian unavailable.
 
 ## 6. Equilibrium value and certificate contract
 
-The future installed composed evaluator receipt must retain:
+An installed composed evaluator receipt must retain:
 
 - `T` in K and `P` in Pa;
 - ordered species IDs, charges, amounts in mol, mole fractions, and volume in
   m3;
-- Provider component order, parameter fingerprint, reference identity, and
+- EOS component order, parameter fingerprint, reference identity, and
   artifact identity;
 - ordered reaction and balance rows;
 - source standard-state, activity-scale, conversion, and reaction-constant
@@ -337,28 +338,35 @@ Current Equilibrium value gates independently recompute:
 - pressure closure at `1e-8` relative;
 - reaction affinity at `1e-7`;
 - KKT stationarity and complementarity at `1e-7`;
-- positivity, packing, Provider domain, and reduced-Hessian local-minimum
+- positivity, packing, EOS domain, and reduced-Hessian local-minimum
   status.
 
 Sensitivity availability is separate from value validity. A Jacobian fails
 closed for an uncertified primal state, singular system, infinity-norm
 condition estimate above `1e6`, bound activity within the `1e-7` margin,
-trace/structural-face activity, topology change, missing Provider mixed
+trace/structural-face activity, topology change, missing EOS mixed
 partial, or missing transformed-reference derivative.
 
-Equilibrium issue 36 is complete. The accepted public sensitivity result
-includes exact active Provider-parameter amount and volume columns with
-conditioning and failure evidence. Issue 37 remains open for later reactive
-bubble capability and does not block this tracer. Issue 38 supplies the
-installed homogeneous-liquid evidence needed here before any later bubble
-campaign.
+Equilibrium issues 36 and 38 are complete, and Regression issue 15 is complete
+through PR 27. The public sensitivity result includes exact active
+EOS-parameter amount and volume columns with conditioning and failure evidence,
+and Regression owns the typed process-local positive-observation transport.
+Issue 37 is closed as not planned; reactive-bubble work is not a tracer gate.
 
-Before Regression issue 15 can execute, the downstream application must
-construct one typed, versioned installed evaluator handle that composes the
-public Provider and Equilibrium contracts into ordered primitive values and
-complete exact parameter columns. The handle binds artifact identity, units,
-state and parameter ordering, reference identity, chart topology, and Provider
-fingerprints. Regression must not consume a private underscored API.
+The retained issue-38 Hilliard/Böttinger state is negative evidence, not an
+admissible value sentinel. It is `FEASIBLE_ONLY`: solver, numerical, physical,
+and EOS-domain gates pass, while the local-minimum gate fails. An independent
+reduced-Hessian calculation confirms negative curvature. Exact balance
+retraction left no predeclared seed that passed the descent/admission screen.
+The local-minimum gate remains unchanged.
+
+Before issue 16 executes, the downstream application must bind a fresh
+immutable installed evaluator handle that composes the public EOS and
+Equilibrium contracts into ordered primitive values and complete exact
+parameter columns for a certified stable state. The handle binds artifact
+identity, units, state and parameter ordering, reference identity, chart
+topology, and EOS fingerprints. Regression must not consume a private
+underscored API.
 
 ## 7. Regression residual and Jacobian assembly
 
@@ -431,7 +439,7 @@ Frozen density scaling is application input:
 
 MEA must:
 
-- complete the Provider-basis reaction transformation and carbonate identity;
+- complete the EOS-basis reaction transformation and carbonate identity;
 - enforce `target_eligible`;
 - propagate eligible aggregates into the executable payload;
 - acquire source-backed detection bounds for censored rows or demote them, then
@@ -444,19 +452,22 @@ MEA must:
   rows;
 - remove heat from the active tracer or admit a complete calorimetric packet.
 
-### Gate 1 — installed reacting-liquid value sentinel
+### Gate 1 — certified installed reacting-liquid value sentinel
 
-Equilibrium issue 38 first retains one source-complete fixed-`T,P` aqueous MEA
-liquid state using the nine-species/five-reaction bundle and exact installed
-Provider artifact. It must return eligible speciation primitives and every
-liquid certificate. This is value evidence, not a fit.
+Equilibrium issue 38 retained one source-complete fixed-`T,P` aqueous MEA
+liquid state using the nine-species/five-reaction bundle and an exact installed
+EOS artifact. The retained state is `FEASIBLE_ONLY`, not a certified local
+minimum, so it is falsification evidence and cannot be consumed by Ceres. A
+distinct Equilibrium continuation/multistart design and immutable artifact must
+return a certified stable state before this gate passes.
 
 ### Gate 2 — exact active-parameter sensitivities
 
-Provider supplies the exact explicit partials for only the preregistered
-coordinate subset. Equilibrium extends issue 36's implicit solve to those
-columns and the source-reference transform. Value-valid but
-Jacobian-unavailable states remain unusable for Ceres.
+EOS supplies the exact explicit partials for only the preregistered coordinate
+subset. Equilibrium issue 36 supplies the implicit columns and source-reference
+transform. Value-valid but Jacobian-unavailable states remain unusable for
+Ceres, and derivative completeness does not override a failed local-minimum
+gate.
 
 ### Gate 3 — homogeneous-liquid observable composition
 
@@ -471,7 +482,7 @@ fingerprints, status propagation, and failure behavior.
 
 Organization decision
 [`ePC-SAFT/.github#1`](https://github.com/ePC-SAFT/.github/issues/1) admits the
-inverted process-local transport. Regression issue 15 binds the
+inverted process-local transport. Regression issue 15 and PR 27 bind the
 downstream-composed, model-bound, versioned evaluator through that transport.
 The first executable slice supports positive identity and log equalities,
 value-only and value-plus-Jacobian responses, deterministic ordering, complete
@@ -546,7 +557,7 @@ after execution.
 
 ### Gate 8 — later heat expansion
 
-Only after the source, caloric Provider, Equilibrium sensitivity, and
+Only after the source, caloric EOS, Equilibrium sensitivity, and
 observation-scale gates in section 4.4 are complete may heat join the same
 parameter vector and Ceres objective. Its addition requires a new rank and
 conditioning preflight; it does not reinterpret the earlier tracer.
@@ -568,7 +579,7 @@ A fixed-`T,P` liquid, later reactive-bubble boundary, and later calorimetric
 path are different operations even when temperature, loading, and composition
 match. A
 residual-only response may omit returned fitted-parameter columns, but
-Equilibrium still consumes the exact state derivatives and Provider tensors
+Equilibrium still consumes the exact state derivatives and EOS tensors
 required internally by Ipopt and certification; it cannot replace them with a
 value-only phase endpoint.
 
@@ -599,7 +610,7 @@ not experimental-uncertainty limits, and require explicit preregistration
 before reuse.
 
 A promotion candidate additionally retains one complete successor receipt:
-exact Provider, Equilibrium, and Regression versions, commits/trees, installed
+exact EOS, Equilibrium, and Regression versions, commits/trees, installed
 wheel or ABI hashes, and capability fingerprints; ordered parameter identities,
 units, values, bounds, sources, transforms, and fitted domain; observation and
 split hashes; reaction/reference identities; all multistart diagnostics;
@@ -607,23 +618,23 @@ Equilibrium certificates; complete training/reserved residual records; and
 final bundle fingerprint.
 
 No result establishes global parameter uniqueness, uncertainty, prediction,
-Provider-catalog authority, or promotion by itself.
+EOS-catalog authority, or promotion by itself.
 
 ## 12. Current readiness
 
 | Dependency | Status | Smallest missing work |
 |---|---|---|
 | Regression multi-parameter Ceres core | ready for admitted exact evaluators | none |
-| Generic observation equations | design frozen | bind real downstream evaluator in issue 15 |
+| Generic positive-observation equations | implemented in PR 27 | none |
 | MEA chemistry/source transform | Gate-0 contract frozen | retain exact merged application subject and source hashes |
 | MEA pressure metrology | first row selected | Hilliard `vle_obs_0137`; no model-derived row |
 | MEA speciation payload | first row selected | Böttinger `cheq_canon_00194`; direct positive equality |
 | MEA heat | not admitted | source-complete packet plus caloric value/sensitivity contract |
-| Equilibrium reacting-liquid values and sensitivities | package implementation complete | installed source-complete homogeneous MEA evidence |
-| Equilibrium reactive bubble | deferred, not a tracer gate | issue 37 remains separate |
-| Installed MEA campaign | homogeneous Gate-0 checkpoint merged and frozen | retain the composed-observable receipt against exact PR 51 subject |
-| Regression downstream transport | blocked | issue 15 after exact installed evaluator artifact |
-| Reduced coupled fit | blocked | corrected issue 16 after gates 0–4 |
+| Equilibrium reacting-liquid values and sensitivities | exact transport complete; retained state `FEASIBLE_ONLY` | certified stable homogeneous state from a distinct continuation/multistart design |
+| Equilibrium reactive bubble | issue 37 closed as not planned | not a tracer gate |
+| Installed MEA campaign | frozen state retained as negative evidence | re-freeze exact artifacts after a stable state is available |
+| Regression downstream transport | implemented | PR 27 / issue 15 complete |
+| Reduced coupled fit | blocked | certified stable state plus frozen rank-sufficient `N <= 2` coordinates |
 | Full mixed campaign | not ready | successful tracer, frozen three-coordinate contract, and rank-sufficient admitted rows |
 
 The next Regression-side work that does not depend on Equilibrium is the
@@ -631,18 +642,23 @@ generic strict dataset/control and preparation/preflight work in issues 21 and
 20. It must remain chemistry-free and must not fabricate missing MEA
 observations or derivatives.
 
-## 13. Required issue reconciliation
+## 13. Current issue reconciliation
 
-- Regression issue 16 must name the Hilliard pressure and Böttinger speciation
-  rows, use the liquid-fugacity-equivalent convention, remove heat/loading and
-  bubble gates, correct the reserved maximum from 435 to 267, and retain
-  `N <= 2`.
-- Regression issue 15 remains the transport gate; it must not be bypassed by a
-  Python callback or source checkout.
+- Regression issue 16 names the Hilliard pressure and Böttinger speciation
+  rows, uses the liquid-fugacity-equivalent convention, excludes heat/loading
+  and bubble work, retains the corrected reserved maximum of 267, and limits
+  the tracer to `N <= 2`.
+- Regression issue 15 and PR 27 completed the exact positive-observation
+  transport; it must still not be bypassed by a Python callback or source
+  checkout.
 - MEA PR 51 owns the exact first-tracer source/state preparation.
 - Equilibrium issue 36 is complete for exact active-parameter state
-  sensitivities. Issue 37 is deferred for later bubble work; issue 38 is
-  narrowed to installed homogeneous-liquid evidence first.
+  sensitivities. Issue 38 is closed with retained `FEASIBLE_ONLY`
+  negative-curvature evidence. Issue 37 is closed as not planned and remains
+  outside the tracer.
+- Resume only after an installed Equilibrium artifact certifies a stable
+  homogeneous state and the application freezes a rank-sufficient `N <= 2`
+  coordinate block. Re-freeze all artifact identities on resume.
 
 This document controls the coordinated sequence. Application manifests,
 installed artifact receipts, and owner-specific implementation contracts

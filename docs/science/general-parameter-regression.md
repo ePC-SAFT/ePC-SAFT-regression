@@ -4,31 +4,31 @@ Status: general nonpolar/electrolyte families fit-ready for their typed
 observation contracts; neutral pure 2B ordinary-sigma joint block executable;
 polar regression excluded
 
-Date: 2026-07-29
+Date: 2026-07-30
 
-## Active installed Provider binding
+## Active installed EOS binding
 
-The active frontend dependency is Provider `0.2.0.dev0`, commit
-`dc2ca7681bf8776ba68437f28d8e48d0e27ef441`, tree
-`e4bfe64e78f20ad9cca0f26789ddb6b516b8baf4`, wheel SHA-256
-`ceffbec2d8975fe105461f0af4fb6601a4e2e1b65fd2f6cbf47a877edfef99cb`, and
+The active frontend dependency is EOS `0.2.0.dev0`, commit
+`24ab1bdfb3a1558eb87815e9c3b5d97fbe6a025d`, tree
+`145cf8b6126ad403aa8ee51b1b4623db3da8aa2f`, wheel SHA-256
+`66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9`, and
 installed-header SHA-256
 `db37805c1abd9b1a355f41a89154d14756477c7293af940dc298a6b038aee45d`.
 The installed static-library SHA-256 is
-`67f8ddd40d794ce6b985ea6fed65256d01e8f50bda23ac65f61b7514c8fd6e51`.
-The previous frontend subject's final Provider JUnit receipt artifact is
+`5e5c3e8311c011365471eeff29b2d9ff8486d149745a4bea7cd48bd6e784f9d3`.
+The previous frontend subject's final EOS JUnit receipt artifact is
 `provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
 SHA-256
 `56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`.
 That receipt remains historical evidence for its exact prior subject and is
 not rebound to the active ordinary-sigma artifact. Artifact names are relative
-to an executor-supplied immutable artifact root. Campaign-specific Provider
+to an executor-supplied immutable artifact root. Campaign-specific EOS
 subjects below remain historical evidence for the named reference runs.
 
 ## Objective
 
 Regression shall support source-bound fitting of any admitted continuous
-ePC-SAFT parameter for any Provider-supported component set when the caller
+ePC-SAFT parameter for any EOS-supported component set when the caller
 supplies an informative dataset and a complete numerical contract.
 
 Published methane, ethane, Figiel, and later literature workflows are
@@ -37,27 +37,35 @@ parameter-family domain but do not restrict the runtime to those components,
 mixtures, or papers. One campaign does not prove scientific accuracy for every
 mixture.
 
+Every literature-related result follows
+`docs/science/literature-reproduction-contract.md`. Regression reproduces a
+complete declared numerical contract; it does not infer missing author rows,
+objectives, weights, starts, bounds, topology, or solver choices from a
+published tuple. Exact author-method replay, source-faithful reconstruction,
+published-tuple property replay, and modern refitting are distinct evidence
+classes.
+
 This design supersedes the earlier assumption that every paper-specific
 campaign must remain a separate regression surface. It does not claim that
-every Provider parameter is fit-ready today.
+every EOS parameter is fit-ready today.
 
 ## Ownership boundary
 
-Provider remains the only owner of ePC-SAFT equations, resolved parameter
+EOS remains the only owner of ePC-SAFT equations, resolved parameter
 records, thermodynamic states, density closure, and nonlinear derivatives.
 Regression owns:
 
 - source-bound observation contracts;
 - active parameter selection, bounds, scales, transforms, starts, and sharing;
 - residual construction and Ceres execution;
-- exact residual-Jacobian assembly from Provider derivatives;
+- exact residual-Jacobian assembly from EOS derivatives;
 - rank, conditioning, active-bound, confirmation, and row-accounting evidence;
 - immutable fit results and fitted-versus-reference comparisons.
 
 Regression must not accept arbitrary executable residual plugins, copied EOS
 equations, a numerical production derivative backend, or a mutable parameter
 registry. The supported vocabulary for any fit is a closed, versioned typed
-schema. Provider may advertise a versioned superset. Regression accepts only
+schema. EOS may advertise a versioned superset. Regression accepts only
 descriptor members its installed version understands, reports the remainder
 as unsupported, and rejects any request that references an unknown member
 rather than registering it dynamically.
@@ -66,9 +74,9 @@ rather than registering it dynamically.
 
 The package shall distinguish these states for every parameter family:
 
-1. `REPRESENTED`: Provider can resolve and evaluate a model containing the
+1. `REPRESENTED`: EOS can resolve and evaluate a model containing the
    parameter.
-2. `DERIVATIVE_READY`: an installed Provider artifact exposes the exact active
+2. `DERIVATIVE_READY`: an installed EOS artifact exposes the exact active
    derivative required by at least one observation contract.
 3. `FIT_READY`: Regression can construct and solve the corresponding
    source-bound problem for caller-supplied components and rows.
@@ -109,7 +117,7 @@ ParameterCoordinate
 
 Each family permits exactly one identity variant. Pair endpoints and
 association endpoints use one documented canonical lexical order; duplicate
-canonical identities are rejected. Provider's capability descriptor supplies
+canonical identities are rejected. EOS's capability descriptor supplies
 the canonical physical unit and an explicit mapping from these identities to
 its active coordinate order. A model, formulation, topology, transform, or
 parameter-fingerprint mismatch fails before evaluation.
@@ -127,12 +135,12 @@ one from parameter sign or bounds.
 Discrete model choices, charge number, component identity, site topology, and
 electrolyte formulation are specifications, not continuous fit coordinates.
 
-### Complete Provider-record inventory
+### Complete EOS-record inventory
 
-The current Provider record vocabulary is the starting inventory, not proof of
+The current EOS record vocabulary is the starting inventory, not proof of
 derivative readiness:
 
-| Provider record family | Regression treatment |
+| EOS record family | Regression treatment |
 |---|---|
 | `molar_mass` | fixed measured input; not an adjustable ePC-SAFT coordinate |
 | `charge_number` | fixed discrete identity; not a continuous coordinate |
@@ -141,20 +149,20 @@ derivative readiness:
 | `relative_permittivity`, `born_diameter`, `solvation_factor` | continuous component coordinates when an exact observation derivative is advertised |
 | `schreckenberg_dielectric_volume`, `schreckenberg_dielectric_temperature` | continuous component/correlation coordinates when exact derivatives are advertised |
 | `zuber_ion_suppression_coefficient` | continuous component coordinate when exact derivatives are advertised |
-| `rueben_dipole_scaling`, `rueben_polarizability_scaling`, `rueben_correlation_integral_parameter` | Provider-represented polar-model inputs explicitly excluded from the Regression roadmap by user decision; no Regression capability is planned |
+| `rueben_dipole_scaling`, `rueben_polarizability_scaling`, `rueben_correlation_integral_parameter` | EOS-represented polar-model inputs explicitly excluded from the Regression roadmap by user decision; no Regression capability is planned |
 | `k_ij`, `l_ij` | continuous unordered component-pair coordinates |
-| `association_energy_over_k`, `association_volume` | model-bound coordinates in the installed Provider's fixed neutral pure 2B ordinary-`sigma_ij^3*kappa` capability; topology is not a fitted coordinate |
+| `association_energy_over_k`, `association_volume` | model-bound coordinates in the installed EOS's fixed neutral pure 2B ordinary-`sigma_ij^3*kappa` capability; topology is not a fitted coordinate |
 | `ion_fraction_suppression_coefficient`, `ionic_region_relative_permittivity` | continuous model coordinates when exact derivatives are advertised |
 | correlation terms for `segment_diameter`, `relative_permittivity`, and `solvation_factor` | individually named coefficient coordinates; no whole-correlation opaque fit |
 
-New Provider record families require an explicit schema revision in both
+New EOS record families require an explicit schema revision in both
 packages. Regression must never infer fit support merely because a record can
 be resolved.
 
 ## Definitive parameter-family and data-requirement matrix
 
 `FIT_READY` below means that caller-supplied rows can execute today when the
-installed Provider advertises the named exact capability. It does not mean
+installed EOS advertises the named exact capability. It does not mean
 that every dataset is informative, that a reference value will be reproduced,
 or that the result is predictive. Every problem still needs declared units,
 source identity, partitions, residual scales, parameter bounds/scales/starts,
@@ -163,24 +171,24 @@ conditioning, non-bound diagnostics, and confirmation-start agreement.
 
 | Parameter family | Identity | Minimum source-bound data contract | Exact executable contract | Current state and MEA role |
 |---|---|---|---|---|
-| `segment_count` (`m`) | component | Multiple pure rows with `T`, observed saturation pressure and liquid density, molar mass, phase-volume bounds/starts, partitions, and scales | Provider `(n,V,m)` value/gradient/Hessian; Regression lifted liquid/vapor volumes with pressure, chemical-potential, and density residuals | `FIT_READY`, one family at a time. Standalone recovery is optional for MEA unless `m` is selected in MEA's application-owned parameter block. |
-| `segment_diameter` (`sigma`) | component | Same pure saturation pressure/liquid-density contract, over a range that gives nonzero independent sensitivity | Provider `(n,V,sigma)` value/gradient/Hessian; same lifted Ceres owner | `FIT_READY` for a constant coordinate. Named temperature-correlation coefficients are separately `NOT_READY`. Optional for MEA unless selected. |
-| `dispersion_energy_over_k` (`epsilon/k`) | component | Same pure saturation pressure/liquid-density contract with enough vapor-pressure sensitivity | Provider `(n,V,epsilon/k)` value/gradient/Hessian; same lifted Ceres owner | `FIT_READY`, one family at a time. Optional for MEA unless selected. |
-| `k_ij` | unordered component pair | One supported domain: fixed measured `T,P,x,y` VLE rows; source-bound MIAC rows with formula molality; or single-ion solvation-Gibbs targets. Rows must vary enough to identify the selected pair. | Exact Provider Hessian for lifted neutral VLE or exact first derivative for the admitted aqueous/solvation direct observable; one typed pair coordinate | `FIT_READY` in the advertised neutral-VLE, aqueous-MIAC, and organic-ion-solvation domains. MEA needs exact pair derivatives only if a preregistered amendment selects a pair coordinate; the current staged three-coordinate block selects none. |
-| `l_ij` | unordered component pair | Fixed measured `T,P,x,y` VLE rows sensitive to cross diameter, with explicit source sign convention | Exact Provider `(n1,n2,V,l_ij)` Hessian for the currently admitted neutral nonassociating binary domain | `FIT_READY` only for fixed-composition neutral VLE. Density, excess-volume, associating, and electrolyte observation domains are `NOT_READY`; standalone expansion is not an MEA prerequisite unless selected. |
-| `born_diameter` | ion component | One or more source-defined single-ion solvation-Gibbs targets with exact x-process convention, state, component order, and numerical scale | Exact Provider solvation-Gibbs value/first derivative for the active ion; direct-observable Ceres row | `FIT_READY`; five Figiel ions are reference evidence. It is parallel parameter groundwork, not coupled-MEA readiness. |
-| `solvation_factor` | component | Source-bound MIAC rows at declared `T,P` and formula-unit molality, with solvent/ion identities and scale | Exact Provider MIAC value/first derivative for one active factor; direct-observable Ceres rows | `FIT_READY` for the advertised constant factor. A temperature correlation is separately `NOT_READY`; not on the MEA critical path unless selected. |
-| `relative_permittivity` | solvent component | Source-bound single-ion solvation-Gibbs targets with fixed other model inputs, exact solvent identity, x-process convention, state, and scale | Exact Provider solvation-Gibbs value/first derivative for the active solvent permittivity; direct-observable Ceres rows | `FIT_READY`. Corrected Validation subject `e4cb7af` gives five independent rank-1 water fits returning `78.0899937514462` through `78.08999375166104` versus fixed `78.09`. This is implementation evidence, not a paper-fitted target or MEA prerequisite. |
-| `ion_fraction_suppression_coefficient` | model | Salt-free-normalized relative-permittivity observations spanning enough total-ion mole fraction to identify one coefficient | Exact Provider relative-permittivity ratio and first derivative; direct-observable Ceres rows | `FIT_READY`; 36 digitized Figiel water/methanol rows are reference evidence. Optional standalone recovery. |
-| `ionic_region_relative_permittivity` | model | Source-defined single-ion solvation-Gibbs targets with fixed Born diameters and other inputs | Exact Provider SSM+DS solvation-Gibbs value/first derivative; direct-observable Ceres rows | `FIT_READY`; five independent Figiel fits recover fixed `8` within `2.2e-9`. Parallel groundwork, not coupled-MEA readiness. |
-| `association_energy_over_k` | model-bound pair in a fixed neutral pure 2B topology | Simultaneous multi-temperature vapor-pressure and liquid-density observations with exact row identities, units, topology, bounds, scales, and starts; one density point is insufficient | The mixed-row Ceres surface consumes the ordinary `sigma_ij^3*kappa` Provider value/gradient/Hessian jointly with `m`, `sigma`, `epsilon/k`, and association volume | `EXECUTABLE_GENERIC_2B_BLOCK`; mechanics and public-state parity are verified. Case-specific identifiability and parameter acceptance remain Validation evidence and issue #28 work. |
+| `segment_count` (`m`) | component | Multiple pure rows with `T`, observed saturation pressure and liquid density, molar mass, phase-volume bounds/starts, partitions, and scales | EOS `(n,V,m)` value/gradient/Hessian; Regression lifted liquid/vapor volumes with pressure, chemical-potential, and density residuals | `FIT_READY`, one family at a time. Standalone recovery is optional for MEA unless `m` is selected in MEA's application-owned parameter block. |
+| `segment_diameter` (`sigma`) | component | Same pure saturation pressure/liquid-density contract, over a range that gives nonzero independent sensitivity | EOS `(n,V,sigma)` value/gradient/Hessian; same lifted Ceres owner | `FIT_READY` for a constant coordinate. Named temperature-correlation coefficients are separately `NOT_READY`. Optional for MEA unless selected. |
+| `dispersion_energy_over_k` (`epsilon/k`) | component | Same pure saturation pressure/liquid-density contract with enough vapor-pressure sensitivity | EOS `(n,V,epsilon/k)` value/gradient/Hessian; same lifted Ceres owner | `FIT_READY`, one family at a time. Optional for MEA unless selected. |
+| `k_ij` | unordered component pair | One supported domain: fixed measured `T,P,x,y` VLE rows; source-bound MIAC rows with formula molality; or single-ion solvation-Gibbs targets. Rows must vary enough to identify the selected pair. | Exact EOS Hessian for lifted neutral VLE or exact first derivative for the admitted aqueous/solvation direct observable; one typed pair coordinate | `FIT_READY` in the advertised neutral-VLE, aqueous-MIAC, and organic-ion-solvation domains. MEA needs exact pair derivatives only if a preregistered amendment selects a pair coordinate; the current staged three-coordinate block selects none. |
+| `l_ij` | unordered component pair | Fixed measured `T,P,x,y` VLE rows sensitive to cross diameter, with explicit source sign convention | Exact EOS `(n1,n2,V,l_ij)` Hessian for the currently admitted neutral nonassociating binary domain | `FIT_READY` only for fixed-composition neutral VLE. Density, excess-volume, associating, and electrolyte observation domains are `NOT_READY`; standalone expansion is not an MEA prerequisite unless selected. |
+| `born_diameter` | ion component | One or more source-defined single-ion solvation-Gibbs targets with exact x-process convention, state, component order, and numerical scale | Exact EOS solvation-Gibbs value/first derivative for the active ion; direct-observable Ceres row | `FIT_READY`; five Figiel ions are reference evidence. It is parallel parameter groundwork, not coupled-MEA readiness. |
+| `solvation_factor` | component | Source-bound MIAC rows at declared `T,P` and formula-unit molality, with solvent/ion identities and scale | Exact EOS MIAC value/first derivative for one active factor; direct-observable Ceres rows | `FIT_READY` for the advertised constant factor. A temperature correlation is separately `NOT_READY`; not on the MEA critical path unless selected. |
+| `relative_permittivity` | solvent component | Source-bound single-ion solvation-Gibbs targets with fixed other model inputs, exact solvent identity, x-process convention, state, and scale | Exact EOS solvation-Gibbs value/first derivative for the active solvent permittivity; direct-observable Ceres rows | `FIT_READY`. Corrected Validation subject `e4cb7af` gives five independent rank-1 water fits returning `78.0899937514462` through `78.08999375166104` versus fixed `78.09`. This is implementation evidence, not a paper-fitted target or MEA prerequisite. |
+| `ion_fraction_suppression_coefficient` | model | Salt-free-normalized relative-permittivity observations spanning enough total-ion mole fraction to identify one coefficient | Exact EOS relative-permittivity ratio and first derivative; direct-observable Ceres rows | `FIT_READY`; 36 digitized Figiel water/methanol rows are reference evidence. Optional standalone recovery. |
+| `ionic_region_relative_permittivity` | model | Source-defined single-ion solvation-Gibbs targets with fixed Born diameters and other inputs | Exact EOS SSM+DS solvation-Gibbs value/first derivative; direct-observable Ceres rows | `FIT_READY`; five independent Figiel fits recover fixed `8` within `2.2e-9`. Parallel groundwork, not coupled-MEA readiness. |
+| `association_energy_over_k` | model-bound pair in a fixed neutral pure 2B topology | Simultaneous multi-temperature vapor-pressure and liquid-density observations with exact row identities, units, topology, bounds, scales, and starts; one density point is insufficient | The mixed-row Ceres surface consumes the ordinary `sigma_ij^3*kappa` EOS value/gradient/Hessian jointly with `m`, `sigma`, `epsilon/k`, and association volume | `EXECUTABLE_GENERIC_2B_BLOCK`; mechanics and public-state parity are verified. Case-specific identifiability and parameter acceptance remain Validation evidence and issue #28 work. |
 | `association_volume` | model-bound pair in the same fixed neutral pure 2B topology | The same source-complete simultaneous series is required to distinguish this coordinate from association energy and the three ordinary pure parameters | Same ordinary-sigma five-parameter block; no association-only engine, scheme-name parser, or paper-specific runtime | `EXECUTABLE_GENERIC_2B_BLOCK`; no MAPA/DEEA tuple is accepted or packaged. |
-| `k_hb_ij` | source-defined cross-association combining-rule coordinate | A source-defined combining rule and sign convention plus composition/temperature-varying association-sensitive observations that separate cross from pure association | New Provider record/transform identity, versioned fingerprint, exact chain-rule derivative, and an association-endpoint Regression identity are required | `NOT_READY`. Ascani's fixed `0.026` is provenance, not a recovery dataset. Do not alias it to resolved association energy or invent zero defaults. Not the next MEA investment. |
-| `schreckenberg_dielectric_volume`, `schreckenberg_dielectric_temperature` | component/correlation coordinates | Multi-temperature electrolyte relative-permittivity or other source observables that independently identify the selected coefficient | New exact Provider active-parameter callback and Regression correlation identity/surface | `REPRESENTED_NOT_DERIVATIVE_READY`; no retained rank-sufficient recovery series. Optional, not on the MEA critical path. |
-| `zuber_ion_suppression_coefficient` | ion component | Relative-permittivity, MIAC, osmotic/activity, or solvation observations spanning ion fraction/molality and preferably temperature | New exact Provider active-parameter callback and matching typed Regression observation contract | `REPRESENTED_NOT_DERIVATIVE_READY`; the retained one-row osmotic oracle is insufficient. Optional. |
-| Named correlation coefficients for `segment_diameter`, `relative_permittivity`, or `solvation_factor` | component, correlation family, coefficient kind, and term index | Multi-temperature rows covering a range sufficient to distinguish constant, amplitude, and exponent coefficients | New closed correlation-coordinate descriptor, exact Provider derivative including the correlation chain rule, and Regression identity | `REPRESENTED_NOT_DERIVATIVE_READY`; current constant-parameter evidence does not validate coefficient recovery. |
-| Temperature-dependent `k_ij(T)` coefficients | pair plus named correlation coefficient | Multi-temperature mixture observations and the exact source correlation form, reference temperature, units, and sign convention | New Provider pair-correlation record/capability and exact derivative; Regression correlation identity | `NOT_REPRESENTED_NOT_READY`. Ascani provides a source law but the retained bounded case is only 298.15 K. |
-| Polar parameter families | source-specific | none in this roadmap | none in Regression | `EXCLUDED_FROM_REGRESSION_ROADMAP_BY_USER_DECISION`. Provider may still represent and evaluate polar physics for other owners. |
+| `k_hb_ij` | source-defined cross-association combining-rule coordinate | A source-defined combining rule and sign convention plus composition/temperature-varying association-sensitive observations that separate cross from pure association | New EOS record/transform identity, versioned fingerprint, exact chain-rule derivative, and an association-endpoint Regression identity are required | `NOT_READY`. Ascani's fixed `0.026` is provenance, not a recovery dataset. Do not alias it to resolved association energy or invent zero defaults. Not the next MEA investment. |
+| `schreckenberg_dielectric_volume`, `schreckenberg_dielectric_temperature` | component/correlation coordinates | Multi-temperature electrolyte relative-permittivity or other source observables that independently identify the selected coefficient | New exact EOS active-parameter callback and Regression correlation identity/surface | `REPRESENTED_NOT_DERIVATIVE_READY`; no retained rank-sufficient recovery series. Optional, not on the MEA critical path. |
+| `zuber_ion_suppression_coefficient` | ion component | Relative-permittivity, MIAC, osmotic/activity, or solvation observations spanning ion fraction/molality and preferably temperature | New exact EOS active-parameter callback and matching typed Regression observation contract | `REPRESENTED_NOT_DERIVATIVE_READY`; the retained one-row osmotic oracle is insufficient. Optional. |
+| Named correlation coefficients for `segment_diameter`, `relative_permittivity`, or `solvation_factor` | component, correlation family, coefficient kind, and term index | Multi-temperature rows covering a range sufficient to distinguish constant, amplitude, and exponent coefficients | New closed correlation-coordinate descriptor, exact EOS derivative including the correlation chain rule, and Regression identity | `REPRESENTED_NOT_DERIVATIVE_READY`; current constant-parameter evidence does not validate coefficient recovery. |
+| Temperature-dependent `k_ij(T)` coefficients | pair plus named correlation coefficient | Multi-temperature mixture observations and the exact source correlation form, reference temperature, units, and sign convention | New EOS pair-correlation record/capability and exact derivative; Regression correlation identity | `NOT_REPRESENTED_NOT_READY`. Ascani provides a source law but the retained bounded case is only 298.15 K. |
+| Polar parameter families | source-specific | none in this roadmap | none in Regression | `EXCLUDED_FROM_REGRESSION_ROADMAP_BY_USER_DECISION`. EOS may still represent and evaluate polar physics for other owners. |
 
 `molar_mass`, `charge_number`, component identity, association-site topology,
 association scheme, and electrolyte formulation remain fixed measured or
@@ -192,7 +200,7 @@ reports it and the submitted contract declares that interpretation.
 
 Standalone parameter recovery and coupled reactive regression are different
 deliverables. The Figiel/Born, pure-association, dielectric, and correlation
-campaigns can demonstrate individual Provider/Regression contracts, but they
+campaigns can demonstrate individual EOS/Regression contracts, but they
 do not establish the coupled state sensitivities needed by
 MEA-Thermodynamics.
 
@@ -214,16 +222,17 @@ The complete cross-owner sequence is controlled by
 Regression still reuses its one native Ceres engine/result/target and consumes
 only complete exact downstream-composed value and Jacobian blocks. It does not
 copy reaction/EOS equations, run a second equilibrium formulation, or
-finite-difference a black-box solve. Runtime remains blocked on the exact
-installed downstream-composed evaluator receipt and the model-bound transport
-in issue 15. Provider exact parameter partials and Equilibrium
-active-parameter state sensitivities are implemented inputs to that
-composition; reactive-bubble work is deferred.
+finite-difference a black-box solve. Issue 15 and PR 27 completed the
+model-bound transport. Runtime is now blocked on a certified stable installed
+homogeneous state and a frozen rank-sufficient `N <= 2` coordinate block. EOS
+exact parameter partials and Equilibrium active-parameter state sensitivities
+are implemented inputs to that composition; reactive-bubble issue 37 is closed
+as not planned and is not a tracer gate.
 
 ### `k_hb_ij` rule
 
 `k_hb_ij` must not be inferred from a resolved cross-association energy and
-silently fitted under another name. A fit may use it only when Provider exposes
+silently fitted under another name. A fit may use it only when EOS exposes
 the source-defined combining rule, its component/site identity, a versioned
 transform identifier and fingerprint, and its exact total derivative including
 the transform chain rule. Otherwise the caller may fit the resolved
@@ -262,9 +271,9 @@ source_id and row locator
 ```
 
 For aqueous mean-ionic-activity fits, one scalar `k_ij` is active per problem.
-Each row carries the ordered Provider model identity and the explicit fixed
+Each row carries the ordered EOS model identity and the explicit fixed
 `(k_water,cation, k_water,anion, k_cation,anion)` context. The active pair
-replaces exactly one entry before the installed Provider batch callback is
+replaces exactly one entry before the installed EOS batch callback is
 evaluated. The residual and exact Jacobian are
 
 ```text
@@ -275,7 +284,7 @@ dr_i/dz = -(gamma_model,i / gamma_observed,i)
 
 The fixed context is a required workflow input, not a catalog default inferred
 by Regression. Water--cation, water--anion, and cation--anion are separate
-closed Provider capabilities; fitting one does not silently activate the other
+closed EOS capabilities; fitting one does not silently activate the other
 two.
 
 For an advertised organic ion-solvation capability, every row carries the
@@ -290,7 +299,7 @@ r_G = (G_solv(k) - G_solv,observed) / s_G
 dr_G/dz = (d G_solv/d k_ij) * k_scale / s_G.
 ```
 
-Provider owns the pure-solvent infinite-dilution reference sequence and only
+EOS owns the pure-solvent infinite-dilution reference sequence and only
 returns success after its value and derivative limits converge. Regression
 does not copy the reference sequence, Born term, or EOS. Solvent--cation,
 solvent--anion, and cation--anion coordinates are separate closed capability
@@ -306,7 +315,7 @@ dr_i/dz = (d epsilon_model,i / d alpha)
            * (d alpha/dz) / (epsilon_saltfree,i * s_i).
 ```
 
-Provider supplies both permittivities and the exact first derivative;
+EOS supplies both permittivities and the exact first derivative;
 Regression does not copy the dielectric equation. Solvent identity remains
 source provenance even where normalization makes the scalar model response
 independent of the salt-free solvent value.
@@ -348,7 +357,7 @@ the active quadratic branch. It is a censor penalty, never an experimental
 uncertainty model. These semantics may enter runtime only with a real
 source-bound observation and an authorized evaluator transport.
 
-The package dependency remains Provider-only. Organization decision
+The package dependency remains EOS-only. Organization decision
 [`ePC-SAFT/.github#1`](https://github.com/ePC-SAFT/.github/issues/1) additionally
 permits a caller to supply one typed process-local evaluator composed from
 installed owner artifacts without creating a Regression-to-Equilibrium
@@ -368,15 +377,15 @@ advertise. In canonical value units, every scale must satisfy
 
 ## Exact derivative contract
 
-Provider `1e571ab0a84603a51ed6994b14286f683fb12b88` supplies the first two
+EOS `1e571ab0a84603a51ed6994b14286f683fb12b88` supplies the first two
 general model-bound capability descriptors for neutral binary `k_ij` and
-`l_ij`. Provider `86983ff` adds three component-identity descriptors for a
+`l_ij`. EOS `86983ff` adds three component-identity descriptors for a
 neutral, nonassociating, constant-diameter pure model, backed by the exact
-`(n,V,active_parameter)` value/gradient/Hessian callback. Provider
+`(n,V,active_parameter)` value/gradient/Hessian callback. EOS
 `2d1816cf376294156684fee85611a93fc41d0970` adds complete typed descriptors
 and topology fingerprints for the existing active-Born and aqueous-
 solvation-factor callbacks. Regression selects the requested known descriptor
-from that finite Provider capability set, reports unknown
+from that finite EOS capability set, reports unknown
 descriptors as unsupported, and rejects an unknown capability request. Later
 families must supply the same closed metadata:
 
@@ -394,20 +403,20 @@ families must supply the same closed metadata:
 - certificate and tolerance-set identity;
 - explicit unsupported-model, domain, topology, branch, derivative, and
   evaluation failure boundaries;
-- Provider source, parameter, topology, transform, and artifact fingerprints;
+- EOS source, parameter, topology, transform, and artifact fingerprints;
 - accepted-artifact status and receipt identity, or an explicit
   authority-neutral status.
 
 Missing or unknown descriptor metadata prevents `DERIVATIVE_READY` and
 `FIT_READY`; Regression does not fill it from local defaults.
 
-The direct-observable descriptors have derivative order one because Provider
+The direct-observable descriptors have derivative order one because EOS
 returns the observable and its exact total derivative with respect to the sole
 active physical parameter. Regression's typed direct-observation contracts
 make those exact domains `FIT_READY`; this does not admit fitted values to the
-Provider catalog or generalize their fixed reference paths.
+EOS catalog or generalize their fixed reference paths.
 
-Direct observable residuals consume Provider values and first total
+Direct observable residuals consume EOS values and first total
 derivatives. For a solvation-Gibbs target, solver coordinate `z`, physical
 parameter `p = p_origin + p_scale z`, and residual scale `s_G`:
 
@@ -426,7 +435,7 @@ J_gamma = -(gamma_model/gamma_observed)
           * d(log_gamma_model)/dp * p_scale / s_relative
 ```
 
-The implemented direct-observable Provider paths each accept exactly one
+The implemented direct-observable EOS paths each accept exactly one
 active parameter per problem. Parameter sharing is therefore explicit across
 rows, while the five Figiel Born targets are five independent one-parameter
 problems. Organic ion-solvent pair fits are likewise independent; other pair
@@ -442,7 +451,7 @@ comparison with rounded Table 5 parameters; it is not exact reconstruction of
 the paper's pure-organic fitting data, and the remaining mixed-solvent rows
 are not duplicated as training residuals.
 
-Lifted phase-equilibrium residuals consume Provider phase-potential values,
+Lifted phase-equilibrium residuals consume EOS phase-potential values,
 gradients, and Hessians. The Hessian supplies exact derivatives of pressure
 and chemical-potential residuals with respect to lifted state variables and
 active parameters; the capability's coordinate order and row-major layout are
@@ -464,7 +473,7 @@ The exact parameter column uses
 `dP/dtheta = -RT Phi_(V,theta)` and
 `d(Phi_n)/dtheta = Phi_(n,theta)`. The lifted-volume columns use the
 corresponding `Phi_(V,V)` and `Phi_(n,V)` entries times `V`; the density
-column is `-(M/V_L)/s_rho`. Thus the Provider Hessian is sufficient and no
+column is `-(M/V_L)/s_rho`. Thus the EOS Hessian is sufficient and no
 third derivative or density-root sensitivity is introduced. Regression rejects
 out-of-bound or inverted volumes and nonpositive mechanical-stability
 curvature before accepting an evaluation.
@@ -477,13 +486,13 @@ log-volume scan and bisection is used only when that correction cannot remain
 inside the declared phase interval. Only mechanically stable roots are
 admitted. This prevents a confirmation start from inheriting
 primary-parameter phase volumes while preserving the same residual,
-derivative, and fail-closed contracts. The immutable Provider build and public
+derivative, and fail-closed contracts. The immutable EOS build and public
 state replay verify this mechanics contract; they do not accept a fitted
 parameter tuple.
 
-Provider may use diagnosed density closure for a direct density/property
+EOS may use diagnosed density closure for a direct density/property
 contract. Branch identity, closure residual, and conditioning then remain
-Provider diagnostics returned with the observation. Regression does not
+EOS diagnostics returned with the observation. Regression does not
 reimplement the closure.
 
 Unsupported family/observation pairs fail before Ceres starts.
@@ -503,7 +512,7 @@ r = W h(y, q)     ordered scaled residuals in R^R
 
 `S` is an immutable sparse sharing map. It can route one fitted coordinate to
 multiple declared evaluator slots, but it cannot merge duplicate parameter
-identities implicitly. Provider or an authorized downstream evaluator returns
+identities implicitly. EOS or an authorized downstream evaluator returns
 exact primitive derivative blocks `Y_theta = dy/dtheta` and `Y_q = dy/dq`.
 With `H_y = dh/dy` and the explicit lifted-coordinate derivative
 `H_q = partial h/partial q`, Regression assembles
@@ -568,7 +577,7 @@ starts. It contains no backend selector.
 
 `RegressionResult` owns:
 
-- resolved problem, Provider, source, and artifact fingerprints;
+- resolved problem, EOS, source, and artifact fingerprints;
 - ordered fitted parameters with start, final value, unit, movement, bounds,
   scale, and active-bound distance;
 - per-row observed/model values, raw/scaled residuals, derivative status, and
@@ -618,6 +627,40 @@ final projected parameter rank equals the number of independent active
 coordinates. The numerical contract must declare a maximum accepted condition
 number and its rationale; the engine supplies no universal scientific cutoff.
 
+This bounded preflight establishes structural and local numerical readiness,
+not practical or global identifiability. The fixed neutral-pure-2B block
+additionally requires issue 28's nuisance-reoptimized association profiles and
+declared accepted region before it may report practical-identifiability
+evidence. A dense set of correlation-generated rows does not become
+independent experimental information merely because the local Jacobian has
+full rank.
+
+## Routine Regression tests and Validation campaigns
+
+Regression retains compact deterministic numerical-tolerance tests for the
+main generic public workflows and supported active-coordinate variations. The
+routine matrix covers accepted methane/ethane joint pure fits, representative
+scalar and pair adapters, joint `(m,sigma,epsilon/k)`, fixed neutral-pure-2B
+mechanics and admitted constrained subsets, fixed-composition `k_ij`/`l_ij`,
+the composed positive-observation transport, and deterministic result records.
+Related cases are parameterized when they share one invariant.
+
+These tests use manufactured analytic cases or the smallest source-backed
+anchors, exact production derivatives, independent derivative oracles where
+needed, and declared
+`abs(value-reference) <= atol + rtol*abs(reference)` comparisons. Tolerances
+are justified by scale, oracle accuracy, source precision, and deterministic
+numerical behavior; expected values are not generated by the implementation
+path under test.
+
+The sibling Validation repository owns full literature rows and objectives,
+broad temperature/property/composition matrices, profile surfaces,
+bootstrap/data-perturbation or parameter-distribution studies, competing
+topology and induced/cross-association strategies, transfer evidence, durable
+receipts, and independent review. Validation consumes immutable installed EOS
+and Regression artifacts through public contracts and does not replace the
+compact Regression mechanics sentinels.
+
 ## Acceptance and failure rules
 
 A fit is not scientifically successful merely because Ceres terminates.
@@ -632,28 +675,28 @@ Results separately report:
 - predictive status based only on a predeclared untouched partition and
   approved criteria.
 
-Rank deficiency, unsupported derivatives, Provider fingerprint mismatch,
+Rank deficiency, unsupported derivatives, EOS fingerprint mismatch,
 incomplete row evaluation, invalid physical state, or confirmation failure
 returns a diagnostic result or a fail-closed input error according to whether
 Ceres began. No runtime automatically persists fitted parameters into a
-Provider catalog.
+EOS catalog.
 
 ## Performance contract
 
 Broad input support must not move the Ceres evaluation loop into Python.
 `RegressionProblem` is validated and serialized once; C++ owns residual
-evaluation, Jacobian assembly, Ceres, and diagnostics. Provider calls are
+evaluation, Jacobian assembly, Ceres, and diagnostics. EOS calls are
 native, model-bound, and batched by compatible topology/observation contract.
 
 The implementation shall:
 
-- tape or prepare a fixed Provider topology once per active problem and reuse
-  it when the Provider capability permits;
+- tape or prepare a fixed EOS topology once per active problem and reuse
+  it when the EOS capability permits;
 - reuse row buffers and avoid per-iteration Python objects;
 - preserve the exact sparse parameter-to-observation dependency structure;
 - choose a deterministic dense or sparse Ceres policy internally from the
   problem shape, with no public backend selector;
-- propagate Provider evaluation budgets, deadlines, cancellation, and failed
+- propagate EOS evaluation budgets, deadlines, cancellation, and failed
   row identities;
 - retain a benchmark comparing a migrated reference campaign with its legacy
   native path before deleting that path.
@@ -676,7 +719,7 @@ ordered parameter-slot, primitive-output, and lifted-coordinate identities
 with units; fixed `S` dimensions and entries; row and batch shapes; row-major
 buffer sizes; supported `VALUES_ONLY` and `VALUES_AND_JACOBIAN` requests;
 threading/reentrancy rules; applicability, topology/branch, and sensitivity
-conditioning statuses; evaluated/skipped/failed row accounting; and Provider,
+conditioning statuses; evaluated/skipped/failed row accounting; and EOS,
 Equilibrium, model, parameter, topology, and installed-artifact fingerprints.
 
 The caller owns input and output buffers for the duration of a synchronous
@@ -705,10 +748,10 @@ recovers the same solution from two complete starts, observes value-only and
 Jacobian requests separately, exercises the slot-sharing map `(0,1,0)`,
 rejects `R < N + Q`, rejects an incompletely written exact Jacobian, and
 reports a zero parameter column as rank deficient. It is neither installed
-nor exposed as a Provider capability.
+nor exposed as a EOS capability.
 
 Accepted methane and ethane training are the first installed multi-active
-cutover. Each four-row campaign uses `N = 3`, `Q = 8`, `R = 16`, the Provider
+cutover. Each four-row campaign uses `N = 3`, `Q = 8`, `R = 16`, the EOS
 coordinate order `(n,V,m,sigma,epsilon/k)`, a `16 x 11` exact Jacobian, full
 rank 11, and nuisance-projected parameter rank 3. The shared core preserves
 the accepted parameter, residual, cost, confirmation, reporting, and status
@@ -726,20 +769,29 @@ use the observation-declared lifted-volume starts. This is a start
 perturbation only; it changes no source row, weight, bound, scale, or
 acceptance threshold.
 
-The public `fit_parameters` transport now admits exactly one multi-active
-block: the three ordered pure parameters
-`(m,sigma,epsilon/k)` on pure-saturation observations. This closed
-Provider-backed adapter maps the identity sharing order
-`(m,sigma,epsilon/k)` to the Provider's
-`(n,V,m,sigma,epsilon/k)` callback and delegates training to the same
-generalized core. A later mixture or reactive block must provide its own
-reviewed exact multi-active evaluator contract and remains fail-closed until
-then; this implementation does not pretend that several independent scalar
-callbacks are one coupled derivative.
+The public `fit_parameters` transport admits two exact multi-active blocks.
+The first is the three ordered pure parameters `(m,sigma,epsilon/k)` on
+pure-saturation observations. This closed EOS-backed adapter maps the identity
+sharing order `(m,sigma,epsilon/k)` to the EOS
+`(n,V,m,sigma,epsilon/k)` callback and delegates training to the generalized
+core.
+
+The second is the fixed neutral-pure-2B block
+`(m,sigma,epsilon/k,epsilon_AB/k,kappa_AB)` using the EOS ordinary
+`sigma_ij^3*kappa` callback. It supports vapor-pressure,
+fixed-pressure-density, and combined saturation pressure/liquid-density rows.
+Exact Jacobian replay and a compact manufactured full-rank solve establish
+mechanics only; no association tuple, practical identifiability, prediction,
+or non-2B topology is accepted.
+
+A later mixture, reactive, or non-2B block must provide its own reviewed exact
+multi-active evaluator contract and remains fail-closed until then; this
+implementation does not pretend that several independent scalar callbacks are
+one coupled derivative.
 The current installed pure callback returns value, gradient, and Hessian in
 one inseparable ABI call. The core propagates Ceres's residual-only request and
 does not copy the assembled Regression Jacobian for that call, but the adapter
-still receives Provider derivatives. This is an artifact limitation, not a
+still receives EOS derivatives. This is an artifact limitation, not a
 claim that pure trial evaluations are sensitivity-free.
 
 The installed pair-family campaigns evaluate all 17 audited May 2015
@@ -765,7 +817,7 @@ domain:
 2. aqueous mean ionic activity through the exact first-derivative path; and
 3. single-ion solvation Gibbs energy through the exact first-derivative path.
 
-For every applicable case the campaign must verify the exact Provider
+For every applicable case the campaign must verify the exact EOS
 derivative against an independent analytic or automatic-differentiation
 oracle where one exists, projected parameter rank one, the declared
 conditioning gate, active-bound reporting, agreement of the primary and
@@ -774,7 +826,7 @@ VLE also verifies invariance to row order and to the caller's
 ordering of the unordered pair identity. Direct aqueous cases verify that the
 two inactive pair values supplied by each row remain fixed context rather than
 additional fitted coordinates. Negative controls must fail closed for an
-unsupported Provider fingerprint or observation domain, incomplete Provider
+unsupported EOS fingerprint or observation domain, incomplete EOS
 row evaluation, and a terminal projected-rank-zero or conditioning failure.
 
 The 17-row methane/ethane solve is the performance sentinel. On the current
@@ -786,7 +838,7 @@ Ceres remains single-threaded `DENSE_QR` for this `68 x 35` problem because the
 measured solve is small and fast. A bounded native solver-time budget is
 required so a malformed or unexpectedly expensive case returns a diagnostic
 result instead of running indefinitely; the budget does not interrupt an
-individual Provider callback and cannot replace Provider-side evaluation
+individual EOS callback and cannot replace EOS-side evaluation
 deadlines.
 
 ### May methane/propane source-backed reference
@@ -805,8 +857,8 @@ they are not residual weights or acceptance cutoffs.
 The test-only bundle is `purpose="user-provided"`: it copies the installed
 Gross--Sadowski methane and propane pure records, adds one explicit zero
 methane/propane active-pair initialization, and selects the canonical order
-`("methane", "propane")`. Provider remains the EOS and exact Hessian owner;
-no Provider catalog is changed. Every row uses the observed pressure scale,
+`("methane", "propane")`. EOS remains the EOS and exact Hessian owner;
+no EOS catalog is changed. Every row uses the observed pressure scale,
 unit `mu/RT` scales, liquid start/origin `4.0e-5 m3/mol`, ideal-gas vapor
 start/origin `RT/P`, and the declared liquid `[3.0e-5, 2.0e-4]` and vapor
 `[5.0e-5, 1.0e-2]` bounds.
@@ -823,12 +875,12 @@ observed repeatability deltas are zero; the test retains a `1e-14` diagnostic
 tolerance). Solver, numerical, workflow, and physical-validity statuses are
 reported separately. May supplies the observations, not this fitted
 parameter: the result is in-sample Regression evidence only, with no
-prediction, Provider-catalog persistence, production, or scientific authority
+prediction, EOS-catalog persistence, production, or scientific authority
 claim.
 
 An additional literature reference may be admitted only when its raw
 observations, component order, units, `k_ij` convention, fitted comparison
-value, and installed Provider capability are all independently available.
+value, and installed EOS capability are all independently available.
 Published parameters without their fitting rows remain comparison provenance,
 not a regression benchmark. A further neutral VLE case may add component and
 state transfer evidence; an already source-bound aqueous case remains valid
@@ -841,7 +893,7 @@ agreement. The local anchors are `m = 1.0001569260577763`,
 `sigma = 3.7063548743836034 angstrom`, and
 `epsilon/k = 150.00325287725062 K`. They are deterministic in-sample
 implementation evidence, not a replacement for the accepted joint fit,
-prediction evidence, or Provider-catalog authority.
+prediction evidence, or EOS-catalog authority.
 
 ## Implementation sequence
 
@@ -852,7 +904,7 @@ prediction evidence, or Provider-catalog authority.
    non-associating binary `k_ij` from paper-named input ownership to
    caller-supplied component pairs and rows, matching the advertised
    phase-block domain and retaining reference campaigns as evidence.
-3. **Complete for fixed-composition VLE.** Add Provider active `l_ij` support
+3. **Complete for fixed-composition VLE.** Add EOS active `l_ij` support
    and admit it through the same phase observation contract and Ceres owner.
 4. **Complete for independent scalar pure saturation.** Admit `m`, `sigma`,
    and `epsilon/k` component coordinates through the same contract, result,
@@ -862,7 +914,7 @@ prediction evidence, or Provider-catalog authority.
 5. **Complete for the advertised direct-observable domains.** Admit one Born
    diameter from one or more solvation-Gibbs targets, or one solvation factor
    from one or more mean-ionic-activity targets. Each problem remains one
-   parameter at a time, consumes the Provider value/first derivative, and
+   parameter at a time, consumes the EOS value/first derivative, and
    uses no lifted phase variables.
 6. **Complete for the advertised model-level dielectric domain.** Admit one
    ion-suppression coefficient from normalized relative-permittivity rows.
@@ -879,33 +931,38 @@ prediction evidence, or Provider-catalog authority.
    recovery of a parameter that Figiel fitted or a shared multi-model value.
 8. **Complete for component solvent relative permittivity.** Admit one
    positive solvent coordinate from source-bound single-ion solvation-Gibbs
-   targets. Provider subject `7cadaad`, Regression subject `177890a`, and
+   targets. EOS subject `7cadaad`, Regression subject `177890a`, and
    corrected Validation subject `e4cb7af` bind the exact installed-artifact
    path. Five
    independent `1 x 1` fits are rank 1, non-bound, and confirmed from starts
    50 and 110. Recovery of fixed `78.09` is mechanics evidence, not a
    paper-fitted or predictive result.
-9. **Deferred optional standalone recovery.** Association and remaining
-   nonpolar correlation families require source-complete series, generic
-   observation contracts, and exact Provider derivative seams. Paper-specific
-   executable branches are not retained as substitutes. Polar families are
-   excluded from this roadmap.
-10. **Selected next investment: coupled MEA prerequisite.** Retain the
-    source-bound application contract, exact installed homogeneous-liquid
-    observable value/Jacobian composition, and the model-bound transport before
-    adding the corrected pressure-plus-speciation two-row Ceres tracer. The exact
-    sequence is in `docs/science/mea-coupled-regression-master-plan.md`.
+9. **Mechanics complete for fixed neutral-pure-2B; identifiability pending.**
+   The ordinary-sigma five-parameter callback and Regression path are
+   executable. Practical-identifiability profiles, a conditional
+   fixed-`kappa_AB` fallback, and source-complete installed-artifact campaigns
+   remain open. Non-2B topologies require a separate EOS capability decision.
+   Polar families remain excluded.
+10. **Selected coupled MEA path blocked upstream.** The exact positive-
+    observation transport is implemented. The frozen Hilliard/Böttinger
+    homogeneous state remains `FEASIBLE_ONLY`. Its local-minimum gate fails,
+    and an independent reduced-Hessian calculation confirms negative
+    curvature. The reduced pressure-plus-speciation Ceres tracer waits for a
+    certified stable installed state and a frozen rank-sufficient `N <= 2`
+    coordinate block. The exact sequence is in
+    `docs/science/mea-coupled-regression-master-plan.md`.
 
-Every standalone family admitted in steps 1--9 must be independently
-fit-ready and reference-validated. Step 10 is a separate coupled capability:
-it does not promote optional standalone families and cannot use their evidence
-as a substitute for exact Equilibrium sensitivities.
+Every standalone scalar family admitted in steps 1--8 must be independently
+fit-ready and reference-validated. Step 9 records executable fixed-2B mechanics
+without parameter acceptance. Step 10 is a separate coupled capability: it
+does not promote optional standalone families and cannot use their evidence as
+a substitute for exact Equilibrium sensitivities.
 
 ## Explicit exclusions
 
 - arbitrary Python or C++ residual plugins;
 - mutable runtime registration;
-- copied Provider or Equilibrium equations;
+- copied EOS or Equilibrium equations;
 - numerical production derivatives;
 - hidden bounds, scales, starts, units, chemistry, or source defaults;
 - automatic experimental-uncertainty interpretation;
