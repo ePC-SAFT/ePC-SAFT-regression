@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 import math
-from dataclasses import replace
+from dataclasses import asdict, replace
 from pathlib import Path
 
 from epcsaft import Mixture, Parameters, native_sdk, unit_registry
@@ -20,9 +20,11 @@ import pytest
 
 import epcsaft_regression.parameter_regression as parameter_regression
 from epcsaft_regression import (
+    AcquisitionClass,
     AffineParameterTransform,
     AqueousKijMeanIonicActivityObservation,
     ComponentParameterIdentity,
+    ConfirmationControls,
     DirectObservationRowDiagnostic,
     FixedCompositionVleObservation,
     FIGIEL_BORN_DIAMETER_TRACER_V1,
@@ -32,23 +34,31 @@ from epcsaft_regression import (
     MeanIonicActivityObservation,
     ModelParameterIdentity,
     ObservationPartition,
+    ObjectiveContract,
+    ObservationDataset,
     PairParameterIdentity,
     ParameterCoordinate,
     ParameterFamily,
+    ParameterRequest,
     PureDensityObservation,
     PureDensityRowDiagnostic,
     PureSaturationObservation,
     PureSaturationRowDiagnostic,
     RegressionProblem,
     RegressionResult,
+    RankControls,
     RelativePermittivityRatioObservation,
     SourceDescriptor,
+    SourceInput,
+    RowProvenance,
+    SolverControls,
     SolvationGibbsObservation,
     UnsupportedParameterCapability,
     canonical_dataset_sha256,
     fit_parameters,
     load_pure_saturation_dataset,
     parameter_capabilities,
+    prepare_fit,
 )
 from epcsaft_regression.workflow import _aqueous_kij_models, _fixed_water_factor_model
 from epcsaft_regression.parameter_regression import (
@@ -517,6 +527,78 @@ def _capability(
         for capability in parameter_capabilities(model)
         if not isinstance(capability, UnsupportedParameterCapability)
         and capability.family is family
+    )
+
+
+def _prepare_existing_problem(
+    model: Mixture,
+    problem: RegressionProblem,
+    residual_family: str,
+):
+    observation_type = type(problem.observations[0])
+    assert all(type(row) is observation_type for row in problem.observations)
+    source = problem.sources[0]
+    dataset = ObservationDataset.from_records(
+        observation_type,
+        tuple(asdict(row) for row in problem.observations),
+        source=SourceInput(
+            source.source_id,
+            source.citation,
+            source.durable_locator,
+            source.source_artifact_sha256,
+            source.transformation_record,
+            source.units_and_bases,
+            source.use_basis,
+            source.residual_scale_rationale,
+        ),
+        objective=ObjectiveContract(
+            residual_family,
+            "native_scaled_least_squares",
+            "row scales retained by the canonical observations",
+            "no covariance supplied",
+            "squared",
+            (),
+            "fail",
+        ),
+        row_provenance={
+            row.row_id: RowProvenance(
+                AcquisitionClass.DIRECT_MEASUREMENT,
+                "unique retained row",
+                "included",
+                "declared by source workflow",
+                "not censored",
+                "retained under the declared row policy",
+            )
+            for row in problem.observations
+        },
+    )
+    return prepare_fit(
+        model,
+        datasets=(dataset,),
+        parameters=tuple(
+            ParameterRequest(
+                coordinate.family,
+                coordinate.identity,
+                coordinate.transform,
+                coordinate.lower_bound,
+                coordinate.upper_bound,
+            )
+            for coordinate in problem.parameters
+        ),
+        parameter_slot_indices=problem.parameter_slot_indices,
+        start_vectors=problem.start_vectors,
+        solver=SolverControls(
+            problem.maximum_iterations,
+            problem.maximum_solver_time_seconds,
+            problem.function_tolerance,
+            problem.gradient_tolerance,
+            problem.parameter_tolerance,
+        ),
+        rank=RankControls(problem.maximum_condition_number),
+        confirmation=ConfirmationControls(
+            problem.confirmation_parameter_scaled_max_delta,
+            problem.confirmation_cost_relative_delta,
+        ),
     )
 
 
@@ -2120,6 +2202,49 @@ def test_general_engine_fits_joint_pure_parameter_vector() -> None:
         isinstance(row, PureSaturationRowDiagnostic) and row.evaluated
         for row in result.rows
     )
+
+
+def test_public_preparation_preserves_joint_pure_problem_semantics() -> None:
+    model = _pure_model()
+    direct = _joint_pure_problem(model)
+
+    prepared = _prepare_existing_problem(model, direct, "pure_saturation")
+
+    assert prepared.problem == direct
+    assert prepared.preflight().ready
+
+
+def test_public_preparation_preserves_fixed_2b_problem_semantics() -> None:
+    pairs = (("acceptor", "donor", 1500.0, 0.01),)
+    model = _generic_associating_model(
+        (("acceptor", 1), ("donor", 1)),
+        pairs,
+    )
+    direct = _generic_associating_problem(model, pairs)
+
+    prepared = _prepare_existing_problem(model, direct, "pure_density")
+
+    assert prepared.problem == direct
+    assert tuple(
+        coordinate.family for coordinate in prepared.problem.parameters
+    ) == (
+        ParameterFamily.SEGMENT_COUNT,
+        ParameterFamily.SEGMENT_DIAMETER,
+        ParameterFamily.DISPERSION_ENERGY_OVER_K,
+        ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
+        ParameterFamily.ASSOCIATION_VOLUME,
+    )
+
+
+def test_public_preparation_preserves_direct_observable_problem_semantics() -> None:
+    target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[0]
+    model = _aqueous_model(target.component_order)
+    direct = _born_diameter_problem(model, 0)
+
+    prepared = _prepare_existing_problem(model, direct, "solvation_gibbs")
+
+    assert prepared.problem == direct
+    assert prepared.preflight().ready
 
 
 def test_native_joint_pure_adapter_rejects_reordered_slots() -> None:
