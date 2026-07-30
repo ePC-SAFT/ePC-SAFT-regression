@@ -13,12 +13,18 @@ from epcsaft_regression import (
     FixedCompositionVleObservation, ObjectiveContract, ObservationDataset,
     PairParameterIdentity, ParameterFamily, ParameterRequest, RankControls,
     ResultContext, RowProvenance, SolverControls, SourceInput, prepare_fit,
+    support_view,
 )
 
 model = Mixture(Parameters.from_catalog(
     "gross-2001-methane-ethane",
     components=("methane", "ethane"), version=1,
 ))
+assert any(
+    capability.installed_ready
+    and getattr(capability, "family", None) is ParameterFamily.K_IJ
+    for capability in support_view(model)
+)
 records = ({
     "row_id": "may2015-ch4-c2h6-002",
     "source_id": "may-2015",
@@ -84,6 +90,12 @@ nuisance-projected local rank/conditioning, start-bound status, and failure
 reasons. It does not report practical/global identifiability, uncertainty,
 prediction, or acceptance. Repeated or insensitive row designs therefore fail
 rank preflight before Ceres.
+
+`support_view(model)` returns the installed EOS capability records directly,
+including units, identity and observation contracts, derivative order,
+`installed_ready`, and `unsupported_reason`. The human-readable family matrix
+is in
+[`general-parameter-regression.md`](science/general-parameter-regression.md#definitive-parameter-family-and-data-requirement-matrix).
 
 ## Parameter blocks and association
 

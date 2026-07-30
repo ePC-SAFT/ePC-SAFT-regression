@@ -661,6 +661,18 @@ receipts, and independent review. Validation consumes immutable installed EOS
 and Regression artifacts through public contracts and does not replace the
 compact Regression mechanics sentinels.
 
+The routine package command is:
+
+```bash
+.venv/bin/pytest -q
+```
+
+`pyproject.toml` excludes the explicit `campaign` marker from that command.
+Campaign-marked package replays are opt-in retained evidence, not routine CI or
+a merge gate. New full-grid or paper-complete reproductions belong in
+Validation as installed-artifact campaigns; they must not be added to
+Regression's default suite.
+
 ## Acceptance and failure rules
 
 A fit is not scientifically successful merely because Ceres terminates.

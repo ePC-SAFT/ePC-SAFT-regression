@@ -79,9 +79,11 @@ and [candidate capability record](evidence/candidate-capability.yaml).
 
 Regression's routine suite keeps compact numerical-tolerance sentinels for the
 main scalar, pair, joint-pure, fixed-2B, and composed-observation workflows.
+Run it with `.venv/bin/pytest -q`; the checked-in pytest configuration excludes
+the explicit `campaign` marker.
 Full literature reproductions, broad benchmark matrices, identifiability and
-uncertainty campaigns, and induced/cross-association comparisons remain durable
-installed-artifact evidence in the sibling Validation repository.
+uncertainty campaigns, and induced/cross-association comparisons belong as
+durable installed-artifact evidence in the sibling Validation repository.
 
 Project doctrine and cross-repository coordination are owned by
 [ePC-SAFT Management](https://github.com/ePC-SAFT/ePC-SAFT-management) under

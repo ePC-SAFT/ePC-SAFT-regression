@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
-from enum import StrEnum
 import hashlib
 import json
 import math
-from typing import TYPE_CHECKING, Iterable
+from collections.abc import Iterable
+from dataclasses import dataclass, replace
+from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from epcsaft import native_sdk
 
@@ -67,12 +68,44 @@ class ParameterCapability:
     domain_status: str
     active_component_ids: tuple[str, ...]
 
+    @property
+    def installed_ready(self) -> bool:
+        required_order = (
+            2
+            if self.observation_contract == "fixed_composition_helmholtz_phase"
+            else 1
+        )
+        return (
+            self.maturity == "DERIVATIVE_READY"
+            and self.derivative_order >= required_order
+        )
+
+    @property
+    def unsupported_reason(self) -> str:
+        if self.installed_ready:
+            return ""
+        return (
+            f"installed maturity={self.maturity}, derivative order="
+            f"{self.derivative_order}"
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class UnsupportedParameterCapability:
     capability_code: int
     schema_version: int
     parameter_family_code: int
+
+    @property
+    def installed_ready(self) -> bool:
+        return False
+
+    @property
+    def unsupported_reason(self) -> str:
+        return (
+            f"unsupported capability schema {self.schema_version}, "
+            f"family code {self.parameter_family_code}"
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -236,9 +269,9 @@ class RegressionResult:
         prepared: PreparedFit | None = None,
         context: ResultContext | None = None,
     ) -> dict[str, object]:
-        from .usability import result_record
+        from .usability import _result_record
 
-        return result_record(self, prepared=prepared, context=context)
+        return _result_record(self, prepared=prepared, context=context)
 
     def to_json_bytes(
         self,
@@ -246,9 +279,9 @@ class RegressionResult:
         prepared: PreparedFit | None = None,
         context: ResultContext | None = None,
     ) -> bytes:
-        from .usability import result_json_bytes
+        from .usability import _result_json_bytes
 
-        return result_json_bytes(self, prepared=prepared, context=context)
+        return _result_json_bytes(self, prepared=prepared, context=context)
 
 
 def parameter_capabilities(
@@ -1923,9 +1956,9 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
                         (
                             MeanIonicActivityObservation,
                             AqueousKijMeanIonicActivityObservation,
+                            RelativePermittivityRatioObservation,
                         ),
                     )
-                    or isinstance(observation, RelativePermittivityRatioObservation)
                     else "J/mol"
                 ),
                 observed_value=(

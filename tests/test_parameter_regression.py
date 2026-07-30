@@ -5,6 +5,7 @@ import math
 from dataclasses import asdict, replace
 from pathlib import Path
 
+import pytest
 from epcsaft import Mixture, Parameters, native_sdk, unit_registry
 from epcsaft.records import (
     AssociationParameterRecord,
@@ -16,10 +17,11 @@ from epcsaft.records import (
     SourceRecord,
     ValidityDomain,
 )
-import pytest
 
-import epcsaft_regression.parameter_regression as parameter_regression
 from epcsaft_regression import (
+    FIGIEL_AQUEOUS_KIJ_V1,
+    FIGIEL_BORN_DIAMETER_TRACER_V1,
+    FIGIEL_WATER_SOLVATION_FACTOR_V1,
     AcquisitionClass,
     AffineParameterTransform,
     AqueousKijMeanIonicActivityObservation,
@@ -27,15 +29,12 @@ from epcsaft_regression import (
     ConfirmationControls,
     DirectObservationRowDiagnostic,
     FixedCompositionVleObservation,
-    FIGIEL_BORN_DIAMETER_TRACER_V1,
-    FIGIEL_AQUEOUS_KIJ_V1,
-    FIGIEL_WATER_SOLVATION_FACTOR_V1,
     IonSolvationKijObservation,
     MeanIonicActivityObservation,
     ModelParameterIdentity,
-    ObservationPartition,
     ObjectiveContract,
     ObservationDataset,
+    ObservationPartition,
     PairParameterIdentity,
     ParameterCoordinate,
     ParameterFamily,
@@ -44,27 +43,28 @@ from epcsaft_regression import (
     PureDensityRowDiagnostic,
     PureSaturationObservation,
     PureSaturationRowDiagnostic,
+    RankControls,
     RegressionProblem,
     RegressionResult,
-    RankControls,
     RelativePermittivityRatioObservation,
+    RowProvenance,
+    SolvationGibbsObservation,
+    SolverControls,
     SourceDescriptor,
     SourceInput,
-    RowProvenance,
-    SolverControls,
-    SolvationGibbsObservation,
     UnsupportedParameterCapability,
     canonical_dataset_sha256,
     fit_parameters,
     load_pure_saturation_dataset,
     parameter_capabilities,
+    parameter_regression,
     prepare_fit,
 )
-from epcsaft_regression.workflow import _aqueous_kij_models, _fixed_water_factor_model
 from epcsaft_regression.parameter_regression import (
     _evaluate_parameters,
     _native_payload,
 )
+from epcsaft_regression.workflow import _aqueous_kij_models, _fixed_water_factor_model
 
 _MAY_METHANE_PROPANE_CANONICAL_SHA256 = (
     "c7506ce654d9b6df60ec7ff6bdc6dfde526f82a3d69fc524ac9186976785cefe"

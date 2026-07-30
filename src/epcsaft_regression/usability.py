@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, fields, is_dataclass
-from enum import StrEnum
 import hashlib
 import json
 import math
+from collections.abc import Iterable, Mapping
+from dataclasses import asdict, dataclass, fields, is_dataclass
+from enum import StrEnum
 from types import MappingProxyType
-from typing import Iterable, Mapping
 
 from . import _native
 from .parameter_regression import (
     AffineParameterTransform,
+    AqueousKijMeanIonicActivityObservation,
     ComponentParameterIdentity,
     FixedCompositionVleObservation,
-    AqueousKijMeanIonicActivityObservation,
     IonSolvationKijObservation,
     MeanIonicActivityObservation,
     ModelParameterIdentity,
@@ -25,14 +25,17 @@ from .parameter_regression import (
     PureDensityObservation,
     PureSaturationObservation,
     PureVaporPressureObservation,
-    RelativePermittivityRatioObservation,
     RegressionObservation,
     RegressionProblem,
     RegressionResult,
-    SourceDescriptor,
+    RelativePermittivityRatioObservation,
     SolvationGibbsObservation,
+    SourceDescriptor,
     UnsupportedParameterCapability,
     _evaluate_parameters,
+    _require_finite,
+    _require_nonempty_string,
+    _require_sha256,
     canonical_dataset_sha256,
     fit_parameters,
     parameter_capabilities,
@@ -54,25 +57,6 @@ class ReproductionClass(StrEnum):
     MODERN_REFIT = "MODERN_REFIT"
 
 
-def _nonempty(value: str, name: str) -> None:
-    if type(value) is not str or not value.strip():
-        raise ValueError(f"{name} must be a nonempty string")
-
-
-def _positive(value: float, name: str) -> None:
-    if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
-        raise ValueError(f"{name} must be positive and finite")
-
-
-def _sha256(value: str, name: str) -> None:
-    if (
-        type(value) is not str
-        or len(value) != 64
-        or any(character not in "0123456789abcdef" for character in value)
-    ):
-        raise ValueError(f"{name} must be a lowercase SHA-256")
-
-
 @dataclass(frozen=True, slots=True)
 class CorrelationProvenance:
     equation: str
@@ -84,7 +68,7 @@ class CorrelationProvenance:
 
     def __post_init__(self) -> None:
         for name in ("equation", "units", "validity_interval", "transformation_record"):
-            _nonempty(getattr(self, name), name)
+            _require_nonempty_string(getattr(self, name), name)
         if not self.coefficients or not self.sampling_grid:
             raise ValueError("correlation coefficients and sampling_grid must be nonempty")
         if any(
@@ -117,7 +101,7 @@ class RowProvenance:
             "censoring_decision",
             "outlier_decision",
         ):
-            _nonempty(getattr(self, name), name)
+            _require_nonempty_string(getattr(self, name), name)
         correlation_backed = self.acquisition in (
             AcquisitionClass.AUTHOR_CORRELATION,
             AcquisitionClass.RECONSTRUCTED_CORRELATION,
@@ -147,14 +131,9 @@ class ObjectiveContract:
             "covariance_interpretation",
             "failed_row_treatment",
         ):
-            _nonempty(getattr(self, name), name)
+            _require_nonempty_string(getattr(self, name), name)
         if self.loss != "squared":
             raise ValueError("the current Ceres problem supports only squared loss")
-        if any(
-            type(value) not in (int, float) or not math.isfinite(value)
-            for _, value in self.loss_parameters
-        ):
-            raise ValueError("loss parameters must be finite")
         if self.loss_parameters:
             raise ValueError("squared loss has no loss parameters")
 
@@ -180,8 +159,8 @@ class SourceInput:
             "use_basis",
             "residual_scale_rationale",
         ):
-            _nonempty(getattr(self, name), name)
-        _sha256(self.source_artifact_sha256, "source_artifact_sha256")
+            _require_nonempty_string(getattr(self, name), name)
+        _require_sha256(self.source_artifact_sha256, "source_artifact_sha256")
 
 
 def _json_value(value: object) -> object:
@@ -237,6 +216,8 @@ class ObservationDataset:
         if not self.observations:
             raise ValueError("dataset observations must be nonempty")
         row_ids = tuple(row.row_id for row in self.observations)
+        if len(set(row_ids)) != len(row_ids):
+            raise ValueError("dataset row IDs must be unique")
         provenance_ids = tuple(row_id for row_id, _ in self.row_provenance)
         if len(set(provenance_ids)) != len(provenance_ids) or set(
             provenance_ids
@@ -271,7 +252,7 @@ class ObservationDataset:
         observations: list[RegressionObservation] = []
         for index, record in enumerate(records):
             if not isinstance(record, Mapping):
-                raise ValueError(f"row {index}: record must be a mapping")
+                raise TypeError(f"row {index}: record must be a mapping")
             row_id = str(record.get("row_id", f"index-{index}"))
             extra = sorted(set(record) - allowed)
             missing = sorted(allowed - set(record))
@@ -331,7 +312,7 @@ class SolverControls:
             "gradient_tolerance",
             "parameter_tolerance",
         ):
-            _positive(getattr(self, name), name)
+            _require_finite(getattr(self, name), name, positive=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -339,7 +320,11 @@ class RankControls:
     maximum_condition_number: float
 
     def __post_init__(self) -> None:
-        _positive(self.maximum_condition_number, "maximum_condition_number")
+        _require_finite(
+            self.maximum_condition_number,
+            "maximum_condition_number",
+            positive=True,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -348,8 +333,16 @@ class ConfirmationControls:
     cost_relative_delta: float
 
     def __post_init__(self) -> None:
-        _positive(self.parameter_scaled_max_delta, "parameter_scaled_max_delta")
-        _positive(self.cost_relative_delta, "cost_relative_delta")
+        _require_finite(
+            self.parameter_scaled_max_delta,
+            "parameter_scaled_max_delta",
+            positive=True,
+        )
+        _require_finite(
+            self.cost_relative_delta,
+            "cost_relative_delta",
+            positive=True,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -376,70 +369,10 @@ class ParameterRequest:
             raise ValueError("parameter bounds must be finite and increasing")
 
 
-@dataclass(frozen=True, slots=True)
-class SupportRecord:
-    capability_id: str
-    family: ParameterFamily | None
-    identity_shape: str
-    observation_contract: str
-    unit: str
-    derivative_order: int
-    active_parameter_count: int
-    installed_ready: bool
-    unsupported_reason: str
-
-
-def support_view(model: object) -> tuple[SupportRecord, ...]:
-    records = []
-    for capability in parameter_capabilities(model):
-        if isinstance(capability, UnsupportedParameterCapability):
-            records.append(
-                SupportRecord(
-                    capability_id=f"unsupported-code-{capability.capability_code}",
-                    family=None,
-                    identity_shape="unknown",
-                    observation_contract="unknown",
-                    unit="unknown",
-                    derivative_order=0,
-                    active_parameter_count=0,
-                    installed_ready=False,
-                    unsupported_reason=(
-                        f"unsupported capability schema {capability.schema_version}, "
-                        f"family code {capability.parameter_family_code}"
-                    ),
-                )
-            )
-            continue
-        required_order = (
-            2
-            if capability.observation_contract
-            == "fixed_composition_helmholtz_phase"
-            else 1
-        )
-        ready = (
-            capability.maturity == "DERIVATIVE_READY"
-            and capability.derivative_order >= required_order
-        )
-        records.append(
-            SupportRecord(
-                capability.capability_id,
-                capability.family,
-                capability.identity_shape,
-                capability.observation_contract,
-                _unit(capability.coordinate_units[-1]),
-                capability.derivative_order,
-                capability.active_parameter_count,
-                ready,
-                ""
-                if ready
-                else (
-                    f"requires exact derivative order {required_order}; "
-                    f"installed maturity={capability.maturity}, "
-                    f"order={capability.derivative_order}"
-                ),
-            )
-        )
-    return tuple(records)
+def support_view(
+    model: object,
+) -> tuple[ParameterCapability | UnsupportedParameterCapability, ...]:
+    return parameter_capabilities(model)
 
 
 def _unit(value: str) -> str:
@@ -479,13 +412,7 @@ def _resolve_coordinates(
     derivative_ready = tuple(
         item
         for item in advertised
-        if item.maturity == "DERIVATIVE_READY"
-        and item.derivative_order
-        >= (
-            2
-            if item.observation_contract == "fixed_composition_helmholtz_phase"
-            else 1
-        )
+        if item.installed_ready
     )
     if tuple(request.family for request in requests) == _ASSOCIATING_FAMILIES:
         matches = tuple(
@@ -610,10 +537,9 @@ class PreflightReport:
 def _shape(rows: tuple[RegressionObservation, ...]) -> tuple[int, int]:
     residuals = lifted = 0
     for row in rows:
-        if isinstance(row, FixedCompositionVleObservation):
-            residuals += 4
-            lifted += 2
-        elif isinstance(row, PureSaturationObservation):
+        if isinstance(
+            row, (FixedCompositionVleObservation, PureSaturationObservation)
+        ):
             residuals += 4
             lifted += 2
         elif isinstance(row, PureVaporPressureObservation):
@@ -666,7 +592,6 @@ class PreparedFit:
     model: object
     problem: RegressionProblem
     datasets: tuple[ObservationDataset, ...]
-    support: tuple[SupportRecord, ...]
 
     def fit(self) -> RegressionResult:
         return fit_parameters(self.problem, self.model)
@@ -743,7 +668,7 @@ class PreparedFit:
                         failure,
                     )
                 )
-            except Exception as exc:
+            except (ArithmeticError, RuntimeError, TypeError, ValueError) as exc:
                 reason = f"eos_domain_or_derivative_failure: {exc}"
                 reasons.append(reason)
                 starts.append(
@@ -833,7 +758,7 @@ def prepare_fit(
         confirmation_parameter_scaled_max_delta=confirmation.parameter_scaled_max_delta,
         confirmation_cost_relative_delta=confirmation.cost_relative_delta,
     )
-    return PreparedFit(model, problem, datasets, support_view(model))
+    return PreparedFit(model, problem, datasets)
 
 
 @dataclass(frozen=True, slots=True)
@@ -875,7 +800,7 @@ def _ensure_finite(value: object, path: str = "record") -> None:
             _ensure_finite(item, f"{path}[{index}]")
 
 
-def result_record(
+def _result_record(
     result: RegressionResult,
     *,
     prepared: PreparedFit | None = None,
@@ -1005,14 +930,14 @@ def result_record(
     return record
 
 
-def result_json_bytes(
+def _result_json_bytes(
     result: RegressionResult,
     *,
     prepared: PreparedFit | None = None,
     context: ResultContext | None = None,
 ) -> bytes:
     return json.dumps(
-        result_record(result, prepared=prepared, context=context),
+        _result_record(result, prepared=prepared, context=context),
         sort_keys=True,
         separators=(",", ":"),
         allow_nan=False,
@@ -1026,18 +951,15 @@ __all__ = (
     "ObjectiveContract",
     "ObservationDataset",
     "ParameterRequest",
-    "PreparedFit",
     "PreflightReport",
     "PreflightStart",
+    "PreparedFit",
     "RankControls",
     "ReproductionClass",
     "ResultContext",
     "RowProvenance",
     "SolverControls",
     "SourceInput",
-    "SupportRecord",
     "prepare_fit",
-    "result_json_bytes",
-    "result_record",
     "support_view",
 )
