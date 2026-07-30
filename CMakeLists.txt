@@ -7,7 +7,7 @@ find_package(glog CONFIG REQUIRED)
 find_package(Ceres 2.2 REQUIRED)
 
 if(NOT DEFINED ENV{EPCSAFT_INCLUDE_DIR} OR "$ENV{EPCSAFT_INCLUDE_DIR}" STREQUAL "")
-  message(FATAL_ERROR "EPCSAFT_INCLUDE_DIR must name the installed provider public include directory")
+  message(FATAL_ERROR "EPCSAFT_INCLUDE_DIR must name the installed EOS public include directory")
 endif()
 
 set(EPCSAFT_INCLUDE_DIR "$ENV{EPCSAFT_INCLUDE_DIR}")
