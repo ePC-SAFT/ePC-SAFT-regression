@@ -5,11 +5,19 @@ from enum import StrEnum
 import hashlib
 import json
 import math
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
 from epcsaft import native_sdk
 
 from . import _native
+
+if TYPE_CHECKING:
+    from .evaluator_regression import (
+        ComposedPositiveRowDiagnostic,
+        PositiveEvaluatorCapability,
+        PositiveEvaluatorProblem,
+    )
+    from .usability import PreparedFit, ResultContext
 
 
 class ParameterFamily(StrEnum):
@@ -182,8 +190,8 @@ class DirectObservationRowDiagnostic:
 
 @dataclass(frozen=True, slots=True)
 class RegressionResult:
-    problem: RegressionProblem
-    capabilities: tuple[ParameterCapability, ...]
+    problem: RegressionProblem | PositiveEvaluatorProblem
+    capabilities: tuple[ParameterCapability | PositiveEvaluatorCapability, ...]
     provider_parameter_fingerprint: str
     provider_topology_fingerprint: str
     solver_converged: bool
@@ -206,7 +214,8 @@ class RegressionResult:
         | PureSaturationRowDiagnostic
         | PureVaporPressureRowDiagnostic
         | PureDensityRowDiagnostic
-        | DirectObservationRowDiagnostic,
+        | DirectObservationRowDiagnostic
+        | ComposedPositiveRowDiagnostic,
         ...,
     ]
     confirmation_count: int
@@ -220,6 +229,26 @@ class RegressionResult:
     skipped_row_count: int
     failed_row_count: int
     failure_reasons: tuple[str, ...]
+
+    def to_record(
+        self,
+        *,
+        prepared: PreparedFit | None = None,
+        context: ResultContext | None = None,
+    ) -> dict[str, object]:
+        from .usability import result_record
+
+        return result_record(self, prepared=prepared, context=context)
+
+    def to_json_bytes(
+        self,
+        *,
+        prepared: PreparedFit | None = None,
+        context: ResultContext | None = None,
+    ) -> bytes:
+        from .usability import result_json_bytes
+
+        return result_json_bytes(self, prepared=prepared, context=context)
 
 
 def parameter_capabilities(

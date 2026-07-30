@@ -99,6 +99,18 @@ int main() {
     }
     require(primary.full_jacobian.rank == 3);
     require(primary.projected_parameter_jacobian.rank == 2);
+    const auto preflight = epcsaft_regression::internal::diagnose_jacobian(
+        shape, primary.jacobian
+    );
+    require(preflight.full.rank == primary.full_jacobian.rank);
+    require(
+        preflight.projected_parameters.rank
+        == primary.projected_parameter_jacobian.rank
+    );
+    require(
+        preflight.full.condition_number
+        == primary.full_jacobian.condition_number
+    );
     require(primary.jacobian.size() == 12);
     require(value_only_calls > 0);
     require(jacobian_calls > 0);

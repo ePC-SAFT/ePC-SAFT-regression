@@ -45,6 +45,13 @@ result = fit_pure_saturation(
 )
 ```
 
+Caller-supplied datasets use the public
+[`prepare -> preflight -> fit -> export` quickstart](docs/general-regression-quickstart.md).
+It covers strict records, acquisition/objective provenance, grouped controls,
+installed-capability resolution, local-rank preflight, deterministic export,
+and every direct-EOS observation template. Direct `RegressionProblem` and
+`fit_parameters` construction remains available with the same native payload.
+
 Builds require Ceres 2.2 and `EPCSAFT_INCLUDE_DIR` set to the public include
 directory of an installed compatible EOS wheel. The build does not search
 sibling source trees.

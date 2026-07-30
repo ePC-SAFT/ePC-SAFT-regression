@@ -970,3 +970,20 @@ a substitute for exact Equilibrium sensitivities.
 - polar parameter regression;
 - claims of global uniqueness, uncertainty, predictive validity, or
   downstream readiness without their separate evidence.
+
+## Public usability and deterministic records
+
+The executable caller path is documented in the
+[general Regression quickstart](../general-regression-quickstart.md).
+`ObservationDataset.from_records` delegates row validation and transformed-row
+hashing to the existing observation and hash owners. `prepare_fit` resolves
+installed capability identity and constructs the existing `RegressionProblem`.
+Preflight evaluates exact Jacobians at each declared start without invoking
+Ceres; `PreparedFit.fit` calls the existing `fit_parameters` owner.
+
+`RegressionResult.to_record` and `to_json_bytes` expose
+`epcsaft-regression-result` schema version 1 for both direct-EOS and
+composed-positive producers. Export is deterministic and non-mutating.
+Literature context keeps fitted full-precision numbers separate from
+source-printed strings and represents absent profile or uncertainty artifacts
+explicitly. A result record is not a Validation receipt or authority change.
