@@ -1,26 +1,29 @@
 # General ePC-SAFT Parameter Regression
 
-Status: ten general nonpolar/electrolyte parameter families fit-ready for
-their typed observation contracts; association source contract incomplete;
+Status: general nonpolar/electrolyte families fit-ready for their typed
+observation contracts; neutral pure 2B ordinary-sigma joint block executable;
 polar regression excluded
 
-Date: 2026-07-28
+Date: 2026-07-29
 
 ## Active installed Provider binding
 
 The active frontend dependency is Provider `0.2.0.dev0`, commit
-`14fa3745264db66b8e59c12268737d694c706f2f`, tree
-`eb04f10f445957cc768bad1ef4f330038c69a293`, wheel SHA-256
-`48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594`, and
+`dc2ca7681bf8776ba68437f28d8e48d0e27ef441`, tree
+`e4bfe64e78f20ad9cca0f26789ddb6b516b8baf4`, wheel SHA-256
+`ceffbec2d8975fe105461f0af4fb6601a4e2e1b65fd2f6cbf47a877edfef99cb`, and
 installed-header SHA-256
-`2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b`.
-The final Provider JUnit receipt artifact is
+`db37805c1abd9b1a355f41a89154d14756477c7293af940dc298a6b038aee45d`.
+The installed static-library SHA-256 is
+`67f8ddd40d794ce6b985ea6fed65256d01e8f50bda23ac65f61b7514c8fd6e51`.
+The previous frontend subject's final Provider JUnit receipt artifact is
 `provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
 SHA-256
 `56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`.
-The artifact name is relative to an executor-supplied immutable artifact root.
-Campaign-specific Provider subjects below remain historical evidence for the
-named reference runs and are not silently re-bound to this artifact.
+That receipt remains historical evidence for its exact prior subject and is
+not rebound to the active ordinary-sigma artifact. Artifact names are relative
+to an executor-supplied immutable artifact root. Campaign-specific Provider
+subjects below remain historical evidence for the named reference runs.
 
 ## Objective
 
@@ -140,7 +143,7 @@ derivative readiness:
 | `zuber_ion_suppression_coefficient` | continuous component coordinate when exact derivatives are advertised |
 | `rueben_dipole_scaling`, `rueben_polarizability_scaling`, `rueben_correlation_integral_parameter` | Provider-represented polar-model inputs explicitly excluded from the Regression roadmap by user decision; no Regression capability is planned |
 | `k_ij`, `l_ij` | continuous unordered component-pair coordinates |
-| `association_energy_over_k`, `association_volume` | continuous model-bound coordinates only for an advertised pure 2B model with one symmetric association pair; general association-endpoint identity remains pending |
+| `association_energy_over_k`, `association_volume` | model-bound coordinates in the installed Provider's fixed neutral pure 2B ordinary-`sigma_ij^3*kappa` capability; topology is not a fitted coordinate |
 | `ion_fraction_suppression_coefficient`, `ionic_region_relative_permittivity` | continuous model coordinates when exact derivatives are advertised |
 | correlation terms for `segment_diameter`, `relative_permittivity`, and `solvation_factor` | individually named coefficient coordinates; no whole-correlation opaque fit |
 
@@ -170,8 +173,8 @@ conditioning, non-bound diagnostics, and confirmation-start agreement.
 | `relative_permittivity` | solvent component | Source-bound single-ion solvation-Gibbs targets with fixed other model inputs, exact solvent identity, x-process convention, state, and scale | Exact Provider solvation-Gibbs value/first derivative for the active solvent permittivity; direct-observable Ceres rows | `FIT_READY`. Corrected Validation subject `e4cb7af` gives five independent rank-1 water fits returning `78.0899937514462` through `78.08999375166104` versus fixed `78.09`. This is implementation evidence, not a paper-fitted target or MEA prerequisite. |
 | `ion_fraction_suppression_coefficient` | model | Salt-free-normalized relative-permittivity observations spanning enough total-ion mole fraction to identify one coefficient | Exact Provider relative-permittivity ratio and first derivative; direct-observable Ceres rows | `FIT_READY`; 36 digitized Figiel water/methanol rows are reference evidence. Optional standalone recovery. |
 | `ionic_region_relative_permittivity` | model | Source-defined single-ion solvation-Gibbs targets with fixed Born diameters and other inputs | Exact Provider SSM+DS solvation-Gibbs value/first derivative; direct-observable Ceres rows | `FIT_READY`; five independent Figiel fits recover fixed `8` within `2.2e-9`. Parallel groundwork, not coupled-MEA readiness. |
-| `association_energy_over_k` | association endpoints; currently one model-bound symmetric pure 2B pair | Simultaneous multi-temperature vapor-pressure and liquid-density observations with exact row identities, units, topology, bounds, scales, and starts; one density point is insufficient | Exact Provider association derivative is available for scalar mechanics, but a generic joint pure-saturation observation contract and source-complete campaign are still required | `NOT_FIT_READY_SOURCE_CONTRACT_INCOMPLETE`. Baygi--Pahlavanzadeh and Gross--Sadowski are provenance/design evidence only. |
-| `association_volume` | association endpoints; currently one model-bound symmetric pure 2B pair | The same source-complete simultaneous series is required to distinguish this coordinate from association energy and the three ordinary pure parameters | Same pending generic joint contract; no association-only engine or paper-specific runtime | `NOT_FIT_READY_SOURCE_CONTRACT_INCOMPLETE`; no independent association-only claim. |
+| `association_energy_over_k` | model-bound pair in a fixed neutral pure 2B topology | Simultaneous multi-temperature vapor-pressure and liquid-density observations with exact row identities, units, topology, bounds, scales, and starts; one density point is insufficient | The mixed-row Ceres surface consumes the ordinary `sigma_ij^3*kappa` Provider value/gradient/Hessian jointly with `m`, `sigma`, `epsilon/k`, and association volume | `EXECUTABLE_GENERIC_2B_BLOCK`; mechanics and public-state parity are verified. Case-specific identifiability and parameter acceptance remain Validation evidence and issue #28 work. |
+| `association_volume` | model-bound pair in the same fixed neutral pure 2B topology | The same source-complete simultaneous series is required to distinguish this coordinate from association energy and the three ordinary pure parameters | Same ordinary-sigma five-parameter block; no association-only engine, scheme-name parser, or paper-specific runtime | `EXECUTABLE_GENERIC_2B_BLOCK`; no MAPA/DEEA tuple is accepted or packaged. |
 | `k_hb_ij` | source-defined cross-association combining-rule coordinate | A source-defined combining rule and sign convention plus composition/temperature-varying association-sensitive observations that separate cross from pure association | New Provider record/transform identity, versioned fingerprint, exact chain-rule derivative, and an association-endpoint Regression identity are required | `NOT_READY`. Ascani's fixed `0.026` is provenance, not a recovery dataset. Do not alias it to resolved association energy or invent zero defaults. Not the next MEA investment. |
 | `schreckenberg_dielectric_volume`, `schreckenberg_dielectric_temperature` | component/correlation coordinates | Multi-temperature electrolyte relative-permittivity or other source observables that independently identify the selected coefficient | New exact Provider active-parameter callback and Regression correlation identity/surface | `REPRESENTED_NOT_DERIVATIVE_READY`; no retained rank-sufficient recovery series. Optional, not on the MEA critical path. |
 | `zuber_ion_suppression_coefficient` | ion component | Relative-permittivity, MIAC, osmotic/activity, or solvation observations spanning ion fraction/molality and preferably temperature | New exact Provider active-parameter callback and matching typed Regression observation contract | `REPRESENTED_NOT_DERIVATIVE_READY`; the retained one-row osmotic oracle is insufficient. Optional. |
@@ -465,6 +468,18 @@ column is `-(M/V_L)/s_rho`. Thus the Provider Hessian is sufficient and no
 third derivative or density-root sensitivity is introduced. Regression rejects
 out-of-bound or inverted volumes and nonpositive mechanical-stability
 curvature before accepting an evaluation.
+
+The pure-2B ordinary-sigma surface re-closes the pressure roots for
+vapor-pressure, fixed-pressure-density, and combined saturation
+pressure/liquid-density problems at each independent parameter start. A
+safeguarded Newton correction begins from the row's retained volume; a bounded
+log-volume scan and bisection is used only when that correction cannot remain
+inside the declared phase interval. Only mechanically stable roots are
+admitted. This prevents a confirmation start from inheriting
+primary-parameter phase volumes while preserving the same residual,
+derivative, and fail-closed contracts. The immutable Provider build and public
+state replay verify this mechanics contract; they do not accept a fitted
+parameter tuple.
 
 Provider may use diagnosed density closure for a direct density/property
 contract. Branch identity, closure residual, and conditioning then remain
