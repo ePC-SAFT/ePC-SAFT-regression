@@ -23,15 +23,15 @@ Ceres, fit receipts, and regression results. It consumes a compatible
 installed EOS and does not own EOS internals, equilibrium, or Ipopt.
 
 The active EOS frontend binding is `epcsaft==0.2.0.dev0`, using commit
-`dc2ca7681bf8776ba68437f28d8e48d0e27ef441`, tree
-`e4bfe64e78f20ad9cca0f26789ddb6b516b8baf4`, portable wheel artifact
-`provider-deea-ordinary-sigma-sdk-v1/ceffbec2d897/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl`
+`24ab1bdfb3a1558eb87815e9c3b5d97fbe6a025d`, tree
+`145cf8b6126ad403aa8ee51b1b4623db3da8aa2f`, portable wheel artifact
+`objects/sha256/66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl`
 with SHA-256
-`ceffbec2d8975fe105461f0af4fb6601a4e2e1b65fd2f6cbf47a877edfef99cb`, and
+`66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9`, and
 installed public header SHA-256
 `db37805c1abd9b1a355f41a89154d14756477c7293af940dc298a6b038aee45d`;
 the installed static library SHA-256 is
-`67f8ddd40d794ce6b985ea6fed65256d01e8f50bda23ac65f61b7514c8fd6e51`.
+`5e5c3e8311c011365471eeff29b2d9ff8486d149745a4bea7cd48bd6e784f9d3`.
 Active runner receipts must bind this complete identity. Retained pre-rename
 Provider 0.1 receipts and their replay commands are historical evidence only.
 The previous frontend subject's final 0.2 JUnit receipt artifact is
@@ -154,6 +154,17 @@ the discrete 2B topology remains fixed EOS input. This executable
 mechanics contract does not identify a unique parameter tuple or accept any
 MAPA/DEEA result. Case-specific inputs, starts, evidence, and parameter bundles
 remain Validation-owned and are not packaged here.
+Literature-related work follows
+`docs/science/literature-reproduction-contract.md`: distinguish exact
+author-method replay, source-faithful reconstruction, published-tuple property
+replay, and modern refitting. Regression keeps compact routine numerical-
+tolerance sentinels for its generic public workflows and active-coordinate
+variants; full literature grids, practical-identifiability and uncertainty
+campaigns, competing topology/induced-association strategies, and durable
+receipts remain Validation-owned. Fixed-pure-2B identifiability is issue 28;
+future fixed induced/cross-association alternatives are issue 34 and remain
+blocked on a matching installed EOS capability. Do not infer or optimize
+association topology.
 Polar parameter regression is excluded from this repository's roadmap by user
 decision. The coordinated MEA path is owned by
 `docs/science/mea-coupled-regression-master-plan.md`. Its first coupled tracer
