@@ -3,25 +3,25 @@
 Repository Profile: scientific-computing
 
 Accepted workflows: pure methane under promotion 0020 and pure ethane under
-promotion 0023/state 0025. No local candidate has production or active-
-migration status.
+promotion 0023/state 0025. No local candidate has production status.
 
 The local multi-parameter candidate routes both accepted pure training
 workflows through one contiguous `[N fitted | Q lifted]` Ceres core while
 preserving their established presentation and reporting contracts. This local
 cutover changes no accepted authority and does not imply a multi-active
-mixture capability without a matching installed Provider evaluator.
+mixture capability without a matching installed EOS evaluator.
 
-Before work, read doctrine revision 4 at
-`../ePC-SAFT-organization/GOVERNANCE.md`. Its future published home is
-`https://github.com/ePC-SAFT/.github/blob/main/GOVERNANCE.md`. Local policy may
-narrow that doctrine but must not contradict it.
+Before work, read doctrine revision 5 at
+`../ePC-SAFT-management/GOVERNANCE.md` (the transition checkout may still be
+named `../ePC-SAFT-organization`). Its canonical published home is
+`https://github.com/ePC-SAFT/ePC-SAFT-management/blob/main/GOVERNANCE.md`.
+Local policy may narrow that doctrine but must not contradict it.
 
 This repository is limited to strict target datasets, fitted parameters,
 Ceres, fit receipts, and regression results. It consumes a compatible
-installed provider and does not own provider internals, equilibrium, or Ipopt.
+installed EOS and does not own EOS internals, equilibrium, or Ipopt.
 
-The active Provider frontend binding is `epcsaft==0.2.0.dev0`, using commit
+The active EOS frontend binding is `epcsaft==0.2.0.dev0`, using commit
 `dc2ca7681bf8776ba68437f28d8e48d0e27ef441`, tree
 `e4bfe64e78f20ad9cca0f26789ddb6b516b8baf4`, portable wheel artifact
 `provider-deea-ordinary-sigma-sdk-v1/ceffbec2d897/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl`
@@ -31,27 +31,31 @@ installed public header SHA-256
 `db37805c1abd9b1a355f41a89154d14756477c7293af940dc298a6b038aee45d`;
 the installed static library SHA-256 is
 `67f8ddd40d794ce6b985ea6fed65256d01e8f50bda23ac65f61b7514c8fd6e51`.
-Active runner receipts must bind this complete identity. Retained Provider
-0.1 receipts and their replay commands are historical evidence only. The
-previous frontend subject's final 0.2 JUnit receipt artifact is
+Active runner receipts must bind this complete identity. Retained pre-rename
+Provider 0.1 receipts and their replay commands are historical evidence only.
+The previous frontend subject's final 0.2 JUnit receipt artifact is
 `provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
 SHA-256
 `56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`, with
-276 passed and 1 skipped Provider tests. It remains historical evidence for
+276 passed and 1 skipped EOS tests. It remains historical evidence for
 that exact prior subject and is not rebound to the active ordinary-sigma
 artifact. Resolve portable artifact names relative to an executor-supplied
 immutable artifact root; local filesystem paths are execution metadata, not
 authority.
+
+EOS is the canonical active repository and role name. Retain `Provider` only
+inside historical receipt prose, artifact paths, schema fields, and public
+ABI/API symbols whose spelling is part of an accepted contract.
 
 ## Agent home and Validation work
 
 - The Regression agent remains rooted in this repository and is the sole owner
   of target contracts, fitted-parameter workflows, Ceres execution, fit
   diagnostics, identifiability evidence, and regression result contracts.
-- When Migration assigns a bounded Regression campaign, this same agent may use
+- When Management assigns a bounded Regression campaign, this same agent may use
   a clean checkout or worktree of the sibling Validation repository to author
   and execute it. Its task home does not move to Validation.
-- Validation work must use exact immutable installed Provider and Regression
+- Validation work must use exact immutable installed EOS and Regression
   public artifacts. It must not import either source checkout, use private
   seams, copy EOS or fit logic, or silently turn training evidence into
   prediction.
@@ -59,10 +63,10 @@ authority.
   returns to Regression work. It does not create or wait on a resident
   Validation task, accept its own promotion, approve an unselected predictive
   cutoff, or broaden regression authority from its own evidence.
-- Migration serializes Validation writers and dispatches any required distinct
+- Management serializes Validation writers and dispatches any required distinct
   review after the exact stable subject is available.
 
-Accepted migration receipts `promotion-0020-regression-methane-saturation-v1`
+Accepted historical receipts `promotion-0020-regression-methane-saturation-v1`
 and `promotion-0023-regression-pure-saturation-ethane-v1` make this repository
 the production owner of those exact reproducible workflows; state receipt
 `state-0025-regression-ethane-publication` verifies ethane publication. That
@@ -72,20 +76,21 @@ approved. The reporting-block directional Jacobian remains an explicit
 evidence limit; do not add a runtime seam merely to close it. The blocked
 propane subject and frozen methane/ethane binary preflight are retained only as
 authority-neutral, non-production provenance and are not active blockers.
-Migration D-023 preserves a source-bound Ceres tracer for current-catalog ion
-Born diameters. Provider design `da966048` and Validation source packet
+Historical Migration decision D-023 preserves a source-bound Ceres tracer for
+current-catalog ion Born diameters. Historical Provider design `da966048` and
+Validation source packet
 `8944d34f` are immutable reviewed inputs; the sole Regression design owner is
-`docs/science/figiel-born-diameter-tracer.md`. The D-027 Provider artifact
-`907b077` is retained as historical candidate evidence; the active installed
-frontend binding is the exact 0.2 subject above. Current status is
+`docs/science/figiel-born-diameter-tracer.md`. The historical D-027 Provider
+artifact `907b077` is retained as historical candidate evidence; the active
+installed frontend binding is the exact 0.2 subject above. Current status is
 `FIGIEL_BORN_TRACER_PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED`.
 The user-approved 2026-07-21 contract correction keeps the Table 3 diameters
 and their `0.0005 angstrom` reporting half-increment as descriptive comparison
 evidence, not a second acceptance target. The exact five-target fit reproduces
 the Table S5 observables, is solver- and numerically converged, has full local
 rank, and passes its local scientific gates. It is not downstream readiness,
-predictive evidence, Provider-catalog authority, or production authority.
-Validation writing remains closed until Migration serializes the exact package
+predictive evidence, EOS-catalog authority, or production authority.
+Validation writing remains closed until Management serializes the exact package
 artifact subject.
 The user-approved next family is the staged Figiel aqueous current-catalog
 recovery. Its sole design owner is
@@ -110,8 +115,8 @@ not proof that the staged route is impossible. Keep the user-approved Table
 starts, cycles, or tolerances to the answer.
 Independent subagent review replaces any permanent-lab approval gate.
 The user-approved 2026-07-27 direction is general parameter-family regression:
-source-bound caller datasets, typed Provider-owned parameter identities, exact
-Provider derivatives, one Ceres engine/result/target, and reference campaigns
+source-bound caller datasets, typed EOS-owned parameter identities, exact
+EOS derivatives, one Ceres engine/result/target, and reference campaigns
 used as evidence rather than mixture restrictions. Its sole architecture owner
 is `docs/science/general-parameter-regression.md`. This is a finite typed
 capability schema, not an arbitrary plugin or mutable registry. Do not claim a
@@ -123,10 +128,10 @@ supplied pure-saturation rows; one Born diameter for caller-supplied
 solvation-Gibbs targets; and one solvation factor for caller-supplied mean-
 ionic-activity rows; and one model-level dielectric ion-suppression
 coefficient for caller-supplied relative-permittivity-ratio rows on matching
-installed Provider capabilities; and one model-level ionic-region relative
+installed EOS capabilities; and one model-level ionic-region relative
 permittivity for caller-supplied solvation-Gibbs targets on a matching SSM+DS
 capability; and one component solvent relative permittivity for caller-supplied
-single-ion solvation-Gibbs targets on a matching Provider capability. These
+single-ion solvation-Gibbs targets on a matching EOS capability. These
 ten families remain authority-neutral and are not
 restricted to the reference campaigns. The scalar pure and direct-observable
 paths are one-family-at-a-time and do not replace the accepted paper-specific
@@ -134,16 +139,16 @@ workflows. All other general families retain their documented pending states;
 do not broaden them to uncertainty, catalog persistence, or global-
 identifiability authority.
 The shared `k_ij` family also accepts one source-bound ion-solvation Gibbs
-endpoint at a time when an installed Provider advertises the exact
+endpoint at a time when an installed EOS advertises the exact
 organic-solvent/ion pair callback. The four retained Figiel rows are
 constructed nearest-pure endpoint implementation evidence, not exact
 reproduction of the paper's pure-organic fitting data or mixed-solvent
 prediction evidence.
-Provider-advertised neutral pure 2B models use one ordinary
+EOS-advertised neutral pure 2B models use one ordinary
 `sigma_ij^3*kappa` block for vapor-pressure, fixed-pressure-density, and
 combined saturation pressure/liquid-density rows. The fitted coordinates are
 exactly `m`, `sigma`, `epsilon/k`, association energy, and association volume;
-the discrete 2B topology remains fixed Provider input. This executable
+the discrete 2B topology remains fixed EOS input. This executable
 mechanics contract does not identify a unique parameter tuple or accept any
 MAPA/DEEA result. Case-specific inputs, starts, evidence, and parameter bundles
 remain Validation-owned and are not packaged here.
@@ -153,7 +158,7 @@ decision. The coordinated MEA path is owned by
 uses one admitted CO2 partial-pressure observation and one eligible liquid
 speciation equality or aggregate with at most two fitted coordinates. Loading
 is a state input and heat remains excluded until a source-complete caloric
-contract exists. Exact active-parameter Provider partials, Equilibrium
+contract exists. Exact active-parameter EOS partials, Equilibrium
 implicit sensitivities, the source-complete MEA contract, and the model-bound
 installed composed-observable transport remain prerequisites. The first tracer
 uses the application-approved homogeneous liquid-fugacity equivalent and does

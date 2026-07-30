@@ -6,12 +6,12 @@ accepted production capabilities. Other completed campaigns remain
 authority-neutral evidence unless separately admitted.
 
 The active Python package is version `0.2.0.dev0` and consumes exactly
-`epcsaft==0.2.0.dev0`. Public workflows construct Provider `Parameters` and
+`epcsaft==0.2.0.dev0`. Public workflows construct EOS `Parameters` and
 `Mixture` objects; source-bound trial models use `Parameters.from_records`.
 
 `provider_frontend_status: PARAMETERS_MIXTURE_0_2`
 
-The active installed Provider subject is commit
+The active installed EOS subject is commit
 `dc2ca7681bf8776ba68437f28d8e48d0e27ef441`, tree
 `e4bfe64e78f20ad9cca0f26789ddb6b516b8baf4`, wheel SHA-256
 `ceffbec2d8975fe105461f0af4fb6601a4e2e1b65fd2f6cbf47a877edfef99cb`, and
@@ -21,9 +21,10 @@ Its installed static-library SHA-256 is
 `67f8ddd40d794ce6b985ea6fed65256d01e8f50bda23ac65f61b7514c8fd6e51`.
 The frontend migration changes public construction and generic capability
 names only; it does not change accepted authority, target contracts, or
-numerical acceptance criteria. Retained Provider 0.1 receipt identities remain
-immutable historical evidence and are not active replay inputs.
-The previous frontend subject's final Provider 0.2 JUnit receipt artifact is
+numerical acceptance criteria. Retained pre-rename Provider 0.1 receipt
+identities remain immutable historical evidence and are not active replay
+inputs.
+The previous frontend subject's final EOS 0.2 JUnit receipt artifact is
 `provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
 SHA-256
 `56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf`, with
@@ -32,26 +33,34 @@ subject and is not rebound to the active ordinary-sigma artifact. Portable
 artifacts are resolved relative to an executor-supplied immutable artifact
 root; workstation paths are execution metadata only.
 
-`governance_doctrine_revision: 4`
+`governance_doctrine_revision: 5`
 
-Canonical local doctrine: `../ePC-SAFT-organization/GOVERNANCE.md`.
+Canonical doctrine:
+`https://github.com/ePC-SAFT/ePC-SAFT-management/blob/main/GOVERNANCE.md`.
+The canonical local checkout is `../ePC-SAFT-management/GOVERNANCE.md`; during
+the transition it may still be named `../ePC-SAFT-organization/GOVERNANCE.md`.
+
+EOS is the canonical active repository and role name. Retain `Provider` only
+inside historical receipt prose, artifact paths, schema fields such as
+`provider_frontend_status`, and public ABI/API symbols whose spelling is part
+of an accepted contract.
 
 Regression owns both its package evidence and execution of assigned
 installed-artifact campaigns in the sibling Validation repository. The task
 remains based here; Validation remains the durable black-box evidence home and
-has no resident worker. Migration serializes exact campaign subjects and
+has no resident worker. Management serializes exact campaign subjects and
 dispatches a separate reviewer only when required. This execution model does
 not change scientific admission or runtime authority.
 
-Accepted migration receipts `promotion-0020-regression-methane-saturation-v1`
+Accepted historical receipts `promotion-0020-regression-methane-saturation-v1`
 and `promotion-0023-regression-pure-saturation-ethane-v1` make this repository
 the production owner of the exact reproducible methane and ethane workflows.
 Validation receipt `validation-0022-regression-pure-saturation-ethane-v1`
 passed, and state receipt `state-0025-regression-ethane-publication` verifies
 ethane publication. Neither workflow gives its fitted parameters predictive,
-uncertainty, scientific, or provider-catalog admission.
+uncertainty, scientific, or EOS-catalog admission.
 
-Both components use the installed provider capsule, one Ceres engine, exact
+Both components use the installed EOS SDK, one Ceres engine, exact
 residual Jacobians, and immutable source and specification records. The ethane
 campaign fits 140, 180, 220, and 260 K; holds out 120, 160, 200, and 240 K; and
 reports 100 and 280 K as domain-stress rows. The failed 100 K reporting closure
@@ -93,7 +102,7 @@ fitted-vector confirmation, explicit slot sharing, structural rejection,
 incomplete-buffer rejection, and missing-column rank failure without finite
 differences.
 
-The installed Provider's joint pure callback is the first real `N > 1` seam.
+The installed EOS's joint pure callback is the first real `N > 1` seam.
 Accepted methane and ethane training now use the shared contiguous core with
 `N = 3`, `Q = 8`, `R = 16`, full rank 11, and nuisance-projected parameter
 rank 3. Their existing public presentation wrapper and common-pressure
@@ -108,15 +117,15 @@ diagnostics. It still rejects every other arbitrary `N > 1` block; the pure
 adapter is not a generic cross-package callback.
 The installed pure callback returns value, gradient, and Hessian together;
 residual-only Ceres calls avoid copying a Regression Jacobian but cannot avoid
-the Provider derivative computation. That artifact limitation is not reported
+the EOS derivative computation. That artifact limitation is not reported
 as a sensitivity-free value-only evaluation.
 
-The campaign-specific Provider subjects and artifact hashes recorded below are
+The campaign-specific EOS subjects and artifact hashes recorded below are
 retained historical evidence for their named reference campaigns. The active
 installed frontend binding for new replay is the `provider_frontend` subject
 above; historical evidence is not rewritten as if it had used that artifact.
 
-The installed Provider advertises one ordinary-`sigma_ij^3*kappa` joint
+The installed EOS advertises one ordinary-`sigma_ij^3*kappa` joint
 neutral-pure-2B callback over `m`, `sigma`, `epsilon/k`, association energy,
 and association volume. Regression executes that fixed five-parameter block
 for mixed vapor-pressure, fixed-pressure-density, and combined saturation
@@ -129,16 +138,16 @@ The user-approved 2026-07-27 destination is general parameter-family
 regression, defined in `docs/science/general-parameter-regression.md`. The
 first ten families are implemented. Caller-supplied, source-bound
 fixed-composition VLE rows may independently fit one shared `k_ij` or `l_ij`
-for any neutral, nonassociating binary model whose installed Provider
+for any neutral, nonassociating binary model whose installed EOS
 descriptor advertises the corresponding exact `(n1,n2,V,pair_parameter)`
 Hessian callback. The runtime uses the existing native module
 and target, one Ceres engine/result, exact derivatives, caller-declared
 bounds/scales/starts/volume policy, full and projected rank diagnostics, and
-isolated training/reporting partitions. Unknown Provider descriptor members
+isolated training/reporting partitions. Unknown EOS descriptor members
 are reported unsupported and cannot be requested dynamically.
 
 The ninth family is model-level
-`ionic_region_relative_permittivity`. On an installed Provider advertising
+`ionic_region_relative_permittivity`. On an installed EOS advertising
 the exact SSM+DS solvation-Gibbs value/first derivative, callers may fit one
 coordinate from source-bound single-ion solvation targets through the same
 direct-observable Ceres path. Validation subject `81e9a3f` independently
@@ -151,7 +160,7 @@ a paper-fitted parameter or a shared multi-model parameter.
 
 The tenth family is component `relative_permittivity` on an installed
 single-ion solvation callback that identifies the active solvent separately
-from the observed ion. Provider subject `7cadaad` supplies the exact total
+from the observed ion. EOS subject `7cadaad` supplies the exact total
 first derivative through bulk dielectric, Debye--Huckel, Born,
 reference-state, and fixed-pressure density paths. Regression subject
 `177890a` reuses the same direct-observable Ceres owner. Corrected Validation
@@ -163,9 +172,9 @@ input `78.09` and its `0.005` reporting half-increment are descriptive
 comparison evidence, not uncertainty or scientific acceptance.
 
 Polar parameter families are outside the Regression roadmap by user decision.
-They remain representable Provider inputs where applicable, but no Regression
+They remain representable EOS inputs where applicable, but no Regression
 derivative, residual, fit, or validation work is planned for them. This does
-not relabel them unsupported Provider physics.
+not relabel them unsupported EOS physics.
 
 The coordinated MEA path is owned by
 `docs/science/mea-coupled-regression-master-plan.md`. The first coupled tracer
@@ -174,7 +183,7 @@ speciation equality or aggregate with at most two fitted coordinates. Loading
 is a state input; heat is not admitted because no source-complete heat contract
 exists. The first tracer uses the user-approved low-pressure
 `p_CO2 = f_CO2_liquid` convention from a certified homogeneous reacting
-liquid; it needs no vapor composition or bubble solve. Provider exact active
+liquid; it needs no vapor composition or bubble solve. EOS exact active
 parameter partials and Equilibrium conditioned active-parameter amount/volume
 sensitivities are implemented. The generic process-local positive-observation
 adapter is implemented locally over the existing Ceres core with exact
@@ -196,14 +205,14 @@ independently fit one component `segment_count`, `segment_diameter`, or
 constant-diameter pure model. The same general Ceres owner uses two lifted log
 volumes per row and four scaled residuals: liquid and vapor pressure closure,
 chemical-potential equality, and liquid-density reproduction. Its exact
-Jacobian consumes the Provider `(n,V,active_parameter)` Hessian, reports full
+Jacobian consumes the EOS `(n,V,active_parameter)` Hessian, reports full
 and nuisance-projected rank, checks mechanical stability and phase-volume
 ordering, and reruns every declared start. This independent-family surface
 does not replace the accepted joint `(m,sigma,epsilon/k)` workflow.
 
-Provider commit `1e571ab0a84603a51ed6994b14286f683fb12b88` retains those
+EOS commit `1e571ab0a84603a51ed6994b14286f683fb12b88` retains those
 compatibility and parity corrections and appends the exact active-`l_ij`
-capability beside active `k_ij`. The retained Provider wheel has SHA-256
+capability beside active `k_ij`. The retained EOS wheel has SHA-256
 `6536edc63adaa13c5c6c67c185d82c9ae232048e99dc3dc3be502708eea4410f`;
 its installed public header has SHA-256
 `b667379c2d7106d012c6b57f96b6f32dd23ef305fe6f15a87c22ab20029008f8`.
@@ -212,7 +221,7 @@ bounded public surface and Ceres owner to the distinct `l_ij` identity.
 The retained Regression wheel has SHA-256
 `3a59d2233fec51f949a7784937b54f7f66beae2476fa8e33976672a480b67137`.
 
-Provider commit `86983ff` (tree
+EOS commit `86983ff` (tree
 `cecdfddde1c29f6d33fc1106d0662e0376981e4a`) appends the scalar pure
 capabilities without another EOS tape. Its retained wheel SHA-256 is
 `9df62965f55876104585504f0f9170fefffbbaa9e94b23f90ac1da582cf5cb4c`
@@ -225,7 +234,7 @@ parameter rank 1 for each independent fit. The fitted values are
 agreement. These are local in-sample implementation anchors, not fitted
 catalog values or predictive acceptance.
 
-Provider commit `2d1816cf376294156684fee85611a93fc41d0970` (tree
+EOS commit `2d1816cf376294156684fee85611a93fc41d0970` (tree
 `0a36f875fe75cc90cece5144373ab031c8724ccc`) advertises the existing
 active-Born and aqueous-solvation-factor callbacks through the same typed
 capability negotiation, including model-topology fingerprints. Its exact wheel
@@ -242,7 +251,7 @@ reference values with no active bounds. This is fit readiness only for the
 advertised fixed-state reference paths, not general electrolyte, catalog, or
 predictive authority.
 
-Provider commit `e063f32f6e2b975af11ae7e65c1a12cd3076941c` exposes the
+EOS commit `e063f32f6e2b975af11ae7e65c1a12cd3076941c` exposes the
 model-bound Figiel dielectric ion-suppression coefficient through an exact
 relative-permittivity value/first-derivative capability. Its retained wheel
 SHA-256 is
@@ -257,7 +266,7 @@ non-bound, and converges from both declared starts to
 `7.067350349980952`, compared descriptively with the paper's `7.01`.
 These digitized training rows establish fit-ready execution only.
 
-Provider commit `621adbf9f60c75a1f108256c51eb1ae14161d6b9`
+EOS commit `621adbf9f60c75a1f108256c51eb1ae14161d6b9`
 fail-closed advertises exact first derivatives of infinite-dilution
 ion-solvation Gibbs energy with respect to the three pair coordinates for the
 source-bound methanol/K+/Br- and ethanol/Na+/Cl- selections. Its wheel SHA-256
@@ -283,7 +292,7 @@ rows independently fit `l_ij = -0.002774426668544412` with the same ranks,
 no active bound, and two confirmation starts. This remains in-sample,
 authority-neutral evidence. It does not reinterpret the retained negative
 pressure-closure evidence, establish prediction, or admit fitted values to a
-Provider catalog.
+EOS catalog.
 
 Published methane, ethane, Figiel, and later campaigns remain positive or
 negative evidence rather than hard-coded mixture limits. The finite typed
@@ -292,12 +301,12 @@ families other than these exact neutral-binary fixed-composition, scalar pure-
 saturation, advertised ion-solvation, solvation-Gibbs, and mean-ionic-activity
 contracts retain their prior readiness states.
 
-Migration D-023 supersedes D-022's active order without rewriting its evidence.
-Canonical Migration checkpoint
+Historical Migration decision D-023 superseded D-022's then-active order
+without rewriting its evidence. The retained Migration checkpoint
 `3a4ef0a0c6b98c43405d3cafc1ac4f5f87afa68d`, tree
 `9307c3f79581b6e0479d4ac2468932b2a68e5f5b`, preserves the published Figiel
-design as a useful parallel, deferred Provider-dependent track while HELD2
-retains Provider implementation priority. The frozen neutral-hydrocarbon
+design as a useful parallel, deferred EOS-dependent track while HELD2
+retained EOS implementation priority. The frozen neutral-hydrocarbon
 equations and numerical contract remain in
 `docs/science/neutral-hydrocarbon-next-slice.md`; its rejected replay harness
 and packaged planning framework remain absent. The new source-bound general
@@ -321,7 +330,7 @@ valid. Held-out row `glos2004-propane-sat-120-k` has liquid-pressure closure
 reproduced that pressure and residual bit-for-bit. The required continuous
 volume correction is `0.42624401466815054` local liquid-volume ULP, while both
 adjacent representable volumes change pressure; this is a measured binary64
-resolution limit, not a single-ULP pressure plateau or a provider-defect
+resolution limit, not a single-ULP pressure plateau or an EOS-defect
 finding. Receipt `evidence/propane-candidate-fit-receipt.json` has subject
 SHA-256 `c059e5381a3fbf0cf00a43aaa0cc28b67c074e325f1a33066b6937c16cc0a761`
 and file SHA-256
@@ -343,7 +352,7 @@ follows from it.
 Future Regression checkpoints use exact-subject independent subagent review;
 permanent-lab approval is no longer an execution or authority gate.
 
-For binary `kij`, provider derivatives, the `68 x 35` Jacobian, rank 35,
+For binary `kij`, EOS derivatives, the `68 x 35` Jacobian, rank 35,
 projected parameter rank 1, a finite non-bound result, and both perturbed starts
 passed. The three declared converged equal-weight starts did not meet the
 `1e-8` pressure-closure gate: row `may2015-ch4-c2h6-002` reached
@@ -362,7 +371,7 @@ The source-faithful Figiel, Yu, and Held 2025 current-catalog ion Born-diameter
 tracer is a complete, published design at Regression
 `8191dcc9fc038caac1f52cd22303c600e2b61241`, tree
 `656cc22409e1e1632f536184e2f719640178748f`, retained in parallel behind the
-HELD2 critical path. Provider design
+HELD2 critical path. Historical Provider design
 `da9660481f08bb5557cc03da528edec15cc15e1f`, tree
 `e34575ae646c40f3fb63b5994c957e30bb035f69`, and Validation source packet
 `8944d34f7002cda1bb8760e606cc1f11696f58cd`, tree
@@ -372,7 +381,7 @@ The complete source-bound Ceres contract is singularly owned by
 reported-average targets, five active Born diameters, the diagonal exact
 Jacobian, source-resolution comparisons, confirmation, and statuses.
 
-Migration D-027 bound Provider implementation
+Historical Migration decision D-027 bound EOS implementation
 `907b077ec6f841a8a028fc759df14f899c79339c`, wheel SHA-256
 `c327b9a176e54bfc79b625cca7f0c87f2a62fc7d87059826e40c9d70e214f0cd`,
 and installed-header SHA-256
@@ -399,12 +408,12 @@ Canonical package evidence is
 subject SHA-256
 `55ea2cd69af62c45b26179cfab6939760de23058b5a7e8c880a79f67faa417ed`.
 The commit-bound wheel passes the 49 non-Born tests against the retained
-accepted Provider runtime. Against assigned Provider `907b077`, all six Born
+accepted EOS runtime. Against assigned EOS subject `907b077`, all six Born
 tests pass but three legacy numerical anchors do not; that compatibility result
 is reported without moving their accepted expected values.
 
 `electrolyte_born_parameters` remains `NOT_READY`: this package candidate must
-not be interpreted as downstream readiness, predictive evidence, or Provider
+not be interpreted as downstream readiness, predictive evidence, or EOS
 catalog authority.
 
 The active source-bound family is the Figiel aqueous recovery in

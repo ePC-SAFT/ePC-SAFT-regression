@@ -5,7 +5,7 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "epcsaft-regression"
 version = "0.2.0.dev0"
-description = "Strict installed-provider parameter regression for ePC-SAFT"
+description = "Strict installed-EOS parameter regression for ePC-SAFT"
 readme = "README.md"
 requires-python = ">=3.13"
 license = { file = "LICENSE" }
