@@ -43,6 +43,7 @@ from epcsaft_regression import (
     PureDensityRowDiagnostic,
     PureSaturationObservation,
     PureSaturationRowDiagnostic,
+    PureVaporPressureObservation,
     RankControls,
     RegressionProblem,
     RegressionResult,
@@ -59,6 +60,7 @@ from epcsaft_regression import (
     parameter_capabilities,
     parameter_regression,
     prepare_fit,
+    usability,
 )
 from epcsaft_regression.parameter_regression import (
     _evaluate_parameters,
@@ -300,8 +302,7 @@ def _generic_associating_problem(
         capability
         for capability in parameter_capabilities(model)
         if not isinstance(capability, UnsupportedParameterCapability)
-        and capability.capability_id
-        == "neutral_pure_associating_joint_sigma_basis_v1"
+        and capability.capability_id == "neutral_pure_associating_joint_sigma_basis_v1"
     )
     physical = (
         3.2,
@@ -554,11 +555,11 @@ def _prepare_existing_problem(
         objective=ObjectiveContract(
             residual_family,
             "native_scaled_least_squares",
-            "row scales retained by the canonical observations",
-            "no covariance supplied",
+            "observation_residual_scales",
+            "independent_no_covariance",
             "squared",
             (),
-            "fail",
+            "fail_fit",
         ),
         row_provenance={
             row.row_id: RowProvenance(
@@ -1662,6 +1663,14 @@ def test_general_engine_fits_dielectric_suppression_from_user_rows() -> None:
     )
 
 
+def test_relative_permittivity_rejects_mislabeled_solvent() -> None:
+    model = _aqueous_model()
+    row = _dielectric_suppression_problem(model).observations[0]
+
+    with pytest.raises(ValueError, match="first ordered component_id"):
+        replace(row, solvent_id="methanol")
+
+
 @pytest.mark.campaign
 def test_general_engine_fits_one_aqueous_kij_from_user_rows() -> None:
     model = _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4]
@@ -1932,8 +1941,7 @@ def test_ordinary_sigma_2b_block_evaluates_exact_jacobian() -> None:
         capability
         for capability in parameter_capabilities(model)
         if not isinstance(capability, UnsupportedParameterCapability)
-        and capability.capability_id
-        == "neutral_pure_associating_joint_sigma_basis_v1"
+        and capability.capability_id == "neutral_pure_associating_joint_sigma_basis_v1"
     )
     assert capability.active_parameter_count == 5
     assert capability.identity_shape == "model"
@@ -1972,9 +1980,7 @@ def test_ordinary_sigma_2b_block_evaluates_exact_jacobian() -> None:
     for temperature in (300.0, 325.0, 350.0, 375.0, 400.0):
         public_state = model.state(
             T=temperature * unit_registry.kelvin,
-            rho=(1.0 / parity_volume)
-            * unit_registry.mole
-            / unit_registry.meter**3,
+            rho=(1.0 / parity_volume) * unit_registry.mole / unit_registry.meter**3,
             x=(1.0,),
         )
         public_pressure = float(public_state.pressure.to("pascal").magnitude)
@@ -1998,9 +2004,7 @@ def test_ordinary_sigma_2b_block_evaluates_exact_jacobian() -> None:
         sources=(
             replace(
                 problem.sources[0],
-                canonical_dataset_sha256=canonical_dataset_sha256(
-                    parity_observations
-                ),
+                canonical_dataset_sha256=canonical_dataset_sha256(parity_observations),
             ),
         ),
         observations=parity_observations,
@@ -2011,9 +2015,7 @@ def test_ordinary_sigma_2b_block_evaluates_exact_jacobian() -> None:
     assert parity_result.numerically_converged
     assert parity_result.workflow_valid
     assert (
-        parity_result.jacobian.full_rank
-        == parity_result.jacobian.variable_count
-        == 10
+        parity_result.jacobian.full_rank == parity_result.jacobian.variable_count == 10
     )
     assert parity_result.jacobian.projected_parameter_rank == 5
     fitted = tuple(parameter.final for parameter in parity_result.parameters)
@@ -2024,14 +2026,19 @@ def test_ordinary_sigma_2b_block_evaluates_exact_jacobian() -> None:
         1500.0,
         0.01,
     )
-    assert max(
-        abs(value)
-        for row in parity_result.rows
-        for value in row.scaled_residuals
-    ) < 1.0e-12
+    assert (
+        max(abs(value) for row in parity_result.rows for value in row.scaled_residuals)
+        < 1.0e-12
+    )
     assert (
         parity_result.scientific_status
         == "NOT_ADJUDICATED_NO_APPROVED_SCIENTIFIC_CUTOFF"
+    )
+    fixed_2b_record = parity_result.to_record()
+    assert fixed_2b_record["problem"]["kind"] == "RegressionProblem"
+    assert len(fixed_2b_record["parameters"]) == 5
+    assert fixed_2b_record["installed_artifacts"]["distribution"] == (
+        "epcsaft==0.2.0.dev0"
     )
     replay_model = _generic_associating_model(
         sites,
@@ -2043,9 +2050,7 @@ def test_ordinary_sigma_2b_block_evaluates_exact_jacobian() -> None:
     for row in parity_observations:
         replay_state = replay_model.state(
             T=row.temperature_k * unit_registry.kelvin,
-            rho=(1.0 / parity_volume)
-            * unit_registry.mole
-            / unit_registry.meter**3,
+            rho=(1.0 / parity_volume) * unit_registry.mole / unit_registry.meter**3,
             x=(1.0,),
         )
         replay_pressure = float(replay_state.pressure.to("pascal").magnitude)
@@ -2096,6 +2101,28 @@ def test_generic_association_block_accepts_combined_saturation_rows() -> None:
     assert len(residuals) == 4
     assert len(jacobian) == 4 * len(variables)
     assert all(math.isfinite(value) for value in (*residuals, *jacobian))
+    capability = next(
+        item
+        for item in parameter_capabilities(model)
+        if not isinstance(item, UnsupportedParameterCapability)
+        and item.capability_id == "neutral_pure_associating_joint_sigma_basis_v1"
+    )
+    resolved, resolved_residuals, resolved_jacobian = (
+        parameter_regression._native.evaluate_general_start(
+            native_sdk(model),
+            _native_payload(problem, capability),
+            problem.start_vectors[0],
+        )
+    )
+    assert tuple(resolved[:5]) == (0.0,) * 5
+    assert tuple(resolved[5:]) == pytest.approx(
+        (-0.04863043069459478, -0.07452394701752812),
+        abs=1.0e-14,
+    )
+    assert _evaluate_parameters(problem, model, tuple(resolved)) == (
+        tuple(resolved_residuals),
+        tuple(resolved_jacobian),
+    )
     step = 1.0e-6
     for column in range(len(variables)):
         lower = list(variables)
@@ -2225,15 +2252,92 @@ def test_public_preparation_preserves_fixed_2b_problem_semantics() -> None:
     prepared = _prepare_existing_problem(model, direct, "pure_density")
 
     assert prepared.problem == direct
-    assert tuple(
-        coordinate.family for coordinate in prepared.problem.parameters
-    ) == (
+    assert tuple(coordinate.family for coordinate in prepared.problem.parameters) == (
         ParameterFamily.SEGMENT_COUNT,
         ParameterFamily.SEGMENT_DIAMETER,
         ParameterFamily.DISPERSION_ENERGY_OVER_K,
         ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
         ParameterFamily.ASSOCIATION_VOLUME,
     )
+    report = prepared.preflight()
+    assert not report.ready
+    assert report.reasons == (
+        (
+            "structural_insufficiency: residual count is smaller than "
+            "the fitted-plus-lifted variable count"
+        ),
+    )
+
+
+def test_fixed_2b_preparation_rejects_changed_installed_coordinate_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pairs = (("acceptor", "donor", 1500.0, 0.01),)
+    model = _generic_associating_model(
+        (("acceptor", 1), ("donor", 1)),
+        pairs,
+    )
+    direct = _generic_associating_problem(model, pairs)
+    capability = next(
+        item
+        for item in parameter_capabilities(model)
+        if not isinstance(item, UnsupportedParameterCapability)
+        and item.capability_id == "neutral_pure_associating_joint_sigma_basis_v1"
+    )
+    monkeypatch.setattr(
+        usability,
+        "parameter_capabilities",
+        lambda _: (
+            replace(
+                capability,
+                coordinate_units=(*capability.coordinate_units[:-1], "kelvin"),
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="five-parameter coordinate contract"):
+        _prepare_existing_problem(model, direct, "pure_density")
+
+
+def test_scalar_pure_vapor_pressure_uses_exact_native_row_contract() -> None:
+    model = _pure_model()
+    direct = _pure_problem(model, ParameterFamily.SEGMENT_COUNT)
+    source_row = direct.observations[0]
+    vapor = PureVaporPressureObservation(
+        row_id="methane-vapor-pressure",
+        source_id=source_row.source_id,
+        source_locator=source_row.source_locator,
+        component_id=source_row.component_id,
+        temperature_k=source_row.temperature_k,
+        pressure_pa=source_row.pressure_pa,
+        pressure_scale_pa=source_row.pressure_scale_pa,
+        chemical_potential_scale=source_row.chemical_potential_scale,
+        liquid_volume_origin_m3_per_mol=source_row.liquid_volume_origin_m3_per_mol,
+        liquid_volume_start_m3_per_mol=source_row.liquid_volume_start_m3_per_mol,
+        liquid_volume_bounds_m3_per_mol=source_row.liquid_volume_bounds_m3_per_mol,
+        vapor_volume_origin_m3_per_mol=source_row.vapor_volume_origin_m3_per_mol,
+        vapor_volume_start_m3_per_mol=source_row.vapor_volume_start_m3_per_mol,
+        vapor_volume_bounds_m3_per_mol=source_row.vapor_volume_bounds_m3_per_mol,
+        partition=ObservationPartition.TRAINING,
+    )
+    problem = _replace_observations(direct, (vapor,))
+
+    residuals, jacobian = _evaluate_parameters(
+        problem,
+        model,
+        (*problem.solver_start_vectors[0], 0.0, 0.0),
+    )
+
+    assert len(residuals) == 3
+    assert len(jacobian) == 9
+
+    held = replace(
+        vapor,
+        row_id="methane-vapor-pressure-held",
+        partition=ObservationPartition.HELD_OUT,
+    )
+    result = fit_parameters(_replace_observations(direct, (vapor, held)), model)
+    assert tuple(len(row.scaled_residuals) for row in result.rows) == (3, 3)
 
 
 def test_public_preparation_preserves_direct_observable_problem_semantics() -> None:
@@ -2245,6 +2349,42 @@ def test_public_preparation_preserves_direct_observable_problem_semantics() -> N
 
     assert prepared.problem == direct
     assert prepared.preflight().ready
+
+
+def test_record_constructor_covers_every_direct_observable_contract() -> None:
+    born_target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[0]
+    cases = (
+        (
+            _fixed_water_factor_model(FIGIEL_WATER_SOLVATION_FACTOR_V1),
+            _solvation_factor_problem,
+            "mean_ionic_activity",
+        ),
+        (
+            _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4],
+            _aqueous_kij_problem,
+            "aqueous_kij_mean_ionic_activity",
+        ),
+        (
+            _aqueous_model(born_target.component_order),
+            lambda model: _born_diameter_problem(model, 0),
+            "solvation_gibbs",
+        ),
+        (
+            _aqueous_model(),
+            _dielectric_suppression_problem,
+            "relative_permittivity_ratio",
+        ),
+        (
+            _aqueous_model(("methanol", "potassium-cation", "bromide-anion")),
+            _ion_solvation_kij_problem,
+            "ion_solvation_kij",
+        ),
+    )
+
+    for model, build_problem, residual_family in cases:
+        direct = build_problem(model)
+        prepared = _prepare_existing_problem(model, direct, residual_family)
+        assert prepared.problem == direct
 
 
 def test_native_joint_pure_adapter_rejects_reordered_slots() -> None:
@@ -2356,6 +2496,7 @@ def test_general_engine_tiny_solver_budget_stops_without_numerical_convergence()
 
     assert result.termination != "CONVERGENCE"
     assert not result.numerically_converged
+    assert result.failure_reasons
 
 
 def test_general_lij_fit_reuses_the_exact_lifted_pair_engine() -> None:
@@ -2532,6 +2673,11 @@ def test_provider_failure_returns_diagnostic_result() -> None:
     assert result.rows[0].status == "failed"
     assert result.evaluated_row_count == 0
     assert result.failed_row_count == 1
+    failure_record = result.to_record()
+    assert failure_record["row_accounting"]["failed"] == 1
+    assert failure_record["status"]["failure_reasons"]
+    assert failure_record["rows"][0]["unavailable_fields"]
+    assert failure_record["jacobian"]["unavailable_fields"]
 
 
 def _audited_may_rows() -> tuple[FixedCompositionVleObservation, ...]:

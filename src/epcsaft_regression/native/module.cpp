@@ -8,6 +8,7 @@
 
 #include <epcsaft/native_sdk_v1.h>
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -284,6 +285,24 @@ PyObject* py_solve_general(PyObject*, PyObject* args) {
     return epcsaft_regression::solve_general_python(capsule, payload);
 }
 
+PyObject* py_evaluate_general_start(PyObject*, PyObject* args) {
+    PyObject* capsule = nullptr;
+    PyObject* payload = nullptr;
+    PyObject* physical_start = nullptr;
+    if (!PyArg_ParseTuple(
+            args,
+            "OOO:evaluate_general_start",
+            &capsule,
+            &payload,
+            &physical_start
+        )) {
+        return nullptr;
+    }
+    return epcsaft_regression::evaluate_general_start_python(
+        capsule, payload, physical_start
+    );
+}
+
 PyObject* py_solve_evaluator(PyObject*, PyObject* args) {
     PyObject* capsule = nullptr;
     PyObject* payload = nullptr;
@@ -329,6 +348,18 @@ PyObject* py_diagnose_jacobian(PyObject*, PyObject* args) {
         )) {
         return nullptr;
     }
+    if (fitted <= 0 || lifted < 0 || residuals <= 0) {
+        PyErr_SetString(
+            PyExc_ValueError,
+            "fitted and residual counts must be positive and lifted count "
+            "must be nonnegative"
+        );
+        return nullptr;
+    }
+    if (lifted > PY_SSIZE_T_MAX - fitted) {
+        PyErr_SetString(PyExc_OverflowError, "Jacobian variable count overflows");
+        return nullptr;
+    }
     PyObject* sequence = PySequence_Fast(
         values, "Jacobian values must be a finite sequence"
     );
@@ -344,6 +375,14 @@ PyObject* py_diagnose_jacobian(PyObject*, PyObject* args) {
         );
         if (PyErr_Occurred()) {
             Py_DECREF(sequence);
+            return nullptr;
+        }
+        if (!std::isfinite(jacobian[static_cast<std::size_t>(index)])) {
+            Py_DECREF(sequence);
+            PyErr_SetString(
+                PyExc_ValueError,
+                "Jacobian values must be finite"
+            );
             return nullptr;
         }
     }
@@ -442,6 +481,12 @@ PyMethodDef methods[] = {
         py_solve_general,
         METH_VARARGS,
         "Fit one shared neutral-binary interaction parameter."
+    },
+    {
+        "evaluate_general_start",
+        py_evaluate_general_start,
+        METH_VARARGS,
+        "Evaluate a joint-pure problem at its exact resolved solver start."
     },
     {
         "diagnose_jacobian",

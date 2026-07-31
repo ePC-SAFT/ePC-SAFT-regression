@@ -102,11 +102,7 @@ ParameterCoordinate
   identity:
     ComponentParameter(component_id)
     | PairParameter(component_id_a, component_id_b)
-    | AssociationParameter((component_id_a, site_id_a),
-                           (component_id_b, site_id_b))
     | ModelParameter(model_parameter_id)
-    | CorrelationCoefficient(component_id, correlation_family,
-                             coefficient_kind, term_index)
   capability_id
   provider_parameter_fingerprint
   provider_topology_fingerprint
@@ -116,8 +112,10 @@ ParameterCoordinate
 ```
 
 Each family permits exactly one identity variant. Pair endpoints and
-association endpoints use one documented canonical lexical order; duplicate
-canonical identities are rejected. EOS's capability descriptor supplies
+component endpoints use one documented canonical lexical order; duplicate
+canonical identities are rejected. Association-site and correlation-
+coefficient identities are reserved future variants and are not accepted by
+the current executable schema. EOS's capability descriptor supplies
 the canonical physical unit and an explicit mapping from these identities to
 its active coordinate order. A model, formulation, topology, transform, or
 parameter-fingerprint mismatch fails before evaluation.
@@ -330,13 +328,15 @@ predictive status remains not adjudicated.
 
 Initial typed observation contracts are:
 
-- pure saturation coexistence;
-- single-phase scalar property or density;
-- fixed-composition phase equilibrium with observed phase compositions and
-  lifted phase state variables;
-- activity, fugacity, osmotic, or mean-ionic-activity coefficient;
-- solvation Gibbs energy.
-- salt-free-normalized relative permittivity.
+- pure saturation, vapor-pressure-only, and fixed-pressure-density rows;
+- fixed-composition VLE rows with observed phase compositions and lifted phase
+  volumes;
+- mean-ionic-activity and staged aqueous-`k_ij` mean-ionic-activity rows;
+- solvation-Gibbs and ion-solvation-`k_ij` rows; and
+- salt-free-normalized relative-permittivity-ratio rows.
+
+Generic activity, fugacity, osmotic, aggregate, and censored observations are
+not current executable contracts.
 
 The minimum future downstream observation vocabulary is frozen as follows for
 a source-declared positive scale `s`:
@@ -997,5 +997,10 @@ Ceres; `PreparedFit.fit` calls the existing `fit_parameters` owner.
 `epcsaft-regression-result` schema version 1 for both direct-EOS and
 composed-positive producers. Export is deterministic and non-mutating.
 Literature context keeps fitted full-precision numbers separate from
-source-printed strings and represents absent profile or uncertainty artifacts
-explicitly. A result record is not a Validation receipt or authority change.
+source-printed strings and represents absent profile, bootstrap, uncertainty,
+and Validation-campaign artifacts explicitly. Literature export requires the
+exact prepared-fit provenance. Failed diagnostics identify unavailable
+numerical fields explicitly; evaluated data reject nonfinite values. Solver,
+numerical, workflow/physical, scientific, predictive, and authority statuses
+remain separate. A result record is not a Validation receipt or authority
+change.

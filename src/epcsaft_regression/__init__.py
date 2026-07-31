@@ -29,7 +29,6 @@ from .parameter_regression import (
     PureVaporPressureObservation,
     PureVaporPressureRowDiagnostic,
     RegressionProblem,
-    RegressionResult,
     RelativePermittivityRatioObservation,
     SolvationGibbsObservation,
     SourceDescriptor,
@@ -47,6 +46,13 @@ from .records import (
     PROPANE_SATURATION_FIT_V1,
     load_pure_saturation_dataset,
 )
+from .result import (
+    ArtifactReference,
+    LiteratureModelIdentity,
+    RegressionResult,
+    ReproductionClass,
+    ResultContext,
+)
 from .usability import (
     AcquisitionClass,
     ConfirmationControls,
@@ -58,13 +64,10 @@ from .usability import (
     PreflightStart,
     PreparedFit,
     RankControls,
-    ReproductionClass,
-    ResultContext,
     RowProvenance,
     SolverControls,
     SourceInput,
     prepare_fit,
-    support_view,
 )
 from .workflow import (
     BornDiameterFitResult,
@@ -87,6 +90,7 @@ __all__ = (
     "AcquisitionClass",
     "AffineParameterTransform",
     "AqueousKijMeanIonicActivityObservation",
+    "ArtifactReference",
     "BornDiameterFitResult",
     "ComponentParameterIdentity",
     "ComposedPositiveRowDiagnostic",
@@ -98,6 +102,7 @@ __all__ = (
     "FigielWaterSolvationFactorFitResult",
     "FixedCompositionVleObservation",
     "IonSolvationKijObservation",
+    "LiteratureModelIdentity",
     "MeanIonicActivityObservation",
     "ModelParameterIdentity",
     "ObjectiveContract",
@@ -145,5 +150,4 @@ __all__ = (
     "load_pure_saturation_dataset",
     "parameter_capabilities",
     "prepare_fit",
-    "support_view",
 )

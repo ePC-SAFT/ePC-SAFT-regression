@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import StrEnum
 import hashlib
 import json
 import math
-from typing import Iterable
+from collections.abc import Iterable
+from dataclasses import dataclass
+from enum import StrEnum
+
+import epcsaft_regression as _package
 
 from . import _native
 from .parameter_regression import (
@@ -16,8 +18,8 @@ from .parameter_regression import (
     ObservationPartition,
     PairParameterIdentity,
     ParameterCoordinate,
-    RegressionResult,
     SourceDescriptor,
+    _complete_failure_reasons,
 )
 
 
@@ -182,9 +184,7 @@ class EvaluatorContract:
         ):
             _sha256(getattr(self, field), field.replace("_", " "))
         for field in ("provider_artifact_identity", "owner_artifact_identity"):
-            _installed_artifact_identity(
-                getattr(self, field), field.replace("_", " ")
-            )
+            _installed_artifact_identity(getattr(self, field), field.replace("_", " "))
 
 
 @dataclass(frozen=True, slots=True)
@@ -446,7 +446,9 @@ def _native_payload(problem: PositiveEvaluatorProblem) -> tuple[object, ...]:
 def fit_positive_observations(
     problem: PositiveEvaluatorProblem,
     evaluator_handle: object,
-) -> RegressionResult:
+) -> _package.RegressionResult:
+    from .result import RegressionResult
+
     if not isinstance(problem, PositiveEvaluatorProblem):
         raise TypeError("problem must be a PositiveEvaluatorProblem")
     native = _native.solve_evaluator(evaluator_handle, _native_payload(problem))
@@ -528,6 +530,21 @@ def fit_positive_observations(
         <= problem.maximum_condition_number
     )
     workflow_valid = len(rows) == len(problem.observations)
+    failure_reasons = _complete_failure_reasons(
+        (),
+        termination=str(native[0]),
+        solution_usable=bool(native[1]),
+        solver_converged=solver_converged,
+        confirmations_usable=confirmations_usable,
+        confirmation_parameter_delta=float(native[17]),
+        confirmation_parameter_limit=problem.confirmation_parameter_scaled_max_delta,
+        confirmation_cost_delta=float(native[18]),
+        confirmation_cost_limit=problem.confirmation_cost_relative_delta,
+        jacobian=jacobian,
+        parameter_count=len(problem.parameters),
+        maximum_condition_number=problem.maximum_condition_number,
+        workflow_valid=workflow_valid,
+    )
     capability_record = native[26]
     capability = PositiveEvaluatorCapability(
         evaluator_identity=problem.evaluator.evaluator_identity,
@@ -552,6 +569,7 @@ def fit_positive_observations(
     return RegressionResult(
         problem=problem,
         capabilities=(capability,),
+        preparation_fingerprint=None,
         provider_parameter_fingerprint=str(native[27]),
         provider_topology_fingerprint=(
             problem.parameters[0].provider_topology_fingerprint
@@ -566,6 +584,7 @@ def fit_positive_observations(
         ),
         scientific_status="NOT_ADJUDICATED_SOURCE_BOUND_FIT_ONLY",
         predictive_status="NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF",
+        authority_status="NO_AUTHORITY_CHANGE_REGRESSION_RESULT_ONLY",
         termination=str(native[0]),
         solution_usable=bool(native[1]),
         initial_cost=float(native[2]),
@@ -586,7 +605,7 @@ def fit_positive_observations(
         evaluated_row_count=len(rows),
         skipped_row_count=0,
         failed_row_count=0,
-        failure_reasons=(),
+        failure_reasons=failure_reasons,
     )
 
 

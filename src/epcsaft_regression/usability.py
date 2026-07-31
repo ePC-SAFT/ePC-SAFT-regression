@@ -4,9 +4,8 @@ import hashlib
 import json
 import math
 from collections.abc import Iterable, Mapping
-from dataclasses import asdict, dataclass, fields, is_dataclass
+from dataclasses import asdict, dataclass, fields, is_dataclass, replace
 from enum import StrEnum
-from types import MappingProxyType
 
 from . import _native
 from .parameter_regression import (
@@ -27,19 +26,20 @@ from .parameter_regression import (
     PureVaporPressureObservation,
     RegressionObservation,
     RegressionProblem,
-    RegressionResult,
     RelativePermittivityRatioObservation,
     SolvationGibbsObservation,
     SourceDescriptor,
-    UnsupportedParameterCapability,
     _evaluate_parameters,
+    _evaluate_parameters_at_start,
     _require_finite,
     _require_nonempty_string,
     _require_sha256,
+    _validate_associating_capability,
     canonical_dataset_sha256,
     fit_parameters,
     parameter_capabilities,
 )
+from .result import RegressionResult
 
 
 class AcquisitionClass(StrEnum):
@@ -50,35 +50,50 @@ class AcquisitionClass(StrEnum):
     RECONSTRUCTED_CORRELATION = "reconstructed_correlation"
 
 
-class ReproductionClass(StrEnum):
-    EXACT_AUTHOR_METHOD_REPLAY = "EXACT_AUTHOR_METHOD_REPLAY"
-    SOURCE_FAITHFUL_RECONSTRUCTION = "SOURCE_FAITHFUL_RECONSTRUCTION"
-    PUBLISHED_TUPLE_PROPERTY_REPLAY = "PUBLISHED_TUPLE_PROPERTY_REPLAY"
-    MODERN_REFIT = "MODERN_REFIT"
-
-
 @dataclass(frozen=True, slots=True)
 class CorrelationProvenance:
     equation: str
     coefficients: tuple[tuple[str, float], ...]
     units: str
     validity_interval: str
-    sampling_grid: tuple[float, ...]
+    sampling_fields: tuple[str, ...]
+    sampling_grid: tuple[tuple[float, ...], ...]
     transformation_record: str
 
     def __post_init__(self) -> None:
         for name in ("equation", "units", "validity_interval", "transformation_record"):
             _require_nonempty_string(getattr(self, name), name)
-        if not self.coefficients or not self.sampling_grid:
-            raise ValueError("correlation coefficients and sampling_grid must be nonempty")
+        if not self.coefficients or not self.sampling_fields or not self.sampling_grid:
+            raise ValueError(
+                "correlation coefficients, sampling_fields, and sampling_grid "
+                "must be nonempty"
+            )
+        if any(
+            type(name) is not str or not name.strip() for name, _ in self.coefficients
+        ) or len({name for name, _ in self.coefficients}) != len(self.coefficients):
+            raise ValueError(
+                "correlation coefficient names must be unique and nonempty"
+            )
+        if any(
+            type(field) is not str or not field.strip()
+            for field in self.sampling_fields
+        ) or len(set(self.sampling_fields)) != len(self.sampling_fields):
+            raise ValueError("correlation sampling_fields must be unique and nonempty")
         if any(
             type(value) not in (int, float) or not math.isfinite(value)
             for _, value in self.coefficients
         ) or any(
-            type(value) not in (int, float) or not math.isfinite(value)
-            for value in self.sampling_grid
+            type(point) is not tuple
+            or len(point) != len(self.sampling_fields)
+            or any(
+                type(value) not in (int, float) or not math.isfinite(value)
+                for value in point
+            )
+            for point in self.sampling_grid
         ):
-            raise ValueError("correlation coefficients and sampling_grid must be finite")
+            raise ValueError(
+                "correlation coefficients and sampling_grid must be finite"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,6 +121,10 @@ class RowProvenance:
             AcquisitionClass.AUTHOR_CORRELATION,
             AcquisitionClass.RECONSTRUCTED_CORRELATION,
         )
+        if self.correlation is not None and not isinstance(
+            self.correlation, CorrelationProvenance
+        ):
+            raise TypeError("correlation must be a CorrelationProvenance")
         if correlation_backed != (self.correlation is not None):
             raise ValueError(
                 "correlation acquisition classes require correlation provenance, "
@@ -136,6 +155,16 @@ class ObjectiveContract:
             raise ValueError("the current Ceres problem supports only squared loss")
         if self.loss_parameters:
             raise ValueError("squared loss has no loss parameters")
+        if self.interpretation != "native_scaled_least_squares":
+            raise ValueError("interpretation must be 'native_scaled_least_squares'")
+        if self.row_weighting != "observation_residual_scales":
+            raise ValueError("row_weighting must be 'observation_residual_scales'")
+        if self.covariance_interpretation != "independent_no_covariance":
+            raise ValueError(
+                "covariance_interpretation must be 'independent_no_covariance'"
+            )
+        if self.failed_row_treatment != "fail_fit":
+            raise ValueError("failed_row_treatment must be 'fail_fit'")
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,8 +242,19 @@ class ObservationDataset:
     provenance_sha256: str
 
     def __post_init__(self) -> None:
+        if not isinstance(self.source, SourceInput):
+            raise TypeError("source must be a SourceInput")
+        if not isinstance(self.objective, ObjectiveContract):
+            raise TypeError("objective must be an ObjectiveContract")
+        if type(self.observations) is not tuple or any(
+            type(row) not in _OBSERVATION_TYPES for row in self.observations
+        ):
+            raise TypeError("observations must be a tuple of fit-ready direct-EOS rows")
+        if type(self.row_provenance) is not tuple:
+            raise TypeError("row_provenance must be a tuple")
         if not self.observations:
             raise ValueError("dataset observations must be nonempty")
+        _validate_objective(self)
         row_ids = tuple(row.row_id for row in self.observations)
         if len(set(row_ids)) != len(row_ids):
             raise ValueError("dataset row IDs must be unique")
@@ -223,6 +263,49 @@ class ObservationDataset:
             provenance_ids
         ) != set(row_ids):
             raise ValueError("row provenance must match every observation row exactly")
+        if any(
+            not isinstance(provenance, RowProvenance)
+            for _, provenance in self.row_provenance
+        ):
+            raise TypeError("every row provenance value must be a RowProvenance")
+        provenance_by_id = dict(self.row_provenance)
+        correlations = {
+            provenance.correlation
+            for provenance in provenance_by_id.values()
+            if provenance.correlation is not None
+        }
+        for correlation in correlations:
+            correlated_rows = tuple(
+                row
+                for row in self.observations
+                if provenance_by_id[row.row_id].correlation == correlation
+            )
+            if any(
+                not hasattr(row, field)
+                for row in correlated_rows
+                for field in correlation.sampling_fields
+            ):
+                raise ValueError(
+                    "correlation sampling_fields must name fields on every "
+                    "transformed row"
+                )
+            observed_grid = tuple(
+                tuple(getattr(row, field) for field in correlation.sampling_fields)
+                for row in correlated_rows
+            )
+            if any(
+                type(value) not in (int, float) or not math.isfinite(value)
+                for point in observed_grid
+                for value in point
+            ):
+                raise ValueError(
+                    "correlation sampling_fields must name finite numeric row fields"
+                )
+            if observed_grid != correlation.sampling_grid:
+                raise ValueError(
+                    "correlation sampling_grid must exactly match the ordered "
+                    "temperatures of its transformed rows"
+                )
         expected = _canonical_sha256(
             {
                 "source": self.source,
@@ -253,7 +336,7 @@ class ObservationDataset:
         for index, record in enumerate(records):
             if not isinstance(record, Mapping):
                 raise TypeError(f"row {index}: record must be a mapping")
-            row_id = str(record.get("row_id", f"index-{index}"))
+            row_label = str(record.get("row_id", f"row {index}"))
             extra = sorted(set(record) - allowed)
             missing = sorted(allowed - set(record))
             if extra or missing:
@@ -262,7 +345,7 @@ class ObservationDataset:
                     detail.append(f"missing {', '.join(missing)}")
                 if extra:
                     detail.append(f"unexpected {', '.join(extra)}")
-                raise ValueError(f"{row_id}: {'; '.join(detail)}")
+                raise ValueError(f"{row_label}: {'; '.join(detail)}")
             values = dict(record)
             for name in _TUPLE_FIELDS.intersection(values):
                 if isinstance(values[name], list):
@@ -271,11 +354,11 @@ class ObservationDataset:
                 try:
                     values["partition"] = ObservationPartition(values["partition"])
                 except ValueError as exc:
-                    raise ValueError(f"{row_id}: invalid partition") from exc
+                    raise ValueError(f"{row_label}: invalid partition") from exc
             try:
                 observations.append(observation_type(**values))
             except (TypeError, ValueError) as exc:
-                raise ValueError(f"{row_id}: {exc}") from exc
+                raise ValueError(f"{row_label}: {exc}") from exc
         rows = tuple(observations)
         mismatched_sources = tuple(
             row.row_id for row in rows if row.source_id != source.source_id
@@ -348,7 +431,9 @@ class ConfirmationControls:
 @dataclass(frozen=True, slots=True)
 class ParameterRequest:
     family: ParameterFamily
-    identity: PairParameterIdentity | ComponentParameterIdentity | ModelParameterIdentity
+    identity: (
+        PairParameterIdentity | ComponentParameterIdentity | ModelParameterIdentity
+    )
     transform: AffineParameterTransform
     lower_bound: float
     upper_bound: float
@@ -369,12 +454,6 @@ class ParameterRequest:
             raise ValueError("parameter bounds must be finite and increasing")
 
 
-def support_view(
-    model: object,
-) -> tuple[ParameterCapability | UnsupportedParameterCapability, ...]:
-    return parameter_capabilities(model)
-
-
 def _unit(value: str) -> str:
     units = {"dimensionless": "1", "angstrom": "angstrom", "kelvin": "K"}
     if value not in units:
@@ -382,7 +461,9 @@ def _unit(value: str) -> str:
     return units[value]
 
 
-def _identity_matches(request: ParameterRequest, capability: ParameterCapability) -> bool:
+def _identity_matches(
+    request: ParameterRequest, capability: ParameterCapability
+) -> bool:
     identity = request.identity.canonical_component_ids
     if isinstance(request.identity, ModelParameterIdentity):
         return capability.identity_shape == "model"
@@ -409,11 +490,7 @@ def _resolve_coordinates(
         for item in parameter_capabilities(model)
         if isinstance(item, ParameterCapability)
     )
-    derivative_ready = tuple(
-        item
-        for item in advertised
-        if item.installed_ready
-    )
+    derivative_ready = tuple(item for item in advertised if item.installed_ready)
     if tuple(request.family for request in requests) == _ASSOCIATING_FAMILIES:
         matches = tuple(
             item
@@ -421,9 +498,30 @@ def _resolve_coordinates(
             if item.capability_id == "neutral_pure_associating_joint_sigma_basis_v1"
         )
         if len(matches) != 1:
-            raise ValueError("installed EOS does not advertise exactly one fixed-2B block")
+            raise ValueError(
+                "installed EOS does not advertise exactly one fixed-2B block"
+            )
         capability = matches[0]
-        units = ("1", "angstrom", "K", "K", "1")
+        _validate_associating_capability(capability)
+        expected_identities = (
+            ComponentParameterIdentity,
+            ComponentParameterIdentity,
+            ComponentParameterIdentity,
+            ModelParameterIdentity,
+            ModelParameterIdentity,
+        )
+        for request, expected_identity in zip(
+            requests, expected_identities, strict=True
+        ):
+            if not isinstance(request.identity, expected_identity) or (
+                isinstance(request.identity, ComponentParameterIdentity)
+                and request.identity.canonical_component_ids != capability.component_ids
+            ):
+                raise ValueError(
+                    "fixed-2B request identity does not match the installed "
+                    "component and model coordinate order"
+                )
+        units = tuple(_unit(unit) for unit in capability.coordinate_units[2:])
         return tuple(
             ParameterCoordinate(
                 request.family,
@@ -481,26 +579,18 @@ _OBJECTIVE_FAMILIES = {
 
 
 def _validate_objective(dataset: ObservationDataset) -> None:
-    families = {
-        _OBJECTIVE_FAMILIES[type(row)] for row in dataset.observations
-    }
+    families = {_OBJECTIVE_FAMILIES[type(row)] for row in dataset.observations}
     allowed = (
         families
         if len(families) == 1
         else {"pure_associating_mixed"}
-        if families.issubset(
-            {"pure_saturation", "pure_vapor_pressure", "pure_density"}
-        )
+        if families.issubset({"pure_saturation", "pure_vapor_pressure", "pure_density"})
         else set()
     )
     if dataset.objective.residual_family not in allowed:
         raise ValueError(
             "objective residual_family does not match the validated observation "
             f"contract; expected one of {sorted(allowed)}"
-        )
-    if dataset.objective.interpretation != "native_scaled_least_squares":
-        raise ValueError(
-            "objective interpretation must be 'native_scaled_least_squares'"
         )
 
 
@@ -513,7 +603,8 @@ class PreflightStart:
     full_condition_number: float
     projected_parameter_rank: int
     projected_parameter_condition_number: float
-    bounds_status: tuple[str, ...]
+    fitted_bounds_status: tuple[str, ...]
+    lifted_bounds_status: tuple[str, ...]
     derivative_complete: bool
     failure_reason: str
 
@@ -537,9 +628,7 @@ class PreflightReport:
 def _shape(rows: tuple[RegressionObservation, ...]) -> tuple[int, int]:
     residuals = lifted = 0
     for row in rows:
-        if isinstance(
-            row, (FixedCompositionVleObservation, PureSaturationObservation)
-        ):
+        if isinstance(row, (FixedCompositionVleObservation, PureSaturationObservation)):
             residuals += 4
             lifted += 2
         elif isinstance(row, PureVaporPressureObservation):
@@ -560,9 +649,7 @@ def _lifted_start_variables(
     for row in rows:
         if isinstance(row, PureDensityObservation):
             values.append(
-                math.log(
-                    row.volume_start_m3_per_mol / row.volume_origin_m3_per_mol
-                )
+                math.log(row.volume_start_m3_per_mol / row.volume_origin_m3_per_mol)
             )
         elif isinstance(
             row,
@@ -587,14 +674,146 @@ def _lifted_start_variables(
     return tuple(values)
 
 
+def _bound_status(value: float, bounds: tuple[float, float]) -> str:
+    return (
+        "lower" if value == bounds[0] else "upper" if value == bounds[1] else "interior"
+    )
+
+
+def _lifted_bounds_status(
+    rows: tuple[RegressionObservation, ...],
+) -> tuple[str, ...]:
+    status: list[str] = []
+    for row in rows:
+        if isinstance(row, PureDensityObservation):
+            status.append(
+                _bound_status(
+                    row.volume_start_m3_per_mol,
+                    row.volume_bounds_m3_per_mol,
+                )
+            )
+        elif isinstance(
+            row,
+            (
+                FixedCompositionVleObservation,
+                PureSaturationObservation,
+                PureVaporPressureObservation,
+            ),
+        ):
+            status.extend(
+                (
+                    _bound_status(
+                        row.liquid_volume_start_m3_per_mol,
+                        row.liquid_volume_bounds_m3_per_mol,
+                    ),
+                    _bound_status(
+                        row.vapor_volume_start_m3_per_mol,
+                        row.vapor_volume_bounds_m3_per_mol,
+                    ),
+                )
+            )
+    return tuple(status)
+
+
+def _lifted_bounds_status_at_variables(
+    rows: tuple[RegressionObservation, ...],
+    variables: tuple[float, ...],
+) -> tuple[str, ...]:
+    status: list[str] = []
+    variable = 0
+    for row in rows:
+        if isinstance(row, PureDensityObservation):
+            volume = row.volume_origin_m3_per_mol * math.exp(variables[variable])
+            status.append(_bound_status(volume, row.volume_bounds_m3_per_mol))
+            variable += 1
+        elif isinstance(
+            row,
+            (
+                FixedCompositionVleObservation,
+                PureSaturationObservation,
+                PureVaporPressureObservation,
+            ),
+        ):
+            liquid = row.liquid_volume_origin_m3_per_mol * math.exp(variables[variable])
+            vapor = row.vapor_volume_origin_m3_per_mol * math.exp(
+                variables[variable + 1]
+            )
+            status.extend(
+                (
+                    _bound_status(liquid, row.liquid_volume_bounds_m3_per_mol),
+                    _bound_status(vapor, row.vapor_volume_bounds_m3_per_mol),
+                )
+            )
+            variable += 2
+    if variable != len(variables):
+        raise ValueError("resolved lifted start has the wrong dimension")
+    return tuple(status)
+
+
+def _evaluation_failure_reason(error: Exception) -> str:
+    message = str(error)
+    normalized = message.casefold()
+    if "nonfinite" in normalized:
+        return f"nonfinite_evaluation: {message}"
+    if "derivative" in normalized or any(
+        phrase in normalized
+        for phrase in (
+            "does not advertise",
+            "capability unavailable",
+            "capabilities do not expose",
+        )
+    ):
+        return f"unavailable_derivatives: {message}"
+    if any(
+        token in normalized
+        for token in (
+            "component order",
+            "capabilit",
+            "descriptor",
+            "fingerprint",
+            "identity",
+            "topology",
+            "unit",
+            "coordinate contract",
+        )
+    ):
+        return f"incompatible_contract: {message}"
+    if isinstance(error, TypeError) or any(
+        token in normalized
+        for token in (
+            "field count",
+            "payload",
+            "must be a sequence",
+            "wrong finite dimension",
+            "inconsistent parameter",
+        )
+    ):
+        return f"malformed_rows: {message}"
+    return f"eos_domain_failure: {message}"
+
+
 @dataclass(frozen=True, slots=True)
 class PreparedFit:
     model: object
     problem: RegressionProblem
     datasets: tuple[ObservationDataset, ...]
 
+    @property
+    def preparation_fingerprint(self) -> str:
+        return _canonical_sha256(
+            {
+                "problem": self.problem,
+                "datasets": tuple(
+                    dataset.provenance_sha256 for dataset in self.datasets
+                ),
+            }
+        )
+
     def fit(self) -> RegressionResult:
-        return fit_parameters(self.problem, self.model)
+        return replace(
+            fit_parameters(self.problem, self.model),
+            preparation_fingerprint=self.preparation_fingerprint,
+        )
 
     def preflight(self) -> PreflightReport:
         parameter_count = len(self.problem.parameters)
@@ -602,35 +821,75 @@ class PreparedFit:
         lifted_start = _lifted_start_variables(self.problem.training_observations)
         if len(lifted_start) != lifted_count:
             raise ValueError("preflight lifted start accounting is incomplete")
+        lifted_bounds = _lifted_bounds_status(self.problem.training_observations)
+        if len(lifted_bounds) != lifted_count:
+            raise ValueError("preflight lifted bound accounting is incomplete")
         starts = []
         reasons: list[str] = []
+        variable_count = parameter_count + lifted_count
         for physical_start, solver_start in zip(
             self.problem.start_vectors, self.problem.solver_start_vectors, strict=True
         ):
             bounds = tuple(
-                "lower"
-                if value == coordinate.lower_bound
-                else "upper"
-                if value == coordinate.upper_bound
-                else "interior"
+                _bound_status(
+                    value,
+                    (coordinate.lower_bound, coordinate.upper_bound),
+                )
                 for value, coordinate in zip(
                     physical_start, self.problem.parameters, strict=True
                 )
             )
+            if residual_count < variable_count:
+                reason = (
+                    "structural_insufficiency: residual count is smaller than "
+                    "the fitted-plus-lifted variable count"
+                )
+                reasons.append(reason)
+                starts.append(
+                    PreflightStart(
+                        physical_start,
+                        residual_count,
+                        variable_count,
+                        0,
+                        math.inf,
+                        0,
+                        math.inf,
+                        bounds,
+                        lifted_bounds,
+                        False,
+                        reason,
+                    )
+                )
+                continue
             try:
-                residuals, jacobian = _evaluate_parameters(
-                    self.problem,
-                    self.model,
-                    (*solver_start, *lifted_start),
-                )
-                variable_count = parameter_count + lifted_count
-                complete = (
-                    len(residuals) == residual_count
-                    and len(jacobian) == residual_count * variable_count
-                    and all(math.isfinite(value) for value in (*residuals, *jacobian))
-                )
-                if not complete:
-                    raise ValueError("incomplete or nonfinite exact derivative payload")
+                if parameter_count > 1:
+                    variables, residuals, jacobian = _evaluate_parameters_at_start(
+                        self.problem,
+                        self.model,
+                        physical_start,
+                    )
+                    start_lifted_bounds = _lifted_bounds_status_at_variables(
+                        self.problem.training_observations,
+                        variables[parameter_count:],
+                    )
+                else:
+                    residuals, jacobian = _evaluate_parameters(
+                        self.problem,
+                        self.model,
+                        (*solver_start, *lifted_start),
+                    )
+                    start_lifted_bounds = lifted_bounds
+                if (
+                    len(residuals) != residual_count
+                    or len(jacobian) != residual_count * variable_count
+                ):
+                    raise RuntimeError(
+                        "unavailable_derivatives: incomplete exact derivative columns"
+                    )
+                if not all(math.isfinite(value) for value in (*residuals, *jacobian)):
+                    raise ArithmeticError(
+                        "nonfinite exact residual or derivative payload"
+                    )
                 full, projected = _native.diagnose_jacobian(
                     parameter_count,
                     lifted_count,
@@ -664,12 +923,17 @@ class PreparedFit:
                         projected_rank,
                         projected_condition,
                         bounds,
+                        start_lifted_bounds,
                         True,
                         failure,
                     )
                 )
             except (ArithmeticError, RuntimeError, TypeError, ValueError) as exc:
-                reason = f"eos_domain_or_derivative_failure: {exc}"
+                reason = (
+                    str(exc)
+                    if str(exc).startswith("unavailable_derivatives:")
+                    else _evaluation_failure_reason(exc)
+                )
                 reasons.append(reason)
                 starts.append(
                     PreflightStart(
@@ -681,6 +945,7 @@ class PreparedFit:
                         0,
                         math.inf,
                         bounds,
+                        lifted_bounds,
                         False,
                         reason,
                     )
@@ -729,6 +994,15 @@ def prepare_fit(
         _validate_objective(dataset)
     coordinates = _resolve_coordinates(model, parameters)
     observations = tuple(row for dataset in datasets for row in dataset.observations)
+    observation_types = {type(row) for row in observations}
+    if (
+        len(observation_types) > 1
+        and tuple(request.family for request in parameters) != _ASSOCIATING_FAMILIES
+    ):
+        raise ValueError(
+            "mixed observation contracts are supported only by the installed "
+            "fixed neutral-pure-2B block"
+        )
     sources = tuple(
         SourceDescriptor(
             source_id=dataset.source.source_id,
@@ -761,189 +1035,6 @@ def prepare_fit(
     return PreparedFit(model, problem, datasets)
 
 
-@dataclass(frozen=True, slots=True)
-class ResultContext:
-    reproduction_class: ReproductionClass | None = None
-    model_identity: Mapping[str, object] | None = None
-    source_printed_parameters: Mapping[str, str] | None = None
-    practical_identifiability_artifact: Mapping[str, str] | None = None
-    uncertainty_artifact: Mapping[str, str] | None = None
-    data_identity: Mapping[str, object] | None = None
-    objective_identity: Mapping[str, object] | None = None
-
-    def __post_init__(self) -> None:
-        if self.reproduction_class is not None and not isinstance(
-            self.reproduction_class, ReproductionClass
-        ):
-            raise TypeError("reproduction_class must be a ReproductionClass")
-        for name in (
-            "model_identity",
-            "source_printed_parameters",
-            "practical_identifiability_artifact",
-            "uncertainty_artifact",
-            "data_identity",
-            "objective_identity",
-        ):
-            value = getattr(self, name)
-            if value is not None:
-                object.__setattr__(self, name, MappingProxyType(dict(value)))
-
-
-def _ensure_finite(value: object, path: str = "record") -> None:
-    if isinstance(value, float) and not math.isfinite(value):
-        raise ValueError(f"{path} must contain only finite numbers")
-    if isinstance(value, Mapping):
-        for key, item in value.items():
-            _ensure_finite(item, f"{path}.{key}")
-    elif isinstance(value, (tuple, list)):
-        for index, item in enumerate(value):
-            _ensure_finite(item, f"{path}[{index}]")
-
-
-def _result_record(
-    result: RegressionResult,
-    *,
-    prepared: PreparedFit | None = None,
-    context: ResultContext | None = None,
-) -> dict[str, object]:
-    context = context or ResultContext()
-    if prepared is not None and prepared.problem != result.problem:
-        raise ValueError("prepared fit does not own this RegressionResult problem")
-    positive = type(result.problem).__name__ == "PositiveEvaluatorProblem"
-    if positive and (
-        context.data_identity is None or context.objective_identity is None
-    ):
-        raise ValueError(
-            "composed-positive export requires explicit data_identity and "
-            "objective_identity"
-        )
-    problem = {
-        "kind": type(result.problem).__name__,
-        "resolved": _json_value(result.problem),
-        "datasets": (
-            [
-                {
-                    "source": _json_value(dataset.source),
-                    "canonical_dataset_sha256": canonical_dataset_sha256(
-                        dataset.observations
-                    ),
-                    "provenance_sha256": dataset.provenance_sha256,
-                    "objective": _json_value(dataset.objective),
-                    "rows": [
-                        {
-                            "row_id": row_id,
-                            **_json_value(provenance),
-                        }
-                        for row_id, provenance in dataset.row_provenance
-                    ],
-                }
-                for dataset in prepared.datasets
-            ]
-            if prepared is not None
-            else None
-        ),
-    }
-    record = {
-        "schema_id": "epcsaft-regression-result",
-        "schema_version": 1,
-        "problem": problem,
-        "data_identity": (
-            _json_value(context.data_identity)
-            if prepared is None
-            else _json_value(
-                {
-                    dataset.source.source_id: {
-                        row_id: provenance
-                        for row_id, provenance in dataset.row_provenance
-                    }
-                    for dataset in prepared.datasets
-                }
-            )
-        ),
-        "objective_identity": (
-            _json_value(context.objective_identity)
-            if prepared is None
-            else _json_value(
-                {
-                    dataset.source.source_id: dataset.objective
-                    for dataset in prepared.datasets
-                }
-            )
-        ),
-        "capabilities": _json_value(result.capabilities),
-        "provider_parameter_fingerprint": result.provider_parameter_fingerprint,
-        "provider_topology_fingerprint": result.provider_topology_fingerprint,
-        "status": {
-            "solver_converged": result.solver_converged,
-            "numerically_converged": result.numerically_converged,
-            "workflow_valid": result.workflow_valid,
-            "physical_status": result.physical_status,
-            "scientific_status": result.scientific_status,
-            "predictive_status": result.predictive_status,
-            "termination": result.termination,
-            "solution_usable": result.solution_usable,
-            "failure_reasons": list(result.failure_reasons),
-        },
-        "solver": {
-            "initial_cost": result.initial_cost,
-            "final_cost": result.final_cost,
-            "iterations": result.iterations,
-            "residual_evaluation_count": result.residual_evaluation_count,
-            "jacobian_evaluation_count": result.jacobian_evaluation_count,
-        },
-        "parameters": _json_value(result.parameters),
-        "jacobian": _json_value(result.jacobian),
-        "rows": _json_value(result.rows),
-        "confirmation": {
-            "count": result.confirmation_count,
-            "parameter_scaled_max_delta": (
-                result.confirmation_parameter_scaled_max_delta
-            ),
-            "cost_relative_max_delta": result.confirmation_cost_relative_max_delta,
-            "usable": result.confirmations_usable,
-        },
-        "row_accounting": {
-            "training": result.training_row_count,
-            "held_out": result.held_out_row_count,
-            "stress": result.stress_row_count,
-            "evaluated": result.evaluated_row_count,
-            "skipped": result.skipped_row_count,
-            "failed": result.failed_row_count,
-        },
-        "literature": {
-            "reproduction_class": (
-                context.reproduction_class.value
-                if context.reproduction_class is not None
-                else None
-            ),
-            "model_identity": _json_value(context.model_identity),
-            "source_printed_parameters": _json_value(
-                context.source_printed_parameters
-            ),
-            "practical_identifiability_artifact": _json_value(
-                context.practical_identifiability_artifact
-            ),
-            "uncertainty_artifact": _json_value(context.uncertainty_artifact),
-        },
-    }
-    _ensure_finite(record)
-    return record
-
-
-def _result_json_bytes(
-    result: RegressionResult,
-    *,
-    prepared: PreparedFit | None = None,
-    context: ResultContext | None = None,
-) -> bytes:
-    return json.dumps(
-        _result_record(result, prepared=prepared, context=context),
-        sort_keys=True,
-        separators=(",", ":"),
-        allow_nan=False,
-    ).encode("utf-8")
-
-
 __all__ = (
     "AcquisitionClass",
     "ConfirmationControls",
@@ -955,11 +1046,8 @@ __all__ = (
     "PreflightStart",
     "PreparedFit",
     "RankControls",
-    "ReproductionClass",
-    "ResultContext",
     "RowProvenance",
     "SolverControls",
     "SourceInput",
     "prepare_fit",
-    "support_view",
 )

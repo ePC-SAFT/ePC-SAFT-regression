@@ -6,19 +6,12 @@ import math
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from enum import StrEnum
-from typing import TYPE_CHECKING
 
 from epcsaft import native_sdk
 
-from . import _native
+import epcsaft_regression as _package
 
-if TYPE_CHECKING:
-    from .evaluator_regression import (
-        ComposedPositiveRowDiagnostic,
-        PositiveEvaluatorCapability,
-        PositiveEvaluatorProblem,
-    )
-    from .usability import PreparedFit, ResultContext
+from . import _native
 
 
 class ParameterFamily(StrEnum):
@@ -71,9 +64,7 @@ class ParameterCapability:
     @property
     def installed_ready(self) -> bool:
         required_order = (
-            2
-            if self.observation_contract == "fixed_composition_helmholtz_phase"
-            else 1
+            2 if self.observation_contract == "fixed_composition_helmholtz_phase" else 1
         )
         return (
             self.maturity == "DERIVATIVE_READY"
@@ -219,69 +210,6 @@ class DirectObservationRowDiagnostic:
     status: str
     evaluated: bool
     failure_reason: str
-
-
-@dataclass(frozen=True, slots=True)
-class RegressionResult:
-    problem: RegressionProblem | PositiveEvaluatorProblem
-    capabilities: tuple[ParameterCapability | PositiveEvaluatorCapability, ...]
-    provider_parameter_fingerprint: str
-    provider_topology_fingerprint: str
-    solver_converged: bool
-    numerically_converged: bool
-    workflow_valid: bool
-    physical_status: str
-    scientific_status: str
-    predictive_status: str
-    termination: str
-    solution_usable: bool
-    initial_cost: float
-    final_cost: float
-    iterations: int
-    residual_evaluation_count: int
-    jacobian_evaluation_count: int
-    parameters: tuple[FittedParameterDiagnostic, ...]
-    jacobian: GeneralJacobianDiagnostics
-    rows: tuple[
-        GeneralRowDiagnostic
-        | PureSaturationRowDiagnostic
-        | PureVaporPressureRowDiagnostic
-        | PureDensityRowDiagnostic
-        | DirectObservationRowDiagnostic
-        | ComposedPositiveRowDiagnostic,
-        ...,
-    ]
-    confirmation_count: int
-    confirmation_parameter_scaled_max_delta: float
-    confirmation_cost_relative_max_delta: float
-    confirmations_usable: bool
-    training_row_count: int
-    held_out_row_count: int
-    stress_row_count: int
-    evaluated_row_count: int
-    skipped_row_count: int
-    failed_row_count: int
-    failure_reasons: tuple[str, ...]
-
-    def to_record(
-        self,
-        *,
-        prepared: PreparedFit | None = None,
-        context: ResultContext | None = None,
-    ) -> dict[str, object]:
-        from .usability import _result_record
-
-        return _result_record(self, prepared=prepared, context=context)
-
-    def to_json_bytes(
-        self,
-        *,
-        prepared: PreparedFit | None = None,
-        context: ResultContext | None = None,
-    ) -> bytes:
-        from .usability import _result_json_bytes
-
-        return _result_json_bytes(self, prepared=prepared, context=context)
 
 
 def parameter_capabilities(
@@ -435,7 +363,9 @@ class AffineParameterTransform:
 @dataclass(frozen=True, slots=True)
 class ParameterCoordinate:
     family: ParameterFamily
-    identity: PairParameterIdentity | ComponentParameterIdentity | ModelParameterIdentity
+    identity: (
+        PairParameterIdentity | ComponentParameterIdentity | ModelParameterIdentity
+    )
     capability_id: str
     provider_parameter_fingerprint: str
     provider_topology_fingerprint: str
@@ -1005,6 +935,8 @@ class RelativePermittivityRatioObservation:
             _require_nonempty_string(component_id, "component_id")
         if len(set(self.component_ids)) != 3:
             raise ValueError("component_ids must be distinct")
+        if self.component_ids[0] != self.solvent_id:
+            raise ValueError("solvent_id must match the first ordered component_id")
         for field in (
             "temperature_k",
             "pressure_pa",
@@ -1548,6 +1480,44 @@ def _is_associating_parameter_block(problem: RegressionProblem) -> bool:
     )
 
 
+def _validate_associating_capability(capability: ParameterCapability) -> None:
+    if (
+        capability.family is not ParameterFamily.PURE_ASSOCIATING_JOINT
+        or capability.coordinate_kinds
+        != (
+            "amount",
+            "volume",
+            "segment_count",
+            "segment_diameter",
+            "dispersion_energy_over_k",
+            "association_energy_over_k",
+            "association_volume",
+        )
+        or capability.coordinate_units
+        != (
+            "mol",
+            "m3",
+            "dimensionless",
+            "angstrom",
+            "kelvin",
+            "kelvin",
+            "dimensionless",
+        )
+        or capability.state_coordinate_count != 2
+        or capability.active_parameter_count != 5
+        or capability.observation_contract != "fixed_composition_helmholtz_phase"
+        or capability.model_domain != "neutral_associating_pure"
+        or capability.identity_shape != "model"
+        or capability.tensor_layout != "row_major"
+        or capability.derivative_order != 2
+        or len(capability.component_ids) != 1
+    ):
+        raise ValueError(
+            "installed EOS ordinary-sigma pure-2B descriptor does not match "
+            "the five-parameter coordinate contract"
+        )
+
+
 def _native_payload(
     problem: RegressionProblem, capability: ParameterCapability
 ) -> tuple[object, ...]:
@@ -1569,6 +1539,12 @@ def _native_payload(
         else "pure_density"
         if isinstance(problem.observations[0], PureDensityObservation)
         and all(isinstance(row, PureDensityObservation) for row in problem.observations)
+        else "pure_vapor_pressure"
+        if isinstance(problem.observations[0], PureVaporPressureObservation)
+        and all(
+            isinstance(row, PureVaporPressureObservation)
+            for row in problem.observations
+        )
         else "phase_or_direct"
     )
     payload = (
@@ -1738,46 +1714,11 @@ def _matched_capabilities(
                 "pure-2B joint capability"
             )
         capability = advertised[0]
-        expected_kinds = (
-            "amount",
-            "volume",
-            "segment_count",
-            "segment_diameter",
-            "dispersion_energy_over_k",
-            "association_energy_over_k",
-            "association_volume",
-        )
-        expected_units = (
-            "mol",
-            "m3",
-            "dimensionless",
-            "angstrom",
-            "kelvin",
-            "kelvin",
-            "dimensionless",
-        )
-        if (
-            capability.family is not ParameterFamily.PURE_ASSOCIATING_JOINT
-            or capability.coordinate_kinds != expected_kinds
-            or capability.coordinate_units != expected_units
-            or capability.state_coordinate_count != 2
-            or capability.active_parameter_count != len(problem.parameters)
-            or capability.observation_contract != "fixed_composition_helmholtz_phase"
-            or capability.model_domain != "neutral_associating_pure"
-            or capability.identity_shape != "model"
-            or capability.tensor_layout != "row_major"
-            or capability.derivative_order != 2
-        ):
-            raise ValueError(
-                "installed Provider ordinary-sigma pure-2B descriptor does "
-                "not match the requested five-parameter coordinate contract"
-            )
+        _validate_associating_capability(capability)
         expected_parameter_units = ("1", "angstrom", "K", "K", "1")
         for index, parameter in enumerate(problem.parameters):
             expected_identity = (
-                ComponentParameterIdentity
-                if index < 3
-                else ModelParameterIdentity
+                ComponentParameterIdentity if index < 3 else ModelParameterIdentity
             )
             if (
                 parameter.capability_id != capability.capability_id
@@ -1897,7 +1838,78 @@ def _evaluate_parameters(
     return tuple(residuals), tuple(jacobian)
 
 
-def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResult:
+def _evaluate_parameters_at_start(
+    problem: RegressionProblem,
+    model: object,
+    physical_start: tuple[float, ...],
+) -> tuple[tuple[float, ...], tuple[float, ...], tuple[float, ...]]:
+    capabilities = _matched_capabilities(problem, model)
+    if not _supported_capability_block(problem, capabilities):
+        raise ValueError(
+            "the installed capabilities do not expose one compatible "
+            "multi-active evaluator"
+        )
+    variables, residuals, jacobian = _native.evaluate_general_start(
+        native_sdk(model),
+        _native_payload(problem, capabilities[0]),
+        physical_start,
+    )
+    return tuple(variables), tuple(residuals), tuple(jacobian)
+
+
+def _complete_failure_reasons(
+    existing: tuple[str, ...],
+    *,
+    termination: str,
+    solution_usable: bool,
+    solver_converged: bool,
+    confirmations_usable: bool,
+    confirmation_parameter_delta: float,
+    confirmation_parameter_limit: float,
+    confirmation_cost_delta: float,
+    confirmation_cost_limit: float,
+    jacobian: GeneralJacobianDiagnostics,
+    parameter_count: int,
+    maximum_condition_number: float,
+    workflow_valid: bool,
+) -> tuple[str, ...]:
+    reasons = list(existing)
+    if not solution_usable:
+        reasons.append("solution_unusable")
+    if not solver_converged and termination != "CONVERGENCE":
+        reasons.append(f"solver_not_converged: termination={termination}")
+    elif not solver_converged and solution_usable:
+        reasons.append("solver_rejected_despite_usable_convergence")
+    if not confirmations_usable:
+        reasons.append("confirmation_runs_unusable")
+    if confirmation_parameter_delta > confirmation_parameter_limit:
+        reasons.append("confirmation_parameter_disagreement")
+    if confirmation_cost_delta > confirmation_cost_limit:
+        reasons.append("confirmation_cost_disagreement")
+    if jacobian.full_rank < jacobian.variable_count:
+        reasons.append("rank_deficient_full_jacobian")
+    if jacobian.projected_parameter_rank < parameter_count:
+        reasons.append("rank_deficient_projected_parameter_jacobian")
+    if (
+        not math.isfinite(jacobian.full_condition_number)
+        or jacobian.full_condition_number > maximum_condition_number
+    ):
+        reasons.append("poor_full_jacobian_conditioning")
+    if (
+        not math.isfinite(jacobian.projected_parameter_condition_number)
+        or jacobian.projected_parameter_condition_number > maximum_condition_number
+    ):
+        reasons.append("poor_projected_parameter_conditioning")
+    if not workflow_valid:
+        reasons.append("incomplete_row_evaluation")
+    return tuple(dict.fromkeys(reasons))
+
+
+def fit_parameters(
+    problem: RegressionProblem, model: object
+) -> _package.RegressionResult:
+    from .result import RegressionResult
+
     capabilities = _matched_capabilities(problem, model)
     if not _supported_capability_block(problem, capabilities):
         raise ValueError(
@@ -2160,9 +2172,25 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         )
         if reason
     )
+    failures = _complete_failure_reasons(
+        failures,
+        termination=str(native[0]),
+        solution_usable=bool(native[1]),
+        solver_converged=solver_converged,
+        confirmations_usable=confirmations_usable,
+        confirmation_parameter_delta=float(native[17]),
+        confirmation_parameter_limit=problem.confirmation_parameter_scaled_max_delta,
+        confirmation_cost_delta=float(native[18]),
+        confirmation_cost_limit=problem.confirmation_cost_relative_delta,
+        jacobian=jacobian,
+        parameter_count=len(problem.parameters),
+        maximum_condition_number=problem.maximum_condition_number,
+        workflow_valid=workflow_valid,
+    )
     return RegressionResult(
         problem=problem,
         capabilities=capabilities,
+        preparation_fingerprint=None,
         provider_parameter_fingerprint=capability.parameter_fingerprint,
         provider_topology_fingerprint=capability.topology_fingerprint,
         solver_converged=solver_converged,
@@ -2171,6 +2199,7 @@ def fit_parameters(problem: RegressionProblem, model: object) -> RegressionResul
         physical_status="NOT_ADJUDICATED_NO_ROW_ACCEPTANCE_CRITERIA",
         scientific_status="NOT_ADJUDICATED_NO_APPROVED_SCIENTIFIC_CUTOFF",
         predictive_status="NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF",
+        authority_status="NO_AUTHORITY_CHANGE_REGRESSION_RESULT_ONLY",
         termination=native[0],
         solution_usable=bool(native[1]),
         initial_cost=native[2],

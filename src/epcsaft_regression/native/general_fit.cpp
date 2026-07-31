@@ -552,6 +552,7 @@ Payload parse_payload(PyObject* object) {
             : payload.observation_shape == "pure_density"
                 ? ObservationKind::pure_density
             : payload.observation_shape == "mixed_pure_associating"
+                    || payload.observation_shape == "pure_vapor_pressure"
                 ? ObservationKind::pure_vapor_pressure
             : component_count == 1
                 ? ObservationKind::pure_phase
@@ -2068,20 +2069,19 @@ double associating_pressure_root_start(
     double left_residual = evaluate(left).pressure - row.pressure;
     std::vector<double> roots;
     for (std::size_t index = 1; index <= intervals; ++index) {
-        double right = std::exp(
+        const double right = std::exp(
             log_lower
             + static_cast<double>(index) / intervals
                 * (log_upper - log_lower)
         );
-        double right_residual = evaluate(right).pressure - row.pressure;
+        const double right_residual = evaluate(right).pressure - row.pressure;
         if (left_residual == 0.0
             || std::signbit(left_residual) != std::signbit(right_residual)) {
             double bracket_left = left;
             double bracket_right = right;
             double bracket_residual = left_residual;
             for (std::size_t bisection = 0; bisection < 60; ++bisection) {
-                const double middle =
-                    0.5 * (bracket_left + bracket_right);
+                const double middle = 0.5 * (bracket_left + bracket_right);
                 const double middle_residual =
                     evaluate(middle).pressure - row.pressure;
                 if (std::signbit(middle_residual)
@@ -3007,7 +3007,10 @@ void evaluate_problem(
         const Phase vapor = evaluate_phase(
             table, payload, row, row.vapor_first, vapor_volume, parameter
         );
-        const bool pure = row.kind == ObservationKind::pure_phase;
+        const bool pure = row.kind == ObservationKind::pure_phase
+            || row.kind == ObservationKind::pure_vapor_pressure;
+        const bool density_observed =
+            row.kind == ObservationKind::pure_phase;
         const std::size_t phase_volume_coordinate = pure ? 1 : 2;
         if (!(liquid.hessian[
                   phase_volume_coordinate * liquid.coordinate_count
@@ -3021,7 +3024,8 @@ void evaluate_problem(
                 "phase state is not mechanically stable"
             );
         }
-        const std::size_t residual_offset = 4 * row_index;
+        const std::size_t residual_offset =
+            row_residual_count(row) * row_index;
         evaluation.residuals[residual_offset] =
             (liquid.pressure - row.pressure) / row.pressure_scale;
         evaluation.residuals[residual_offset + 1] =
@@ -3029,11 +3033,15 @@ void evaluate_problem(
         evaluation.residuals[residual_offset + 2] =
             (liquid.gradient[0] - vapor.gradient[0])
             / row.chemical_potential_scales[0];
-        evaluation.residuals[residual_offset + 3] = pure
-            ? (row.molar_mass / liquid_volume - row.liquid_density)
-                / row.liquid_density_scale
-            : (liquid.gradient[1] - vapor.gradient[1])
+        if (density_observed) {
+            evaluation.residuals[residual_offset + 3] =
+                (row.molar_mass / liquid_volume - row.liquid_density)
+                / row.liquid_density_scale;
+        } else if (!pure) {
+            evaluation.residuals[residual_offset + 3] =
+                (liquid.gradient[1] - vapor.gradient[1])
                 / row.chemical_potential_scales[1];
+        }
 
         auto jacobian = [&](std::size_t residual, std::size_t column)
             -> double& {
@@ -3092,7 +3100,7 @@ void evaluate_problem(
                     component * coordinate_count + volume_coordinate
                 ] * vapor_volume / scale;
         }
-        if (pure) {
+        if (density_observed) {
             jacobian(residual_offset + 3, liquid_column) =
                 -(row.molar_mass / liquid_volume)
                 / row.liquid_density_scale;
@@ -3259,7 +3267,7 @@ SolveOutcome solve_training(
     return outcome;
 }
 
-SolveOutcome solve_joint_pure_training(
+std::vector<double> joint_pure_start_variables(
     const epcsaft_native_sdk_v1& table,
     const Payload& payload,
     const std::vector<double>& physical_start
@@ -3275,10 +3283,10 @@ SolveOutcome solve_joint_pure_training(
     }
     std::size_t nuisance_offset = fitted_count;
     for (const Row& source : payload.training_rows) {
-        const bool associating_phase_equilibrium =
+        const bool pressure_root =
             mixed_pure_associating_observation(payload)
             && source.kind != ObservationKind::pure_density;
-        const double liquid_start = associating_phase_equilibrium
+        const double liquid_start = pressure_root
             ? associating_pressure_root_start(
                   table,
                   payload,
@@ -3292,7 +3300,7 @@ SolveOutcome solve_joint_pure_training(
             liquid_start / source.liquid_volume_origin
         );
         if (row_nuisance_count(source) == 2) {
-            const double vapor_start = associating_phase_equilibrium
+            const double vapor_start = pressure_root
                 ? associating_pressure_root_start(
                       table,
                       payload,
@@ -3308,6 +3316,18 @@ SolveOutcome solve_joint_pure_training(
         }
         nuisance_offset += row_nuisance_count(source);
     }
+    return start;
+}
+
+SolveOutcome solve_joint_pure_training(
+    const epcsaft_native_sdk_v1& table,
+    const Payload& payload,
+    const std::vector<double>& physical_start
+) {
+    const std::size_t fitted_count = payload.parameter_origins.size();
+    const std::size_t total = variable_count(payload);
+    std::vector<double> start =
+        joint_pure_start_variables(table, payload, physical_start);
     std::vector<internal::CoordinateBound> bounds(total);
     for (std::size_t parameter = 0; parameter < fitted_count; ++parameter) {
         const std::size_t slot = payload.parameter_slot_indices[parameter];
@@ -3319,7 +3339,7 @@ SolveOutcome solve_joint_pure_training(
             / payload.parameter_scales[parameter];
         bounds[slot] = {std::min(lower, upper), std::max(lower, upper)};
     }
-    nuisance_offset = fitted_count;
+    std::size_t nuisance_offset = fitted_count;
     for (const Row& source : payload.training_rows) {
         bounds[nuisance_offset] = {
             std::log(source.liquid_volume_bounds[0] / source.liquid_volume_origin),
@@ -3929,13 +3949,20 @@ PyObject* rows_to_python(
             ? row.vapor_volume_origin
                 * std::exp(primary.variables[fitted_count + 2 * index + 1])
             : row.vapor_volume_start;
+        const std::size_t row_residuals = row_residual_count(row);
+        const std::size_t residual_offset = row_residuals * index;
         const std::vector<double> residuals = primary_evaluation_available
             ? std::vector<double>(
-                primary.evaluation.residuals.begin() + 4 * index,
-                primary.evaluation.residuals.begin() + 4 * index + 4
+                primary.evaluation.residuals.begin()
+                    + static_cast<std::ptrdiff_t>(residual_offset),
+                primary.evaluation.residuals.begin()
+                    + static_cast<std::ptrdiff_t>(
+                        residual_offset + row_residuals
+                    )
             )
             : std::vector<double>(
-                4, std::numeric_limits<double>::quiet_NaN()
+                row_residuals,
+                std::numeric_limits<double>::quiet_NaN()
             );
         PyObject* item = row_to_python(
             row,
@@ -3982,7 +4009,11 @@ PyObject* rows_to_python(
             outcome.liquid_volume,
             outcome.vapor_volume,
             std::vector<double>(
-                outcome.residuals.begin(), outcome.residuals.end()
+                outcome.residuals.begin(),
+                outcome.residuals.begin()
+                    + static_cast<std::ptrdiff_t>(
+                        row_residual_count(outcome.row)
+                    )
             ),
             outcome.usable,
             outcome.failure_reason,
@@ -4102,6 +4133,67 @@ PyObject* evaluate_general_python(
         }
         PyTuple_SET_ITEM(result, 0, residuals);
         PyTuple_SET_ITEM(result, 1, jacobian);
+        return result;
+    } catch (const std::exception& error) {
+        if (PyErr_Occurred() != nullptr) PyErr_Clear();
+        PyErr_SetString(PyExc_RuntimeError, error.what());
+        return nullptr;
+    }
+}
+
+PyObject* evaluate_general_start_python(
+    PyObject* capsule, PyObject* payload_object, PyObject* physical_start_object
+) {
+    try {
+        const auto* table = capability_table(capsule);
+        const Payload payload = parse_payload(payload_object);
+        checked_descriptor(*table, payload);
+        if (!joint_pure_observation(payload)) {
+            throw std::invalid_argument(
+                "resolved-start evaluation requires a joint-pure problem"
+            );
+        }
+        const std::vector<double> physical_start = doubles(
+            physical_start_object, "physical parameter start"
+        );
+        if (physical_start.size() != payload.parameter_origins.size()) {
+            throw std::invalid_argument(
+                "physical parameter start has the wrong dimension"
+            );
+        }
+        const std::vector<double> variables =
+            joint_pure_start_variables(*table, payload, physical_start);
+        Evaluation evaluation = make_evaluation(payload);
+        evaluate_problem(
+            *table,
+            payload,
+            variables.data(),
+            variables.size(),
+            evaluation
+        );
+        PyObject* variable_values = doubles_to_tuple(variables);
+        PyObject* residuals = doubles_to_tuple(evaluation.residuals);
+        PyObject* jacobian = doubles_to_tuple(evaluation.jacobian);
+        if (
+            variable_values == nullptr
+            || residuals == nullptr
+            || jacobian == nullptr
+        ) {
+            Py_XDECREF(variable_values);
+            Py_XDECREF(residuals);
+            Py_XDECREF(jacobian);
+            return nullptr;
+        }
+        PyObject* result = PyTuple_New(3);
+        if (result == nullptr) {
+            Py_DECREF(variable_values);
+            Py_DECREF(residuals);
+            Py_DECREF(jacobian);
+            return nullptr;
+        }
+        PyTuple_SET_ITEM(result, 0, variable_values);
+        PyTuple_SET_ITEM(result, 1, residuals);
+        PyTuple_SET_ITEM(result, 2, jacobian);
         return result;
     } catch (const std::exception& error) {
         if (PyErr_Occurred() != nullptr) PyErr_Clear();
