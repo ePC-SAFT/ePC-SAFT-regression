@@ -9,6 +9,9 @@ PyObject* parameter_capabilities_python(PyObject* capsule);
 PyObject* evaluate_general_python(
     PyObject* capsule, PyObject* payload, PyObject* variables
 );
+PyObject* evaluate_general_start_python(
+    PyObject* capsule, PyObject* payload, PyObject* physical_start
+);
 PyObject* solve_general_python(PyObject* capsule, PyObject* payload);
 
 }  // namespace epcsaft_regression

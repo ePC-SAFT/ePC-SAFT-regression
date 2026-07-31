@@ -1,4 +1,5 @@
 #include "born_diameter_fit.hpp"
+#include "ceres_core.hpp"
 #include "evaluator_fit.hpp"
 #include "figiel_kij_fit.hpp"
 #include "figiel_water_factor_fit.hpp"
@@ -7,9 +8,12 @@
 
 #include <epcsaft/native_sdk_v1.h>
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <exception>
+#include <vector>
 
 namespace epcsaft_regression {
 namespace {
@@ -281,6 +285,24 @@ PyObject* py_solve_general(PyObject*, PyObject* args) {
     return epcsaft_regression::solve_general_python(capsule, payload);
 }
 
+PyObject* py_evaluate_general_start(PyObject*, PyObject* args) {
+    PyObject* capsule = nullptr;
+    PyObject* payload = nullptr;
+    PyObject* physical_start = nullptr;
+    if (!PyArg_ParseTuple(
+            args,
+            "OOO:evaluate_general_start",
+            &capsule,
+            &payload,
+            &physical_start
+        )) {
+        return nullptr;
+    }
+    return epcsaft_regression::evaluate_general_start_python(
+        capsule, payload, physical_start
+    );
+}
+
 PyObject* py_solve_evaluator(PyObject*, PyObject* args) {
     PyObject* capsule = nullptr;
     PyObject* payload = nullptr;
@@ -290,6 +312,104 @@ PyObject* py_solve_evaluator(PyObject*, PyObject* args) {
         return nullptr;
     }
     return epcsaft_regression::solve_evaluator_python(capsule, payload);
+}
+
+PyObject* matrix_diagnostics_python(
+    const epcsaft_regression::internal::MatrixDiagnostics& diagnostics
+) {
+    PyObject* singular = PyTuple_New(
+        static_cast<Py_ssize_t>(diagnostics.singular_values.size())
+    );
+    if (singular == nullptr) {
+        return nullptr;
+    }
+    for (std::size_t index = 0; index < diagnostics.singular_values.size(); ++index) {
+        PyObject* value = PyFloat_FromDouble(diagnostics.singular_values[index]);
+        if (value == nullptr) {
+            Py_DECREF(singular);
+            return nullptr;
+        }
+        PyTuple_SET_ITEM(singular, static_cast<Py_ssize_t>(index), value);
+    }
+    PyObject* result = Py_BuildValue(
+        "(Nid)", singular, diagnostics.rank, diagnostics.condition_number
+    );
+    return result;
+}
+
+PyObject* py_diagnose_jacobian(PyObject*, PyObject* args) {
+    Py_ssize_t fitted = 0;
+    Py_ssize_t lifted = 0;
+    Py_ssize_t residuals = 0;
+    PyObject* values = nullptr;
+    if (!PyArg_ParseTuple(
+            args, "nnnO:diagnose_jacobian",
+            &fitted, &lifted, &residuals, &values
+        )) {
+        return nullptr;
+    }
+    if (fitted <= 0 || lifted < 0 || residuals <= 0) {
+        PyErr_SetString(
+            PyExc_ValueError,
+            "fitted and residual counts must be positive and lifted count "
+            "must be nonnegative"
+        );
+        return nullptr;
+    }
+    if (lifted > PY_SSIZE_T_MAX - fitted) {
+        PyErr_SetString(PyExc_OverflowError, "Jacobian variable count overflows");
+        return nullptr;
+    }
+    PyObject* sequence = PySequence_Fast(
+        values, "Jacobian values must be a finite sequence"
+    );
+    if (sequence == nullptr) {
+        return nullptr;
+    }
+    std::vector<double> jacobian(
+        static_cast<std::size_t>(PySequence_Fast_GET_SIZE(sequence))
+    );
+    for (Py_ssize_t index = 0; index < PySequence_Fast_GET_SIZE(sequence); ++index) {
+        jacobian[static_cast<std::size_t>(index)] = PyFloat_AsDouble(
+            PySequence_Fast_GET_ITEM(sequence, index)
+        );
+        if (PyErr_Occurred()) {
+            Py_DECREF(sequence);
+            return nullptr;
+        }
+        if (!std::isfinite(jacobian[static_cast<std::size_t>(index)])) {
+            Py_DECREF(sequence);
+            PyErr_SetString(
+                PyExc_ValueError,
+                "Jacobian values must be finite"
+            );
+            return nullptr;
+        }
+    }
+    Py_DECREF(sequence);
+    try {
+        const auto diagnostics = epcsaft_regression::internal::diagnose_jacobian(
+            {
+                static_cast<std::size_t>(fitted),
+                static_cast<std::size_t>(lifted),
+                static_cast<std::size_t>(residuals),
+            },
+            jacobian
+        );
+        PyObject* full = matrix_diagnostics_python(diagnostics.full);
+        PyObject* projected = matrix_diagnostics_python(
+            diagnostics.projected_parameters
+        );
+        if (full == nullptr || projected == nullptr) {
+            Py_XDECREF(full);
+            Py_XDECREF(projected);
+            return nullptr;
+        }
+        return Py_BuildValue("(NN)", full, projected);
+    } catch (const std::exception& error) {
+        PyErr_SetString(PyExc_ValueError, error.what());
+        return nullptr;
+    }
 }
 
 PyMethodDef methods[] = {
@@ -361,6 +481,18 @@ PyMethodDef methods[] = {
         py_solve_general,
         METH_VARARGS,
         "Fit one shared neutral-binary interaction parameter."
+    },
+    {
+        "evaluate_general_start",
+        py_evaluate_general_start,
+        METH_VARARGS,
+        "Evaluate a joint-pure problem at its exact resolved solver start."
+    },
+    {
+        "diagnose_jacobian",
+        py_diagnose_jacobian,
+        METH_VARARGS,
+        "Diagnose an exact general Jacobian without running Ceres."
     },
     {
         "solve_evaluator",

@@ -14,8 +14,11 @@ from epcsaft_regression import (
     PositiveEvaluatorProblem,
     PositiveObservationTransform,
     PositiveScalarObservation,
+    ResultContext,
     SourceDescriptor,
     canonical_positive_dataset_sha256,
+    evaluator_regression,
+    fit_positive_observations,
 )
 
 
@@ -214,10 +217,7 @@ def test_positive_evaluator_problem_rejects_parameter_or_fingerprint_mismatch() 
         ),
         (
             "owner_artifact_identity",
-            "owner;RECORD=sha256:"
-            + "6" * 64
-            + ";HEADER=sha256:"
-            + "A" * 64,
+            "owner;RECORD=sha256:" + "6" * 64 + ";HEADER=sha256:" + "A" * 64,
         ),
         (
             "provider_artifact_identity",
@@ -240,3 +240,82 @@ def test_evaluator_contract_rejects_malformed_installed_artifact_identities(
 ) -> None:
     with pytest.raises(ValueError):
         replace(_contract(), **{field: identity})
+
+
+def test_composed_positive_result_record_retains_producer_specific_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    native = [None] * 28
+    native[0:8] = [
+        "CONVERGENCE",
+        True,
+        1.0,
+        0.0,
+        3,
+        (3.4, 3.5),
+        (0.4, 0.5),
+        ("", ""),
+    ]
+    native[10:20] = [
+        (1.0, 1.0),
+        2,
+        1.0,
+        (1.0, 1.0),
+        2,
+        1.0,
+        1,
+        0.0,
+        0.0,
+        True,
+    ]
+    native[20] = tuple(
+        (
+            row.observed_value,
+            0.0,
+            (1.0, 0.0),
+            "CONVERGED",
+            "FINITE",
+            "CERTIFIED",
+            "EXACT",
+            "homogeneous-liquid",
+            "sha256:" + "b" * 64,
+            2,
+            2,
+            1.0,
+        )
+        for row in _rows()
+    )
+    native[21:28] = [
+        "",
+        2,
+        2,
+        4,
+        2,
+        (
+            "epcsaft.native_sdk.v1",
+            1,
+            256,
+            64,
+            64,
+            64,
+            64,
+            64,
+            True,
+            True,
+        ),
+        "sha256:" + "a" * 64,
+    ]
+    monkeypatch.setattr(
+        evaluator_regression._native,
+        "solve_evaluator",
+        lambda *_: tuple(native),
+    )
+
+    result = fit_positive_observations(_problem(), object())
+    record = result.to_record(context=ResultContext())
+
+    assert record["problem"]["kind"] == "PositiveEvaluatorProblem"
+    assert record["installed_artifacts"]["provider"] == (
+        _contract().provider_artifact_identity
+    )
+    assert record["rows"][0]["state_schema_id"] == "fixed-tp-liquid-v1"

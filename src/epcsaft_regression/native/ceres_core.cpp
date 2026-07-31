@@ -135,7 +135,7 @@ MatrixDiagnostics diagnose(const Eigen::MatrixXd& matrix) {
     return diagnostics;
 }
 
-void diagnose_jacobian(
+void diagnose_jacobian_impl(
     const ProblemShape& shape,
     const std::vector<double>& row_major_jacobian,
     SolveResult& result
@@ -199,6 +199,22 @@ ceres::Solver::Options solver_options(const SolverControls& controls) {
 }
 
 }  // namespace
+
+JacobianDiagnostics diagnose_jacobian(
+    const ProblemShape& shape,
+    const std::vector<double>& row_major_jacobian
+) {
+    if (shape.fitted_count == 0 || shape.residual_count == 0
+        || row_major_jacobian.size()
+            != shape.residual_count * shape.variable_count()) {
+        throw std::invalid_argument(
+            "Jacobian shape and row-major payload must be complete"
+        );
+    }
+    SolveResult result{};
+    diagnose_jacobian_impl(shape, row_major_jacobian, result);
+    return {result.full_jacobian, result.projected_parameter_jacobian};
+}
 
 SolveResult solve(
     const ProblemShape& shape,
@@ -311,7 +327,7 @@ SolveResult solve(
     if (result.summary.IsSolutionUsable() && !cost.had_failure()) {
         result.failure_reason.clear();
     }
-    diagnose_jacobian(shape, result.jacobian, result);
+    diagnose_jacobian_impl(shape, result.jacobian, result);
     return result;
 }
 

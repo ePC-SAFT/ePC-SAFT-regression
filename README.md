@@ -45,6 +45,13 @@ result = fit_pure_saturation(
 )
 ```
 
+Caller-supplied datasets use the public
+[`prepare -> preflight -> fit -> export` quickstart](docs/general-regression-quickstart.md).
+It covers strict records, acquisition/objective provenance, grouped controls,
+installed-capability resolution, local-rank preflight, deterministic export,
+and every direct-EOS observation template. Direct `RegressionProblem` and
+`fit_parameters` construction remains available with the same native payload.
+
 Builds require Ceres 2.2 and `EPCSAFT_INCLUDE_DIR` set to the public include
 directory of an installed compatible EOS wheel. The build does not search
 sibling source trees.
@@ -72,9 +79,11 @@ and [candidate capability record](evidence/candidate-capability.yaml).
 
 Regression's routine suite keeps compact numerical-tolerance sentinels for the
 main scalar, pair, joint-pure, fixed-2B, and composed-observation workflows.
+Run it with `.venv/bin/pytest -q`; the checked-in pytest configuration excludes
+the explicit `campaign` marker.
 Full literature reproductions, broad benchmark matrices, identifiability and
-uncertainty campaigns, and induced/cross-association comparisons remain durable
-installed-artifact evidence in the sibling Validation repository.
+uncertainty campaigns, and induced/cross-association comparisons belong as
+durable installed-artifact evidence in the sibling Validation repository.
 
 Project doctrine and cross-repository coordination are owned by
 [ePC-SAFT Management](https://github.com/ePC-SAFT/ePC-SAFT-management) under

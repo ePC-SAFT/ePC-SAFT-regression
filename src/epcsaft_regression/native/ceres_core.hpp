@@ -40,6 +40,11 @@ struct MatrixDiagnostics final {
     double condition_number{std::numeric_limits<double>::infinity()};
 };
 
+struct JacobianDiagnostics final {
+    MatrixDiagnostics full;
+    MatrixDiagnostics projected_parameters;
+};
+
 using ExactEvaluator = std::function<bool(
     const double* variables,
     std::size_t variable_count,
@@ -65,6 +70,11 @@ SolveResult solve(
     const std::vector<CoordinateBound>& bounds,
     const SolverControls& controls,
     const ExactEvaluator& evaluator
+);
+
+JacobianDiagnostics diagnose_jacobian(
+    const ProblemShape& shape,
+    const std::vector<double>& row_major_jacobian
 );
 
 }  // namespace epcsaft_regression::internal

@@ -102,11 +102,7 @@ ParameterCoordinate
   identity:
     ComponentParameter(component_id)
     | PairParameter(component_id_a, component_id_b)
-    | AssociationParameter((component_id_a, site_id_a),
-                           (component_id_b, site_id_b))
     | ModelParameter(model_parameter_id)
-    | CorrelationCoefficient(component_id, correlation_family,
-                             coefficient_kind, term_index)
   capability_id
   provider_parameter_fingerprint
   provider_topology_fingerprint
@@ -116,8 +112,10 @@ ParameterCoordinate
 ```
 
 Each family permits exactly one identity variant. Pair endpoints and
-association endpoints use one documented canonical lexical order; duplicate
-canonical identities are rejected. EOS's capability descriptor supplies
+component endpoints use one documented canonical lexical order; duplicate
+canonical identities are rejected. Association-site and correlation-
+coefficient identities are reserved future variants and are not accepted by
+the current executable schema. EOS's capability descriptor supplies
 the canonical physical unit and an explicit mapping from these identities to
 its active coordinate order. A model, formulation, topology, transform, or
 parameter-fingerprint mismatch fails before evaluation.
@@ -330,13 +328,15 @@ predictive status remains not adjudicated.
 
 Initial typed observation contracts are:
 
-- pure saturation coexistence;
-- single-phase scalar property or density;
-- fixed-composition phase equilibrium with observed phase compositions and
-  lifted phase state variables;
-- activity, fugacity, osmotic, or mean-ionic-activity coefficient;
-- solvation Gibbs energy.
-- salt-free-normalized relative permittivity.
+- pure saturation, vapor-pressure-only, and fixed-pressure-density rows;
+- fixed-composition VLE rows with observed phase compositions and lifted phase
+  volumes;
+- mean-ionic-activity and staged aqueous-`k_ij` mean-ionic-activity rows;
+- solvation-Gibbs and ion-solvation-`k_ij` rows; and
+- salt-free-normalized relative-permittivity-ratio rows.
+
+Generic activity, fugacity, osmotic, aggregate, and censored observations are
+not current executable contracts.
 
 The minimum future downstream observation vocabulary is frozen as follows for
 a source-declared positive scale `s`:
@@ -661,6 +661,18 @@ receipts, and independent review. Validation consumes immutable installed EOS
 and Regression artifacts through public contracts and does not replace the
 compact Regression mechanics sentinels.
 
+The routine package command is:
+
+```bash
+.venv/bin/pytest -q
+```
+
+`pyproject.toml` excludes the explicit `campaign` marker from that command.
+Campaign-marked package replays are opt-in retained evidence, not routine CI or
+a merge gate. New full-grid or paper-complete reproductions belong in
+Validation as installed-artifact campaigns; they must not be added to
+Regression's default suite.
+
 ## Acceptance and failure rules
 
 A fit is not scientifically successful merely because Ceres terminates.
@@ -970,3 +982,25 @@ a substitute for exact Equilibrium sensitivities.
 - polar parameter regression;
 - claims of global uniqueness, uncertainty, predictive validity, or
   downstream readiness without their separate evidence.
+
+## Public usability and deterministic records
+
+The executable caller path is documented in the
+[general Regression quickstart](../general-regression-quickstart.md).
+`ObservationDataset.from_records` delegates row validation and transformed-row
+hashing to the existing observation and hash owners. `prepare_fit` resolves
+installed capability identity and constructs the existing `RegressionProblem`.
+Preflight evaluates exact Jacobians at each declared start without invoking
+Ceres; `PreparedFit.fit` calls the existing `fit_parameters` owner.
+
+`RegressionResult.to_record` and `to_json_bytes` expose
+`epcsaft-regression-result` schema version 1 for both direct-EOS and
+composed-positive producers. Export is deterministic and non-mutating.
+Literature context keeps fitted full-precision numbers separate from
+source-printed strings and represents absent profile, bootstrap, uncertainty,
+and Validation-campaign artifacts explicitly. Literature export requires the
+exact prepared-fit provenance. Failed diagnostics identify unavailable
+numerical fields explicitly; evaluated data reject nonfinite values. Solver,
+numerical, workflow/physical, scientific, predictive, and authority statuses
+remain separate. A result record is not a Validation receipt or authority
+change.
