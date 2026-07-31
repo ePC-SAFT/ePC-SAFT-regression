@@ -134,14 +134,15 @@ retained historical evidence for their named reference campaigns. The active
 installed frontend binding for new replay is the `provider_frontend` subject
 above; historical evidence is not rewritten as if it had used that artifact.
 
-The installed EOS advertises one ordinary-`sigma_ij^3*kappa` joint
-neutral-pure-2B callback over `m`, `sigma`, `epsilon/k`, association energy,
-and association volume. Regression executes that fixed five-parameter block
-for mixed vapor-pressure, fixed-pressure-density, and combined saturation
-rows with exact Hessians and lifted volumes. Public-state replay and a compact
-manufactured full-rank solve prove mechanics only. Regression packages no
-MAPA/DEEA dataset or accepted tuple. Status is
-`ASSOCIATION_ORDINARY_SIGMA_2B_BLOCK_EXECUTABLE_NO_PARAMETER_ACCEPTANCE`.
+The installed EOS advertises one ordinary-`sigma_ij^3*kappa`
+fixed-topology association descriptor and variable-width callback. Regression
+selects typed ordinary-pure and component/site-pair slots, keeps `N` fitted
+coordinates distinct from `S` EOS slots, and accumulates exact Hessian columns
+for explicit sharing. Vapor-pressure, fixed-pressure-density, and combined
+saturation rows use this one path. A 2B five-parameter case and a non-2B
+multi-pair case prove mechanics only; Regression packages no MAPA/DEEA dataset,
+accepted topology, or accepted tuple. Status is
+`FIXED_TOPOLOGY_ASSOCIATION_MECHANICS_EXECUTABLE_NO_PARAMETER_ACCEPTANCE`.
 
 The user-approved 2026-07-27 destination is general parameter-family
 regression, defined in `docs/science/general-parameter-regression.md`. The

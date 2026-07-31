@@ -21,6 +21,7 @@ from .evaluator_regression import (
 from .parameter_regression import (
     DirectObservationRowDiagnostic,
     FittedParameterDiagnostic,
+    FixedTopologyAssociationCapability,
     GeneralJacobianDiagnostics,
     GeneralRowDiagnostic,
     ParameterCapability,
@@ -37,7 +38,12 @@ from .parameter_regression import (
 @dataclass(frozen=True, slots=True)
 class RegressionResult:
     problem: RegressionProblem | PositiveEvaluatorProblem
-    capabilities: tuple[ParameterCapability | PositiveEvaluatorCapability, ...]
+    capabilities: tuple[
+        ParameterCapability
+        | FixedTopologyAssociationCapability
+        | PositiveEvaluatorCapability,
+        ...,
+    ]
     preparation_fingerprint: str | None
     provider_parameter_fingerprint: str
     provider_topology_fingerprint: str
@@ -364,7 +370,9 @@ def _resolved_objective_identity(result: RegressionResult, json_value) -> object
             _OBJECTIVE_FAMILIES[type(row)] for row in result.problem.observations
         }
         residual_family = (
-            next(iter(families)) if len(families) == 1 else "pure_associating_mixed"
+            next(iter(families))
+            if len(families) == 1
+            else "fixed_topology_association_mixed"
         )
     return {
         "resolution": "canonical_problem_contract",

@@ -9,17 +9,17 @@ owns target contracts, parameter transforms, residual/Jacobian assembly, fit
 diagnostics, and authority-neutral results without reimplementing those owners.
 
 The current public surface includes ten scalar parameter families, a joint pure
-`(m, sigma, epsilon/k)` block, a fixed neutral-pure-2B five-parameter mechanics
+`(m, sigma, epsilon/k)` block, a descriptor-driven fixed-topology association
 block, and a specialized transport for downstream-composed positive
-observations. These capabilities remain finite and typed: the installed EOS
-must advertise the matching parameter identity, topology, observation domain,
-and exact derivative contract.
+observations. Association coordinates are typed by component/site endpoints;
+the installed EOS owns the finite topology, slot order, multiplicities,
+physical domain, artifact identity, and exact derivative contract.
 
 Production authority is narrower than executable mechanics. Only the exact
 methane and ethane pure-saturation workflows named below are accepted
-reproducible workflows. The general families and fixed-2B block are
-authority-neutral; the fixed-2B evidence does not identify or admit a unique
-association-parameter tuple.
+reproducible workflows. The general families and fixed-topology association
+block are authority-neutral; their mechanics evidence does not identify or
+admit a unique association topology or parameter tuple.
 
 The accepted pure-saturation presentation workflow remains:
 
@@ -64,7 +64,7 @@ not admit fitted parameters as predictive or scientific authority. Held-out
 errors are descriptive because no admission cutoff was approved, and the
 reporting-block directional Jacobian remains an explicit evidence limit with
 no added runtime seam. Those receipts do not promote the authority-neutral
-general parameter families, fixed-2B mechanics, downstream-composed evaluator
+general parameter families, fixed-topology association mechanics, downstream-composed evaluator
 transport, or any fitted parameter bundle. Regression still excludes reactive
 chemistry/equilibrium algorithms, polar regression, arbitrary residual plugins,
 EOS catalog persistence, global-identifiability claims, and predictive
@@ -78,7 +78,7 @@ See the
 and [candidate capability record](evidence/candidate-capability.yaml).
 
 Regression's routine suite keeps compact numerical-tolerance sentinels for the
-main scalar, pair, joint-pure, fixed-2B, and composed-observation workflows.
+main scalar, pair, joint-pure, fixed-topology association, and composed-observation workflows.
 Run it with `.venv/bin/pytest -q`; the checked-in pytest configuration excludes
 the explicit `campaign` marker.
 Full literature reproductions, broad benchmark matrices, identifiability and

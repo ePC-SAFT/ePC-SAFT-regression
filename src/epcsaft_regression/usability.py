@@ -11,8 +11,10 @@ from . import _native
 from .parameter_regression import (
     AffineParameterTransform,
     AqueousKijMeanIonicActivityObservation,
+    AssociationParameterIdentity,
     ComponentParameterIdentity,
     FixedCompositionVleObservation,
+    FixedTopologyAssociationCapability,
     IonSolvationKijObservation,
     MeanIonicActivityObservation,
     ModelParameterIdentity,
@@ -34,7 +36,6 @@ from .parameter_regression import (
     _require_finite,
     _require_nonempty_string,
     _require_sha256,
-    _validate_associating_capability,
     canonical_dataset_sha256,
     fit_parameters,
     parameter_capabilities,
@@ -432,7 +433,10 @@ class ConfirmationControls:
 class ParameterRequest:
     family: ParameterFamily
     identity: (
-        PairParameterIdentity | ComponentParameterIdentity | ModelParameterIdentity
+        PairParameterIdentity
+        | ComponentParameterIdentity
+        | ModelParameterIdentity
+        | AssociationParameterIdentity
     )
     transform: AffineParameterTransform
     lower_bound: float
@@ -473,15 +477,6 @@ def _identity_matches(
     return identity == active
 
 
-_ASSOCIATING_FAMILIES = (
-    ParameterFamily.SEGMENT_COUNT,
-    ParameterFamily.SEGMENT_DIAMETER,
-    ParameterFamily.DISPERSION_ENERGY_OVER_K,
-    ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
-    ParameterFamily.ASSOCIATION_VOLUME,
-)
-
-
 def _resolve_coordinates(
     model: object, requests: tuple[ParameterRequest, ...]
 ) -> tuple[ParameterCoordinate, ...]:
@@ -491,51 +486,60 @@ def _resolve_coordinates(
         if isinstance(item, ParameterCapability)
     )
     derivative_ready = tuple(item for item in advertised if item.installed_ready)
-    if tuple(request.family for request in requests) == _ASSOCIATING_FAMILIES:
+    if any(
+        isinstance(request.identity, AssociationParameterIdentity)
+        for request in requests
+    ):
         matches = tuple(
             item
-            for item in derivative_ready
-            if item.capability_id == "neutral_pure_associating_joint_sigma_basis_v1"
+            for item in parameter_capabilities(model)
+            if isinstance(item, FixedTopologyAssociationCapability)
+            and item.installed_ready
         )
         if len(matches) != 1:
             raise ValueError(
-                "installed EOS does not advertise exactly one fixed-2B block"
+                "installed EOS does not advertise exactly one derivative-ready "
+                "fixed-topology association descriptor"
             )
         capability = matches[0]
-        _validate_associating_capability(capability)
-        expected_identities = (
-            ComponentParameterIdentity,
-            ComponentParameterIdentity,
-            ComponentParameterIdentity,
-            ModelParameterIdentity,
-            ModelParameterIdentity,
-        )
-        for request, expected_identity in zip(
-            requests, expected_identities, strict=True
-        ):
-            if not isinstance(request.identity, expected_identity) or (
-                isinstance(request.identity, ComponentParameterIdentity)
-                and request.identity.canonical_component_ids != capability.component_ids
+        coordinates = []
+        for request in requests:
+            identities = (
+                tuple(
+                    AssociationParameterIdentity(request.family, (pair,))
+                    for pair in request.identity.site_pairs
+                )
+                if isinstance(request.identity, AssociationParameterIdentity)
+                else (request.identity,)
+            )
+            slots = tuple(
+                slot
+                for identity in identities
+                for slot in capability.slots
+                if slot.family is request.family and slot.identity == identity
+            )
+            if len(slots) != len(identities) or any(
+                slot.unit != slots[0].unit for slot in slots
             ):
                 raise ValueError(
-                    "fixed-2B request identity does not match the installed "
-                    "component and model coordinate order"
+                    "association request identity does not match the installed "
+                    "fixed-topology descriptor"
                 )
-        units = tuple(_unit(unit) for unit in capability.coordinate_units[2:])
-        return tuple(
-            ParameterCoordinate(
-                request.family,
-                request.identity,
-                capability.capability_id,
-                capability.parameter_fingerprint,
-                capability.topology_fingerprint,
-                units[index],
-                request.transform,
-                request.lower_bound,
-                request.upper_bound,
+            coordinates.append(
+                ParameterCoordinate(
+                    family=request.family,
+                    identity=request.identity,
+                    capability_id=None,
+                    provider_parameter_fingerprint=capability.parameter_fingerprint,
+                    provider_topology_fingerprint=capability.topology_fingerprint,
+                    unit=slots[0].unit,
+                    transform=request.transform,
+                    lower_bound=request.lower_bound,
+                    upper_bound=request.upper_bound,
+                    provider_artifact_fingerprint=capability.artifact_fingerprint,
+                )
             )
-            for index, request in enumerate(requests)
-        )
+        return tuple(coordinates)
     coordinates = []
     for request in requests:
         matches = tuple(
@@ -583,7 +587,7 @@ def _validate_objective(dataset: ObservationDataset) -> None:
     allowed = (
         families
         if len(families) == 1
-        else {"pure_associating_mixed"}
+        else {"fixed_topology_association_mixed"}
         if families.issubset({"pure_saturation", "pure_vapor_pressure", "pure_density"})
         else set()
     )
@@ -951,9 +955,11 @@ class PreparedFit:
                     )
                 )
         gate = (
-            "issue #28 nuisance-reoptimized profile and accepted-region evidence required"
-            if tuple(parameter.family for parameter in self.problem.parameters)
-            == _ASSOCIATING_FAMILIES
+            "topology-specific identifiability and accepted-region evidence required"
+            if any(
+                isinstance(parameter.identity, AssociationParameterIdentity)
+                for parameter in self.problem.parameters
+            )
             else None
         )
         unique_reasons = tuple(dict.fromkeys(reasons))
@@ -995,13 +1001,13 @@ def prepare_fit(
     coordinates = _resolve_coordinates(model, parameters)
     observations = tuple(row for dataset in datasets for row in dataset.observations)
     observation_types = {type(row) for row in observations}
-    if (
-        len(observation_types) > 1
-        and tuple(request.family for request in parameters) != _ASSOCIATING_FAMILIES
+    if len(observation_types) > 1 and not any(
+        isinstance(request.identity, AssociationParameterIdentity)
+        for request in parameters
     ):
         raise ValueError(
             "mixed observation contracts are supported only by the installed "
-            "fixed neutral-pure-2B block"
+            "fixed-topology association descriptor"
         )
     sources = tuple(
         SourceDescriptor(

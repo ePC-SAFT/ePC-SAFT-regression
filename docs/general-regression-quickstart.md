@@ -237,10 +237,11 @@ assert not rank_deficient.ready
 assert any("rank_deficient" in reason for reason in rank_deficient.reasons)
 ```
 
-## Fixed-2B and constrained-subset example
+## Fixed-topology association and constrained-subset example
 
-The installed ethanol model fixes a 2B topology (one A and one B site). This
-example does not infer a topology. The rows are a declared synthetic
+The installed ethanol model happens to fix a 2B topology (one A and one B
+site), but Regression consumes it through the same descriptor used for any
+supported finite topology. This example does not infer a topology. The rows are a declared synthetic
 installed-model mechanics fixture, so they are not literature or validation
 evidence. The full block reports issue #28 as an unresolved practical-
 identifiability gate. The second preparation deliberately fits only
@@ -250,11 +251,11 @@ which is a case-specific constraint rather than a universal strategy.
 ```python
 from epcsaft import Mixture, Parameters, unit_registry
 from epcsaft_regression import (
-    AcquisitionClass, AffineParameterTransform, ComponentParameterIdentity,
-    ConfirmationControls, CorrelationProvenance, ModelParameterIdentity,
+    AcquisitionClass, AffineParameterTransform,
+    ConfirmationControls, CorrelationProvenance, FixedTopologyAssociationCapability,
     ObjectiveContract, ObservationDataset, ParameterFamily, ParameterRequest,
     PureDensityObservation, RankControls, RowProvenance, SolverControls,
-    SourceInput, prepare_fit,
+    SourceInput, parameter_capabilities, prepare_fit,
 )
 
 model = Mixture(Parameters.from_catalog(
@@ -323,19 +324,9 @@ dataset = ObservationDataset.from_records(
         for row in records
     },
 )
-families = (
-    ParameterFamily.SEGMENT_COUNT,
-    ParameterFamily.SEGMENT_DIAMETER,
-    ParameterFamily.DISPERSION_ENERGY_OVER_K,
-    ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
-    ParameterFamily.ASSOCIATION_VOLUME,
-)
-identities = (
-    ComponentParameterIdentity("ethanol"),
-    ComponentParameterIdentity("ethanol"),
-    ComponentParameterIdentity("ethanol"),
-    ModelParameterIdentity(),
-    ModelParameterIdentity(),
+descriptor = next(
+    capability for capability in parameter_capabilities(model)
+    if isinstance(capability, FixedTopologyAssociationCapability)
 )
 origins = (2.3827, 3.1771, 198.24, 2653.4, 0.03238)
 scales = (0.5, 0.2, 50.0, 500.0, 0.02)
@@ -345,10 +336,10 @@ bounds = (
 )
 requests = tuple(
     ParameterRequest(
-        family, identity, AffineParameterTransform(origin, scale), *bound,
+        slot.family, slot.identity, AffineParameterTransform(origin, scale), *bound,
     )
-    for family, identity, origin, scale, bound in zip(
-        families, identities, origins, scales, bounds, strict=True,
+    for slot, origin, scale, bound in zip(
+        descriptor.slots, origins, scales, bounds, strict=True,
     )
 )
 controls = dict(
@@ -458,12 +449,13 @@ assert prepared.fit().workflow_valid
 - Scalar fits use one request and one slot.
 - Joint pure `(m, sigma, epsilon/k)` uses those families and slots in that
   order, complete three-value starts, and pure-saturation rows.
-- Fixed neutral-pure-2B uses `(m, sigma, epsilon/k, epsilon_AB/k, kappa_AB)`
-  in that order with pure vapor-pressure, fixed-pressure-density, and/or
-  combined saturation rows. Topology is fixed EOS input. Issue #28 owns
-  nuisance-reoptimized profile and accepted-region evidence. A constrained
-  subset such as externally fixed `kappa_AB` must declare its source and
-  validity domain; it is not universal.
+- Fixed-topology association uses any ordered subset of the installed EOS
+  descriptor's ordinary-pure and component/site-pair slots. Multiple EOS
+  slots may explicitly share one fitted coordinate. Pure vapor-pressure,
+  fixed-pressure-density, and combined saturation rows use the same path.
+  Topology is immutable EOS input. Issue #28 owns nuisance-reoptimized profile
+  evidence for the retained 2B literature case. Any constrained subset must
+  declare its source and validity domain; it is not universal.
 - Direct-observable families use their MIAC, solvation-Gibbs, or relative-
   permittivity-ratio rows and no lifted variables.
 

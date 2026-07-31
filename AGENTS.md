@@ -146,14 +146,17 @@ organic-solvent/ion pair callback. The four retained Figiel rows are
 constructed nearest-pure endpoint implementation evidence, not exact
 reproduction of the paper's pure-organic fitting data or mixed-solvent
 prediction evidence.
-EOS-advertised neutral pure 2B models use one ordinary
-`sigma_ij^3*kappa` block for vapor-pressure, fixed-pressure-density, and
-combined saturation pressure/liquid-density rows. The fitted coordinates are
-exactly `m`, `sigma`, `epsilon/k`, association energy, and association volume;
-the discrete 2B topology remains fixed EOS input. This executable
-mechanics contract does not identify a unique parameter tuple or accept any
-MAPA/DEEA result. Case-specific inputs, starts, evidence, and parameter bundles
-remain Validation-owned and are not packaged here.
+EOS-advertised neutral pure fixed-topology models use one descriptor-driven
+ordinary `sigma_ij^3*kappa` path for vapor-pressure,
+fixed-pressure-density, and combined saturation pressure/liquid-density rows.
+Regression may select any finite ordered subset of advertised ordinary-pure
+and component/site-pair slots and may declare explicit many-to-one parameter
+sharing. The EOS owns topology, multiplicities, slot order, physical domains,
+artifact identity, and exact derivatives. The retained 2B five-parameter case
+is a reference through this path, not a special capability. This executable
+mechanics contract does not identify a unique topology or parameter tuple or
+accept any MAPA/DEEA result. Case-specific inputs, starts, evidence, and
+parameter bundles remain Validation-owned and are not packaged here.
 Literature-related work follows
 `docs/science/literature-reproduction-contract.md`: distinguish exact
 author-method replay, source-faithful reconstruction, published-tuple property

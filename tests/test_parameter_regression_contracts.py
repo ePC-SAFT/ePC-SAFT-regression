@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import replace
 import math
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
 
 from epcsaft_regression.parameter_regression import (
-    AqueousKijMeanIonicActivityObservation,
     AffineParameterTransform,
+    AqueousKijMeanIonicActivityObservation,
+    AssociationParameterIdentity,
+    AssociationSitePairIdentity,
     ComponentParameterIdentity,
     FixedCompositionVleObservation,
     IonSolvationKijObservation,
@@ -18,6 +20,7 @@ from epcsaft_regression.parameter_regression import (
     PairParameterIdentity,
     ParameterCoordinate,
     ParameterFamily,
+    PureDensityObservation,
     RegressionProblem,
     RelativePermittivityRatioObservation,
     SolvationGibbsObservation,
@@ -26,10 +29,10 @@ from epcsaft_regression.parameter_regression import (
     canonical_dataset_sha256,
 )
 
-
 SOURCE_HASH = "a" * 64
 PARAMETER_HASH = "sha256:" + "b" * 64
 TOPOLOGY_HASH = "sha256:" + "c" * 64
+ARTIFACT_HASH = "sha256:" + "d" * 64
 
 
 def _row(
@@ -123,7 +126,9 @@ def test_native_payload_serializes_solver_time_after_maximum_iterations() -> Non
     assert payload[12] == problem.function_tolerance
 
 
-def test_problem_accepts_ordered_multi_parameter_start_vectors_without_cartesian_expansion() -> None:
+def test_problem_accepts_ordered_multi_parameter_start_vectors_without_cartesian_expansion() -> (
+    None
+):
     rows = (_row("train-1"), _row("train-2"))
     base = _problem(rows)
     second = replace(
@@ -141,6 +146,68 @@ def test_problem_accepts_ordered_multi_parameter_start_vectors_without_cartesian
 
     assert problem.parameter_slot_indices == (0, 1, 0)
     assert problem.start_vectors == ((0.0, 0.01), (-0.05, -0.02))
+
+
+def test_association_identity_distinguishes_pairs_and_declares_sharing() -> None:
+    pair_ab = AssociationSitePairIdentity("amine", "a", "amine", "b")
+    pair_ac = AssociationSitePairIdentity("amine", "a", "amine", "c")
+    energy = AssociationParameterIdentity(
+        ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
+        (pair_ac, pair_ab),
+    )
+    volume = AssociationParameterIdentity(
+        ParameterFamily.ASSOCIATION_VOLUME,
+        (pair_ab,),
+    )
+
+    assert energy.site_pairs == (pair_ab, pair_ac)
+    assert energy.canonical_component_ids == ("amine",)
+    assert energy != volume
+
+    base = _problem((_row("train-1"),))
+    association = replace(
+        base.parameters[0],
+        family=ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
+        identity=energy,
+        capability_id=None,
+        provider_artifact_fingerprint=ARTIFACT_HASH,
+        unit="K",
+        transform=AffineParameterTransform(origin=1_500.0, scale=100.0),
+        lower_bound=100.0,
+        upper_bound=8_000.0,
+    )
+    row = PureDensityObservation(
+        row_id="amine-density",
+        source_id="doi:example",
+        source_locator="table-1:amine-density",
+        component_id="amine",
+        temperature_k=300.0,
+        pressure_pa=100_000.0,
+        density_kg_per_m3=800.0,
+        molar_mass_kg_per_mol=0.089,
+        pressure_scale_pa=100_000.0,
+        density_scale_kg_per_m3=800.0,
+        volume_origin_m3_per_mol=1.0e-4,
+        volume_start_m3_per_mol=1.0e-4,
+        volume_bounds_m3_per_mol=(5.0e-5, 2.0e-4),
+        partition=ObservationPartition.TRAINING,
+    )
+    problem = replace(
+        base,
+        sources=(
+            replace(
+                base.sources[0],
+                canonical_dataset_sha256=canonical_dataset_sha256((row,)),
+            ),
+        ),
+        parameters=(association,),
+        parameter_slot_indices=(0, 0),
+        start_vectors=((1_500.0,), (1_600.0,)),
+        observations=(row,),
+    )
+
+    assert problem.parameter_slot_indices == (0, 0)
+    assert problem.solver_start_vectors == ((0.0,), (1.0,))
 
 
 @pytest.mark.parametrize(
@@ -181,7 +248,10 @@ def test_contract_canonicalizes_pair_and_binds_source_dataset_and_partitions() -
     problem = _problem(rows, identity=PairParameterIdentity("ethane", "methane"))
 
     assert problem.parameters[0].identity.component_ids == ("ethane", "methane")
-    assert problem.parameters[0].identity.canonical_component_ids == ("ethane", "methane")
+    assert problem.parameters[0].identity.canonical_component_ids == (
+        "ethane",
+        "methane",
+    )
     assert canonical_dataset_sha256(rows) == problem.sources[0].canonical_dataset_sha256
     assert problem.training_observations == (rows[0],)
     assert problem.held_out_observations == (rows[1],)
@@ -413,22 +483,32 @@ def test_direct_observations_reject_invalid_identity_or_scale(
     ("mutation", "match"),
     (
         (lambda rows: replace(rows[0], row_id=""), "row_id"),
-        (lambda rows: replace(rows[0], component_ids=("methane", "methane")), "distinct"),
+        (
+            lambda rows: replace(rows[0], component_ids=("methane", "methane")),
+            "distinct",
+        ),
         (lambda rows: replace(rows[0], temperature_k=math.nan), "finite"),
         (lambda rows: replace(rows[0], pressure_pa=0.0), "positive"),
-        (lambda rows: replace(rows[0], liquid_mole_fraction_first=1.0), "strictly between"),
+        (
+            lambda rows: replace(rows[0], liquid_mole_fraction_first=1.0),
+            "strictly between",
+        ),
         (lambda rows: replace(rows[0], pressure_scale_pa=math.inf), "finite"),
         (
             lambda rows: replace(rows[0], liquid_volume_start_m3_per_mol=2.0e-4),
             "liquid volume start",
         ),
         (
-            lambda rows: replace(rows[0], vapor_volume_bounds_m3_per_mol=(1.0e-2, 1.0e-4)),
+            lambda rows: replace(
+                rows[0], vapor_volume_bounds_m3_per_mol=(1.0e-2, 1.0e-4)
+            ),
             "vapor volume bounds",
         ),
     ),
 )
-def test_observation_rejects_ambiguous_or_nonphysical_values(mutation: object, match: str) -> None:
+def test_observation_rejects_ambiguous_or_nonphysical_values(
+    mutation: object, match: str
+) -> None:
     rows = (_row("train-1"),)
     with pytest.raises((TypeError, ValueError), match=match):
         mutation(rows)  # type: ignore[operator]
@@ -442,7 +522,12 @@ def test_observation_rejects_ambiguous_or_nonphysical_values(mutation: object, m
             "canonical dataset SHA-256",
         ),
         (
-            lambda rows: _problem((rows[0], replace(rows[0], source_locator="other"),)),
+            lambda rows: _problem(
+                (
+                    rows[0],
+                    replace(rows[0], source_locator="other"),
+                )
+            ),
             "duplicate row_id",
         ),
         (
