@@ -55,13 +55,13 @@ scope: >-
 provider_frontend:
   version: 0.2.0.dev0
   public_types: [Parameters, Mixture]
-  provider_commit: 24ab1bdfb3a1558eb87815e9c3b5d97fbe6a025d
-  provider_tree: 145cf8b6126ad403aa8ee51b1b4623db3da8aa2f
+  provider_commit: 7b97bab039e1c50a6f89522698af80493bea5f9e
+  provider_tree: d082a8f102b32705b6cd6669a3e31a8d4ea8acd0
   artifact_root: executor-supplied-immutable-artifact-store
-  wheel_artifact: objects/sha256/66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl
-  wheel_sha256: 66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9
-  installed_header_sha256: db37805c1abd9b1a355f41a89154d14756477c7293af940dc298a6b038aee45d
-  installed_static_library_sha256: 5e5c3e8311c011365471eeff29b2d9ff8486d149745a4bea7cd48bd6e784f9d3
+  wheel_artifact: objects/sha256/1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl
+  wheel_sha256: 1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9
+  installed_header_sha256: 881f5ec87293de8b1f3c25c16018aa94be69775fede2ec5426fcbb08e257fecd
+  installed_static_library_sha256: fd624add206b8d783cd079db320b6dba64083063af2f29faf5ce82d1cf4743eb
   provider_test_receipt_artifact: provider-python-frontend-v0.2/14fa374/provider-tests.xml
   provider_test_receipt_sha256: 56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf
   provider_test_receipt_summary: 276-passed-1-skipped

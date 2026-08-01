@@ -1,26 +1,29 @@
 from __future__ import annotations
 
-from dataclasses import replace
 import math
+from dataclasses import replace
+from pathlib import Path
 
+import epcsaft_regression._native as native
 import pytest
 from epcsaft import Mixture, Parameters, native_sdk
 
 import epcsaft_regression
-import epcsaft_regression._native as native
 from epcsaft_regression.records import FIGIEL_BORN_DIAMETER_TRACER_V1
 from epcsaft_regression.workflow import _born_native_payload
 
 
 def _models() -> tuple[Mixture, ...]:
+    bundle = (
+        Path(__file__).resolve().parents[2]
+        / "ePC-SAFT-data"
+        / "packets"
+        / "figiel-2025-reference-electrolytes"
+        / "1"
+        / "parameters"
+    )
     return tuple(
-        Mixture(
-            Parameters.from_catalog(
-                "figiel-2025-reference-electrolytes",
-                components=target.component_order,
-                version=1,
-            )
-        )
+        Mixture(Parameters.from_bundle(bundle, components=target.component_order))
         for target in FIGIEL_BORN_DIAMETER_TRACER_V1.targets
     )
 
@@ -105,15 +108,14 @@ def test_installed_provider_born_derivatives_match_step_halved_value_differences
     specification = FIGIEL_BORN_DIAMETER_TRACER_V1
     models = _models()
     capsules = tuple(native_sdk(model) for model in models)
-    payload = _born_native_payload(specification)
+    model_fingerprints = tuple(model.parameter_fingerprint for model in models)
+    payload = _born_native_payload(specification, model_fingerprints)
     trial = (2.9, 3.2, 4.3, 3.9, 4.7)
     residuals, jacobian, rows, fingerprints, compiled_identity = native.evaluate_born(
         capsules, payload, trial
     )
 
-    assert tuple(fingerprints) == tuple(
-        target.expected_provider_fingerprint for target in specification.targets
-    )
+    assert tuple(fingerprints) == model_fingerprints
     assert tuple(compiled_identity) == payload[0]
     assert len(residuals) == 5
     assert len(jacobian) == 25

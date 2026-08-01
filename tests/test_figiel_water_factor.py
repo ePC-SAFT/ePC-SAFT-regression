@@ -2,14 +2,21 @@ from __future__ import annotations
 
 import math
 
-from epcsaft import native_sdk
-import epcsaft_regression
 import pytest
+from epcsaft import Mixture, Parameters, native_sdk
+from parameter_cases import aqueous_parameters
+
+import epcsaft_regression
 from epcsaft_regression import _native
-from epcsaft_regression.workflow import (
-    _fixed_water_factor_model,
-    _water_factor_native_payload,
-)
+from epcsaft_regression.workflow import _water_factor_native_payload
+
+
+def _model() -> Mixture:
+    return Mixture(
+        Parameters.from_dictionary(
+            aqueous_parameters(("water", "sodium-cation", "bromide-anion"))
+        )
+    )
 
 
 def test_water_factor_contract_is_one_parameter_over_all_nabr_rows() -> None:
@@ -85,7 +92,7 @@ def test_water_factor_contract_is_one_parameter_over_all_nabr_rows() -> None:
 
 @pytest.mark.campaign
 def test_water_factor_fit_is_rank_one_and_start_confirmed() -> None:
-    result = epcsaft_regression.fit_figiel_water_solvation_factor()
+    result = epcsaft_regression.fit_figiel_water_solvation_factor(model=_model())
 
     assert result.specification_id == (
         epcsaft_regression.FIGIEL_WATER_SOLVATION_FACTOR_V1.specification_id
@@ -134,8 +141,8 @@ def test_water_factor_fit_is_rank_one_and_start_confirmed() -> None:
 @pytest.mark.campaign
 def test_water_factor_exact_jacobian_matches_centered_callback_values() -> None:
     specification = epcsaft_regression.FIGIEL_WATER_SOLVATION_FACTOR_V1
-    model = _fixed_water_factor_model(specification)
-    payload = _water_factor_native_payload(specification)
+    model = _model()
+    payload = _water_factor_native_payload(specification, model.parameter_fingerprint)
     capsule = native_sdk(model)
     trial = 1.4
     center = _native.evaluate_figiel_water_factor(capsule, payload, trial)

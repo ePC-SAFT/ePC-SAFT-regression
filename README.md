@@ -32,10 +32,9 @@ from epcsaft_regression import (
 )
 
 model = Mixture(
-    Parameters.from_catalog(
-        "gross-2001-methane-ethane",
+    Parameters.from_bundle(
+        "/path/to/ePC-SAFT-data/packets/gross-2001-methane-ethane/1/parameters",
         components=("ethane",),
-        version=1,
     )
 )
 result = fit_pure_saturation(
@@ -51,6 +50,12 @@ It covers strict records, acquisition/objective provenance, grouped controls,
 installed-capability resolution, local-rank preflight, deterministic export,
 and every direct-EOS observation template. Direct `RegressionProblem` and
 `fit_parameters` construction remains available with the same native payload.
+
+Parameter inputs are explicit. Source-traceable reusable bundles live in
+ePC-SAFT-data and are loaded with `Parameters.from_bundle(path)`; compact
+caller-owned numerical inputs use `Parameters.from_dictionary(mapping)`.
+Regression never locates a sibling Data checkout or reconstructs an installed
+catalog.
 
 Builds require Ceres 2.2 and `EPCSAFT_INCLUDE_DIR` set to the public include
 directory of an installed compatible EOS wheel. The build does not search

@@ -16,9 +16,9 @@ from epcsaft_regression import (
     parameter_capabilities, prepare_fit,
 )
 
-model = Mixture(Parameters.from_catalog(
-    "gross-2001-methane-ethane",
-    components=("methane", "ethane"), version=1,
+model = Mixture(Parameters.from_bundle(
+    "/path/to/ePC-SAFT-data/packets/gross-2001-methane-ethane/1/parameters",
+    components=("methane", "ethane"),
 ))
 assert any(
     capability.installed_ready
@@ -186,8 +186,9 @@ dataset = ObservationDataset.from_records(
     PureSaturationObservation, rows, source=source, objective=objective,
     row_provenance=provenance(rows),
 )
-model = Mixture(Parameters.from_catalog(
-    "gross-2001-methane-ethane", components=("methane",), version=1,
+model = Mixture(Parameters.from_bundle(
+    "/path/to/ePC-SAFT-data/packets/gross-2001-methane-ethane/1/parameters",
+    components=("methane",),
 ))
 requests = (
     ParameterRequest(
@@ -258,9 +259,9 @@ from epcsaft_regression import (
     SourceInput, parameter_capabilities, prepare_fit,
 )
 
-model = Mixture(Parameters.from_catalog(
-    "figiel-2025-reference-electrolytes",
-    components=("ethanol",), version=1,
+model = Mixture(Parameters.from_bundle(
+    "/path/to/ePC-SAFT-data/packets/figiel-2025-reference-electrolytes/1/parameters",
+    components=("ethanol",),
 ))
 volumes = (4.0e-5, 4.5e-5, 5.0e-5, 5.2e-5, 5.5e-5)
 records = []
@@ -292,7 +293,7 @@ source = SourceInput(
     "installed-epcsaft-wheel-ethanol-mechanics-fixture",
     "Synthetic values generated from the installed Figiel ethanol model",
     "epcsaft==0.2.0.dev0 wheel artifact used by this repository",
-    "66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9",
+    "1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9",
     "Evaluated fixed-volume public EOS states without row selection.",
     "T/K, P/Pa, density/(kg/m3)",
     "Implementation mechanics only; no scientific or predictive authority.",
@@ -424,9 +425,9 @@ dataset = ObservationDataset.from_records(
         for row in records
     },
 )
-model = Mixture(Parameters.from_catalog(
-    "figiel-2025-reference-electrolytes",
-    components=("water", "sodium-cation", "bromide-anion"), version=1,
+model = Mixture(Parameters.from_bundle(
+    "/path/to/ePC-SAFT-data/packets/figiel-2025-reference-electrolytes/1/parameters",
+    components=("water", "sodium-cation", "bromide-anion"),
 ))
 prepared = prepare_fit(
     model, datasets=(dataset,),

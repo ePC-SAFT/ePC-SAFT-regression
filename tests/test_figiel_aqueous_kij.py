@@ -1,19 +1,29 @@
 from __future__ import annotations
 
-from collections import Counter
 import ctypes
 import hashlib
 import json
+from collections import Counter
 from pathlib import Path
 
-from epcsaft import native_sdk
-import epcsaft_regression
 import pytest
+from epcsaft import Mixture, Parameters, native_sdk
+from parameter_cases import aqueous_parameters
+
+import epcsaft_regression
 from epcsaft_regression import _native
-from epcsaft_regression.workflow import (
-    _aqueous_kij_models,
-    _aqueous_kij_native_payload,
-)
+from epcsaft_regression.workflow import _aqueous_kij_native_payload
+
+
+def _models() -> tuple[Mixture, ...]:
+    return tuple(
+        Mixture(
+            Parameters.from_dictionary(
+                aqueous_parameters(("water", cation, anion))
+            )
+        )
+        for _, cation, anion, _ in epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1.salt_contracts
+    )
 
 
 class _NativeSdkV1(ctypes.Structure):
@@ -167,17 +177,20 @@ def test_aqueous_kij_runtime_is_one_private_native_owner() -> None:
     assert hasattr(epcsaft_regression, "fit_figiel_aqueous_kij")
     assert not hasattr(epcsaft_regression, "persist_provider_parameters")
     assert not hasattr(epcsaft_regression, "fit_generic_parameters")
-    assert _aqueous_kij_native_payload(epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1)[
-        -1
-    ] == "figiel-2025-aqueous-kij-v1"
+    fingerprints = ("sha256:" + "0" * 64,) * 6
+    assert _aqueous_kij_native_payload(
+        epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1, fingerprints
+    )[-1] == "figiel-2025-aqueous-kij-v1"
 
 
 @pytest.mark.campaign
 def test_aqueous_kij_requires_only_the_bounded_batch_callback() -> None:
     specification = epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1
-    models = _aqueous_kij_models(specification)
+    models = _models()
     capsules = tuple(native_sdk(model) for model in models)
-    payload = _aqueous_kij_native_payload(specification)
+    payload = _aqueous_kij_native_payload(
+        specification, tuple(model.parameter_fingerprint for model in models)
+    )
     copied_capsules, keepalive = _copied_provider_capsules(
         capsules, clear_scalar=True
     )
@@ -194,9 +207,11 @@ def test_aqueous_kij_requires_only_the_bounded_batch_callback() -> None:
 
 def test_aqueous_kij_rejects_provider_truncated_before_bounded_batch() -> None:
     specification = epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1
-    models = _aqueous_kij_models(specification)
+    models = _models()
     capsules = tuple(native_sdk(model) for model in models)
-    payload = _aqueous_kij_native_payload(specification)
+    payload = _aqueous_kij_native_payload(
+        specification, tuple(model.parameter_fingerprint for model in models)
+    )
     copied_capsules, keepalive = _copied_provider_capsules(
         capsules, truncate_before_bounded_batch=True
     )
@@ -213,9 +228,11 @@ def test_aqueous_kij_rejects_provider_truncated_before_bounded_batch() -> None:
 @pytest.mark.campaign
 def test_aqueous_kij_residual_jacobian_maps_all_exact_provider_columns() -> None:
     specification = epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1
-    models = _aqueous_kij_models(specification)
+    models = _models()
     capsules = tuple(native_sdk(model) for model in models)
-    payload = _aqueous_kij_native_payload(specification)
+    payload = _aqueous_kij_native_payload(
+        specification, tuple(model.parameter_fingerprint for model in models)
+    )
 
     _, jacobian_native, rows_native = _native.evaluate_figiel_kij(
         capsules, payload, specification.published_parameters
@@ -238,9 +255,11 @@ def test_aqueous_kij_residual_jacobian_maps_all_exact_provider_columns() -> None
 @pytest.mark.campaign
 def test_aqueous_kij_exact_jacobian_matches_callback_value_direction() -> None:
     specification = epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1
-    models = _aqueous_kij_models(specification)
+    models = _models()
     capsules = tuple(native_sdk(model) for model in models)
-    payload = _aqueous_kij_native_payload(specification)
+    payload = _aqueous_kij_native_payload(
+        specification, tuple(model.parameter_fingerprint for model in models)
+    )
     parameters = specification.published_parameters
     direction = tuple(
         (-1.0 if index % 2 else 1.0) * (index + 1.0) / 11.0
@@ -289,7 +308,7 @@ def test_aqueous_kij_exact_jacobian_matches_callback_value_direction() -> None:
 
 @pytest.mark.campaign
 def test_public_aqueous_kij_fit_replays_retained_negative_result() -> None:
-    result = epcsaft_regression.fit_figiel_aqueous_kij()
+    result = epcsaft_regression.fit_figiel_aqueous_kij(models=_models())
 
     assert result.solver_converged
     assert result.numerically_converged

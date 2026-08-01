@@ -11,11 +11,11 @@ preserving their established presentation and reporting contracts. This local
 cutover changes no accepted authority and does not imply a multi-active
 mixture capability without a matching installed EOS evaluator.
 
-Before work, read doctrine revision 5 and the machine-readable access contract
-from `../ePC-SAFT-management/GOVERNANCE.md` and
-`../ePC-SAFT-management/manifests/management.json`. During the local checkout
-transition, resolve both files from `../ePC-SAFT-organization/`. Its canonical published home is
-`https://github.com/ePC-SAFT/ePC-SAFT-management/blob/main/GOVERNANCE.md`.
+Before work, read doctrine revision 7 and the machine-readable access contract
+from `../ePC-SAFT-governance/GOVERNANCE.md` and
+`../ePC-SAFT-governance/manifests/management.json`. Its canonical published
+home is
+`https://github.com/ePC-SAFT/ePC-SAFT-governance/blob/main/GOVERNANCE.md`.
 Local policy may narrow that doctrine but must not contradict it.
 
 This repository is limited to strict target datasets, fitted parameters,
@@ -23,15 +23,15 @@ Ceres, fit receipts, and regression results. It consumes a compatible
 installed EOS and does not own EOS internals, equilibrium, or Ipopt.
 
 The active EOS frontend binding is `epcsaft==0.2.0.dev0`, using commit
-`24ab1bdfb3a1558eb87815e9c3b5d97fbe6a025d`, tree
-`145cf8b6126ad403aa8ee51b1b4623db3da8aa2f`, portable wheel artifact
-`objects/sha256/66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl`
+`7b97bab039e1c50a6f89522698af80493bea5f9e`, tree
+`d082a8f102b32705b6cd6669a3e31a8d4ea8acd0`, portable wheel artifact
+`objects/sha256/1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl`
 with SHA-256
-`66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9`, and
+`1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9`, and
 installed public header SHA-256
-`db37805c1abd9b1a355f41a89154d14756477c7293af940dc298a6b038aee45d`;
+`881f5ec87293de8b1f3c25c16018aa94be69775fede2ec5426fcbb08e257fecd`;
 the installed static library SHA-256 is
-`5e5c3e8311c011365471eeff29b2d9ff8486d149745a4bea7cd48bd6e784f9d3`.
+`fd624add206b8d783cd079db320b6dba64083063af2f29faf5ce82d1cf4743eb`.
 Active runner receipts must bind this complete identity. Retained pre-rename
 Provider 0.1 receipts and their replay commands are historical evidence only.
 The previous frontend subject's final 0.2 JUnit receipt artifact is

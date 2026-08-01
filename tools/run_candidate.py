@@ -1,21 +1,20 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
+import platform
 from dataclasses import asdict
 from email.parser import BytesParser
-import hashlib
 from importlib import metadata
-import json
 from pathlib import Path
-import platform
 from zipfile import ZipFile
 
-
-PROVIDER_COMMIT = "14fa3745264db66b8e59c12268737d694c706f2f"
-PROVIDER_TREE = "eb04f10f445957cc768bad1ef4f330038c69a293"
-PROVIDER_WHEEL_SHA256 = "48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594"
-PROVIDER_HEADER_SHA256 = "2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b"
-PROVIDER_TEST_RECEIPT_SHA256 = "56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf"
+PROVIDER_COMMIT = "7b97bab039e1c50a6f89522698af80493bea5f9e"
+PROVIDER_TREE = "d082a8f102b32705b6cd6669a3e31a8d4ea8acd0"
+PROVIDER_WHEEL_SHA256 = "1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9"
+PROVIDER_HEADER_SHA256 = "881f5ec87293de8b1f3c25c16018aa94be69775fede2ec5426fcbb08e257fecd"
+PROVIDER_LIBRARY_SHA256 = "fd624add206b8d783cd079db320b6dba64083063af2f29faf5ce82d1cf4743eb"
 
 
 def _sha256(path: Path) -> str:
@@ -26,14 +25,28 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _directory_sha256(path: Path) -> str:
+    if not path.is_dir():
+        raise SystemExit(f"parameter bundle is not a directory: {path}")
+    files = tuple(sorted(item for item in path.rglob("*") if item.is_file()))
+    if not files:
+        raise SystemExit(f"parameter bundle contains no files: {path}")
+    digest = hashlib.sha256()
+    for item in files:
+        relative = item.relative_to(path).as_posix().encode()
+        digest.update(len(relative).to_bytes(8, "big"))
+        digest.update(relative)
+        digest.update(item.stat().st_size.to_bytes(8, "big"))
+        with item.open("rb") as stream:
+            for block in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(block)
+    return digest.hexdigest()
+
+
 def _require_hash(path: Path, expected: str, label: str) -> None:
     actual = _sha256(path)
     if actual != expected:
         raise SystemExit(f"{label} SHA-256 mismatch: expected {expected}, got {actual}")
-
-
-def _require_provider_test_receipt(path: Path) -> None:
-    _require_hash(path, PROVIDER_TEST_RECEIPT_SHA256, "provider test receipt")
 
 
 def _normalized_distribution_name(name: str) -> str:
@@ -159,15 +172,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Generate one pure-saturation regression receipt.")
     parser.add_argument("--component", choices=("methane", "ethane", "propane"), required=True)
     parser.add_argument("--provider-wheel", type=Path, required=True)
-    parser.add_argument("--provider-test-receipt", type=Path, required=True)
     parser.add_argument("--regression-wheel", type=Path, required=True)
+    parser.add_argument("--parameter-bundle", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--reviewer")
     parser.add_argument("--review-path")
     parser.add_argument("--review-sha256")
     arguments = parser.parse_args()
     _require_hash(arguments.provider_wheel, PROVIDER_WHEEL_SHA256, "provider wheel")
-    _require_provider_test_receipt(arguments.provider_test_receipt)
+    parameter_bundle_sha256 = _directory_sha256(arguments.parameter_bundle)
     regression_wheel_sha256 = _sha256(arguments.regression_wheel)
     repository_root = Path(__file__).resolve().parents[1]
     review_arguments = (arguments.reviewer, arguments.review_path, arguments.review_sha256)
@@ -199,8 +212,9 @@ def main() -> int:
     )
 
     import epcsaft
-    import epcsaft_regression
     from epcsaft import Mixture, Parameters
+
+    import epcsaft_regression
     from epcsaft_regression import (
         ETHANE_SATURATION_FIT_V1,
         METHANE_SATURATION_FIT_V1,
@@ -213,6 +227,17 @@ def main() -> int:
         epcsaft.__file__,
         provider_binding,
         "epcsaft/__init__.py",
+    )
+    provider_root = Path(epcsaft.__file__).parent
+    _require_hash(
+        provider_root / "include" / "epcsaft" / "native_sdk_v1.h",
+        PROVIDER_HEADER_SHA256,
+        "provider header",
+    )
+    _require_hash(
+        provider_root / "lib" / "libepcsaft_native_sdk.a",
+        PROVIDER_LIBRARY_SHA256,
+        "provider static library",
     )
     _require_import_origin(
         epcsaft_regression.__file__,
@@ -229,15 +254,9 @@ def main() -> int:
         if component_id == "ethane"
         else PROPANE_SATURATION_FIT_V1
     )
-    bundle_id = (
-        "gross-2001-propane"
-        if component_id == "propane"
-        else "gross-2001-methane-ethane"
-    )
-    parameters = Parameters.from_catalog(
-        bundle_id,
+    parameters = Parameters.from_bundle(
+        arguments.parameter_bundle,
         components=(component_id,),
-        version=1,
     )
     model = Mixture(parameters)
     result = fit_pure_saturation(
@@ -282,9 +301,8 @@ def main() -> int:
             "tree": PROVIDER_TREE,
             "wheel": arguments.provider_wheel.name,
             "wheel_sha256": PROVIDER_WHEEL_SHA256,
-            "test_receipt": arguments.provider_test_receipt.name,
-            "test_receipt_sha256": PROVIDER_TEST_RECEIPT_SHA256,
             "installed_header_sha256": PROVIDER_HEADER_SHA256,
+            "installed_static_library_sha256": PROVIDER_LIBRARY_SHA256,
             "capsule": "epcsaft.native_sdk.v1",
             "entry": "evaluate_pure_phase_parameters",
             "coordinate_order": [
@@ -295,6 +313,10 @@ def main() -> int:
                 "dispersion_energy_over_k_kelvin",
             ],
             "source_parameter_fingerprint": model.parameter_fingerprint,
+        },
+        "parameter_bundle": {
+            "tree_sha256": parameter_bundle_sha256,
+            "selected_parameter_fingerprints": [model.parameter_fingerprint],
         },
         "regression_artifact": {
             "wheel": arguments.regression_wheel.name,
@@ -367,7 +389,6 @@ def main() -> int:
         "execution": {
             "artifacts": {
                 "provider_wheel": arguments.provider_wheel.name,
-                "provider_test_receipt": arguments.provider_test_receipt.name,
                 "regression_wheel": arguments.regression_wheel.name,
             },
             "python": platform.python_version(),

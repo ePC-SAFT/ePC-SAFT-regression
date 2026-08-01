@@ -7,15 +7,10 @@ from pathlib import Path
 
 import pytest
 from epcsaft import Mixture, Parameters, native_sdk, unit_registry
-from epcsaft.records import (
-    AssociationParameterRecord,
-    ComponentRecord,
-    ModelParameterRecord,
-    PairParameterRecord,
-    SingleParameterRecord,
-    SiteRecord,
-    SourceRecord,
-    ValidityDomain,
+from parameter_cases import (
+    aqueous_parameters,
+    associating_parameters,
+    neutral_parameters,
 )
 
 from epcsaft_regression import (
@@ -68,7 +63,6 @@ from epcsaft_regression.parameter_regression import (
     _evaluate_parameters,
     _native_payload,
 )
-from epcsaft_regression.workflow import _aqueous_kij_models, _fixed_water_factor_model
 
 _MAY_METHANE_PROPANE_CANONICAL_SHA256 = (
     "c7506ce654d9b6df60ec7ff6bdc6dfde526f82a3d69fc524ac9186976785cefe"
@@ -76,85 +70,12 @@ _MAY_METHANE_PROPANE_CANONICAL_SHA256 = (
 
 
 def _model() -> Mixture:
-    parameters = Parameters.from_catalog(
-        "gross-2001-methane-ethane",
-        components=("methane", "ethane"),
-        version=1,
-    )
-    return Mixture(parameters)
+    return Mixture(Parameters.from_dictionary(neutral_parameters(("methane", "ethane"))))
 
 
 def _methane_propane_parameters() -> Parameters:
-    """Build the campaign's public user-provided two-component parameters."""
-    methane_catalog = Parameters.from_catalog(
-        "gross-2001-methane-ethane",
-        components=("methane",),
-        version=1,
-    )
-    propane_catalog = Parameters.from_catalog(
-        "gross-2001-propane",
-        components=("propane",),
-        version=1,
-    )
-    methane_records = tuple(
-        record
-        for record in methane_catalog.records
-        if isinstance(record, SingleParameterRecord)
-        and record.component_id == "methane"
-    )
-    propane_records = tuple(
-        record
-        for record in propane_catalog.records
-        if isinstance(record, SingleParameterRecord)
-        and record.component_id == "propane"
-    )
-    source = SourceRecord(
-        "gross-sadowski-2001",
-        (
-            "Gross, J.; Sadowski, G. PC-SAFT: An Equation of State Based on a "
-            "Perturbation Theory for Chain Molecules. Industrial & Engineering "
-            "Chemistry Research 2001, 40, 1244-1260."
-        ),
-        "source-backed installed parameter catalog",
-        "10.1021/ie0003887",
-    )
-    domains = tuple(
-        {
-            domain.domain_id: domain
-            for domain in (*methane_catalog.domains, *propane_catalog.domains)
-        }.values()
-    )
-    components = tuple(
-        component
-        for component in (*methane_catalog.components, *propane_catalog.components)
-        if component.component_id in {"methane", "propane"}
-    )
-    pair = PairParameterRecord(
-        "methane-propane-kij-initial",
-        "methane",
-        "propane",
-        "k_ij",
-        0.0,
-        source.source_id,
-        "test-only zero active-pair initialization",
-        "gross-pair-unknown",
-    )
-    return Parameters.from_records(
-        bundle_id="may-2015-methane-propane-kij-fixture",
-        bundle_version=1,
-        purpose="user-provided",
-        sources=(source,),
-        domains=domains,
-        components=components,
-        singles=(*methane_records, *propane_records),
-        pairs=(pair,),
-        models=(
-            record
-            for record in methane_catalog.records
-            if isinstance(record, ModelParameterRecord)
-        ),
-        selected_components=("methane", "propane"),
-    )
+    """Build a compact source-neutral numerical sentinel for the May workflow."""
+    return Parameters.from_dictionary(neutral_parameters(("methane", "propane")))
 
 
 def _methane_propane_model() -> Mixture:
@@ -162,21 +83,11 @@ def _methane_propane_model() -> Mixture:
 
 
 def _pure_model() -> Mixture:
-    parameters = Parameters.from_catalog(
-        "gross-2001-methane-ethane",
-        components=("methane",),
-        version=1,
-    )
-    return Mixture(parameters)
+    return Mixture(Parameters.from_dictionary(neutral_parameters(("methane",))))
 
 
 def _associating_pure_model() -> Mixture:
-    parameters = Parameters.from_catalog(
-        "figiel-2025-reference-electrolytes",
-        components=("ethanol",),
-        version=1,
-    )
-    return Mixture(parameters)
+    return Mixture(Parameters.from_dictionary(associating_parameters()))
 
 
 def _generic_associating_model(
@@ -187,111 +98,16 @@ def _generic_associating_model(
     segment_diameter_angstrom: float = 3.5,
     dispersion_energy_over_k: float = 280.0,
 ) -> Mixture:
-    provenance = {
-        "source_id": "manufactured-association",
-        "locator": "generic Regression contract test",
-        "domain_id": "manufactured-association-domain",
-    }
-    associations = tuple(
-        record
-        for left, right, energy, volume in pairs
-        for record in (
-            AssociationParameterRecord(
-                f"{left}-{right}-energy",
-                "test-amine",
-                left,
-                "test-amine",
-                right,
-                "association_energy_over_k",
-                energy * unit_registry.kelvin,
-                **provenance,
-            ),
-            AssociationParameterRecord(
-                f"{left}-{right}-volume",
-                "test-amine",
-                left,
-                "test-amine",
-                right,
-                "association_volume",
-                volume,
-                **provenance,
-            ),
-        )
-    )
     return Mixture(
-        Parameters.from_records(
-            bundle_id="manufactured-generic-association",
-            bundle_version=1,
-            purpose="user-provided",
-            sources=(
-                SourceRecord(
-                    "manufactured-association",
-                    "Manufactured generic association model",
-                    "Regression contract test",
-                ),
-            ),
-            domains=(
-                ValidityDomain(
-                    "manufactured-association-domain",
-                    "reported-conditions",
-                    temperature_min=250.0 * unit_registry.kelvin,
-                    temperature_max=450.0 * unit_registry.kelvin,
-                    pressure_min=1.0 * unit_registry.pascal,
-                    pressure_max=10.0 * unit_registry.megapascal,
-                ),
-            ),
-            components=(ComponentRecord("test-amine"),),
-            singles=(
-                SingleParameterRecord(
-                    "test-m",
-                    "test-amine",
-                    "segment_count",
-                    segment_count,
-                    **provenance,
-                ),
-                SingleParameterRecord(
-                    "test-sigma",
-                    "test-amine",
-                    "segment_diameter",
-                    segment_diameter_angstrom * unit_registry.angstrom,
-                    **provenance,
-                ),
-                SingleParameterRecord(
-                    "test-epsilon",
-                    "test-amine",
-                    "dispersion_energy_over_k",
-                    dispersion_energy_over_k * unit_registry.kelvin,
-                    **provenance,
-                ),
-                SingleParameterRecord(
-                    "test-molar-mass",
-                    "test-amine",
-                    "molar_mass",
-                    0.088 * unit_registry.kilogram / unit_registry.mole,
-                    **provenance,
-                ),
-            ),
-            sites=tuple(
-                SiteRecord(
-                    f"test-site-{site}",
-                    "test-amine",
-                    site,
-                    site,
-                    multiplicity,
-                    **provenance,
-                )
-                for site, multiplicity in sites
-            ),
-            associations=associations,
-            models=(
-                ModelParameterRecord(
-                    "test-permittivity",
-                    "relative_permittivity_formulation",
-                    "none",
-                    **provenance,
-                ),
-            ),
-            selected_components=("test-amine",),
+        Parameters.from_dictionary(
+            associating_parameters(
+                component_id="test-amine",
+                sites=sites,
+                pairs=pairs,
+                segment_count=segment_count,
+                segment_diameter_angstrom=segment_diameter_angstrom,
+                dispersion_energy_over_k=dispersion_energy_over_k,
+            )
         )
     )
 
@@ -490,12 +306,7 @@ def _aqueous_model(
         "bromide-anion",
     ),
 ) -> Mixture:
-    parameters = Parameters.from_catalog(
-        "figiel-2025-reference-electrolytes",
-        components=component_ids,
-        version=1,
-    )
-    return Mixture(parameters)
+    return Mixture(Parameters.from_dictionary(aqueous_parameters(component_ids)))
 
 
 def _capability(
@@ -1546,7 +1357,7 @@ def test_installed_provider_advertises_exact_direct_observable_contracts() -> No
 
 
 def test_installed_provider_advertises_each_aqueous_kij_miac_contract() -> None:
-    model = _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4]
+    model = _aqueous_model()
     capabilities = tuple(
         capability
         for capability in parameter_capabilities(model)
@@ -1578,7 +1389,7 @@ def test_installed_provider_advertises_each_aqueous_kij_miac_contract() -> None:
 
 @pytest.mark.campaign
 def test_general_engine_fits_water_solvation_factor_over_all_nabr_rows() -> None:
-    model = _fixed_water_factor_model(FIGIEL_WATER_SOLVATION_FACTOR_V1)
+    model = _aqueous_model()
     result = fit_parameters(_solvation_factor_problem(model), model)
 
     assert result.solver_converged
@@ -1652,7 +1463,7 @@ def test_relative_permittivity_rejects_mislabeled_solvent() -> None:
 
 @pytest.mark.campaign
 def test_general_engine_fits_one_aqueous_kij_from_user_rows() -> None:
-    model = _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4]
+    model = _aqueous_model()
     problem = _aqueous_kij_problem(model)
     observations_before = problem.observations
     fixed_context_before = tuple(row.fixed_k_ij for row in problem.observations)
@@ -1797,7 +1608,7 @@ def test_general_engine_fits_each_born_diameter_independently(
 
 
 def test_direct_observations_fail_before_native_evaluation_outside_domain() -> None:
-    solvation_model = _fixed_water_factor_model(FIGIEL_WATER_SOLVATION_FACTOR_V1)
+    solvation_model = _aqueous_model()
     solvation = _solvation_factor_problem(solvation_model)
     first = solvation.observations[0]
     wrong_pressure = _replace_observations(
@@ -2417,12 +2228,12 @@ def test_record_constructor_covers_every_direct_observable_contract() -> None:
     born_target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[0]
     cases = (
         (
-            _fixed_water_factor_model(FIGIEL_WATER_SOLVATION_FACTOR_V1),
+            _aqueous_model(),
             _solvation_factor_problem,
             "mean_ionic_activity",
         ),
         (
-            _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4],
+            _aqueous_model(),
             _aqueous_kij_problem,
             "aqueous_kij_mean_ionic_activity",
         ),
@@ -2955,17 +2766,8 @@ def test_may_methane_propane_source_identity_and_transform() -> None:
     rows = _may_methane_propane_rows()
     problem = _may_methane_propane_problem(_methane_propane_model(), rows)
     parameters = _methane_propane_parameters()
-    pair_records = tuple(
-        record
-        for record in parameters.records
-        if isinstance(record, PairParameterRecord)
-    )
-    assert parameters.bundle_purpose == "user-provided"
     assert problem.observations[0].component_ids == ("methane", "propane")
-    assert len(pair_records) == 1
-    assert pair_records[0].component_id_a == "methane"
-    assert pair_records[0].component_id_b == "propane"
-    assert float(pair_records[0].value) == 0.0
+    assert parameters.component_ids == ("methane", "propane")
     assert problem.sources[0].source_artifact_sha256 == (
         "53fd1bdd55dc6807ec76cf88626438d8dfceb3ec09149d4405ea36cfbe6b842a"
     )

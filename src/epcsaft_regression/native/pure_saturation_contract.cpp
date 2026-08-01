@@ -122,7 +122,7 @@ std::vector<std::string> expected_identity(const std::string& component_id) {
             "1", "angstrom", "K",
             "liquid_pressure", "vapor_pressure", "chemical_potential_equality", "liquid_density",
             "mol", "m3/mol", "epcsaft.native_sdk.v1",
-            "sha256:905e7a6e22eb1073347575bf833d5aa059d9ccf562e4408cb186d74f580ba36f",
+            "sha256:4a5cde0fad05a150c7fa54bb5ac7db508424f0126cf512596dcc248c284dd9e0",
             "p_j = start_j + parameter_scale_j * z_j",
             "V_liquid = (molar_mass / observed_liquid_density) * exp(u_liquid)",
             "V_vapor = (R * T / observed_pressure) * exp(u_vapor)",
@@ -149,7 +149,7 @@ std::vector<std::string> expected_identity(const std::string& component_id) {
             "1", "angstrom", "K",
             "liquid_pressure", "vapor_pressure", "chemical_potential_equality", "liquid_density",
             "mol", "m3/mol", "epcsaft.native_sdk.v1",
-            "sha256:b81f32e44adb46080dfa91026c6428045e04a219900305767672d0547f9a9fb9",
+            "sha256:6381ef30d4f25c63fee1fd098c7024dd59254f3021d0588ee46e4eecfb31619b",
             "p_j = start_j + parameter_scale_j * z_j",
             "V_liquid = (molar_mass / observed_liquid_density) * exp(u_liquid)",
             "V_vapor = (R * T / observed_pressure) * exp(u_vapor)",
@@ -176,7 +176,7 @@ std::vector<std::string> expected_identity(const std::string& component_id) {
             "1", "angstrom", "K",
             "liquid_pressure", "vapor_pressure", "chemical_potential_equality", "liquid_density",
             "mol", "m3/mol", "epcsaft.native_sdk.v1",
-            "sha256:1194db349d0608c89419e70c56ccec9ada2ae0884dd8e64e519e9560e7e8ae42",
+            "sha256:7d893c35288fceec76b7dde4a16fbf2ef95830b7d18827d3205537ce54878140",
             "p_j = start_j + parameter_scale_j * z_j",
             "V_liquid = (molar_mass / observed_liquid_density) * exp(u_liquid)",
             "V_vapor = (R * T / observed_pressure) * exp(u_vapor)",
@@ -307,7 +307,8 @@ Payload parse_payload(PyObject* object) {
         && payload.identity[1] != "propane") {
         throw std::invalid_argument("component identity must be methane, ethane, or propane");
     }
-    if (payload.identity != expected_identity(payload.identity[1])) {
+    const std::vector<std::string> expected = expected_identity(payload.identity[1]);
+    if (payload.identity != expected) {
         throw std::invalid_argument("compiled problem identity does not match an admitted component");
     }
     OwnedPyObject rows{PySequence_Fast(items[1], "training rows must be a sequence")};

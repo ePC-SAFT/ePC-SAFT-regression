@@ -477,8 +477,34 @@ def _identity_matches(
     return identity == active
 
 
+def _observation_contract(observations: tuple[RegressionObservation, ...]) -> str:
+    observation = observations[0]
+    if isinstance(
+        observation,
+        (
+            FixedCompositionVleObservation,
+            PureSaturationObservation,
+            PureVaporPressureObservation,
+            PureDensityObservation,
+        ),
+    ):
+        return "fixed_composition_helmholtz_phase"
+    if isinstance(
+        observation,
+        (MeanIonicActivityObservation, AqueousKijMeanIonicActivityObservation),
+    ):
+        return "aqueous_mean_ionic_activity"
+    if isinstance(observation, (SolvationGibbsObservation, IonSolvationKijObservation)):
+        return "ion_solvation_gibbs"
+    if isinstance(observation, RelativePermittivityRatioObservation):
+        return "relative_permittivity_ratio"
+    raise TypeError("unsupported regression observation contract")
+
+
 def _resolve_coordinates(
-    model: object, requests: tuple[ParameterRequest, ...]
+    model: object,
+    requests: tuple[ParameterRequest, ...],
+    observations: tuple[RegressionObservation, ...],
 ) -> tuple[ParameterCoordinate, ...]:
     advertised = tuple(
         item
@@ -541,11 +567,14 @@ def _resolve_coordinates(
             )
         return tuple(coordinates)
     coordinates = []
+    observation_contract = _observation_contract(observations)
     for request in requests:
         matches = tuple(
             item
             for item in derivative_ready
-            if item.family is request.family and _identity_matches(request, item)
+            if item.family is request.family
+            and item.observation_contract == observation_contract
+            and _identity_matches(request, item)
         )
         if len(matches) != 1:
             raise ValueError(
@@ -998,8 +1027,8 @@ def prepare_fit(
         raise ValueError("datasets must be nonempty")
     for dataset in datasets:
         _validate_objective(dataset)
-    coordinates = _resolve_coordinates(model, parameters)
     observations = tuple(row for dataset in datasets for row in dataset.observations)
+    coordinates = _resolve_coordinates(model, parameters, observations)
     observation_types = {type(row) for row in observations}
     if len(observation_types) > 1 and not any(
         isinstance(request.identity, AssociationParameterIdentity)

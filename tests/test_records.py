@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import replace
 import math
+from dataclasses import replace
 
 import pytest
 
@@ -18,11 +18,10 @@ from epcsaft_regression.records import (
     PROPANE_PACKET_YAML_SHA256,
     PROPANE_SATURATION_FIT_V1,
     PROPANE_SOURCE_RECEIPT_SHA256,
-    SourceIdentity,
     SaturationObservation,
+    SourceIdentity,
     load_pure_saturation_dataset,
 )
-
 
 METHANE_ROWS = (
     (100.0, 34_375.892, 438.88524),
@@ -162,21 +161,21 @@ def test_retained_dataset_has_exact_source_rows_and_partition(
             METHANE_SATURATION_FIT_V1,
             (1.08, 3.555744, 157.5315),
             0.016043,
-            "sha256:905e7a6e22eb1073347575bf833d5aa059d9ccf562e4408cb186d74f580ba36f",
+            "sha256:4a5cde0fad05a150c7fa54bb5ac7db508424f0126cf512596dcc248c284dd9e0",
         ),
         (
             "ethane",
             ETHANE_SATURATION_FIT_V1,
             (1.6069, 3.5206, 191.42),
             0.030070,
-            "sha256:b81f32e44adb46080dfa91026c6428045e04a219900305767672d0547f9a9fb9",
+            "sha256:6381ef30d4f25c63fee1fd098c7024dd59254f3021d0588ee46e4eecfb31619b",
         ),
         (
             "propane",
             PROPANE_SATURATION_FIT_V1,
             (2.002, 3.6184, 208.11),
             0.044096,
-            "sha256:1194db349d0608c89419e70c56ccec9ada2ae0884dd8e64e519e9560e7e8ae42",
+            "sha256:7d893c35288fceec76b7dde4a16fbf2ef95830b7d18827d3205537ce54878140",
         ),
     ),
 )
