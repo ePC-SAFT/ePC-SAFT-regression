@@ -7,18 +7,20 @@ authority-neutral evidence unless separately admitted.
 
 The active Python package is version `0.2.0.dev0` and consumes exactly
 `epcsaft==0.2.0.dev0`. Public workflows construct EOS `Parameters` and
-`Mixture` objects; source-bound trial models use `Parameters.from_records`.
+`Mixture` objects from an explicit external bundle path or strict
+source-neutral dictionary. Regression does not own or locate a parameter
+catalog.
 
 `provider_frontend_status: PARAMETERS_MIXTURE_0_2`
 
 The active installed EOS subject is commit
-`24ab1bdfb3a1558eb87815e9c3b5d97fbe6a025d`, tree
-`145cf8b6126ad403aa8ee51b1b4623db3da8aa2f`, wheel SHA-256
-`66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9`, and
+`7b97bab039e1c50a6f89522698af80493bea5f9e`, tree
+`d082a8f102b32705b6cd6669a3e31a8d4ea8acd0`, wheel SHA-256
+`1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9`, and
 installed public-header SHA-256
-`db37805c1abd9b1a355f41a89154d14756477c7293af940dc298a6b038aee45d`.
+`881f5ec87293de8b1f3c25c16018aa94be69775fede2ec5426fcbb08e257fecd`.
 Its installed static-library SHA-256 is
-`5e5c3e8311c011365471eeff29b2d9ff8486d149745a4bea7cd48bd6e784f9d3`.
+`fd624add206b8d783cd079db320b6dba64083063af2f29faf5ce82d1cf4743eb`.
 The frontend migration changes public construction and generic capability
 names only; it does not change accepted authority, target contracts, or
 numerical acceptance criteria. Retained pre-rename Provider 0.1 receipt
@@ -33,13 +35,13 @@ subject and is not rebound to the active ordinary-sigma artifact. Portable
 artifacts are resolved relative to an executor-supplied immutable artifact
 root; workstation paths are execution metadata only.
 
-`governance_doctrine_revision: 5`
+`governance_doctrine_revision: 7`
 
 Canonical doctrine:
-`https://github.com/ePC-SAFT/ePC-SAFT-management/blob/main/GOVERNANCE.md`.
-During the local checkout transition, resolve doctrine and the access manifest
-from `../ePC-SAFT-organization/GOVERNANCE.md` and
-`../ePC-SAFT-organization/manifests/management.json`.
+`https://github.com/ePC-SAFT/ePC-SAFT-governance/blob/main/GOVERNANCE.md`.
+Resolve doctrine and the access manifest from
+`../ePC-SAFT-governance/GOVERNANCE.md` and
+`../ePC-SAFT-governance/manifests/management.json`.
 
 EOS is the canonical active repository and role name. Retain `Provider` only
 inside historical receipt prose, artifact paths, schema fields such as
@@ -134,14 +136,15 @@ retained historical evidence for their named reference campaigns. The active
 installed frontend binding for new replay is the `provider_frontend` subject
 above; historical evidence is not rewritten as if it had used that artifact.
 
-The installed EOS advertises one ordinary-`sigma_ij^3*kappa` joint
-neutral-pure-2B callback over `m`, `sigma`, `epsilon/k`, association energy,
-and association volume. Regression executes that fixed five-parameter block
-for mixed vapor-pressure, fixed-pressure-density, and combined saturation
-rows with exact Hessians and lifted volumes. Public-state replay and a compact
-manufactured full-rank solve prove mechanics only. Regression packages no
-MAPA/DEEA dataset or accepted tuple. Status is
-`ASSOCIATION_ORDINARY_SIGMA_2B_BLOCK_EXECUTABLE_NO_PARAMETER_ACCEPTANCE`.
+The installed EOS advertises one ordinary-`sigma_ij^3*kappa`
+fixed-topology association descriptor and variable-width callback. Regression
+selects typed ordinary-pure and component/site-pair slots, keeps `N` fitted
+coordinates distinct from `S` EOS slots, and accumulates exact Hessian columns
+for explicit sharing. Vapor-pressure, fixed-pressure-density, and combined
+saturation rows use this one path. A 2B five-parameter case and a non-2B
+multi-pair case prove mechanics only; Regression packages no MAPA/DEEA dataset,
+accepted topology, or accepted tuple. Status is
+`FIXED_TOPOLOGY_ASSOCIATION_MECHANICS_EXECUTABLE_NO_PARAMETER_ACCEPTANCE`.
 
 The user-approved 2026-07-27 destination is general parameter-family
 regression, defined in `docs/science/general-parameter-regression.md`. The

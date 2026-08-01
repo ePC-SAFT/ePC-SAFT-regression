@@ -159,9 +159,12 @@ For a new species, use this order:
 2. Select each candidate association scheme and site topology from source,
    chemical, spectroscopic, molecular-simulation, or separately declared
    engineering evidence. Treat each as a fixed model alternative.
-3. Fit the continuous pure parameters only within an installed advertised
-   topology. For the current fixed neutral-pure-2B route these are
-   `(m, sigma, epsilon/k, epsilon_AB/k, kappa_AB)`.
+3. Fit continuous pure parameters only within an installed advertised
+   topology. Select typed ordinary-pure and component/site-pair slots from the
+   immutable EOS descriptor. Energy-only, volume-only, joint, constrained
+   subset, and explicit shared-parameter selections all use the same generic
+   request/result path. A 2B five-parameter selection is one reference case,
+   not a separate runtime capability.
 4. Evaluate exact scaled sensitivities, nuisance-projected rank, conditioning,
    active bounds, multistart behavior, and nuisance-reoptimized association
    profiles. Solver convergence and local full rank alone do not establish
@@ -184,7 +187,8 @@ For a new species, use this order:
    declared data design, exact scaled Jacobian, nuisance-reoptimized profiles,
    and accepted-region evidence distinguish the complete active block.
 
-Current Regression issue 28 owns fixed-pure-2B practical identifiability.
+Current Regression issue 28 owns practical identifiability for the retained
+fixed-pure-2B literature case.
 Issue 34 owns the future fixed induced/cross-association alternatives after EOS
 support. Neither issue authorizes dynamic topology discovery.
 
@@ -220,8 +224,9 @@ The compact matrix covers:
 2. representative scalar component, pair, and direct-observable fits across
    each distinct native observation/derivative adapter;
 3. joint pure `(m, sigma, epsilon/k)` recovery;
-4. fixed neutral-pure-2B five-parameter mechanics and supported constrained
-   active-subset variants;
+4. descriptor-driven fixed-topology association mechanics covering the 2B
+   reference, a non-2B multi-pair topology, `N_active = 1, 2, >2`, constrained
+   subsets, sharing, permutation rejection, and fail-closed identity checks;
 5. constant `k_ij` and `l_ij` fixed-composition VLE mechanics;
 6. the composed positive-observation evaluator transport; and
 7. deterministic result serialization once the general record exists.

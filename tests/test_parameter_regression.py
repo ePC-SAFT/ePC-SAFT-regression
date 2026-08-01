@@ -7,15 +7,10 @@ from pathlib import Path
 
 import pytest
 from epcsaft import Mixture, Parameters, native_sdk, unit_registry
-from epcsaft.records import (
-    AssociationParameterRecord,
-    ComponentRecord,
-    ModelParameterRecord,
-    PairParameterRecord,
-    SingleParameterRecord,
-    SiteRecord,
-    SourceRecord,
-    ValidityDomain,
+from parameter_cases import (
+    aqueous_parameters,
+    associating_parameters,
+    neutral_parameters,
 )
 
 from epcsaft_regression import (
@@ -25,10 +20,12 @@ from epcsaft_regression import (
     AcquisitionClass,
     AffineParameterTransform,
     AqueousKijMeanIonicActivityObservation,
+    AssociationParameterIdentity,
     ComponentParameterIdentity,
     ConfirmationControls,
     DirectObservationRowDiagnostic,
     FixedCompositionVleObservation,
+    FixedTopologyAssociationCapability,
     IonSolvationKijObservation,
     MeanIonicActivityObservation,
     ModelParameterIdentity,
@@ -66,7 +63,6 @@ from epcsaft_regression.parameter_regression import (
     _evaluate_parameters,
     _native_payload,
 )
-from epcsaft_regression.workflow import _aqueous_kij_models, _fixed_water_factor_model
 
 _MAY_METHANE_PROPANE_CANONICAL_SHA256 = (
     "c7506ce654d9b6df60ec7ff6bdc6dfde526f82a3d69fc524ac9186976785cefe"
@@ -74,85 +70,12 @@ _MAY_METHANE_PROPANE_CANONICAL_SHA256 = (
 
 
 def _model() -> Mixture:
-    parameters = Parameters.from_catalog(
-        "gross-2001-methane-ethane",
-        components=("methane", "ethane"),
-        version=1,
-    )
-    return Mixture(parameters)
+    return Mixture(Parameters.from_dictionary(neutral_parameters(("methane", "ethane"))))
 
 
 def _methane_propane_parameters() -> Parameters:
-    """Build the campaign's public user-provided two-component parameters."""
-    methane_catalog = Parameters.from_catalog(
-        "gross-2001-methane-ethane",
-        components=("methane",),
-        version=1,
-    )
-    propane_catalog = Parameters.from_catalog(
-        "gross-2001-propane",
-        components=("propane",),
-        version=1,
-    )
-    methane_records = tuple(
-        record
-        for record in methane_catalog.records
-        if isinstance(record, SingleParameterRecord)
-        and record.component_id == "methane"
-    )
-    propane_records = tuple(
-        record
-        for record in propane_catalog.records
-        if isinstance(record, SingleParameterRecord)
-        and record.component_id == "propane"
-    )
-    source = SourceRecord(
-        "gross-sadowski-2001",
-        (
-            "Gross, J.; Sadowski, G. PC-SAFT: An Equation of State Based on a "
-            "Perturbation Theory for Chain Molecules. Industrial & Engineering "
-            "Chemistry Research 2001, 40, 1244-1260."
-        ),
-        "source-backed installed parameter catalog",
-        "10.1021/ie0003887",
-    )
-    domains = tuple(
-        {
-            domain.domain_id: domain
-            for domain in (*methane_catalog.domains, *propane_catalog.domains)
-        }.values()
-    )
-    components = tuple(
-        component
-        for component in (*methane_catalog.components, *propane_catalog.components)
-        if component.component_id in {"methane", "propane"}
-    )
-    pair = PairParameterRecord(
-        "methane-propane-kij-initial",
-        "methane",
-        "propane",
-        "k_ij",
-        0.0,
-        source.source_id,
-        "test-only zero active-pair initialization",
-        "gross-pair-unknown",
-    )
-    return Parameters.from_records(
-        bundle_id="may-2015-methane-propane-kij-fixture",
-        bundle_version=1,
-        purpose="user-provided",
-        sources=(source,),
-        domains=domains,
-        components=components,
-        singles=(*methane_records, *propane_records),
-        pairs=(pair,),
-        models=(
-            record
-            for record in methane_catalog.records
-            if isinstance(record, ModelParameterRecord)
-        ),
-        selected_components=("methane", "propane"),
-    )
+    """Build a compact source-neutral numerical sentinel for the May workflow."""
+    return Parameters.from_dictionary(neutral_parameters(("methane", "propane")))
 
 
 def _methane_propane_model() -> Mixture:
@@ -160,21 +83,11 @@ def _methane_propane_model() -> Mixture:
 
 
 def _pure_model() -> Mixture:
-    parameters = Parameters.from_catalog(
-        "gross-2001-methane-ethane",
-        components=("methane",),
-        version=1,
-    )
-    return Mixture(parameters)
+    return Mixture(Parameters.from_dictionary(neutral_parameters(("methane",))))
 
 
 def _associating_pure_model() -> Mixture:
-    parameters = Parameters.from_catalog(
-        "figiel-2025-reference-electrolytes",
-        components=("ethanol",),
-        version=1,
-    )
-    return Mixture(parameters)
+    return Mixture(Parameters.from_dictionary(associating_parameters()))
 
 
 def _generic_associating_model(
@@ -185,111 +98,16 @@ def _generic_associating_model(
     segment_diameter_angstrom: float = 3.5,
     dispersion_energy_over_k: float = 280.0,
 ) -> Mixture:
-    provenance = {
-        "source_id": "manufactured-association",
-        "locator": "generic Regression contract test",
-        "domain_id": "manufactured-association-domain",
-    }
-    associations = tuple(
-        record
-        for left, right, energy, volume in pairs
-        for record in (
-            AssociationParameterRecord(
-                f"{left}-{right}-energy",
-                "test-amine",
-                left,
-                "test-amine",
-                right,
-                "association_energy_over_k",
-                energy * unit_registry.kelvin,
-                **provenance,
-            ),
-            AssociationParameterRecord(
-                f"{left}-{right}-volume",
-                "test-amine",
-                left,
-                "test-amine",
-                right,
-                "association_volume",
-                volume,
-                **provenance,
-            ),
-        )
-    )
     return Mixture(
-        Parameters.from_records(
-            bundle_id="manufactured-generic-association",
-            bundle_version=1,
-            purpose="user-provided",
-            sources=(
-                SourceRecord(
-                    "manufactured-association",
-                    "Manufactured generic association model",
-                    "Regression contract test",
-                ),
-            ),
-            domains=(
-                ValidityDomain(
-                    "manufactured-association-domain",
-                    "reported-conditions",
-                    temperature_min=250.0 * unit_registry.kelvin,
-                    temperature_max=450.0 * unit_registry.kelvin,
-                    pressure_min=1.0 * unit_registry.pascal,
-                    pressure_max=10.0 * unit_registry.megapascal,
-                ),
-            ),
-            components=(ComponentRecord("test-amine"),),
-            singles=(
-                SingleParameterRecord(
-                    "test-m",
-                    "test-amine",
-                    "segment_count",
-                    segment_count,
-                    **provenance,
-                ),
-                SingleParameterRecord(
-                    "test-sigma",
-                    "test-amine",
-                    "segment_diameter",
-                    segment_diameter_angstrom * unit_registry.angstrom,
-                    **provenance,
-                ),
-                SingleParameterRecord(
-                    "test-epsilon",
-                    "test-amine",
-                    "dispersion_energy_over_k",
-                    dispersion_energy_over_k * unit_registry.kelvin,
-                    **provenance,
-                ),
-                SingleParameterRecord(
-                    "test-molar-mass",
-                    "test-amine",
-                    "molar_mass",
-                    0.088 * unit_registry.kilogram / unit_registry.mole,
-                    **provenance,
-                ),
-            ),
-            sites=tuple(
-                SiteRecord(
-                    f"test-site-{site}",
-                    "test-amine",
-                    site,
-                    site,
-                    multiplicity,
-                    **provenance,
-                )
-                for site, multiplicity in sites
-            ),
-            associations=associations,
-            models=(
-                ModelParameterRecord(
-                    "test-permittivity",
-                    "relative_permittivity_formulation",
-                    "none",
-                    **provenance,
-                ),
-            ),
-            selected_components=("test-amine",),
+        Parameters.from_dictionary(
+            associating_parameters(
+                component_id="test-amine",
+                sites=sites,
+                pairs=pairs,
+                segment_count=segment_count,
+                segment_diameter_angstrom=segment_diameter_angstrom,
+                dispersion_energy_over_k=dispersion_energy_over_k,
+            )
         )
     )
 
@@ -301,8 +119,7 @@ def _generic_associating_problem(
     capability = next(
         capability
         for capability in parameter_capabilities(model)
-        if not isinstance(capability, UnsupportedParameterCapability)
-        and capability.capability_id == "neutral_pure_associating_joint_sigma_basis_v1"
+        if isinstance(capability, FixedTopologyAssociationCapability)
     )
     physical = (
         3.2,
@@ -310,32 +127,9 @@ def _generic_associating_problem(
         280.0,
         *(value for pair in pairs for value in pair[2:]),
     )
-    families = (
-        ParameterFamily.SEGMENT_COUNT,
-        ParameterFamily.SEGMENT_DIAMETER,
-        ParameterFamily.DISPERSION_ENERGY_OVER_K,
-        *(
-            family
-            for _ in pairs
-            for family in (
-                ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
-                ParameterFamily.ASSOCIATION_VOLUME,
-            )
-        ),
-    )
-    identities = (
-        ComponentParameterIdentity("test-amine"),
-        ComponentParameterIdentity("test-amine"),
-        ComponentParameterIdentity("test-amine"),
-        ModelParameterIdentity(),
-        ModelParameterIdentity(),
-    )
-    units = (
-        "1",
-        "angstrom",
-        "K",
-        *(unit for _ in pairs for unit in ("K", "1")),
-    )
+    families = tuple(slot.family for slot in capability.slots)
+    identities = tuple(slot.identity for slot in capability.slots)
+    units = tuple(slot.unit for slot in capability.slots)
     scales = (
         0.5,
         0.2,
@@ -372,7 +166,7 @@ def _generic_associating_problem(
         canonical_dataset_sha256=canonical_dataset_sha256((row,)),
         transformation_record="none",
         units_and_bases="SI",
-        use_basis="fixed ordinary-sigma neutral-pure-2B regression contract",
+        use_basis="descriptor-bound fixed-topology association regression",
         residual_scale_rationale="manufactured finite scales",
     )
     return RegressionProblem(
@@ -381,9 +175,10 @@ def _generic_associating_problem(
             ParameterCoordinate(
                 family=family,
                 identity=identity,
-                capability_id=capability.capability_id,
+                capability_id=None,
                 provider_parameter_fingerprint=capability.parameter_fingerprint,
                 provider_topology_fingerprint=capability.topology_fingerprint,
+                provider_artifact_fingerprint=capability.artifact_fingerprint,
                 unit=unit,
                 transform=AffineParameterTransform(origin=value, scale=scale),
                 lower_bound=bound[0],
@@ -511,12 +306,7 @@ def _aqueous_model(
         "bromide-anion",
     ),
 ) -> Mixture:
-    parameters = Parameters.from_catalog(
-        "figiel-2025-reference-electrolytes",
-        components=component_ids,
-        version=1,
-    )
-    return Mixture(parameters)
+    return Mixture(Parameters.from_dictionary(aqueous_parameters(component_ids)))
 
 
 def _capability(
@@ -1567,7 +1357,7 @@ def test_installed_provider_advertises_exact_direct_observable_contracts() -> No
 
 
 def test_installed_provider_advertises_each_aqueous_kij_miac_contract() -> None:
-    model = _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4]
+    model = _aqueous_model()
     capabilities = tuple(
         capability
         for capability in parameter_capabilities(model)
@@ -1599,7 +1389,7 @@ def test_installed_provider_advertises_each_aqueous_kij_miac_contract() -> None:
 
 @pytest.mark.campaign
 def test_general_engine_fits_water_solvation_factor_over_all_nabr_rows() -> None:
-    model = _fixed_water_factor_model(FIGIEL_WATER_SOLVATION_FACTOR_V1)
+    model = _aqueous_model()
     result = fit_parameters(_solvation_factor_problem(model), model)
 
     assert result.solver_converged
@@ -1673,7 +1463,7 @@ def test_relative_permittivity_rejects_mislabeled_solvent() -> None:
 
 @pytest.mark.campaign
 def test_general_engine_fits_one_aqueous_kij_from_user_rows() -> None:
-    model = _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4]
+    model = _aqueous_model()
     problem = _aqueous_kij_problem(model)
     observations_before = problem.observations
     fixed_context_before = tuple(row.fixed_k_ij for row in problem.observations)
@@ -1818,7 +1608,7 @@ def test_general_engine_fits_each_born_diameter_independently(
 
 
 def test_direct_observations_fail_before_native_evaluation_outside_domain() -> None:
-    solvation_model = _fixed_water_factor_model(FIGIEL_WATER_SOLVATION_FACTOR_V1)
+    solvation_model = _aqueous_model()
     solvation = _solvation_factor_problem(solvation_model)
     first = solvation.observations[0]
     wrong_pressure = _replace_observations(
@@ -1891,65 +1681,45 @@ def test_installed_provider_advertises_scalar_pure_parameter_contracts() -> None
     assert all(capability.state_coordinate_count == 2 for capability in capabilities)
 
 
-@pytest.mark.campaign
-def test_installed_provider_advertises_bounded_pure_association_contracts() -> None:
+def test_installed_eos_advertises_one_structural_association_descriptor() -> None:
     capabilities = tuple(
         capability
         for capability in parameter_capabilities(_associating_pure_model())
-        if not isinstance(capability, UnsupportedParameterCapability)
+        if isinstance(capability, FixedTopologyAssociationCapability)
     )
-    assert tuple(capability.family for capability in capabilities) == (
+    assert len(capabilities) == 1
+    capability = capabilities[0]
+    assert capability.model_domain == "neutral_associating_pure"
+    assert capability.state_coordinate_count == 2
+    assert capability.association_basis_id == "ordinary_sigma_cubed_kappa"
+    assert tuple(slot.family for slot in capability.slots) == (
+        ParameterFamily.SEGMENT_COUNT,
+        ParameterFamily.SEGMENT_DIAMETER,
+        ParameterFamily.DISPERSION_ENERGY_OVER_K,
         ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
         ParameterFamily.ASSOCIATION_VOLUME,
-        ParameterFamily.PURE_ASSOCIATING_JOINT,
     )
-    assert tuple(capability.capability_id for capability in capabilities) == (
-        "neutral_pure_2b_association_energy_over_k_v1",
-        "neutral_pure_2b_association_volume_v1",
-        "neutral_pure_associating_joint_sigma_basis_v1",
-    )
-    assert tuple(capability.coordinate_kinds for capability in capabilities) == (
-        ("amount", "volume", "association_energy_over_k"),
-        ("amount", "volume", "association_volume"),
-        (
-            "amount",
-            "volume",
-            "segment_count",
-            "segment_diameter",
-            "dispersion_energy_over_k",
-            "association_energy_over_k",
-            "association_volume",
-        ),
-    )
-    assert tuple(capability.coordinate_units[-1] for capability in capabilities) == (
-        "kelvin",
-        "dimensionless",
-        "dimensionless",
-    )
-    assert all(capability.identity_shape == "model" for capability in capabilities)
     assert all(
-        capability.model_domain == "neutral_associating_pure"
-        for capability in capabilities
+        isinstance(slot.identity, AssociationParameterIdentity)
+        for slot in capability.slots[3:]
     )
 
 
-def test_ordinary_sigma_2b_block_evaluates_exact_jacobian() -> None:
+def test_generic_fixed_topology_block_evaluates_exact_jacobian() -> None:
     sites = (("acceptor", 1), ("donor", 1))
     pairs = (("acceptor", "donor", 1500.0, 0.01),)
     model = _generic_associating_model(sites, pairs)
     capability = next(
         capability
         for capability in parameter_capabilities(model)
-        if not isinstance(capability, UnsupportedParameterCapability)
-        and capability.capability_id == "neutral_pure_associating_joint_sigma_basis_v1"
+        if isinstance(capability, FixedTopologyAssociationCapability)
     )
-    assert capability.active_parameter_count == 5
-    assert capability.identity_shape == "model"
+    assert len(capability.slots) == 5
     problem = _generic_associating_problem(model, pairs)
     assert len(problem.parameters) == 5
     assert problem.parameter_slot_indices == tuple(range(5))
     assert all(
-        isinstance(parameter.identity, ModelParameterIdentity)
+        isinstance(parameter.identity, AssociationParameterIdentity)
         for parameter in problem.parameters[3:]
     )
     variables = (0.0,) * (len(problem.parameters) + 1)
@@ -1957,6 +1727,21 @@ def test_ordinary_sigma_2b_block_evaluates_exact_jacobian() -> None:
     assert len(residuals) == 2
     assert len(jacobian) == 2 * len(variables)
     assert all(math.isfinite(value) for value in (*residuals, *jacobian))
+    step = 1.0e-6
+    for column in range(len(variables)):
+        lower = list(variables)
+        upper = list(variables)
+        lower[column] -= step
+        upper[column] += step
+        lower_residuals, _ = _evaluate_parameters(problem, model, tuple(lower))
+        upper_residuals, _ = _evaluate_parameters(problem, model, tuple(upper))
+        for row, (lower_value, upper_value) in enumerate(
+            zip(lower_residuals, upper_residuals, strict=True)
+        ):
+            finite_difference = (upper_value - lower_value) / (2.0 * step)
+            assert jacobian[row * len(variables) + column] == pytest.approx(
+                finite_difference, rel=2.0e-5, abs=2.0e-6
+            )
     step = 1.0e-6
     for column in range(len(variables)):
         lower = list(variables)
@@ -2034,12 +1819,6 @@ def test_ordinary_sigma_2b_block_evaluates_exact_jacobian() -> None:
         parity_result.scientific_status
         == "NOT_ADJUDICATED_NO_APPROVED_SCIENTIFIC_CUTOFF"
     )
-    fixed_2b_record = parity_result.to_record()
-    assert fixed_2b_record["problem"]["kind"] == "RegressionProblem"
-    assert len(fixed_2b_record["parameters"]) == 5
-    assert fixed_2b_record["installed_artifacts"]["distribution"] == (
-        "epcsaft==0.2.0.dev0"
-    )
     replay_model = _generic_associating_model(
         sites,
         ((pairs[0][0], pairs[0][1], fitted[3], fitted[4]),),
@@ -2104,8 +1883,7 @@ def test_generic_association_block_accepts_combined_saturation_rows() -> None:
     capability = next(
         item
         for item in parameter_capabilities(model)
-        if not isinstance(item, UnsupportedParameterCapability)
-        and item.capability_id == "neutral_pure_associating_joint_sigma_basis_v1"
+        if isinstance(item, FixedTopologyAssociationCapability)
     )
     resolved, resolved_residuals, resolved_jacobian = (
         parameter_regression._native.evaluate_general_start(
@@ -2138,6 +1916,99 @@ def test_generic_association_block_accepts_combined_saturation_rows() -> None:
             assert jacobian[row * len(variables) + column] == pytest.approx(
                 finite_difference, rel=2.0e-5, abs=2.0e-6
             )
+
+
+@pytest.mark.parametrize("selected_slots", ((3,), (4,), (3, 4), (0, 3)))
+def test_fixed_topology_association_accepts_active_subsets(
+    selected_slots: tuple[int, ...],
+) -> None:
+    pairs = (("a", "b", 1500.0, 0.01), ("a", "c", 1700.0, 0.02))
+    model = _generic_associating_model(
+        (("a", 1), ("b", 1), ("c", 1)),
+        pairs,
+    )
+    full = _generic_associating_problem(model, pairs)
+    parameters = tuple(full.parameters[index] for index in selected_slots)
+    starts = tuple(
+        tuple(full.start_vectors[start][index] for index in selected_slots)
+        for start in range(len(full.start_vectors))
+    )
+    problem = replace(
+        full,
+        parameters=parameters,
+        parameter_slot_indices=tuple(range(len(parameters))),
+        start_vectors=starts,
+    )
+    variables = (0.0,) * (len(parameters) + 1)
+
+    residuals, jacobian = _evaluate_parameters(problem, model, variables)
+
+    assert len(residuals) == 2
+    assert len(jacobian) == 2 * len(variables)
+    assert all(math.isfinite(value) for value in (*residuals, *jacobian))
+
+
+def test_fixed_topology_association_accumulates_shared_slot_derivatives() -> None:
+    pairs = (("a", "b", 1500.0, 0.01), ("a", "c", 1500.0, 0.02))
+    model = _generic_associating_model(
+        (("a", 1), ("b", 1), ("c", 1)),
+        pairs,
+    )
+    full = _generic_associating_problem(model, pairs)
+    first_energy = full.parameters[3]
+    second_energy = full.parameters[5]
+    assert isinstance(first_energy.identity, AssociationParameterIdentity)
+    assert isinstance(second_energy.identity, AssociationParameterIdentity)
+    shared_energy = replace(
+        first_energy,
+        identity=AssociationParameterIdentity(
+            ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
+            first_energy.identity.site_pairs + second_energy.identity.site_pairs,
+        ),
+    )
+    parameters = (
+        *full.parameters[:3],
+        shared_energy,
+        full.parameters[4],
+        full.parameters[6],
+    )
+    physical_start = (3.2, 3.5, 280.0, 1500.0, 0.01, 0.02)
+    problem = replace(
+        full,
+        parameters=parameters,
+        parameter_slot_indices=(0, 1, 2, 3, 4, 3, 5),
+        start_vectors=(physical_start, physical_start),
+    )
+    variables = (0.0,) * (len(parameters) + 1)
+    residuals, jacobian = _evaluate_parameters(problem, model, variables)
+    step = 1.0e-6
+    lower = list(variables)
+    upper = list(variables)
+    lower[3] -= step
+    upper[3] += step
+    lower_residuals, _ = _evaluate_parameters(problem, model, tuple(lower))
+    upper_residuals, _ = _evaluate_parameters(problem, model, tuple(upper))
+
+    assert all(math.isfinite(value) for value in (*residuals, *jacobian))
+    for row, (lower_value, upper_value) in enumerate(
+        zip(lower_residuals, upper_residuals, strict=True)
+    ):
+        finite_difference = (upper_value - lower_value) / (2.0 * step)
+        assert jacobian[row * len(variables) + 3] == pytest.approx(
+            finite_difference, rel=2.0e-5, abs=2.0e-6
+        )
+
+
+def test_fixed_topology_association_rejects_permuted_slot_ownership() -> None:
+    pairs = (("a", "b", 1500.0, 0.01),)
+    model = _generic_associating_model((("a", 1), ("b", 1)), pairs)
+    problem = replace(
+        _generic_associating_problem(model, pairs),
+        parameter_slot_indices=(0, 1, 2, 4, 3),
+    )
+
+    with pytest.raises(ValueError, match="descriptor order"):
+        _evaluate_parameters(problem, model, (0.0,) * 6)
 
 
 @pytest.mark.campaign
@@ -2241,7 +2112,7 @@ def test_public_preparation_preserves_joint_pure_problem_semantics() -> None:
     assert prepared.preflight().ready
 
 
-def test_public_preparation_preserves_fixed_2b_problem_semantics() -> None:
+def test_public_preparation_preserves_fixed_topology_problem_semantics() -> None:
     pairs = (("acceptor", "donor", 1500.0, 0.01),)
     model = _generic_associating_model(
         (("acceptor", 1), ("donor", 1)),
@@ -2269,7 +2140,7 @@ def test_public_preparation_preserves_fixed_2b_problem_semantics() -> None:
     )
 
 
-def test_fixed_2b_preparation_rejects_changed_installed_coordinate_metadata(
+def test_fixed_topology_preparation_rejects_changed_installed_slot_metadata(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     pairs = (("acceptor", "donor", 1500.0, 0.01),)
@@ -2281,8 +2152,7 @@ def test_fixed_2b_preparation_rejects_changed_installed_coordinate_metadata(
     capability = next(
         item
         for item in parameter_capabilities(model)
-        if not isinstance(item, UnsupportedParameterCapability)
-        and item.capability_id == "neutral_pure_associating_joint_sigma_basis_v1"
+        if isinstance(item, FixedTopologyAssociationCapability)
     )
     monkeypatch.setattr(
         usability,
@@ -2290,12 +2160,15 @@ def test_fixed_2b_preparation_rejects_changed_installed_coordinate_metadata(
         lambda _: (
             replace(
                 capability,
-                coordinate_units=(*capability.coordinate_units[:-1], "kelvin"),
+                slots=(
+                    *capability.slots[:-1],
+                    replace(capability.slots[-1], unit="K"),
+                ),
             ),
         ),
     )
 
-    with pytest.raises(ValueError, match="five-parameter coordinate contract"):
+    with pytest.raises(ValueError, match="association_volume parameter unit"):
         _prepare_existing_problem(model, direct, "pure_density")
 
 
@@ -2355,12 +2228,12 @@ def test_record_constructor_covers_every_direct_observable_contract() -> None:
     born_target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[0]
     cases = (
         (
-            _fixed_water_factor_model(FIGIEL_WATER_SOLVATION_FACTOR_V1),
+            _aqueous_model(),
             _solvation_factor_problem,
             "mean_ionic_activity",
         ),
         (
-            _aqueous_kij_models(FIGIEL_AQUEOUS_KIJ_V1)[4],
+            _aqueous_model(),
             _aqueous_kij_problem,
             "aqueous_kij_mean_ionic_activity",
         ),
@@ -2396,7 +2269,7 @@ def test_native_joint_pure_adapter_rejects_reordered_slots() -> None:
     payload = list(_native_payload(problem, capabilities[0]))
     payload[-1] = (0, 2, 1)
 
-    with pytest.raises(RuntimeError, match="declared m, sigma"):
+    with pytest.raises(RuntimeError, match="ordinary joint pure requires identity"):
         parameter_regression._native.evaluate_general(
             native_sdk(model), tuple(payload), (0.0,) * 11
         )
@@ -2893,17 +2766,8 @@ def test_may_methane_propane_source_identity_and_transform() -> None:
     rows = _may_methane_propane_rows()
     problem = _may_methane_propane_problem(_methane_propane_model(), rows)
     parameters = _methane_propane_parameters()
-    pair_records = tuple(
-        record
-        for record in parameters.records
-        if isinstance(record, PairParameterRecord)
-    )
-    assert parameters.bundle_purpose == "user-provided"
     assert problem.observations[0].component_ids == ("methane", "propane")
-    assert len(pair_records) == 1
-    assert pair_records[0].component_id_a == "methane"
-    assert pair_records[0].component_id_b == "propane"
-    assert float(pair_records[0].value) == 0.0
+    assert parameters.component_ids == ("methane", "propane")
     assert problem.sources[0].source_artifact_sha256 == (
         "53fd1bdd55dc6807ec76cf88626438d8dfceb3ec09149d4405ea36cfbe6b842a"
     )

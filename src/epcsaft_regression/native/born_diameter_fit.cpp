@@ -236,11 +236,11 @@ Payload parse_payload(PyObject* object) {
     };
     constexpr std::array<double, ion_count> expected_published{2.784, 3.445, 4.150, 4.100, 4.480};
     constexpr std::array<const char*, ion_count> expected_fingerprints{
-        "sha256:dbed1c05a92d922369b9b631e89fe10add759e7c8d004ea53bc0a0c90d2d6f4a",
-        "sha256:d01bc3e64f19293902c00d9cc52060fccc3945ce736f0cd3e2f756be226cf5bf",
-        "sha256:05f2db21ad51a27e7b7b8fca267e8a38eb663145c980eae6bee7dce02700af5b",
-        "sha256:a8383fb8f70a1bb8c258f1662c792cd5507af1d23db71ad4575026b5dcab55ea",
-        "sha256:f313c30e9471daed0638ab70ff43eb033ed828724547c4b32857442ed35f1107",
+        "sha256:9cef6373572a729c7c3519ee04c261b4f9d821d37ae2b74dc916a4a02e863149",
+        "sha256:e97c462061bf92d2d75622a8d025a4f7e94106edccf2c924c88142b1b6a03439",
+        "sha256:1e885c57ebf7226d28a153ad4c3afb5e9ed8786b04aa0ff1b65e776b157d67d3",
+        "sha256:ac5a3ee0bf044d9fc63086a41f04f7b9f34a506daf67ac9627fd082a519c62a3",
+        "sha256:7db8316e0c2352d992c7482d4c1218463020d749d5365ec8a8f5e491643eb9b2",
     };
     for (std::size_t index = 0; index < ion_count; ++index) {
         const Target& target = payload.targets[index];

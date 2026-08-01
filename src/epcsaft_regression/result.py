@@ -21,6 +21,7 @@ from .evaluator_regression import (
 from .parameter_regression import (
     DirectObservationRowDiagnostic,
     FittedParameterDiagnostic,
+    FixedTopologyAssociationCapability,
     GeneralJacobianDiagnostics,
     GeneralRowDiagnostic,
     ParameterCapability,
@@ -37,7 +38,12 @@ from .parameter_regression import (
 @dataclass(frozen=True, slots=True)
 class RegressionResult:
     problem: RegressionProblem | PositiveEvaluatorProblem
-    capabilities: tuple[ParameterCapability | PositiveEvaluatorCapability, ...]
+    capabilities: tuple[
+        ParameterCapability
+        | FixedTopologyAssociationCapability
+        | PositiveEvaluatorCapability,
+        ...,
+    ]
     preparation_fingerprint: str | None
     provider_parameter_fingerprint: str
     provider_topology_fingerprint: str
@@ -208,11 +214,11 @@ class ResultContext:
             )
 
 
-_EOS_COMMIT = "24ab1bdfb3a1558eb87815e9c3b5d97fbe6a025d"
-_EOS_TREE = "145cf8b6126ad403aa8ee51b1b4623db3da8aa2f"
-_EOS_WHEEL_SHA256 = "66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9"
-_EOS_HEADER_SHA256 = "db37805c1abd9b1a355f41a89154d14756477c7293af940dc298a6b038aee45d"
-_EOS_LIBRARY_SHA256 = "5e5c3e8311c011365471eeff29b2d9ff8486d149745a4bea7cd48bd6e784f9d3"
+_EOS_COMMIT = "7b97bab039e1c50a6f89522698af80493bea5f9e"
+_EOS_TREE = "d082a8f102b32705b6cd6669a3e31a8d4ea8acd0"
+_EOS_WHEEL_SHA256 = "1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9"
+_EOS_HEADER_SHA256 = "881f5ec87293de8b1f3c25c16018aa94be69775fede2ec5426fcbb08e257fecd"
+_EOS_LIBRARY_SHA256 = "fd624add206b8d783cd079db320b6dba64083063af2f29faf5ce82d1cf4743eb"
 
 
 @cache
@@ -364,7 +370,9 @@ def _resolved_objective_identity(result: RegressionResult, json_value) -> object
             _OBJECTIVE_FAMILIES[type(row)] for row in result.problem.observations
         }
         residual_family = (
-            next(iter(families)) if len(families) == 1 else "pure_associating_mixed"
+            next(iter(families))
+            if len(families) == 1
+            else "fixed_topology_association_mixed"
         )
     return {
         "resolution": "canonical_problem_contract",

@@ -1,21 +1,21 @@
 # General ePC-SAFT Parameter Regression
 
 Status: general nonpolar/electrolyte families fit-ready for their typed
-observation contracts; neutral pure 2B ordinary-sigma joint block executable;
-polar regression excluded
+observation contracts; descriptor-driven fixed-topology association block
+executable; polar regression excluded
 
 Date: 2026-07-30
 
 ## Active installed EOS binding
 
 The active frontend dependency is EOS `0.2.0.dev0`, commit
-`24ab1bdfb3a1558eb87815e9c3b5d97fbe6a025d`, tree
-`145cf8b6126ad403aa8ee51b1b4623db3da8aa2f`, wheel SHA-256
-`66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9`, and
+`7b97bab039e1c50a6f89522698af80493bea5f9e`, tree
+`d082a8f102b32705b6cd6669a3e31a8d4ea8acd0`, wheel SHA-256
+`1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9`, and
 installed-header SHA-256
-`db37805c1abd9b1a355f41a89154d14756477c7293af940dc298a6b038aee45d`.
+`881f5ec87293de8b1f3c25c16018aa94be69775fede2ec5426fcbb08e257fecd`.
 The installed static-library SHA-256 is
-`5e5c3e8311c011365471eeff29b2d9ff8486d149745a4bea7cd48bd6e784f9d3`.
+`fd624add206b8d783cd079db320b6dba64083063af2f29faf5ce82d1cf4743eb`.
 The previous frontend subject's final EOS JUnit receipt artifact is
 `provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
 SHA-256
@@ -103,22 +103,24 @@ ParameterCoordinate
     ComponentParameter(component_id)
     | PairParameter(component_id_a, component_id_b)
     | ModelParameter(model_parameter_id)
-  capability_id
+    | AssociationParameter(quantity, site_pair_endpoints...)
+  capability_id | None                   # None for descriptor-bound slots
   provider_parameter_fingerprint
   provider_topology_fingerprint
+  provider_artifact_fingerprint
   transform: Affine(origin, scale)       # v1; p = origin + scale*z
   lower_bound
   upper_bound
 ```
 
-Each family permits exactly one identity variant. Pair endpoints and
-component endpoints use one documented canonical lexical order; duplicate
-canonical identities are rejected. Association-site and correlation-
-coefficient identities are reserved future variants and are not accepted by
-the current executable schema. EOS's capability descriptor supplies
-the canonical physical unit and an explicit mapping from these identities to
-its active coordinate order. A model, formulation, topology, transform, or
-parameter-fingerprint mismatch fails before evaluation.
+Each family permits exactly one identity variant. Pair, component, and
+association-site endpoints use canonical lexical order; duplicate canonical
+identities are rejected. One association identity may contain several site
+pairs to declare intentional many-to-one parameter sharing. EOS's immutable
+descriptor supplies the finite slot list, canonical physical units, component
+and site order, multiplicities, allowed bonds, physical domains, tensor layout,
+and exact mapping to derivative columns. Model, topology, parameter, artifact,
+identity, order, unit, or bound mismatches fail before optimization.
 
 Bounds and affine scales are mandatory source or workflow inputs; the runtime
 supplies no chemistry defaults. `RegressionProblem.start_vectors` is an
@@ -149,7 +151,7 @@ derivative readiness:
 | `zuber_ion_suppression_coefficient` | continuous component coordinate when exact derivatives are advertised |
 | `rueben_dipole_scaling`, `rueben_polarizability_scaling`, `rueben_correlation_integral_parameter` | EOS-represented polar-model inputs explicitly excluded from the Regression roadmap by user decision; no Regression capability is planned |
 | `k_ij`, `l_ij` | continuous unordered component-pair coordinates |
-| `association_energy_over_k`, `association_volume` | model-bound coordinates in the installed EOS's fixed neutral pure 2B ordinary-`sigma_ij^3*kappa` capability; topology is not a fitted coordinate |
+| `association_energy_over_k`, `association_volume` | component/site-pair coordinates selected from the installed EOS fixed-topology ordinary-`sigma_ij^3*kappa` descriptor; topology is immutable EOS input, not a fitted coordinate |
 | `ion_fraction_suppression_coefficient`, `ionic_region_relative_permittivity` | continuous model coordinates when exact derivatives are advertised |
 | correlation terms for `segment_diameter`, `relative_permittivity`, and `solvation_factor` | individually named coefficient coordinates; no whole-correlation opaque fit |
 
@@ -179,8 +181,8 @@ conditioning, non-bound diagnostics, and confirmation-start agreement.
 | `relative_permittivity` | solvent component | Source-bound single-ion solvation-Gibbs targets with fixed other model inputs, exact solvent identity, x-process convention, state, and scale | Exact EOS solvation-Gibbs value/first derivative for the active solvent permittivity; direct-observable Ceres rows | `FIT_READY`. Corrected Validation subject `e4cb7af` gives five independent rank-1 water fits returning `78.0899937514462` through `78.08999375166104` versus fixed `78.09`. This is implementation evidence, not a paper-fitted target or MEA prerequisite. |
 | `ion_fraction_suppression_coefficient` | model | Salt-free-normalized relative-permittivity observations spanning enough total-ion mole fraction to identify one coefficient | Exact EOS relative-permittivity ratio and first derivative; direct-observable Ceres rows | `FIT_READY`; 36 digitized Figiel water/methanol rows are reference evidence. Optional standalone recovery. |
 | `ionic_region_relative_permittivity` | model | Source-defined single-ion solvation-Gibbs targets with fixed Born diameters and other inputs | Exact EOS SSM+DS solvation-Gibbs value/first derivative; direct-observable Ceres rows | `FIT_READY`; five independent Figiel fits recover fixed `8` within `2.2e-9`. Parallel groundwork, not coupled-MEA readiness. |
-| `association_energy_over_k` | model-bound pair in a fixed neutral pure 2B topology | Simultaneous multi-temperature vapor-pressure and liquid-density observations with exact row identities, units, topology, bounds, scales, and starts; one density point is insufficient | The mixed-row Ceres surface consumes the ordinary `sigma_ij^3*kappa` EOS value/gradient/Hessian jointly with `m`, `sigma`, `epsilon/k`, and association volume | `EXECUTABLE_GENERIC_2B_BLOCK`; mechanics and public-state parity are verified. Case-specific identifiability and parameter acceptance remain Validation evidence and issue #28 work. |
-| `association_volume` | model-bound pair in the same fixed neutral pure 2B topology | The same source-complete simultaneous series is required to distinguish this coordinate from association energy and the three ordinary pure parameters | Same ordinary-sigma five-parameter block; no association-only engine, scheme-name parser, or paper-specific runtime | `EXECUTABLE_GENERIC_2B_BLOCK`; no MAPA/DEEA tuple is accepted or packaged. |
+| `association_energy_over_k` | one or more canonical component/site pairs in an EOS-advertised fixed topology | Association-sensitive pure rows sufficient for the selected subset and sharing contract, with exact identities, units, topology, bounds, scales, and starts | One variable-width EOS request returns `(n,V,selected slots...)` value/gradient/full Hessian; Regression maps `S` slots to `N` fitted coordinates and sums shared derivative columns | `FIT_READY_FIXED_TOPOLOGY`; energy-only, joint, subset, sharing, 2B reference, and non-2B mechanics are routine-tested. Case-specific identifiability and acceptance remain Validation evidence. |
+| `association_volume` | one or more canonical component/site pairs in the same immutable descriptor | The same source-complete requirement applies; volume slots may be selected independently or jointly with ordinary-pure and energy slots | The same descriptor/request/result path; no scalar association callback, topology-name parser, five-coordinate branch, or paper-specific runtime | `FIT_READY_FIXED_TOPOLOGY`; no MAPA/DEEA tuple or topology is accepted or packaged. |
 | `k_hb_ij` | source-defined cross-association combining-rule coordinate | A source-defined combining rule and sign convention plus composition/temperature-varying association-sensitive observations that separate cross from pure association | New EOS record/transform identity, versioned fingerprint, exact chain-rule derivative, and an association-endpoint Regression identity are required | `NOT_READY`. Ascani's fixed `0.026` is provenance, not a recovery dataset. Do not alias it to resolved association energy or invent zero defaults. Not the next MEA investment. |
 | `schreckenberg_dielectric_volume`, `schreckenberg_dielectric_temperature` | component/correlation coordinates | Multi-temperature electrolyte relative-permittivity or other source observables that independently identify the selected coefficient | New exact EOS active-parameter callback and Regression correlation identity/surface | `REPRESENTED_NOT_DERIVATIVE_READY`; no retained rank-sufficient recovery series. Optional, not on the MEA critical path. |
 | `zuber_ion_suppression_coefficient` | ion component | Relative-permittivity, MIAC, osmotic/activity, or solvation observations spanning ion fraction/molality and preferably temperature | New exact EOS active-parameter callback and matching typed Regression observation contract | `REPRESENTED_NOT_DERIVATIVE_READY`; the retained one-row osmotic oracle is insufficient. Optional. |
@@ -478,7 +480,7 @@ third derivative or density-root sensitivity is introduced. Regression rejects
 out-of-bound or inverted volumes and nonpositive mechanical-stability
 curvature before accepting an evaluation.
 
-The pure-2B ordinary-sigma surface re-closes the pressure roots for
+The fixed-topology association surface re-closes the pressure roots for
 vapor-pressure, fixed-pressure-density, and combined saturation
 pressure/liquid-density problems at each independent parameter start. A
 safeguarded Newton correction begins from the row's retained volume; a bounded
@@ -628,10 +630,11 @@ coordinates. The numerical contract must declare a maximum accepted condition
 number and its rationale; the engine supplies no universal scientific cutoff.
 
 This bounded preflight establishes structural and local numerical readiness,
-not practical or global identifiability. The fixed neutral-pure-2B block
-additionally requires issue 28's nuisance-reoptimized association profiles and
+not practical or global identifiability. The retained fixed-2B literature
+campaign additionally requires issue 28's nuisance-reoptimized profiles and
 declared accepted region before it may report practical-identifiability
-evidence. A dense set of correlation-generated rows does not become
+evidence; other topology/parameter selections require their own Validation
+campaigns. A dense set of correlation-generated rows does not become
 independent experimental information merely because the local Jacobian has
 full rank.
 
@@ -640,8 +643,9 @@ full rank.
 Regression retains compact deterministic numerical-tolerance tests for the
 main generic public workflows and supported active-coordinate variations. The
 routine matrix covers accepted methane/ethane joint pure fits, representative
-scalar and pair adapters, joint `(m,sigma,epsilon/k)`, fixed neutral-pure-2B
-mechanics and admitted constrained subsets, fixed-composition `k_ij`/`l_ij`,
+scalar and pair adapters, joint `(m,sigma,epsilon/k)`, fixed-topology
+association with 2B and non-2B descriptors, subsets and sharing,
+fixed-composition `k_ij`/`l_ij`,
 the composed positive-observation transport, and deterministic result records.
 Related cases are parameterized when they share one invariant.
 
@@ -781,25 +785,26 @@ use the observation-declared lifted-volume starts. This is a start
 perturbation only; it changes no source row, weight, bound, scale, or
 acceptance threshold.
 
-The public `fit_parameters` transport admits two exact multi-active blocks.
+The public `fit_parameters` transport admits two exact multi-active shapes.
 The first is the three ordered pure parameters `(m,sigma,epsilon/k)` on
 pure-saturation observations. This closed EOS-backed adapter maps the identity
 sharing order `(m,sigma,epsilon/k)` to the EOS
 `(n,V,m,sigma,epsilon/k)` callback and delegates training to the generalized
 core.
 
-The second is the fixed neutral-pure-2B block
-`(m,sigma,epsilon/k,epsilon_AB/k,kappa_AB)` using the EOS ordinary
-`sigma_ij^3*kappa` callback. It supports vapor-pressure,
-fixed-pressure-density, and combined saturation pressure/liquid-density rows.
-Exact Jacobian replay and a compact manufactured full-rank solve establish
-mechanics only; no association tuple, practical identifiability, prediction,
-or non-2B topology is accepted.
+The second is the EOS descriptor-driven fixed-topology association shape. It
+accepts any finite ordered active subset advertised by that descriptor,
+including ordinary-pure and association slots, multiple site pairs, and
+explicit many-to-one sharing. The native bridge keeps `N` fitted coordinates
+and `S` EOS slots distinct and accumulates the full Hessian columns according
+to the declared sharing map. Vapor-pressure, fixed-pressure-density, and
+combined saturation rows all use this one path. Exact Jacobian replay, a 2B
+reference, and a non-2B multi-pair sentinel establish mechanics only; no
+association tuple, topology, practical identifiability, or prediction is
+accepted.
 
-A later mixture, reactive, or non-2B block must provide its own reviewed exact
-multi-active evaluator contract and remains fail-closed until then; this
-implementation does not pretend that several independent scalar callbacks are
-one coupled derivative.
+A later mixture or reactive association domain must provide its own reviewed
+exact descriptor contract and remains fail-closed until then.
 The current installed pure callback returns value, gradient, and Hessian in
 one inseparable ABI call. The core propagates Ceres's residual-only request and
 does not copy the assembled Regression Jacobian for that call, but the adapter
@@ -949,12 +954,13 @@ prediction evidence, or EOS-catalog authority.
    independent `1 x 1` fits are rank 1, non-bound, and confirmed from starts
    50 and 110. Recovery of fixed `78.09` is mechanics evidence, not a
    paper-fitted or predictive result.
-9. **Mechanics complete for fixed neutral-pure-2B; identifiability pending.**
-   The ordinary-sigma five-parameter callback and Regression path are
-   executable. Practical-identifiability profiles, a conditional
-   fixed-`kappa_AB` fallback, and source-complete installed-artifact campaigns
-   remain open. Non-2B topologies require a separate EOS capability decision.
-   Polar families remain excluded.
+9. **Mechanics complete for fixed-topology association; campaign evidence pending.**
+   One ordinary-sigma descriptor/request/result path supports arbitrary
+   advertised subsets, multiple site pairs, and explicit sharing. The retained
+   2B case is a reference through that path, not a special capability.
+   Practical-identifiability profiles, competing topology or induced-
+   association strategies, and source-complete installed-artifact campaigns
+   remain Validation work. Polar families remain excluded.
 10. **Selected coupled MEA path blocked upstream.** The exact positive-
     observation transport is implemented. The frozen Hilliard/Böttinger
     homogeneous state remains `FEASIBLE_ONLY`. Its local-minimum gate fails,
@@ -965,8 +971,8 @@ prediction evidence, or EOS-catalog authority.
     `docs/science/mea-coupled-regression-master-plan.md`.
 
 Every standalone scalar family admitted in steps 1--8 must be independently
-fit-ready and reference-validated. Step 9 records executable fixed-2B mechanics
-without parameter acceptance. Step 10 is a separate coupled capability: it
+fit-ready and reference-validated. Step 9 records executable fixed-topology
+mechanics without parameter or topology acceptance. Step 10 is a separate coupled capability: it
 does not promote optional standalone families and cannot use their evidence as
 a substitute for exact Equilibrium sensitivities.
 

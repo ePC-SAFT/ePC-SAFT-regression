@@ -15,7 +15,6 @@ from . import _native
 
 
 class ParameterFamily(StrEnum):
-    PURE_ASSOCIATING_JOINT = "pure_associating_joint"
     SEGMENT_COUNT = "segment_count"
     SEGMENT_DIAMETER = "segment_diameter"
     DISPERSION_ENERGY_OVER_K = "dispersion_energy_over_k"
@@ -82,6 +81,55 @@ class ParameterCapability:
 
 
 @dataclass(frozen=True, slots=True)
+class FixedTopologyParameterSlot:
+    slot_index: int
+    parameter_id: str
+    family: ParameterFamily
+    identity: ComponentParameterIdentity | AssociationParameterIdentity
+    unit: str
+    lower_bound_exclusive: float
+    upper_bound_exclusive: float
+
+
+@dataclass(frozen=True, slots=True)
+class FixedTopologyAssociationCapability:
+    component_ids: tuple[str, ...]
+    site_ids: tuple[str, ...]
+    site_component_ids: tuple[str, ...]
+    site_multiplicities: tuple[int, ...]
+    slots: tuple[FixedTopologyParameterSlot, ...]
+    parameter_fingerprint: str
+    topology_fingerprint: str
+    artifact_fingerprint: str
+    derivative_order: int
+    maturity: str
+    authority_effect: str
+    temperature_min_k: float
+    temperature_max_k: float
+    observation_contract: str
+    model_domain: str
+    tensor_layout: str
+    state_coordinate_count: int
+    helmholtz_basis_id: str
+    association_basis_id: str
+    unsupported_status: str
+    domain_status: str
+
+    @property
+    def installed_ready(self) -> bool:
+        return self.maturity == "DERIVATIVE_READY" and self.derivative_order >= 2
+
+    @property
+    def unsupported_reason(self) -> str:
+        if self.installed_ready:
+            return ""
+        return (
+            f"installed maturity={self.maturity}, derivative order="
+            f"{self.derivative_order}"
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class UnsupportedParameterCapability:
     capability_code: int
     schema_version: int
@@ -113,6 +161,7 @@ class FittedParameterDiagnostic:
     upper_bound: float
     active_bound_distance: float
     active_bound: str | None
+    active_coordinate_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,10 +263,82 @@ class DirectObservationRowDiagnostic:
 
 def parameter_capabilities(
     model: object,
-) -> tuple[ParameterCapability | UnsupportedParameterCapability, ...]:
+) -> tuple[
+    ParameterCapability
+    | FixedTopologyAssociationCapability
+    | UnsupportedParameterCapability,
+    ...,
+]:
     raw_capabilities = _native.parameter_capabilities(native_sdk(model))
-    capabilities: list[ParameterCapability | UnsupportedParameterCapability] = []
+    capabilities: list[
+        ParameterCapability
+        | FixedTopologyAssociationCapability
+        | UnsupportedParameterCapability
+    ] = []
     for raw in raw_capabilities:
+        if raw[0] == "fixed_topology_association":
+            component_ids = tuple(raw[1])
+            site_ids = tuple(raw[2])
+            site_component_indices = tuple(raw[3])
+            site_component_ids = tuple(
+                component_ids[index] for index in site_component_indices
+            )
+            slots = []
+            for slot_index, item in enumerate(raw[5]):
+                family = ParameterFamily(item[0])
+                if item[2] < 0:
+                    identity: (
+                        ComponentParameterIdentity | AssociationParameterIdentity
+                    ) = ComponentParameterIdentity(component_ids[item[1]])
+                else:
+                    identity = AssociationParameterIdentity(
+                        family,
+                        (
+                            AssociationSitePairIdentity(
+                                component_ids[item[4]],
+                                site_ids[item[2]],
+                                component_ids[item[5]],
+                                site_ids[item[3]],
+                            ),
+                        ),
+                    )
+                slots.append(
+                    FixedTopologyParameterSlot(
+                        slot_index=slot_index,
+                        parameter_id=item[6],
+                        family=family,
+                        identity=identity,
+                        unit=_provider_unit(item[7]),
+                        lower_bound_exclusive=item[8],
+                        upper_bound_exclusive=item[9],
+                    )
+                )
+            capabilities.append(
+                FixedTopologyAssociationCapability(
+                    component_ids=component_ids,
+                    site_ids=site_ids,
+                    site_component_ids=site_component_ids,
+                    site_multiplicities=tuple(raw[4]),
+                    slots=tuple(slots),
+                    parameter_fingerprint=raw[6],
+                    topology_fingerprint=raw[7],
+                    artifact_fingerprint=raw[8],
+                    derivative_order=raw[9],
+                    maturity=raw[10],
+                    authority_effect=raw[11],
+                    temperature_min_k=raw[12],
+                    temperature_max_k=raw[13],
+                    observation_contract=raw[14],
+                    model_domain=raw[15],
+                    tensor_layout=raw[16],
+                    state_coordinate_count=raw[17],
+                    helmholtz_basis_id=raw[18],
+                    association_basis_id=raw[19],
+                    unsupported_status=raw[20],
+                    domain_status=raw[21],
+                )
+            )
+            continue
         if len(raw) == 3 and type(raw[0]) is int:
             capabilities.append(
                 UnsupportedParameterCapability(
@@ -258,6 +379,16 @@ def parameter_capabilities(
             )
         )
     return tuple(capabilities)
+
+
+def _provider_unit(value: str) -> str:
+    units = {"dimensionless": "1", "angstrom": "angstrom", "kelvin": "K"}
+    try:
+        return units[value]
+    except KeyError as error:
+        raise ValueError(
+            f"installed capability uses unsupported unit {value!r}"
+        ) from error
 
 
 class ObservationPartition(StrEnum):
@@ -340,6 +471,95 @@ class ModelParameterIdentity:
         return ()
 
 
+@dataclass(frozen=True, slots=True, order=True)
+class AssociationSitePairIdentity:
+    component_id_a: str
+    site_id_a: str
+    component_id_b: str
+    site_id_b: str
+
+    def __post_init__(self) -> None:
+        for field in (
+            "component_id_a",
+            "site_id_a",
+            "component_id_b",
+            "site_id_b",
+        ):
+            _require_nonempty_string(getattr(self, field), field)
+        endpoints = sorted(
+            (
+                (self.component_id_a, self.site_id_a),
+                (self.component_id_b, self.site_id_b),
+            )
+        )
+        object.__setattr__(self, "component_id_a", endpoints[0][0])
+        object.__setattr__(self, "site_id_a", endpoints[0][1])
+        object.__setattr__(self, "component_id_b", endpoints[1][0])
+        object.__setattr__(self, "site_id_b", endpoints[1][1])
+
+    @property
+    def component_ids(self) -> tuple[str, ...]:
+        return tuple(sorted({self.component_id_a, self.component_id_b}))
+
+    @property
+    def canonical_id(self) -> str:
+        return (
+            f"{self.component_id_a}/{self.site_id_a}--"
+            f"{self.component_id_b}/{self.site_id_b}"
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AssociationParameterIdentity:
+    quantity: ParameterFamily
+    site_pairs: tuple[AssociationSitePairIdentity, ...]
+
+    def __post_init__(self) -> None:
+        if self.quantity not in (
+            ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
+            ParameterFamily.ASSOCIATION_VOLUME,
+        ):
+            raise ValueError(
+                "association parameter quantity must be association energy or volume"
+            )
+        if (
+            type(self.site_pairs) is not tuple
+            or not self.site_pairs
+            or any(
+                not isinstance(pair, AssociationSitePairIdentity)
+                for pair in self.site_pairs
+            )
+        ):
+            raise TypeError(
+                "association parameter site_pairs must be a nonempty tuple of "
+                "AssociationSitePairIdentity values"
+            )
+        canonical = tuple(sorted(self.site_pairs))
+        if len(set(canonical)) != len(canonical):
+            raise ValueError("association parameter site pairs must be unique")
+        object.__setattr__(self, "site_pairs", canonical)
+
+    @property
+    def component_ids(self) -> tuple[str, ...]:
+        return tuple(
+            sorted(
+                {
+                    component
+                    for pair in self.site_pairs
+                    for component in pair.component_ids
+                }
+            )
+        )
+
+    @property
+    def canonical_component_ids(self) -> tuple[str, ...]:
+        return self.component_ids
+
+    @property
+    def canonical_ids(self) -> tuple[str, ...]:
+        return tuple(pair.canonical_id for pair in self.site_pairs)
+
+
 @dataclass(frozen=True, slots=True)
 class AffineParameterTransform:
     origin: float
@@ -364,15 +584,19 @@ class AffineParameterTransform:
 class ParameterCoordinate:
     family: ParameterFamily
     identity: (
-        PairParameterIdentity | ComponentParameterIdentity | ModelParameterIdentity
+        PairParameterIdentity
+        | ComponentParameterIdentity
+        | ModelParameterIdentity
+        | AssociationParameterIdentity
     )
-    capability_id: str
+    capability_id: str | None
     provider_parameter_fingerprint: str
     provider_topology_fingerprint: str
     unit: str
     transform: AffineParameterTransform
     lower_bound: float
     upper_bound: float
+    provider_artifact_fingerprint: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.family, ParameterFamily):
@@ -389,8 +613,6 @@ class ParameterCoordinate:
         model_units = {
             ParameterFamily.ION_FRACTION_SUPPRESSION_COEFFICIENT: "1",
             ParameterFamily.IONIC_REGION_RELATIVE_PERMITTIVITY: "1",
-            ParameterFamily.ASSOCIATION_ENERGY_OVER_K: "K",
-            ParameterFamily.ASSOCIATION_VOLUME: "1",
         }
         if self.family in pair_families:
             if not isinstance(self.identity, PairParameterIdentity):
@@ -404,6 +626,21 @@ class ParameterCoordinate:
                     "component-parameter identity must be a ComponentParameterIdentity"
                 )
             expected_unit = component_units[self.family]
+        elif self.family in (
+            ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
+            ParameterFamily.ASSOCIATION_VOLUME,
+        ):
+            if (
+                not isinstance(self.identity, AssociationParameterIdentity)
+                or self.identity.quantity is not self.family
+            ):
+                raise TypeError(
+                    "association coordinates require a matching "
+                    "AssociationParameterIdentity"
+                )
+            expected_unit = (
+                "K" if self.family is ParameterFamily.ASSOCIATION_ENERGY_OVER_K else "1"
+            )
         elif self.family in model_units:
             if not isinstance(self.identity, ModelParameterIdentity):
                 raise TypeError(
@@ -420,7 +657,41 @@ class ParameterCoordinate:
                 ", ionic_region_relative_permittivity, "
                 "association_energy_over_k, or association_volume"
             )
-        _require_nonempty_string(self.capability_id, "capability_id")
+        if isinstance(self.identity, AssociationParameterIdentity):
+            if self.capability_id is not None:
+                raise ValueError(
+                    "generic association coordinates do not use capability IDs"
+                )
+            if self.provider_artifact_fingerprint is None:
+                raise ValueError(
+                    "generic association coordinates require the installed "
+                    "artifact fingerprint"
+                )
+            _require_sha256(
+                self.provider_artifact_fingerprint,
+                "provider artifact fingerprint",
+                prefixed=True,
+            )
+        else:
+            if self.capability_id is None:
+                if self.provider_artifact_fingerprint is None:
+                    raise ValueError(
+                        "descriptor-driven coordinates require the installed "
+                        "artifact fingerprint"
+                    )
+                _require_sha256(
+                    self.provider_artifact_fingerprint,
+                    "provider artifact fingerprint",
+                    prefixed=True,
+                )
+            else:
+                _require_nonempty_string(self.capability_id, "capability_id")
+                if self.provider_artifact_fingerprint is not None:
+                    _require_sha256(
+                        self.provider_artifact_fingerprint,
+                        "provider artifact fingerprint",
+                        prefixed=True,
+                    )
         _require_sha256(
             self.provider_parameter_fingerprint,
             "provider parameter fingerprint",
@@ -1206,11 +1477,7 @@ class RegressionProblem:
         if len(set(row_ids)) != len(row_ids):
             raise ValueError("duplicate row_id values are forbidden")
         parameter_keys = tuple(
-            (
-                parameter.family,
-                parameter.identity.canonical_component_ids,
-            )
-            for parameter in self.parameters
+            (parameter.family, parameter.identity) for parameter in self.parameters
         )
         if len(set(parameter_keys)) != len(parameter_keys):
             raise ValueError("duplicate parameter identity values are forbidden")
@@ -1469,62 +1736,96 @@ def _row_payload(row: RegressionObservation) -> tuple[object, ...]:
     )
 
 
-def _is_associating_parameter_block(problem: RegressionProblem) -> bool:
-    families = tuple(parameter.family for parameter in problem.parameters)
-    return families == (
-        ParameterFamily.SEGMENT_COUNT,
-        ParameterFamily.SEGMENT_DIAMETER,
-        ParameterFamily.DISPERSION_ENERGY_OVER_K,
-        ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
-        ParameterFamily.ASSOCIATION_VOLUME,
+def _uses_fixed_topology_association(problem: RegressionProblem) -> bool:
+    return any(
+        isinstance(parameter.identity, AssociationParameterIdentity)
+        for parameter in problem.parameters
     )
 
 
-def _validate_associating_capability(capability: ParameterCapability) -> None:
+def _fixed_topology_slot_match(
+    problem: RegressionProblem,
+    capability: FixedTopologyAssociationCapability,
+) -> tuple[int, ...]:
     if (
-        capability.family is not ParameterFamily.PURE_ASSOCIATING_JOINT
-        or capability.coordinate_kinds
-        != (
-            "amount",
-            "volume",
-            "segment_count",
-            "segment_diameter",
-            "dispersion_energy_over_k",
-            "association_energy_over_k",
-            "association_volume",
-        )
-        or capability.coordinate_units
-        != (
-            "mol",
-            "m3",
-            "dimensionless",
-            "angstrom",
-            "kelvin",
-            "kelvin",
-            "dimensionless",
-        )
-        or capability.state_coordinate_count != 2
-        or capability.active_parameter_count != 5
+        not capability.installed_ready
         or capability.observation_contract != "fixed_composition_helmholtz_phase"
         or capability.model_domain != "neutral_associating_pure"
-        or capability.identity_shape != "model"
         or capability.tensor_layout != "row_major"
-        or capability.derivative_order != 2
-        or len(capability.component_ids) != 1
+        or capability.state_coordinate_count != 2
+        or not capability.helmholtz_basis_id
+        or not capability.association_basis_id
     ):
         raise ValueError(
-            "installed EOS ordinary-sigma pure-2B descriptor does not match "
-            "the five-parameter coordinate contract"
+            "installed EOS fixed-topology association descriptor is incomplete"
         )
+    matched: list[tuple[int, int]] = []
+    for parameter_index, parameter in enumerate(problem.parameters):
+        if (
+            parameter.capability_id is not None
+            or parameter.provider_parameter_fingerprint
+            != capability.parameter_fingerprint
+            or parameter.provider_topology_fingerprint
+            != capability.topology_fingerprint
+            or parameter.provider_artifact_fingerprint
+            != capability.artifact_fingerprint
+        ):
+            raise ValueError(
+                "association coordinate does not match the installed EOS artifact"
+            )
+        if isinstance(parameter.identity, AssociationParameterIdentity):
+            expected_identities: tuple[
+                ComponentParameterIdentity | AssociationParameterIdentity, ...
+            ] = tuple(
+                AssociationParameterIdentity(
+                    parameter.family,
+                    (pair,),
+                )
+                for pair in parameter.identity.site_pairs
+            )
+        else:
+            expected_identities = (parameter.identity,)
+        parameter_matches = []
+        for expected_identity in expected_identities:
+            candidates = tuple(
+                slot
+                for slot in capability.slots
+                if slot.family is parameter.family
+                and slot.identity == expected_identity
+                and slot.unit == parameter.unit
+                and parameter.lower_bound > slot.lower_bound_exclusive
+                and parameter.upper_bound < slot.upper_bound_exclusive
+            )
+            if len(candidates) != 1:
+                raise ValueError(
+                    "association coordinate identity, unit, or bounds do not "
+                    "match exactly one advertised EOS slot"
+                )
+            parameter_matches.append(candidates[0].slot_index)
+        matched.extend(
+            (slot_index, parameter_index) for slot_index in parameter_matches
+        )
+    matched.sort()
+    slot_indices = tuple(slot for slot, _ in matched)
+    if len(set(slot_indices)) != len(slot_indices):
+        raise ValueError("fixed-topology association slots cannot be selected twice")
+    expected_sharing = tuple(parameter for _, parameter in matched)
+    if problem.parameter_slot_indices != expected_sharing:
+        raise ValueError(
+            "parameter_slot_indices must map the selected advertised EOS slots "
+            "to fitted parameters in descriptor order"
+        )
+    return slot_indices
 
 
 def _native_payload(
-    problem: RegressionProblem, capability: ParameterCapability
+    problem: RegressionProblem,
+    capability: ParameterCapability | FixedTopologyAssociationCapability,
 ) -> tuple[object, ...]:
     parameter = problem.parameters[0]
     observation_shape = (
-        "mixed_pure_associating"
-        if _is_associating_parameter_block(problem)
+        "fixed_topology_association"
+        if _uses_fixed_topology_association(problem)
         and all(
             isinstance(
                 row,
@@ -1548,7 +1849,7 @@ def _native_payload(
         else "phase_or_direct"
     )
     payload = (
-        parameter.capability_id,
+        parameter.capability_id or "fixed_topology_association",
         parameter.provider_parameter_fingerprint,
         parameter.provider_topology_fingerprint,
         capability.component_ids,
@@ -1572,9 +1873,9 @@ def _native_payload(
         ),
         observation_shape,
     )
-    if len(problem.parameters) == 1:
+    if len(problem.parameters) == 1 and not _uses_fixed_topology_association(problem):
         return payload
-    return (
+    joint_payload = (
         *payload,
         tuple(item.transform.origin for item in problem.parameters),
         tuple(item.transform.scale for item in problem.parameters),
@@ -1582,6 +1883,15 @@ def _native_payload(
         tuple(item.upper_bound for item in problem.parameters),
         problem.start_vectors,
         problem.parameter_slot_indices,
+    )
+    if not _uses_fixed_topology_association(problem):
+        return joint_payload
+    if not isinstance(capability, FixedTopologyAssociationCapability):
+        raise TypeError("association regression requires its structural capability")
+    return (
+        *joint_payload,
+        capability.artifact_fingerprint,
+        _fixed_topology_slot_match(problem, capability),
     )
 
 
@@ -1699,45 +2009,20 @@ def _matched_capability(
 
 def _matched_capabilities(
     problem: RegressionProblem, model: object
-) -> tuple[ParameterCapability, ...]:
-    if _is_associating_parameter_block(problem):
+) -> tuple[ParameterCapability | FixedTopologyAssociationCapability, ...]:
+    if _uses_fixed_topology_association(problem):
         advertised = tuple(
             capability
             for capability in parameter_capabilities(model)
-            if isinstance(capability, ParameterCapability)
-            and capability.capability_id
-            == "neutral_pure_associating_joint_sigma_basis_v1"
+            if isinstance(capability, FixedTopologyAssociationCapability)
         )
         if len(advertised) != 1:
             raise ValueError(
-                "installed Provider does not advertise exactly one ordinary-sigma "
-                "pure-2B joint capability"
+                "installed EOS does not advertise exactly one fixed-topology "
+                "association descriptor"
             )
         capability = advertised[0]
-        _validate_associating_capability(capability)
-        expected_parameter_units = ("1", "angstrom", "K", "K", "1")
-        for index, parameter in enumerate(problem.parameters):
-            expected_identity = (
-                ComponentParameterIdentity if index < 3 else ModelParameterIdentity
-            )
-            if (
-                parameter.capability_id != capability.capability_id
-                or parameter.provider_parameter_fingerprint
-                != capability.parameter_fingerprint
-                or parameter.provider_topology_fingerprint
-                != capability.topology_fingerprint
-                or parameter.unit != expected_parameter_units[index]
-                or not isinstance(parameter.identity, expected_identity)
-                or (
-                    index < 3
-                    and parameter.identity.canonical_component_ids
-                    != capability.component_ids
-                )
-            ):
-                raise ValueError(
-                    "joint pure-associating parameter coordinate does not match the "
-                    "installed Provider capability"
-                )
+        _fixed_topology_slot_match(problem, capability)
         for row in problem.observations:
             if (
                 not isinstance(
@@ -1755,12 +2040,9 @@ def _matched_capabilities(
             ):
                 raise ValueError(
                     f"observation {row.row_id!r} does not match the installed "
-                    "ordinary-sigma pure-2B capability"
+                    "fixed-topology association descriptor"
                 )
-        return tuple(
-            replace(capability, family=parameter.family)
-            for parameter in problem.parameters
-        )
+        return (capability,)
     return tuple(
         _matched_capability(
             replace(
@@ -1779,18 +2061,12 @@ def _matched_capabilities(
 
 def _supported_capability_block(
     problem: RegressionProblem,
-    capabilities: tuple[ParameterCapability, ...],
+    capabilities: tuple[ParameterCapability | FixedTopologyAssociationCapability, ...],
 ) -> bool:
-    if len(capabilities) == 1:
-        return True
-    expected_families = (
-        ParameterFamily.SEGMENT_COUNT,
-        ParameterFamily.SEGMENT_DIAMETER,
-        ParameterFamily.DISPERSION_ENERGY_OVER_K,
-    )
-    if _is_associating_parameter_block(problem):
+    if _uses_fixed_topology_association(problem):
         return (
-            problem.parameter_slot_indices == tuple(range(len(problem.parameters)))
+            len(capabilities) == 1
+            and isinstance(capabilities[0], FixedTopologyAssociationCapability)
             and all(
                 isinstance(
                     row,
@@ -1802,13 +2078,14 @@ def _supported_capability_block(
                 )
                 for row in problem.observations
             )
-            and len(capabilities) == len(problem.parameters)
-            and len({capability.component_ids for capability in capabilities}) == 1
-            and len({capability.parameter_fingerprint for capability in capabilities})
-            == 1
-            and len({capability.topology_fingerprint for capability in capabilities})
-            == 1
         )
+    if len(capabilities) == 1:
+        return True
+    expected_families = (
+        ParameterFamily.SEGMENT_COUNT,
+        ParameterFamily.SEGMENT_DIAMETER,
+        ParameterFamily.DISPERSION_ENERGY_OVER_K,
+    )
     return (
         tuple(parameter.family for parameter in problem.parameters) == expected_families
         and problem.parameter_slot_indices == (0, 1, 2)
@@ -2129,6 +2406,11 @@ def fit_parameters(
             upper_bound=coordinate.upper_bound,
             active_bound_distance=bound_distances[index],
             active_bound=active_bounds[index] or None,
+            active_coordinate_ids=(
+                coordinate.identity.canonical_ids
+                if isinstance(coordinate.identity, AssociationParameterIdentity)
+                else ()
+            ),
         )
         for index, coordinate in enumerate(problem.parameters)
     )

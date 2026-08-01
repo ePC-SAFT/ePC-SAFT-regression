@@ -63,6 +63,7 @@ struct Payload final {
     std::string observation_shape;
     std::string parameter_fingerprint;
     std::string topology_fingerprint;
+    std::string artifact_fingerprint;
     std::vector<std::string> component_ids;
     double parameter_origin;
     double parameter_scale;
@@ -79,6 +80,7 @@ struct Payload final {
     std::vector<double> parameter_upper_bounds;
     std::vector<std::vector<double>> start_vectors;
     std::vector<std::size_t> parameter_slot_indices;
+    std::vector<std::size_t> fixed_topology_slot_indices;
     double maximum_condition_number;
     int maximum_iterations;
     double maximum_solver_time_seconds;
@@ -146,16 +148,16 @@ bool pure_density_observation(const Payload& payload) {
     return payload.observation_shape == "pure_density";
 }
 
-bool mixed_pure_associating_observation(const Payload& payload) {
-    return payload.capability_id
-            == "neutral_pure_associating_joint_sigma_basis_v1"
-        && payload.parameter_origins.size() == 5
+bool fixed_topology_association_observation(const Payload& payload) {
+    return payload.capability_id == "fixed_topology_association"
+        && !payload.parameter_origins.empty()
+        && !payload.fixed_topology_slot_indices.empty()
         && payload.component_ids.size() == 1
-        && payload.observation_shape == "mixed_pure_associating";
+        && payload.observation_shape == "fixed_topology_association";
 }
 
 bool joint_pure_observation(const Payload& payload) {
-    return mixed_pure_associating_observation(payload)
+    return fixed_topology_association_observation(payload)
         || (payload.capability_id == "neutral_pure_segment_count_v1"
             && payload.parameter_origins.size() == 3
             && payload.component_ids.size() == 1
@@ -492,11 +494,13 @@ Payload parse_payload(PyObject* object) {
     };
     const Py_ssize_t field_count = sequence
         ? PySequence_Fast_GET_SIZE(sequence.get()) : 0;
-    if (!sequence || (field_count != 20 && field_count != 26)) {
+    if (!sequence
+        || (field_count != 20 && field_count != 26 && field_count != 28)) {
         PyErr_Clear();
         throw std::invalid_argument(
             "general regression payload must contain exactly 20 fields, or "
-            "26 fields for the explicit joint-pure adapter"
+            "26 fields for joint pure regression, or 28 fields for "
+            "fixed-topology association"
         );
     }
     auto item = [&](Py_ssize_t index) {
@@ -551,7 +555,7 @@ Payload parse_payload(PyObject* object) {
                 ? ObservationKind::aqueous_kij_activity
             : payload.observation_shape == "pure_density"
                 ? ObservationKind::pure_density
-            : payload.observation_shape == "mixed_pure_associating"
+            : payload.observation_shape == "fixed_topology_association"
                     || payload.observation_shape == "pure_vapor_pressure"
                 ? ObservationKind::pure_vapor_pressure
             : component_count == 1
@@ -562,7 +566,7 @@ Payload parse_payload(PyObject* object) {
     payload.parameter_lower_bound = number(item(6), "parameter lower bound");
     payload.parameter_upper_bound = number(item(7), "parameter upper bound");
     payload.starts = doubles(item(8), "parameter starts");
-    if (field_count == 26) {
+    if (field_count >= 26) {
         payload.parameter_origins = doubles(
             item(20), "joint-pure parameter origins"
         );
@@ -611,32 +615,33 @@ Payload parse_payload(PyObject* object) {
                 static_cast<std::size_t>(value)
             );
         }
-        const std::size_t parameter_count =
-            payload.observation_shape == "mixed_pure_associating"
-            ? payload.parameter_origins.size()
-            : 3u;
-        if (payload.parameter_origins.size() != parameter_count
-            || payload.parameter_scales.size() != parameter_count
+        const std::size_t parameter_count = payload.parameter_origins.size();
+        if (payload.parameter_scales.size() != parameter_count
             || payload.parameter_lower_bounds.size() != parameter_count
             || payload.parameter_upper_bounds.size() != parameter_count
             || payload.start_vectors.size() < 2
-            || payload.parameter_slot_indices.size() != parameter_count) {
+            || payload.parameter_slot_indices.empty()) {
             throw std::invalid_argument(
-                "joint-pure adapter has inconsistent parameter coordinates, "
+                "multi-parameter payload has inconsistent parameter coordinates, "
                 "starts, or slot indices"
             );
         }
-        std::vector<std::size_t> expected_slots(parameter_count);
+        std::vector<std::size_t> fitted_owners = payload.parameter_slot_indices;
+        std::sort(fitted_owners.begin(), fitted_owners.end());
+        fitted_owners.erase(
+            std::unique(fitted_owners.begin(), fitted_owners.end()),
+            fitted_owners.end()
+        );
+        std::vector<std::size_t> expected_owners(parameter_count);
         for (std::size_t index = 0; index < parameter_count; ++index) {
-            expected_slots[index] = index;
+            expected_owners[index] = index;
         }
-        if (payload.parameter_slot_indices != expected_slots) {
+        if (fitted_owners != expected_owners
+            || (field_count == 26
+                && payload.parameter_slot_indices != expected_owners)) {
             throw std::invalid_argument(
-                parameter_count == 3
-                    ? "joint-pure adapter requires the declared m, sigma, "
-                      "epsilon/k slot order"
-                    : "joint-pure adapter requires contiguous declared "
-                      "parameter slot order"
+                "joint-pure slot ownership must cover every contiguous fitted "
+                "parameter; ordinary joint pure requires identity mapping"
             );
         }
         for (std::size_t index = 0; index < parameter_count; ++index) {
@@ -647,12 +652,22 @@ Payload parse_payload(PyObject* object) {
                 || !std::isfinite(payload.parameter_upper_bounds[index])
                 || payload.parameter_lower_bounds[index]
                     >= payload.parameter_upper_bounds[index]
-                    || payload.parameter_slot_indices[index]
-                        >= parameter_count) {
+                ) {
                 throw std::invalid_argument(
                     "joint-pure parameter transforms or slots are invalid"
                 );
             }
+        }
+        if (std::any_of(
+                payload.parameter_slot_indices.begin(),
+                payload.parameter_slot_indices.end(),
+                [parameter_count](std::size_t owner) {
+                    return owner >= parameter_count;
+                }
+            )) {
+            throw std::invalid_argument(
+                "joint-pure slot owner is outside the fitted parameter block"
+            );
         }
         for (const auto& vector : payload.start_vectors) {
             if (vector.size() != parameter_count
@@ -669,6 +684,44 @@ Payload parse_payload(PyObject* object) {
                         "joint-pure starts must lie within physical bounds"
                     );
                 }
+            }
+        }
+        if (field_count == 28) {
+            payload.artifact_fingerprint = text(
+                item(26), "installed artifact fingerprint"
+            );
+            const std::vector<double> slot_indices = doubles(
+                item(27), "fixed-topology descriptor slot indices"
+            );
+            payload.fixed_topology_slot_indices.reserve(slot_indices.size());
+            for (const double value : slot_indices) {
+                if (value < 0.0 || value != std::floor(value)
+                    || value > static_cast<double>(
+                        std::numeric_limits<std::size_t>::max()
+                    )) {
+                    throw std::invalid_argument(
+                        "fixed-topology descriptor slot indices must be "
+                        "nonnegative integers"
+                    );
+                }
+                payload.fixed_topology_slot_indices.push_back(
+                    static_cast<std::size_t>(value)
+                );
+            }
+            if (payload.fixed_topology_slot_indices.size()
+                    != payload.parameter_slot_indices.size()
+                || !std::is_sorted(
+                    payload.fixed_topology_slot_indices.begin(),
+                    payload.fixed_topology_slot_indices.end()
+                )
+                || std::adjacent_find(
+                    payload.fixed_topology_slot_indices.begin(),
+                    payload.fixed_topology_slot_indices.end()
+                ) != payload.fixed_topology_slot_indices.end()) {
+                throw std::invalid_argument(
+                    "fixed-topology slots must be unique, ordered, and match "
+                    "the sharing map"
+                );
             }
         }
     }
@@ -712,7 +765,7 @@ Payload parse_payload(PyObject* object) {
                     && start <= payload.parameter_upper_bound;
             }
         );
-    const bool joint_payload = field_count == 26;
+    const bool joint_payload = field_count >= 26;
     if ((!joint_payload && payload.parameter_scale == 0.0)
         || payload.parameter_lower_bound >= payload.parameter_upper_bound
         || (!joint_payload && !starts_valid)
@@ -792,9 +845,180 @@ void validate_descriptor(
     const epcsaft_native_capability_descriptor_v1& descriptor
 );
 
-const epcsaft_native_capability_descriptor_v1& checked_descriptor(
+bool valid_fingerprint(const char* value) {
+    return value != nullptr
+        && strnlen(value, EPCSAFT_NATIVE_SDK_V1_FINGERPRINT_SIZE) == 71
+        && std::strncmp(value, "sha256:", 7) == 0;
+}
+
+const epcsaft_fixed_topology_association_descriptor_v1&
+checked_fixed_topology_descriptor(
     const epcsaft_native_sdk_v1& table, const Payload& payload
 ) {
+    constexpr std::size_t required_size =
+        offsetof(epcsaft_native_sdk_v1, evaluate_fixed_topology_association)
+        + sizeof(table.evaluate_fixed_topology_association);
+    if (table.table_size < required_size
+        || table.fixed_topology_association_result_size
+            != sizeof(epcsaft_fixed_topology_phase_result_v1)
+        || table.fixed_topology_association == nullptr
+        || table.evaluate_fixed_topology_association == nullptr) {
+        throw std::runtime_error(
+            "EOS does not expose the generic fixed-topology association interface"
+        );
+    }
+    const auto& descriptor = *table.fixed_topology_association;
+    if (descriptor.struct_size
+            != sizeof(epcsaft_fixed_topology_association_descriptor_v1)
+        || descriptor.schema_version
+            != EPCSAFT_FIXED_TOPOLOGY_ASSOCIATION_SCHEMA_VERSION_V1
+        || descriptor.observation_contract
+            != EPCSAFT_NATIVE_OBSERVATION_FIXED_COMPOSITION_HELMHOLTZ_PHASE_V1
+        || descriptor.model_domain
+            != EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_ASSOCIATING_PURE_V1
+        || descriptor.tensor_layout
+            != EPCSAFT_NATIVE_TENSOR_LAYOUT_ROW_MAJOR_V1
+        || descriptor.derivative_order != 2u
+        || descriptor.maturity
+            != EPCSAFT_NATIVE_CAPABILITY_DERIVATIVE_READY_V1
+        || descriptor.authority_effect
+            != EPCSAFT_NATIVE_AUTHORITY_EFFECT_NONE_V1
+        || descriptor.unsupported_status
+            != EPCSAFT_NATIVE_STATUS_UNSUPPORTED_MODEL_V1
+        || descriptor.domain_status != EPCSAFT_NATIVE_STATUS_DOMAIN_ERROR_V1
+        || descriptor.state_coordinate_count != 2u
+        || descriptor.slot_count == 0 || descriptor.slots == nullptr
+        || descriptor.component_count == 0 || descriptor.component_ids == nullptr
+        || descriptor.site_count == 0 || descriptor.site_ids == nullptr
+        || descriptor.site_component_indices == nullptr
+        || descriptor.site_multiplicities == nullptr
+        || !std::isfinite(descriptor.temperature_min_k)
+        || !std::isfinite(descriptor.temperature_max_k)
+        || descriptor.temperature_min_k > descriptor.temperature_max_k
+        || !valid_fingerprint(descriptor.parameter_fingerprint)
+        || !valid_fingerprint(descriptor.topology_fingerprint)
+        || !valid_fingerprint(descriptor.artifact_fingerprint)
+        || std::strcmp(
+               descriptor.helmholtz_basis_id,
+               EPCSAFT_NATIVE_SDK_V1_HELMHOLTZ_BASIS_ID
+           ) != 0
+        || descriptor.association_basis_id[0] == '\0') {
+        throw std::runtime_error(
+            "EOS fixed-topology association descriptor is incomplete"
+        );
+    }
+    for (std::size_t index = 0; index < descriptor.component_count; ++index) {
+        if (descriptor.component_ids[index] == nullptr) {
+            throw std::runtime_error(
+                "EOS fixed-topology descriptor contains a null component id"
+            );
+        }
+    }
+    for (std::size_t index = 0; index < descriptor.site_count; ++index) {
+        if (descriptor.site_ids[index] == nullptr
+            || descriptor.site_component_indices[index] < 0
+            || static_cast<std::size_t>(
+                   descriptor.site_component_indices[index]
+               ) >= descriptor.component_count
+            || descriptor.site_multiplicities[index] <= 0) {
+            throw std::runtime_error(
+                "EOS fixed-topology site metadata is invalid"
+            );
+        }
+    }
+    for (std::size_t index = 0; index < descriptor.slot_count; ++index) {
+        const auto& slot = descriptor.slots[index];
+        const bool component_family =
+            slot.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_SEGMENT_COUNT_V1
+            || slot.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_SEGMENT_DIAMETER_V1
+            || slot.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_DISPERSION_ENERGY_OVER_K_V1;
+        const bool association_family =
+            slot.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_ENERGY_OVER_K_V1
+            || slot.parameter_family
+                == EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_VOLUME_V1;
+        const char* expected_unit =
+            slot.parameter_family
+                    == EPCSAFT_NATIVE_PARAMETER_FAMILY_SEGMENT_DIAMETER_V1
+                ? "angstrom"
+                : slot.parameter_family
+                            == EPCSAFT_NATIVE_PARAMETER_FAMILY_DISPERSION_ENERGY_OVER_K_V1
+                        || slot.parameter_family
+                            == EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_ENERGY_OVER_K_V1
+                    ? "kelvin"
+                    : "dimensionless";
+        if (slot.struct_size
+                != sizeof(epcsaft_fixed_topology_parameter_slot_v1)
+            || (!component_family && !association_family)
+            || slot.parameter_id == nullptr || slot.parameter_id[0] == '\0'
+            || slot.unit == nullptr || std::strcmp(slot.unit, expected_unit) != 0
+            || !std::isfinite(slot.lower_bound_exclusive)
+            || std::isnan(slot.upper_bound_exclusive)
+            || slot.lower_bound_exclusive >= slot.upper_bound_exclusive
+            || (component_family
+                && (slot.component_index < 0
+                    || static_cast<std::size_t>(slot.component_index)
+                        >= descriptor.component_count
+                    || slot.site_index_a != -1 || slot.site_index_b != -1
+                    || slot.endpoint_component_index_a != -1
+                    || slot.endpoint_component_index_b != -1))
+            || (association_family
+                && (slot.component_index != -1 || slot.site_index_a < 0
+                    || slot.site_index_b < slot.site_index_a
+                    || static_cast<std::size_t>(slot.site_index_b)
+                        >= descriptor.site_count
+                    || slot.endpoint_component_index_a
+                        != descriptor.site_component_indices[slot.site_index_a]
+                    || slot.endpoint_component_index_b
+                        != descriptor.site_component_indices[slot.site_index_b]))) {
+            throw std::runtime_error(
+                "EOS fixed-topology parameter slot is invalid"
+            );
+        }
+    }
+    const bool components_match =
+        payload.component_ids.size() == descriptor.component_count
+        && std::equal(
+            payload.component_ids.begin(), payload.component_ids.end(),
+            descriptor.component_ids,
+            [](const std::string& expected, const char* observed) {
+                return observed != nullptr && expected == observed;
+            }
+        );
+    if (!components_match
+        || !bounded_field_equal(
+            payload.parameter_fingerprint, descriptor.parameter_fingerprint
+        )
+        || !bounded_field_equal(
+            payload.topology_fingerprint, descriptor.topology_fingerprint
+        )
+        || !bounded_field_equal(
+            payload.artifact_fingerprint, descriptor.artifact_fingerprint
+        )) {
+        throw std::runtime_error(
+            "regression problem does not match the installed EOS association descriptor"
+        );
+    }
+    for (const std::size_t slot : payload.fixed_topology_slot_indices) {
+        if (slot >= descriptor.slot_count) {
+            throw std::runtime_error(
+                "regression problem requests an unadvertised association slot"
+            );
+        }
+    }
+    return descriptor;
+}
+
+void checked_descriptor(
+    const epcsaft_native_sdk_v1& table, const Payload& payload
+) {
+    if (fixed_topology_association_observation(payload)) {
+        (void)checked_fixed_topology_descriptor(table, payload);
+        return;
+    }
     const epcsaft_native_capability_descriptor_v1* selected = nullptr;
     for (std::size_t index = 0; index < table.capability_count; ++index) {
         const auto& candidate = table.capabilities[index];
@@ -809,12 +1033,6 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
                 == EPCSAFT_NATIVE_CAPABILITY_PURE_SEGMENT_DIAMETER_HELMHOLTZ_V1
             || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_PURE_DISPERSION_ENERGY_HELMHOLTZ_V1
-            || candidate.capability
-                == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_ENERGY_HELMHOLTZ_V1
-            || candidate.capability
-                == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1
-            || candidate.capability
-                == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_SIGMA_BASIS_HELMHOLTZ_V1
             || candidate.capability
                 == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1
             || candidate.capability
@@ -885,8 +1103,6 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_IONIC_REGION_PERMITTIVITY_V1;
     const bool solvent_permittivity = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_PERMITTIVITY_V1;
-    const bool associating_joint = descriptor.capability
-        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_SIGMA_BASIS_HELMHOLTZ_V1;
     const bool binary = kij || lij;
     const bool direct = born || solvation_factor || aqueous_kij || dielectric
         || ion_solvation_kij || ionic_permittivity
@@ -965,20 +1181,6 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
                                 == sizeof(
                                     epcsaft_ion_solvation_solvent_permittivity_result_v1
                                 )
-                    : associating_joint
-                        ? table.table_size
-                                >= offsetof(
-                                    epcsaft_native_sdk_v1,
-                                    evaluate_sigma_basis_associating_pure_phase_parameters
-                                ) + sizeof(
-                                    table.evaluate_sigma_basis_associating_pure_phase_parameters
-                                )
-                            && table.associating_parameterized_result_size
-                                == sizeof(
-                                    epcsaft_associating_parameterized_phase_block_result_v1
-                                )
-                            && table.evaluate_sigma_basis_associating_pure_phase_parameters
-                                != nullptr
                     : joint_pure_observation(payload)
                         ? table.table_size
                                 >= offsetof(
@@ -1022,14 +1224,12 @@ const epcsaft_native_capability_descriptor_v1& checked_descriptor(
         )
         || !components_match
         || !callback_available
-        || (!direct && !associating_joint
-            && table.mixture_result_size
+        || (!direct && table.mixture_result_size
                 != sizeof(epcsaft_mixture_phase_block_result_v1))) {
         throw std::runtime_error(
             "regression problem does not match the installed Provider capability"
         );
     }
-    return descriptor;
 }
 
 const char* capability_id(std::uint32_t value) {
@@ -1052,20 +1252,6 @@ const char* capability_id(std::uint32_t value) {
     if (value
         == EPCSAFT_NATIVE_CAPABILITY_PURE_DISPERSION_ENERGY_HELMHOLTZ_V1) {
         return "neutral_pure_dispersion_energy_over_k_v1";
-    }
-    if (value
-        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_ENERGY_HELMHOLTZ_V1) {
-        return "neutral_pure_2b_association_energy_over_k_v1";
-    }
-    if (value
-        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1) {
-        return "neutral_pure_2b_association_volume_v1";
-    }
-    if (
-        value
-        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_SIGMA_BASIS_HELMHOLTZ_V1
-    ) {
-        return "neutral_pure_associating_joint_sigma_basis_v1";
     }
     if (value == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1) {
         return "ion_solvation_born_v1";
@@ -1156,9 +1342,6 @@ const char* parameter_family(std::uint32_t value) {
     if (value == EPCSAFT_NATIVE_PARAMETER_FAMILY_RELATIVE_PERMITTIVITY_V1) {
         return "relative_permittivity";
     }
-    if (value == EPCSAFT_NATIVE_PARAMETER_FAMILY_PURE_ASSOCIATING_JOINT_V1) {
-        return "pure_associating_joint";
-    }
     throw std::runtime_error("provider advertised an unknown parameter family");
 }
 
@@ -1212,14 +1395,6 @@ void validate_descriptor(
         == EPCSAFT_NATIVE_CAPABILITY_PURE_SEGMENT_DIAMETER_HELMHOLTZ_V1;
     const bool dispersion_energy = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_PURE_DISPERSION_ENERGY_HELMHOLTZ_V1;
-    const bool association_energy = descriptor.capability
-        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_ENERGY_HELMHOLTZ_V1;
-    const bool association_volume = descriptor.capability
-        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1;
-    const bool associating_joint = descriptor.capability
-        == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_SIGMA_BASIS_HELMHOLTZ_V1;
-    const bool association =
-        association_energy || association_volume || associating_joint;
     const bool born = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_BORN_V1;
     const bool solvation_factor = descriptor.capability
@@ -1245,8 +1420,7 @@ void validate_descriptor(
     const bool solvent_permittivity = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_PERMITTIVITY_V1;
     const bool binary = kij || lij;
-    const bool pure = segment_count || segment_diameter || dispersion_energy
-        || association;
+    const bool pure = segment_count || segment_diameter || dispersion_energy;
     const bool direct = born || solvation_factor || aqueous_kij || dielectric
         || ion_solvation_kij || ionic_permittivity
         || solvent_permittivity;
@@ -1266,15 +1440,6 @@ void validate_descriptor(
         || (dispersion_energy
             && descriptor.parameter_family
                 == EPCSAFT_NATIVE_PARAMETER_FAMILY_DISPERSION_ENERGY_OVER_K_V1)
-        || (association_energy
-            && descriptor.parameter_family
-                == EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_ENERGY_OVER_K_V1)
-        || (association_volume
-            && descriptor.parameter_family
-                == EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_VOLUME_V1)
-        || (associating_joint
-            && descriptor.parameter_family
-                == EPCSAFT_NATIVE_PARAMETER_FAMILY_PURE_ASSOCIATING_JOINT_V1)
         || (born
             && descriptor.parameter_family
                 == EPCSAFT_NATIVE_PARAMETER_FAMILY_BORN_DIAMETER_V1)
@@ -1307,8 +1472,6 @@ void validate_descriptor(
             : EPCSAFT_NATIVE_OBSERVATION_FIXED_COMPOSITION_HELMHOLTZ_PHASE_V1;
     const std::uint32_t expected_domain = binary
         ? EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_NONASSOCIATING_BINARY_V1
-        : association
-            ? EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_ASSOCIATING_PURE_V1
         : pure
             ? EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_NONASSOCIATING_PURE_V1
             : born || ionic_permittivity || solvent_permittivity
@@ -1322,11 +1485,9 @@ void validate_descriptor(
         binary ? 2u : pure ? 1u : 3u;
     const std::size_t expected_state_count =
         binary ? 3u : pure ? 2u : 0u;
-    const std::size_t expected_active_parameter_count =
-        associating_joint ? descriptor.active_parameter_count : 1u;
+    constexpr std::size_t expected_active_parameter_count = 1u;
     const std::size_t expected_coordinate_count =
-        associating_joint ? 2u + expected_active_parameter_count
-        : binary ? 4u : pure ? 3u : 1u;
+        binary ? 4u : pure ? 3u : 1u;
     if (descriptor.struct_size
             != sizeof(epcsaft_native_capability_descriptor_v1)
         || descriptor.schema_version
@@ -1334,7 +1495,7 @@ void validate_descriptor(
         || (!binary && !pure && !direct)
         || !matching_family
         || descriptor.parameter_identity
-            != (dielectric || association || ionic_permittivity
+            != (dielectric || ionic_permittivity
                     ? EPCSAFT_NATIVE_PARAMETER_IDENTITY_MODEL_V1
                 : binary || aqueous_kij || ion_solvation_kij
                     ? EPCSAFT_NATIVE_PARAMETER_IDENTITY_UNORDERED_COMPONENT_PAIR_V1
@@ -1352,7 +1513,6 @@ void validate_descriptor(
             != EPCSAFT_NATIVE_STATUS_UNSUPPORTED_MODEL_V1
         || descriptor.domain_status != EPCSAFT_NATIVE_STATUS_DOMAIN_ERROR_V1
         || descriptor.state_coordinate_count != expected_state_count
-        || (associating_joint && expected_active_parameter_count != 5)
         || descriptor.active_parameter_count != expected_active_parameter_count
         || descriptor.coordinate_count != expected_coordinate_count
         || descriptor.component_count != expected_component_count
@@ -1421,7 +1581,7 @@ void validate_descriptor(
         pair_a.push_back(-1);
         pair_b.push_back(-1);
         units.push_back(born ? "angstrom" : "dimensionless");
-    } else if (!associating_joint) {
+    } else {
         kinds.push_back(EPCSAFT_NATIVE_CAPABILITY_COORDINATE_AMOUNT_V1);
         components.push_back(0);
         pair_a.push_back(-1);
@@ -1435,7 +1595,7 @@ void validate_descriptor(
         pair_b.push_back(-1);
         units.push_back("mol");
     }
-    if (!direct && !associating_joint) {
+    if (!direct) {
         kinds.push_back(EPCSAFT_NATIVE_CAPABILITY_COORDINATE_VOLUME_V1);
         components.push_back(-1);
         pair_a.push_back(-1);
@@ -1450,54 +1610,21 @@ void validate_descriptor(
         pair_a.push_back(0);
         pair_b.push_back(1);
         units.push_back("dimensionless");
-    } else if (pure && !associating_joint) {
+    } else if (pure) {
         kinds.push_back(
             segment_count
                 ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SEGMENT_COUNT_V1
                 : segment_diameter
                     ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SEGMENT_DIAMETER_V1
-                : dispersion_energy
-                    ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_DISPERSION_ENERGY_OVER_K_V1
-                : association_energy
-                    ? EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_ENERGY_OVER_K_V1
-                    : EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_VOLUME_V1
+                : EPCSAFT_NATIVE_CAPABILITY_COORDINATE_DISPERSION_ENERGY_OVER_K_V1
         );
-        components.push_back(association ? -1 : 0);
+        components.push_back(0);
         pair_a.push_back(-1);
         pair_b.push_back(-1);
         units.push_back(
-            segment_count || association_volume
-                ? "dimensionless"
-                : segment_diameter ? "angstrom" : "kelvin"
+            segment_count ? "dimensionless"
+                          : segment_diameter ? "angstrom" : "kelvin"
         );
-    } else if (associating_joint) {
-        kinds = {
-            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_AMOUNT_V1,
-            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_VOLUME_V1,
-            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SEGMENT_COUNT_V1,
-            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_SEGMENT_DIAMETER_V1,
-            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_DISPERSION_ENERGY_OVER_K_V1,
-        };
-        components = {0, -1, 0, 0, 0};
-        pair_a.assign(5, -1);
-        pair_b.assign(5, -1);
-        units = {
-            "mol",
-            "m3",
-            "dimensionless",
-            "angstrom",
-            "kelvin",
-        };
-        kinds.push_back(
-            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_ENERGY_OVER_K_V1
-        );
-        kinds.push_back(
-            EPCSAFT_NATIVE_CAPABILITY_COORDINATE_ASSOCIATION_VOLUME_V1
-        );
-        components.insert(components.end(), {-1, -1});
-        pair_a.insert(pair_a.end(), {-1, -1});
-        pair_b.insert(pair_b.end(), {-1, -1});
-        units.insert(units.end(), {"kelvin", "dimensionless"});
     }
     for (std::size_t index = 0; index < kinds.size(); ++index) {
         const auto& coordinate = descriptor.coordinates[index];
@@ -1545,6 +1672,126 @@ PyObject* string_tuple(
         PyTuple_SET_ITEM(tuple, static_cast<Py_ssize_t>(index), item);
     }
     return tuple;
+}
+
+PyObject* int_tuple(const int32_t* values, std::size_t count) {
+    PyObject* tuple = PyTuple_New(static_cast<Py_ssize_t>(count));
+    if (tuple == nullptr) return nullptr;
+    for (std::size_t index = 0; index < count; ++index) {
+        PyObject* item = PyLong_FromLong(values[index]);
+        if (item == nullptr) {
+            Py_DECREF(tuple);
+            return nullptr;
+        }
+        PyTuple_SET_ITEM(tuple, static_cast<Py_ssize_t>(index), item);
+    }
+    return tuple;
+}
+
+PyObject* fixed_topology_descriptor_to_python(
+    const epcsaft_native_sdk_v1& table
+) {
+    constexpr std::size_t required_size =
+        offsetof(epcsaft_native_sdk_v1, fixed_topology_association)
+        + sizeof(table.fixed_topology_association);
+    if (table.table_size < required_size) {
+        throw std::runtime_error(
+            "EOS native SDK lacks the fixed-topology descriptor field"
+        );
+    }
+    const auto* source = table.fixed_topology_association;
+    if (source == nullptr
+        || source->struct_size
+            != sizeof(epcsaft_fixed_topology_association_descriptor_v1)
+        || source->component_count == 0 || source->component_ids == nullptr) {
+        throw std::runtime_error(
+            "EOS fixed-topology association descriptor is absent or incomplete"
+        );
+    }
+    Payload identity{};
+    identity.parameter_fingerprint = source->parameter_fingerprint;
+    identity.topology_fingerprint = source->topology_fingerprint;
+    identity.artifact_fingerprint = source->artifact_fingerprint;
+    identity.component_ids.reserve(source->component_count);
+    for (std::size_t index = 0; index < source->component_count; ++index) {
+        if (source->component_ids[index] == nullptr) {
+            throw std::runtime_error(
+                "EOS fixed-topology descriptor contains a null component id"
+            );
+        }
+        identity.component_ids.emplace_back(source->component_ids[index]);
+    }
+    const auto& descriptor = checked_fixed_topology_descriptor(table, identity);
+    PyObject* components = string_tuple(
+        descriptor.component_ids, descriptor.component_count
+    );
+    PyObject* sites = string_tuple(descriptor.site_ids, descriptor.site_count);
+    PyObject* site_components = int_tuple(
+        descriptor.site_component_indices, descriptor.site_count
+    );
+    PyObject* multiplicities = int_tuple(
+        descriptor.site_multiplicities, descriptor.site_count
+    );
+    PyObject* slots = PyTuple_New(static_cast<Py_ssize_t>(descriptor.slot_count));
+    if (components == nullptr || sites == nullptr || site_components == nullptr
+        || multiplicities == nullptr || slots == nullptr) {
+        Py_XDECREF(components);
+        Py_XDECREF(sites);
+        Py_XDECREF(site_components);
+        Py_XDECREF(multiplicities);
+        Py_XDECREF(slots);
+        return nullptr;
+    }
+    for (std::size_t index = 0; index < descriptor.slot_count; ++index) {
+        const auto& slot = descriptor.slots[index];
+        PyObject* item = Py_BuildValue(
+            "(siiiiissdd)",
+            parameter_family(slot.parameter_family),
+            slot.component_index,
+            slot.site_index_a,
+            slot.site_index_b,
+            slot.endpoint_component_index_a,
+            slot.endpoint_component_index_b,
+            slot.parameter_id,
+            slot.unit,
+            slot.lower_bound_exclusive,
+            slot.upper_bound_exclusive
+        );
+        if (item == nullptr) {
+            Py_DECREF(components);
+            Py_DECREF(sites);
+            Py_DECREF(site_components);
+            Py_DECREF(multiplicities);
+            Py_DECREF(slots);
+            return nullptr;
+        }
+        PyTuple_SET_ITEM(slots, static_cast<Py_ssize_t>(index), item);
+    }
+    return Py_BuildValue(
+        "(sNNNNNsssissddsssnssss)",
+        "fixed_topology_association",
+        components,
+        sites,
+        site_components,
+        multiplicities,
+        slots,
+        descriptor.parameter_fingerprint,
+        descriptor.topology_fingerprint,
+        descriptor.artifact_fingerprint,
+        static_cast<int>(descriptor.derivative_order),
+        "DERIVATIVE_READY",
+        "NONE",
+        descriptor.temperature_min_k,
+        descriptor.temperature_max_k,
+        "fixed_composition_helmholtz_phase",
+        "neutral_associating_pure",
+        "row_major",
+        static_cast<Py_ssize_t>(descriptor.state_coordinate_count),
+        descriptor.helmholtz_basis_id,
+        descriptor.association_basis_id,
+        "UNSUPPORTED_MODEL",
+        "DOMAIN_ERROR"
+    );
 }
 
 PyObject* descriptor_to_python(
@@ -1618,12 +1865,6 @@ PyObject* descriptor_to_python(
             == EPCSAFT_NATIVE_CAPABILITY_AQUEOUS_CATION_ANION_KIJ_MIAC_V1;
     const bool dielectric = descriptor.capability
         == EPCSAFT_NATIVE_CAPABILITY_ION_FRACTION_SUPPRESSION_V1;
-    const bool association = descriptor.capability
-            == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_ENERGY_HELMHOLTZ_V1
-        || descriptor.capability
-            == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1
-        || descriptor.capability
-            == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_SIGMA_BASIS_HELMHOLTZ_V1;
     const bool ion_solvation_kij =
         descriptor.capability
             == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_CATION_KIJ_V1
@@ -1658,15 +1899,13 @@ PyObject* descriptor_to_python(
                 : descriptor.model_domain
                         == EPCSAFT_NATIVE_MODEL_DOMAIN_ORGANIC_SINGLE_ION_SOLVATION_V1
                     ? "figiel_single_ion_solvation"
-                : association
-                    ? "neutral_associating_pure"
                 : binary
                     ? "neutral_nonassociating_binary"
                     : "neutral_nonassociating_pure";
     const auto& parameter_coordinate =
         descriptor.coordinates[descriptor.coordinate_count - 1];
     const std::size_t active_component_count =
-        dielectric || association || ionic_permittivity
+        dielectric || ionic_permittivity
         ? 0u
         : pair_coordinate ? 2u : 1u;
     PyObject* active_components = PyTuple_New(
@@ -1714,7 +1953,7 @@ PyObject* descriptor_to_python(
         "NONE",
         descriptor.temperature_min_k,
         descriptor.temperature_max_k,
-        dielectric || association || ionic_permittivity
+        dielectric || ionic_permittivity
             ? "model"
             : pair_coordinate ? "unordered_component_pair" : "component",
         observation_contract,
@@ -1788,17 +2027,6 @@ Phase evaluate_phase(
         ) {
             family =
                 EPCSAFT_NATIVE_PARAMETER_FAMILY_DISPERSION_ENERGY_OVER_K_V1;
-        } else if (
-            payload.capability_id
-            == "neutral_pure_2b_association_energy_over_k_v1"
-        ) {
-            family =
-                EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_ENERGY_OVER_K_V1;
-        } else if (
-            payload.capability_id
-            == "neutral_pure_2b_association_volume_v1"
-        ) {
-            family = EPCSAFT_NATIVE_PARAMETER_FAMILY_ASSOCIATION_VOLUME_V1;
         }
         status = table.evaluate_pure_phase_parameter(
             table.model_context,
@@ -1945,73 +2173,95 @@ Phase evaluate_joint_pure_phase(
     return phase;
 }
 
-Phase evaluate_associating_joint_pure_phase(
+Phase evaluate_fixed_topology_association_phase(
     const epcsaft_native_sdk_v1& table,
     const Payload& payload,
     const Row& row,
     double volume,
     const std::vector<double>& parameters
 ) {
-    if (parameters.size() != 5
-        || table.evaluate_sigma_basis_associating_pure_phase_parameters
-            == nullptr
-        || table.associating_parameterized_result_size
-            != sizeof(
-                epcsaft_associating_parameterized_phase_block_result_v1
-            )) {
-        throw std::runtime_error(
-            "Provider does not expose a compatible ordinary-sigma 2B "
-            "joint pure-phase callback"
+    const auto& descriptor = checked_fixed_topology_descriptor(table, payload);
+    if (parameters.size() != payload.parameter_origins.size()
+        || payload.parameter_slot_indices.size()
+            != payload.fixed_topology_slot_indices.size()) {
+        throw std::logic_error(
+            "fixed-topology fitted parameters and EOS slots are inconsistent"
         );
     }
+    std::vector<epcsaft_fixed_topology_parameter_request_v1> requests;
+    requests.reserve(payload.fixed_topology_slot_indices.size());
+    for (std::size_t index = 0;
+         index < payload.fixed_topology_slot_indices.size(); ++index) {
+        const auto& slot = descriptor.slots[
+            payload.fixed_topology_slot_indices[index]
+        ];
+        const std::size_t owner = payload.parameter_slot_indices[index];
+        requests.push_back({
+            sizeof(epcsaft_fixed_topology_parameter_request_v1),
+            slot.parameter_family,
+            slot.component_index,
+            slot.site_index_a,
+            slot.site_index_b,
+            slot.unit,
+            parameters[owner],
+        });
+    }
     Phase phase{};
-    phase.coordinate_count =
-        EPCSAFT_ASSOCIATING_PHASE_PARAMETERIZED_COORDINATE_COUNT_V1;
+    phase.coordinate_count = 2 + requests.size();
     phase.gradient.resize(phase.coordinate_count);
     phase.hessian.resize(phase.coordinate_count * phase.coordinate_count);
-    epcsaft_associating_parameterized_phase_block_result_v1 result{};
+    epcsaft_fixed_topology_phase_result_v1 result{};
     result.struct_size = sizeof(result);
-    const int status =
-        table.evaluate_sigma_basis_associating_pure_phase_parameters(
-            table.model_context,
-            row.temperature,
-            1.0,
-            volume,
-            parameters[0],
-            parameters[1],
-            parameters[2],
-            parameters[3],
-            parameters[4],
-            &result
-        );
+    result.coordinate_count = phase.coordinate_count;
+    result.active_parameter_count = requests.size();
+    result.gradient_capacity = phase.gradient.size();
+    result.hessian_capacity = phase.hessian.size();
+    result.gradient = phase.gradient.data();
+    result.hessian = phase.hessian.data();
+    const int status = table.evaluate_fixed_topology_association(
+        table.model_context,
+        payload.parameter_fingerprint.c_str(),
+        payload.topology_fingerprint.c_str(),
+        payload.artifact_fingerprint.c_str(),
+        row.temperature,
+        1.0,
+        volume,
+        requests.data(),
+        requests.size(),
+        &result
+    );
     if (status != EPCSAFT_NATIVE_STATUS_OK_V1 || result.status != status) {
         const std::size_t error_length = strnlen(
             result.error, EPCSAFT_NATIVE_SDK_V1_ERROR_SIZE
         );
         throw std::runtime_error(
-            std::string(
-                "Provider ordinary-sigma associating pure-phase evaluation "
-                "failed: "
-            ) + std::string(result.error, error_length)
+            std::string("EOS fixed-topology phase evaluation failed: ")
+            + std::string(result.error, error_length)
         );
     }
     phase.pressure = result.pressure_pa;
-    std::copy(
-        std::begin(result.gradient),
-        std::end(result.gradient),
-        phase.gradient.begin()
-    );
-    std::copy(
-        std::begin(result.hessian),
-        std::end(result.hessian),
-        phase.hessian.begin()
-    );
-    if (!bounded_field_equal(
+    if (result.struct_size != sizeof(result)
+        || result.coordinate_count != phase.coordinate_count
+        || result.active_parameter_count != requests.size()
+        || result.gradient_capacity != phase.gradient.size()
+        || result.hessian_capacity != phase.hessian.size()
+        || result.gradient != phase.gradient.data()
+        || result.hessian != phase.hessian.data()
+        || !std::isfinite(result.helmholtz_over_rt_reference_amount)
+        || !std::isfinite(result.chemical_potential_over_rt)
+        || !bounded_field_equal(
             payload.parameter_fingerprint, result.parameter_fingerprint
         )
         || !bounded_field_equal(
             payload.topology_fingerprint, result.topology_fingerprint
         )
+        || !bounded_field_equal(
+            payload.artifact_fingerprint, result.artifact_fingerprint
+        )
+        || std::strcmp(
+               result.helmholtz_basis_id,
+               descriptor.helmholtz_basis_id
+           ) != 0
         || !std::isfinite(phase.pressure)
         || !std::all_of(
             phase.gradient.cbegin(),
@@ -2024,14 +2274,14 @@ Phase evaluate_associating_joint_pure_phase(
             [](double value) { return std::isfinite(value); }
         )) {
         throw std::runtime_error(
-            "Provider ordinary-sigma associating pure-phase result is "
+            "EOS fixed-topology phase result is "
             "incomplete or has an identity mismatch"
         );
     }
     return phase;
 }
 
-double associating_pressure_root_start(
+double fixed_topology_pressure_root_start(
     const epcsaft_native_sdk_v1& table,
     const Payload& payload,
     const Row& row,
@@ -2041,7 +2291,7 @@ double associating_pressure_root_start(
 ) {
     const std::size_t coordinates = parameters.size() + 2;
     const auto evaluate = [&](double volume) {
-        return evaluate_associating_joint_pure_phase(
+        return evaluate_fixed_topology_association_phase(
             table, payload, row, volume, parameters
         );
     };
@@ -2101,7 +2351,7 @@ double associating_pressure_root_start(
     }
     if (roots.empty()) {
         throw std::runtime_error(
-            "associating vapor-pressure row has no mechanically stable "
+            "fixed-topology vapor-pressure row has no mechanically stable "
             "pressure root inside its declared phase-volume bounds"
         );
     }
@@ -2530,9 +2780,7 @@ void evaluate_joint_pure_problem(
     const std::size_t variable_total = variable_count(payload);
     std::array<double, 3> parameters{};
     for (std::size_t parameter = 0; parameter < parameters.size(); ++parameter) {
-        const double solver_value = variables[
-            payload.parameter_slot_indices[parameter]
-        ];
+        const double solver_value = variables[parameter];
         parameters[parameter] = payload.parameter_origins[parameter]
             + payload.parameter_scales[parameter] * solver_value;
         if (!std::isfinite(parameters[parameter])
@@ -2594,7 +2842,7 @@ void evaluate_joint_pure_problem(
         const double mu_factor = 1.0 / row.chemical_potential_scales[0];
         for (std::size_t parameter = 0; parameter < parameters.size(); ++parameter) {
             const std::size_t coordinate = parameter_coordinate + parameter;
-            const std::size_t column = payload.parameter_slot_indices[parameter];
+            const std::size_t column = parameter;
             jacobian(residual_offset, column) =
                 -gas_constant * row.temperature
                 * liquid.hessian[volume_coordinate * 5 + coordinate]
@@ -2642,7 +2890,7 @@ void evaluate_joint_pure_problem(
     }
 }
 
-void evaluate_mixed_pure_associating_problem(
+void evaluate_fixed_topology_association_problem(
     const epcsaft_native_sdk_v1& table,
     const Payload& payload,
     const double* variables,
@@ -2652,12 +2900,12 @@ void evaluate_mixed_pure_associating_problem(
     constexpr std::size_t amount_coordinate = 0;
     constexpr std::size_t volume_coordinate = 1;
     constexpr std::size_t parameter_coordinate = 2;
-    const std::size_t coordinate_count = parameter_count + 2;
+    const std::size_t slot_count = payload.fixed_topology_slot_indices.size();
+    const std::size_t coordinate_count = slot_count + 2;
     const std::size_t variable_total = variable_count(payload);
     std::vector<double> parameters(parameter_count);
     for (std::size_t parameter = 0; parameter < parameter_count; ++parameter) {
-        const double solver_value =
-            variables[payload.parameter_slot_indices[parameter]];
+        const double solver_value = variables[parameter];
         parameters[parameter] = payload.parameter_origins[parameter]
             + payload.parameter_scales[parameter] * solver_value;
         if (!std::isfinite(parameters[parameter])
@@ -2666,7 +2914,7 @@ void evaluate_mixed_pure_associating_problem(
             || parameters[parameter]
                 > payload.parameter_upper_bounds[parameter]) {
             throw std::invalid_argument(
-                "ordinary-sigma associating parameter is outside its "
+                "fixed-topology parameter is outside its "
                 "declared bounds"
             );
         }
@@ -2684,17 +2932,17 @@ void evaluate_mixed_pure_associating_problem(
             || liquid_volume < row.liquid_volume_bounds[0]
             || liquid_volume > row.liquid_volume_bounds[1]) {
             throw std::invalid_argument(
-                "ordinary-sigma associating liquid volume violates bounds"
+                "fixed-topology liquid volume violates bounds"
             );
         }
-        const Phase liquid = evaluate_associating_joint_pure_phase(
+        const Phase liquid = evaluate_fixed_topology_association_phase(
             table, payload, row, liquid_volume, parameters
         );
         if (!(liquid.hessian[
                 volume_coordinate * coordinate_count + volume_coordinate
             ] > 0.0)) {
             throw std::runtime_error(
-                "ordinary-sigma associating liquid phase is not mechanically "
+                "fixed-topology liquid phase is not mechanically "
                 "stable"
             );
         }
@@ -2705,18 +2953,15 @@ void evaluate_mixed_pure_associating_problem(
         const double pressure_factor = 1.0 / row.pressure_scale;
         evaluation.residuals[residual_offset] =
             (liquid.pressure - row.pressure) * pressure_factor;
-        for (std::size_t parameter = 0;
-             parameter < parameter_count;
-             ++parameter) {
-            const std::size_t coordinate = parameter_coordinate + parameter;
-            const std::size_t column =
-                payload.parameter_slot_indices[parameter];
-            jacobian(residual_offset, column) =
+        for (std::size_t slot = 0; slot < slot_count; ++slot) {
+            const std::size_t coordinate = parameter_coordinate + slot;
+            const std::size_t column = payload.parameter_slot_indices[slot];
+            jacobian(residual_offset, column) +=
                 -gas_constant * row.temperature
                 * liquid.hessian[
                     volume_coordinate * coordinate_count + coordinate
                 ]
-                * payload.parameter_scales[parameter] * pressure_factor;
+                * payload.parameter_scales[column] * pressure_factor;
         }
         jacobian(residual_offset, liquid_column) =
             -gas_constant * row.temperature
@@ -2750,18 +2995,18 @@ void evaluate_mixed_pure_associating_problem(
             || vapor_volume > row.vapor_volume_bounds[1]
             || liquid_volume >= vapor_volume) {
             throw std::invalid_argument(
-                "ordinary-sigma associating vapor volume violates bounds or "
+                "fixed-topology vapor volume violates bounds or "
                 "phase ordering"
             );
         }
-        const Phase vapor = evaluate_associating_joint_pure_phase(
+        const Phase vapor = evaluate_fixed_topology_association_phase(
             table, payload, row, vapor_volume, parameters
         );
         if (!(vapor.hessian[
                 volume_coordinate * coordinate_count + volume_coordinate
             ] > 0.0)) {
             throw std::runtime_error(
-                "ordinary-sigma associating vapor phase is not mechanically "
+                "fixed-topology vapor phase is not mechanically "
                 "stable"
             );
         }
@@ -2781,26 +3026,23 @@ void evaluate_mixed_pure_associating_problem(
                 (density - row.liquid_density)
                 / row.liquid_density_scale;
         }
-        for (std::size_t parameter = 0;
-             parameter < parameter_count;
-             ++parameter) {
-            const std::size_t coordinate = parameter_coordinate + parameter;
-            const std::size_t column =
-                payload.parameter_slot_indices[parameter];
-            jacobian(residual_offset + 1, column) =
+        for (std::size_t slot = 0; slot < slot_count; ++slot) {
+            const std::size_t coordinate = parameter_coordinate + slot;
+            const std::size_t column = payload.parameter_slot_indices[slot];
+            jacobian(residual_offset + 1, column) +=
                 -gas_constant * row.temperature
                 * vapor.hessian[
                     volume_coordinate * coordinate_count + coordinate
                 ]
-                * payload.parameter_scales[parameter] * pressure_factor;
-            jacobian(residual_offset + 2, column) =
+                * payload.parameter_scales[column] * pressure_factor;
+            jacobian(residual_offset + 2, column) +=
                 (liquid.hessian[
                      amount_coordinate * coordinate_count + coordinate
                  ]
                  - vapor.hessian[
                      amount_coordinate * coordinate_count + coordinate
                  ])
-                * payload.parameter_scales[parameter] * mu_factor;
+                * payload.parameter_scales[column] * mu_factor;
         }
         jacobian(residual_offset + 1, vapor_column) =
             -gas_constant * row.temperature
@@ -2842,7 +3084,7 @@ void evaluate_mixed_pure_associating_problem(
             [](double value) { return std::isfinite(value); }
         )) {
         throw std::runtime_error(
-            "assembled ordinary-sigma associating residual or Jacobian is "
+            "assembled fixed-topology residual or Jacobian is "
             "incomplete or nonfinite"
         );
     }
@@ -2868,8 +3110,8 @@ void evaluate_problem(
         throw std::logic_error("evaluation scratch dimensions are invalid");
     }
     std::fill(evaluation.jacobian.begin(), evaluation.jacobian.end(), 0.0);
-    if (mixed_pure_associating_observation(payload)) {
-        evaluate_mixed_pure_associating_problem(
+    if (fixed_topology_association_observation(payload)) {
+        evaluate_fixed_topology_association_problem(
             table, payload, variables, evaluation
         );
         return;
@@ -3276,18 +3518,17 @@ std::vector<double> joint_pure_start_variables(
     const std::size_t total = variable_count(payload);
     std::vector<double> start(total, 0.0);
     for (std::size_t parameter = 0; parameter < fitted_count; ++parameter) {
-        const std::size_t slot = payload.parameter_slot_indices[parameter];
-        start[slot] = (physical_start[parameter]
+        start[parameter] = (physical_start[parameter]
                        - payload.parameter_origins[parameter])
             / payload.parameter_scales[parameter];
     }
     std::size_t nuisance_offset = fitted_count;
     for (const Row& source : payload.training_rows) {
         const bool pressure_root =
-            mixed_pure_associating_observation(payload)
+            fixed_topology_association_observation(payload)
             && source.kind != ObservationKind::pure_density;
         const double liquid_start = pressure_root
-            ? associating_pressure_root_start(
+            ? fixed_topology_pressure_root_start(
                   table,
                   payload,
                   source,
@@ -3301,7 +3542,7 @@ std::vector<double> joint_pure_start_variables(
         );
         if (row_nuisance_count(source) == 2) {
             const double vapor_start = pressure_root
-                ? associating_pressure_root_start(
+                ? fixed_topology_pressure_root_start(
                       table,
                       payload,
                       source,
@@ -3330,14 +3571,13 @@ SolveOutcome solve_joint_pure_training(
         joint_pure_start_variables(table, payload, physical_start);
     std::vector<internal::CoordinateBound> bounds(total);
     for (std::size_t parameter = 0; parameter < fitted_count; ++parameter) {
-        const std::size_t slot = payload.parameter_slot_indices[parameter];
         const double lower = (payload.parameter_lower_bounds[parameter]
                               - payload.parameter_origins[parameter])
             / payload.parameter_scales[parameter];
         const double upper = (payload.parameter_upper_bounds[parameter]
                               - payload.parameter_origins[parameter])
             / payload.parameter_scales[parameter];
-        bounds[slot] = {std::min(lower, upper), std::max(lower, upper)};
+        bounds[parameter] = {std::min(lower, upper), std::max(lower, upper)};
     }
     std::size_t nuisance_offset = fitted_count;
     for (const Row& source : payload.training_rows) {
@@ -3737,7 +3977,7 @@ PyObject* rows_to_python(
         }
         return result;
     }
-    if (mixed_pure_associating_observation(payload)) {
+    if (fixed_topology_association_observation(payload)) {
         const std::size_t fitted_count = payload.parameter_origins.size();
         std::size_t nuisance_offset = fitted_count;
         std::size_t residual_offset = 0;
@@ -4038,8 +4278,16 @@ PyObject* rows_to_python(
 PyObject* parameter_capabilities_python(PyObject* capsule) {
     try {
         const auto* table = capability_table(capsule);
+        const bool has_fixed_topology =
+            table->table_size
+                >= offsetof(
+                    epcsaft_native_sdk_v1, fixed_topology_association
+                ) + sizeof(table->fixed_topology_association)
+            && table->fixed_topology_association != nullptr;
         PyObject* result = PyTuple_New(
-            static_cast<Py_ssize_t>(table->capability_count)
+            static_cast<Py_ssize_t>(
+                table->capability_count + (has_fixed_topology ? 1u : 0u)
+            )
         );
         if (result == nullptr) return nullptr;
         for (std::size_t index = 0; index < table->capability_count; ++index) {
@@ -4074,15 +4322,9 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
                 || descriptor.capability
                     == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_CATION_ANION_KIJ_V1
                 || descriptor.capability
-                    == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_ENERGY_HELMHOLTZ_V1
-                || descriptor.capability
-                    == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATION_VOLUME_HELMHOLTZ_V1
-                || descriptor.capability
                     == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_IONIC_REGION_PERMITTIVITY_V1
                 || descriptor.capability
                     == EPCSAFT_NATIVE_CAPABILITY_ION_SOLVATION_SOLVENT_PERMITTIVITY_V1
-                || descriptor.capability
-                    == EPCSAFT_NATIVE_CAPABILITY_PURE_ASSOCIATING_JOINT_SIGMA_BASIS_HELMHOLTZ_V1
             )
                 ? descriptor_to_python(descriptor)
                 : unsupported_descriptor_to_python(descriptor);
@@ -4091,6 +4333,18 @@ PyObject* parameter_capabilities_python(PyObject* capsule) {
                 return nullptr;
             }
             PyTuple_SET_ITEM(result, static_cast<Py_ssize_t>(index), item);
+        }
+        if (has_fixed_topology) {
+            PyObject* item = fixed_topology_descriptor_to_python(*table);
+            if (item == nullptr) {
+                Py_DECREF(result);
+                return nullptr;
+            }
+            PyTuple_SET_ITEM(
+                result,
+                static_cast<Py_ssize_t>(table->capability_count),
+                item
+            );
         }
         return result;
     } catch (const std::exception& error) {
@@ -4240,10 +4494,9 @@ PyObject* solve_general_python(
                 && complete_evaluation(confirmation, payload);
             if (joint_pure_observation(payload)) {
                 for (std::size_t parameter = 0;
-                     parameter < payload.parameter_slot_indices.size();
+                     parameter < payload.parameter_origins.size();
                      ++parameter) {
-                    const std::size_t column =
-                        payload.parameter_slot_indices[parameter];
+                    const std::size_t column = parameter;
                     maximum_parameter_delta = std::max(
                         maximum_parameter_delta,
                         std::abs(
@@ -4297,8 +4550,7 @@ PyObject* solve_general_python(
             active_bounds.resize(payload.parameter_origins.size());
             for (std::size_t parameter = 0;
                  parameter < payload.parameter_origins.size(); ++parameter) {
-                const std::size_t column =
-                    payload.parameter_slot_indices[parameter];
+                const std::size_t column = parameter;
                 const double physical = payload.parameter_origins[parameter]
                     + payload.parameter_scales[parameter]
                         * primary.variables[column];

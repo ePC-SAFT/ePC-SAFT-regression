@@ -6,6 +6,7 @@ from typing import get_type_hints
 
 import pytest
 from epcsaft import Mixture, Parameters
+from parameter_cases import neutral_parameters
 
 from epcsaft_regression import (
     AcquisitionClass,
@@ -107,11 +108,7 @@ def _dataset() -> ObservationDataset:
 
 def _model() -> Mixture:
     return Mixture(
-        Parameters.from_catalog(
-            "gross-2001-methane-ethane",
-            components=("methane", "ethane"),
-            version=1,
-        )
+        Parameters.from_dictionary(neutral_parameters(("methane", "ethane")))
     )
 
 
@@ -552,13 +549,13 @@ def test_installed_prepare_fit_and_record_contract(installed_fit) -> None:
     assert record["literature"]["source_printed_parameters"]["k_ij"] == "-0.01"
     assert record["installed_artifacts"]["distribution"] == "epcsaft==0.2.0.dev0"
     assert record["installed_artifacts"]["wheel_sha256"] == (
-        "66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9"
+        "1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9"
     )
     assert record["installed_artifacts"]["commit"] == (
-        "24ab1bdfb3a1558eb87815e9c3b5d97fbe6a025d"
+        "7b97bab039e1c50a6f89522698af80493bea5f9e"
     )
     assert record["installed_artifacts"]["tree"] == (
-        "145cf8b6126ad403aa8ee51b1b4623db3da8aa2f"
+        "d082a8f102b32705b6cd6669a3e31a8d4ea8acd0"
     )
     assert len(record["installed_artifacts"]["public_header_sha256"]) == 64
     assert len(record["installed_artifacts"]["static_library_sha256"]) == 64

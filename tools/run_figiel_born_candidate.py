@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 import run_candidate as artifact_binding
-
 
 PROVIDER_COMMIT = artifact_binding.PROVIDER_COMMIT
 PROVIDER_TREE = artifact_binding.PROVIDER_TREE
 PROVIDER_WHEEL_SHA256 = artifact_binding.PROVIDER_WHEEL_SHA256
 PROVIDER_HEADER_SHA256 = artifact_binding.PROVIDER_HEADER_SHA256
-PROVIDER_TEST_RECEIPT_SHA256 = artifact_binding.PROVIDER_TEST_RECEIPT_SHA256
+PROVIDER_LIBRARY_SHA256 = artifact_binding.PROVIDER_LIBRARY_SHA256
 
 
 def _canonical_evidence_bytes(payload: dict[str, object]) -> bytes:
@@ -24,8 +23,8 @@ def _canonical_evidence_bytes(payload: dict[str, object]) -> bytes:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate the Figiel Born-tracer candidate evidence.")
     parser.add_argument("--provider-wheel", type=Path, required=True)
-    parser.add_argument("--provider-test-receipt", type=Path, required=True)
     parser.add_argument("--regression-wheel", type=Path, required=True)
+    parser.add_argument("--parameter-bundle", type=Path, required=True)
     parser.add_argument("--regression-commit", required=True)
     parser.add_argument("--regression-tree", required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -34,7 +33,9 @@ def main() -> int:
     artifact_binding._require_hash(
         arguments.provider_wheel, PROVIDER_WHEEL_SHA256, "provider wheel"
     )
-    artifact_binding._require_provider_test_receipt(arguments.provider_test_receipt)
+    parameter_bundle_sha256 = artifact_binding._directory_sha256(
+        arguments.parameter_bundle
+    )
     provider_binding = artifact_binding._require_installed_distribution_matches_wheel(
         arguments.provider_wheel, "epcsaft"
     )
@@ -43,9 +44,10 @@ def main() -> int:
     )
 
     import epcsaft
-    import epcsaft_regression
     import epcsaft_regression._native as native
     from epcsaft import Mixture, Parameters, native_sdk
+
+    import epcsaft_regression
     from epcsaft_regression import (
         FIGIEL_BORN_DIAMETER_TRACER_V1,
         fit_figiel_born_diameters,
@@ -64,20 +66,27 @@ def main() -> int:
         Path(epcsaft.__file__).parent / "include" / "epcsaft" / "native_sdk_v1.h"
     )
     artifact_binding._require_hash(provider_header, PROVIDER_HEADER_SHA256, "provider header")
+    provider_library = (
+        Path(epcsaft.__file__).parent / "lib" / "libepcsaft_native_sdk.a"
+    )
+    artifact_binding._require_hash(
+        provider_library, PROVIDER_LIBRARY_SHA256, "provider static library"
+    )
 
     specification = FIGIEL_BORN_DIAMETER_TRACER_V1
     models = tuple(
         Mixture(
-            Parameters.from_catalog(
-                "figiel-2025-reference-electrolytes",
+            Parameters.from_bundle(
+                arguments.parameter_bundle,
                 components=target.component_order,
-                version=1,
             )
         )
         for target in specification.targets
     )
     capsules = tuple(native_sdk(model) for model in models)
-    payload = _born_native_payload(specification)
+    payload = _born_native_payload(
+        specification, tuple(model.parameter_fingerprint for model in models)
+    )
     trial = (2.9, 3.2, 4.3, 3.9, 4.7)
     trial_rows = native.evaluate_born(capsules, payload, trial)[2]
     derivative_checks = []
@@ -137,12 +146,17 @@ def main() -> int:
             "tree": PROVIDER_TREE,
             "wheel": arguments.provider_wheel.name,
             "wheel_sha256": PROVIDER_WHEEL_SHA256,
-            "test_receipt": arguments.provider_test_receipt.name,
-            "test_receipt_sha256": PROVIDER_TEST_RECEIPT_SHA256,
             "installed_header_sha256": PROVIDER_HEADER_SHA256,
+            "installed_static_library_sha256": PROVIDER_LIBRARY_SHA256,
             "capsule": "epcsaft.native_sdk.v1",
             "entry": "evaluate_ion_solvation_born",
             "derivative_order": 1,
+        },
+        "parameter_bundle": {
+            "tree_sha256": parameter_bundle_sha256,
+            "selected_parameter_fingerprints": [
+                model.parameter_fingerprint for model in models
+            ],
         },
         "regression": {
             "commit": arguments.regression_commit,

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from collections import Counter
-from dataclasses import dataclass
 import csv
 import hashlib
-from importlib.resources import files
 import io
 import math
-
+from collections import Counter
+from dataclasses import dataclass
+from importlib.resources import files
+from itertools import pairwise
 
 EXPECTED_HEADER = ("species", "T_K", "p_sat_Pa", "rho_sat_liq_kg_m3", "source")
 PROPANE_EXPECTED_HEADER = (
@@ -153,7 +153,7 @@ EXPECTED_DATA_SHA256 = METHANE_DATA_SHA256
 EXPECTED_PACKAGED_DATA_SHA256 = METHANE_PACKAGED_DATA_SHA256
 
 FIGIEL_TARGETS_PACKAGED_SHA256 = (
-    "23f4b9fd5deaff251f7bc6d5100b12e75c3177ca35a65bbfc1f24199000e4317"
+    "10a6f7a777458fe29285461cc24028298d488a053a7d9565dc51a6a5949a4c42"
 )
 FIGIEL_VALIDATION_LEDGER_SHA256 = (
     "f405a3e48d21cd979a8dd480d5f8cb3be40754f5d6babf368b505b5f305607f0"
@@ -238,7 +238,7 @@ class BornDiameterTracerSpecification:
                 -486.2,
                 -486_200.0,
                 2.784,
-                "sha256:dbed1c05a92d922369b9b631e89fe10add759e7c8d004ea53bc0a0c90d2d6f4a",
+                "sha256:9cef6373572a729c7c3519ee04c261b4f9d821d37ae2b74dc916a4a02e863149",
             ),
             (
                 "figiel2025-s5-Nap-reported-average",
@@ -248,7 +248,7 @@ class BornDiameterTracerSpecification:
                 -381.1,
                 -381_100.0,
                 3.445,
-                "sha256:d01bc3e64f19293902c00d9cc52060fccc3945ce736f0cd3e2f756be226cf5bf",
+                "sha256:e97c462061bf92d2d75622a8d025a4f7e94106edccf2c924c88142b1b6a03439",
             ),
             (
                 "figiel2025-s5-Kp-reported-average",
@@ -258,7 +258,7 @@ class BornDiameterTracerSpecification:
                 -309.1,
                 -309_100.0,
                 4.150,
-                "sha256:05f2db21ad51a27e7b7b8fca267e8a38eb663145c980eae6bee7dce02700af5b",
+                "sha256:1e885c57ebf7226d28a153ad4c3afb5e9ed8786b04aa0ff1b65e776b157d67d3",
             ),
             (
                 "figiel2025-s5-Clm-reported-average",
@@ -268,7 +268,7 @@ class BornDiameterTracerSpecification:
                 -314.9,
                 -314_900.0,
                 4.100,
-                "sha256:a8383fb8f70a1bb8c258f1662c792cd5507af1d23db71ad4575026b5dcab55ea",
+                "sha256:ac5a3ee0bf044d9fc63086a41f04f7b9f34a506daf67ac9627fd082a519c62a3",
             ),
             (
                 "figiel2025-s5-Brm-reported-average",
@@ -278,7 +278,7 @@ class BornDiameterTracerSpecification:
                 -290.9,
                 -290_900.0,
                 4.480,
-                "sha256:f313c30e9471daed0638ab70ff43eb033ed828724547c4b32857442ed35f1107",
+                "sha256:7db8316e0c2352d992c7482d4c1218463020d749d5365ec8a8f5e491643eb9b2",
             ),
         )
         observed_targets = tuple(
@@ -1215,10 +1215,7 @@ class PureSaturationDataset:
             raise ValueError("dataset contains a duplicate row_id")
         observed_temperatures = tuple(row.temperature_k for row in self.rows)
         if any(
-            right <= left
-            for left, right in zip(
-                observed_temperatures[:-1], observed_temperatures[1:], strict=True
-            )
+            right <= left for left, right in pairwise(observed_temperatures)
         ):
             raise ValueError("dataset temperatures must be strictly increasing")
         if observed_temperatures != temperatures:
@@ -1324,7 +1321,7 @@ class PureSaturationFitSpecification:
                 "pure-methane-saturation-lifted-volumes-v1",
                 "nist-webbook-methane-saturation-100-180-k-v1",
                 METHANE_SOURCE_ID,
-                "sha256:905e7a6e22eb1073347575bf833d5aa059d9ccf562e4408cb186d74f580ba36f",
+                "sha256:4a5cde0fad05a150c7fa54bb5ac7db508424f0126cf512596dcc248c284dd9e0",
                 (1.08, 3.555744, 157.5315),
                 0.016043,
                 (2.0e-5, 1.0e-4),
@@ -1337,7 +1334,7 @@ class PureSaturationFitSpecification:
                 "pure-ethane-saturation-lifted-volumes-v1",
                 "nist-webbook-ethane-saturation-100-280-k-v1",
                 ETHANE_SOURCE_ID,
-                "sha256:b81f32e44adb46080dfa91026c6428045e04a219900305767672d0547f9a9fb9",
+                "sha256:6381ef30d4f25c63fee1fd098c7024dd59254f3021d0588ee46e4eecfb31619b",
                 (1.6069, 3.5206, 191.42),
                 0.030070,
                 (2.0e-5, 1.0e-4),
@@ -1350,7 +1347,7 @@ class PureSaturationFitSpecification:
                 "pure-propane-saturation-lifted-volumes-v1",
                 "glos-2004-experimental-propane-saturation-110-340-k-v1",
                 PROPANE_SOURCE_ID,
-                "sha256:1194db349d0608c89419e70c56ccec9ada2ae0884dd8e64e519e9560e7e8ae42",
+                "sha256:7d893c35288fceec76b7dde4a16fbf2ef95830b7d18827d3205537ce54878140",
                 (2.002, 3.6184, 208.11),
                 0.044096,
                 (2.0e-5, 1.2e-4),
@@ -1555,7 +1552,7 @@ METHANE_SATURATION_FIT_V1 = _fit_specification(
     dataset_id="nist-webbook-methane-saturation-100-180-k-v1",
     source_id=METHANE_SOURCE_ID,
     expected_provider_fingerprint=(
-        "sha256:905e7a6e22eb1073347575bf833d5aa059d9ccf562e4408cb186d74f580ba36f"
+        "sha256:4a5cde0fad05a150c7fa54bb5ac7db508424f0126cf512596dcc248c284dd9e0"
     ),
     start=(1.08, 3.555744, 157.5315),
     molar_mass_kg_per_mol=0.016043,
@@ -1569,7 +1566,7 @@ ETHANE_SATURATION_FIT_V1 = _fit_specification(
     dataset_id="nist-webbook-ethane-saturation-100-280-k-v1",
     source_id=ETHANE_SOURCE_ID,
     expected_provider_fingerprint=(
-        "sha256:b81f32e44adb46080dfa91026c6428045e04a219900305767672d0547f9a9fb9"
+        "sha256:6381ef30d4f25c63fee1fd098c7024dd59254f3021d0588ee46e4eecfb31619b"
     ),
     start=(1.6069, 3.5206, 191.42),
     molar_mass_kg_per_mol=0.030070,
@@ -1583,7 +1580,7 @@ PROPANE_SATURATION_FIT_V1 = _fit_specification(
     dataset_id="glos-2004-experimental-propane-saturation-110-340-k-v1",
     source_id=PROPANE_SOURCE_ID,
     expected_provider_fingerprint=(
-        "sha256:1194db349d0608c89419e70c56ccec9ada2ae0884dd8e64e519e9560e7e8ae42"
+        "sha256:7d893c35288fceec76b7dde4a16fbf2ef95830b7d18827d3205537ce54878140"
     ),
     start=(2.002, 3.6184, 208.11),
     molar_mass_kg_per_mol=0.044096,

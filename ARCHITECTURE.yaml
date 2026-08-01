@@ -1,5 +1,5 @@
 version: 2
-status: authoritative-methane-and-ethane-with-general-and-fixed-2b-mechanics
+status: authoritative-methane-and-ethane-with-general-fixed-topology-association-mechanics
 
 authority:
   accepted_capabilities:
@@ -32,7 +32,7 @@ scope: >-
   while exposing authority-neutral source-bound general Regression through one
   Ceres owner and exact installed EOS derivatives. The direct EOS surface fits
   ten scalar parameter families, one joint pure m/sigma/epsilon-over-k block,
-  and one fixed neutral-pure-2B five-parameter block. A separate typed
+  and one descriptor-driven fixed-topology association block. A separate typed
   positive-observation transport consumes downstream-composed exact values and
   derivatives without importing Equilibrium. Methane preserves the accepted
   110, 130, 150, and 170 K fit.
@@ -55,13 +55,13 @@ scope: >-
 provider_frontend:
   version: 0.2.0.dev0
   public_types: [Parameters, Mixture]
-  provider_commit: 24ab1bdfb3a1558eb87815e9c3b5d97fbe6a025d
-  provider_tree: 145cf8b6126ad403aa8ee51b1b4623db3da8aa2f
+  provider_commit: 7b97bab039e1c50a6f89522698af80493bea5f9e
+  provider_tree: d082a8f102b32705b6cd6669a3e31a8d4ea8acd0
   artifact_root: executor-supplied-immutable-artifact-store
-  wheel_artifact: objects/sha256/66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl
-  wheel_sha256: 66b7ea8fb29e0a268b555cbdf401c3502517c088669a4157e8f64ab985b59ce9
-  installed_header_sha256: db37805c1abd9b1a355f41a89154d14756477c7293af940dc298a6b038aee45d
-  installed_static_library_sha256: 5e5c3e8311c011365471eeff29b2d9ff8486d149745a4bea7cd48bd6e784f9d3
+  wheel_artifact: objects/sha256/1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl
+  wheel_sha256: 1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9
+  installed_header_sha256: 881f5ec87293de8b1f3c25c16018aa94be69775fede2ec5426fcbb08e257fecd
+  installed_static_library_sha256: fd624add206b8d783cd079db320b6dba64083063af2f29faf5ce82d1cf4743eb
   provider_test_receipt_artifact: provider-python-frontend-v0.2/14fa374/provider-tests.xml
   provider_test_receipt_sha256: 56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf
   provider_test_receipt_summary: 276-passed-1-skipped
@@ -70,7 +70,7 @@ provider_frontend:
   retained_receipt_policy: immutable-provider-0.1-history-not-regenerated
 
 general_parameter_regression:
-  status: TEN_SCALAR_FAMILIES_PLUS_JOINT_PURE_AND_FIXED_2B_MECHANICS_AUTHORITY_NEUTRAL
+  status: TEN_SCALAR_FAMILIES_PLUS_JOINT_PURE_AND_FIXED_TOPOLOGY_ASSOCIATION_AUTHORITY_NEUTRAL
   design_owner: docs/science/general-parameter-regression.md
   literature_reproduction:
     contract_owner: docs/science/literature-reproduction-contract.md
@@ -125,18 +125,19 @@ general_parameter_regression:
   immediate_eos_gate: SATISFIED_FOR_CURRENT_TYPED_CAPABILITIES
   artifact_identity_role: historical-reference-campaign-evidence; active-frontend-binding-is-provider_frontend
   pure_association_recovery:
-    status: FIXED_NEUTRAL_PURE_2B_MECHANICS_EXECUTABLE_IDENTIFIABILITY_PENDING
+    status: FIXED_TOPOLOGY_ASSOCIATION_MECHANICS_EXECUTABLE_CAMPAIGN_EVIDENCE_PENDING
     design_owner: docs/science/general-parameter-regression.md
     evidence_owners:
       - docs/research/gross-sadowski-2002-association-fitting.md
       - docs/research/association-regression-source-locator.md
-    intended_joint_coordinates:
+    coordinate_contract: arbitrary-nonempty-ordered-eos-advertised-subset-with-explicit-sharing
+    parameter_families:
       - segment_count
       - segment_diameter
       - dispersion_energy_over_k
       - association_energy_over_k
       - association_volume
-    supported_topology: fixed-neutral-pure-2B
+    supported_topology: eos-advertised-neutral-pure-fixed-topology
     supported_observations:
       - vapor-pressure
       - fixed-pressure-density
@@ -145,7 +146,7 @@ general_parameter_regression:
     packaged_application_specific_runtime: none
     missing_gates:
       - practical-identifiability-profile
-      - source-complete-fixed-2b-campaign
+      - source-complete-topology-specific-campaign
       - conditional-fixed-kappa-fallback
     forbidden_shortcuts:
       - association-only-fit-from-one-density-row
@@ -702,7 +703,7 @@ parameter_family_readiness:
   constant_methane_ethane_kij:
     status: NOT_READY_DEFERRED_NONPRODUCTION_UNDER_D023
     retained_evidence_authority: D-022
-  association_parameters: FIXED_NEUTRAL_PURE_2B_MECHANICS_EXECUTABLE_IDENTIFIABILITY_PENDING
+  association_parameters: FIXED_TOPOLOGY_ASSOCIATION_MECHANICS_EXECUTABLE_CAMPAIGN_EVIDENCE_PENDING
   polar_parameters: EXCLUDED_FROM_REGRESSION_ROADMAP_BY_USER_DECISION
   electrolyte_born_parameters: FIT_READY_DIRECT_OBSERVABLE_AUTHORITY_NEUTRAL_NO_CATALOG_ADMISSION
   figiel_current_catalog_born_tracer_design: PACKAGE_CANDIDATE_PASSED_LOCAL_GATES_VALIDATION_NOT_STARTED
@@ -738,15 +739,18 @@ parameter_family_readiness:
       derivative_oracle: closed-form-no-finite-difference
       packaging: build-testing-only-not-installed
     second_installed_multi_parameter_seam:
-      entry: evaluate_sigma_basis_associating_pure_phase_parameters
-      topology: fixed-neutral-pure-2B
+      entry: evaluate_fixed_topology_association
+      descriptor: fixed_topology_association
+      topology: eos-advertised-neutral-pure-fixed-topology
       sigma_basis: ordinary-sigma-ij-cubed-kappa
-      parameters:
+      parameter_families:
         - segment_count
         - segment_diameter
         - dispersion_energy_over_k
         - association_energy_over_k
         - association_volume
+      active_shape: {N_fitted: arbitrary-positive, S_eos_slots: arbitrary-positive}
+      sharing: explicit-slot-to-fitted-coordinate-map-with-derivative-accumulation
       observations:
         - vapor-pressure
         - fixed-pressure-density
@@ -762,7 +766,7 @@ parameter_family_readiness:
   model_ion_fraction_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
   mixture_independent_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   model_ionic_region_relative_permittivity: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
-  mixture_independent_association: FIXED_NEUTRAL_PURE_2B_FIVE_PARAMETER_MECHANICS_IDENTIFIABILITY_PENDING
+  mixture_independent_association: FIXED_TOPOLOGY_ASSOCIATION_MECHANICS_CAMPAIGN_EVIDENCE_PENDING
   khb_ij: NOT_READY_NOT_A_CURRENT_EOS_PARAMETER_FAMILY
   next_engineering_investment: CERTIFIED_STABLE_MEA_STATE_THEN_REDUCED_TRACER
   optional_standalone_association_source_acquisition: DEFERRED_NOT_MEA_CRITICAL_PATH
@@ -919,7 +923,7 @@ evidence_limits:
 excluded:
   # These are current runtime exclusions, not denials of the staged design goal.
   - runtime neutral methane/ethane binary interaction regression; the private dependency-gated contract grants no capability
-  - association topology beyond fixed neutral-pure-2B or any association parameter acceptance without identifiability evidence
+  - topology inference or optimization, mixture/reactive association domains, or any association parameter acceptance without topology-specific identifiability evidence
   - predictive or promoted electrolyte/application campaigns beyond authority-neutral typed mechanics
   - reactive regression
   - arbitrary residual plugins or mutable runtime registries

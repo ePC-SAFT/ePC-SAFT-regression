@@ -1,19 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
 import math
+from dataclasses import dataclass
 
-from epcsaft import Mixture, Parameters, native_sdk, unit_registry
-from epcsaft.records import (
-    AssociationParameterRecord,
-    ConstantCorrelation,
-    ConstantPlusSumOfExponentialsCorrelation,
-    ModelParameterRecord,
-    PairParameterRecord,
-    SingleParameterRecord,
-    SiteRecord,
-    SourceRecord,
-)
+from epcsaft import native_sdk
 
 from . import _native
 from .parameter_regression import (
@@ -42,7 +32,6 @@ from .records import (
     SaturationObservation,
 )
 
-
 PROVIDER_CAPSULE = "epcsaft.native_sdk.v1"
 PARAMETER_TRANSFORM = "p_j = start_j + parameter_scale_j * z_j"
 LIQUID_VOLUME_TRANSFORM = (
@@ -58,29 +47,6 @@ WATER_FACTOR_RESIDUAL = "r_q = 1 - gamma_q_model / gamma_q_observed"
 WATER_FACTOR_JACOBIAN = (
     "dr_q/df_water = -(gamma_q_model/gamma_q_observed) * dln(gamma_q_model)/df_water"
 )
-FIGIEL_PARAMETER_SOURCES = (
-    SourceRecord(
-        "figiel-yu-held-2025",
-        (
-            "Figiel, P.; Yu, G.; Held, C. Predicting Thermodynamic Properties "
-            "of Ions in Single Solvents and in Mixed Solvents Using a Modified "
-            "Born Term within the ePC-SAFT Framework. Industrial & Engineering "
-            "Chemistry Research 2025, 64, 9406-9418."
-        ),
-        (
-            "primary equations and parameters for bounded water, methanol, "
-            "and ethanol alkali-halide reference states"
-        ),
-        "10.1021/acs.iecr.5c00475",
-    ),
-    SourceRecord(
-        "nist-srd-69-water",
-        "NIST Chemistry WebBook, SRD 69, Water, CAS 7732-18-5.",
-        "water identity and molecular weight",
-    ),
-)
-
-
 def _row_payload(row: SaturationObservation) -> tuple[object, ...]:
     return (
         row.row_id,
@@ -402,6 +368,7 @@ class FigielAqueousKijFitResult:
 
 def _born_native_payload(
     specification: BornDiameterTracerSpecification,
+    model_fingerprints: tuple[str, ...],
 ) -> tuple[object, ...]:
     identity = (
         specification.specification_id,
@@ -435,9 +402,11 @@ def _born_native_payload(
             target.counterion_component_id,
             target.target_j_per_mol,
             target.published_diameter_angstrom,
-            target.expected_provider_fingerprint,
+            fingerprint,
         )
-        for target in specification.targets
+        for target, fingerprint in zip(
+            specification.targets, model_fingerprints, strict=True
+        )
     )
     return (
         identity,
@@ -804,6 +773,8 @@ def fit_pure_saturation(
         or dataset.training_temperatures_k != specification.training_temperatures_k
     ):
         raise ValueError("dataset and specification identities do not match")
+    if tuple(getattr(model, "component_ids", ())) != (specification.component_id,):
+        raise ValueError("model component order does not match the specification")
     capsule = native_sdk(model)
     provider_fingerprint = getattr(model, "parameter_fingerprint", None)
     if not isinstance(provider_fingerprint, str) or not provider_fingerprint:
@@ -1221,7 +1192,8 @@ def fit_figiel_born_diameters(*, models: tuple[object, ...]) -> BornDiameterFitR
                 "model fingerprint does not match the immutable Born target"
             )
     capsules = tuple(native_sdk(model) for model in models)
-    payload = _born_native_payload(specification)
+    model_fingerprints = tuple(model.parameter_fingerprint for model in models)
+    payload = _born_native_payload(specification, model_fingerprints)
     starts_native, compiled_identity_native = _native.solve_born(capsules, payload)
     if tuple(compiled_identity_native) != payload[0]:
         raise RuntimeError("compiled Born problem identity did not round-trip")
@@ -1284,15 +1256,13 @@ def fit_figiel_born_diameters(*, models: tuple[object, ...]) -> BornDiameterFitR
             for delta in confirmation_deltas
         )
     )
-    expected_fingerprints = tuple(
-        target.expected_provider_fingerprint for target in specification.targets
-    )
     observed_fingerprints = tuple(
         row.provider_fingerprint for row in primary.observations
     )
     workflow_valid = (
         numerical_converged
-        and observed_fingerprints == expected_fingerprints
+        and observed_fingerprints
+        == tuple(target.expected_provider_fingerprint for target in specification.targets)
         and all(
             row.reference_molality_mol_per_kg
             == specification.reference_molality_mol_per_kg
@@ -1341,95 +1311,9 @@ def fit_figiel_born_diameters(*, models: tuple[object, ...]) -> BornDiameterFitR
     )
 
 
-def _figiel_aqueous_parameters(
-    fixed_born_diameters_angstrom: tuple[float, ...],
-    *,
-    water_solvation_factor: float | None,
-    selected_components: tuple[str, ...],
-    bundle_id: str = "figiel-water-factor-fixed-inputs",
-) -> Parameters:
-    catalog = Parameters.from_catalog(
-        "figiel-2025-reference-electrolytes",
-        components=selected_components,
-        version=1,
-    )
-    born_by_component = {
-        target.active_component_id: diameter
-        for target, diameter in zip(
-            FIGIEL_BORN_DIAMETER_TRACER_V1.targets,
-            fixed_born_diameters_angstrom,
-            strict=True,
-        )
-    }
-    records = tuple(
-        replace(
-            record,
-            value=(born_by_component[record.component_id] * unit_registry.angstrom),
-        )
-        if (
-            isinstance(record, SingleParameterRecord)
-            and record.family == "born_diameter"
-            and record.component_id in born_by_component
-        )
-        else (
-            replace(record, value=water_solvation_factor)
-            if (
-                water_solvation_factor is not None
-                and isinstance(record, SingleParameterRecord)
-                and record.record_id == "water-solvation-factor"
-            )
-            else record
-        )
-        for record in catalog.records
-    )
-    return Parameters.from_records(
-        bundle_id=bundle_id,
-        bundle_version=1,
-        purpose="user-provided",
-        sources=FIGIEL_PARAMETER_SOURCES,
-        domains=catalog.domains,
-        components=catalog.components,
-        singles=(
-            record for record in records if isinstance(record, SingleParameterRecord)
-        ),
-        pairs=(record for record in records if isinstance(record, PairParameterRecord)),
-        sites=(record for record in records if isinstance(record, SiteRecord)),
-        associations=(
-            record
-            for record in records
-            if isinstance(record, AssociationParameterRecord)
-        ),
-        correlations=(
-            record
-            for record in records
-            if isinstance(
-                record,
-                (
-                    ConstantCorrelation,
-                    ConstantPlusSumOfExponentialsCorrelation,
-                ),
-            )
-        ),
-        models=(
-            record for record in records if isinstance(record, ModelParameterRecord)
-        ),
-        selected_components=selected_components,
-    )
-
-
-def _fixed_water_factor_model(
-    specification: FigielWaterSolvationFactorSpecification,
-) -> Mixture:
-    parameters = _figiel_aqueous_parameters(
-        specification.fixed_born_diameters_angstrom,
-        water_solvation_factor=None,
-        selected_components=("water", "sodium-cation", "bromide-anion"),
-    )
-    return Mixture(parameters)
-
-
 def _water_factor_native_payload(
     specification: FigielWaterSolvationFactorSpecification,
+    model_fingerprint: str,
 ) -> tuple[object, ...]:
     observations = tuple(
         (
@@ -1445,7 +1329,7 @@ def _water_factor_native_payload(
     )
     return (
         observations,
-        specification.expected_provider_fingerprint,
+        model_fingerprint,
         starts,
         specification.temperature_k,
         specification.pressure_pa,
@@ -1564,13 +1448,20 @@ def _water_factor_start(
     )
 
 
-def fit_figiel_water_solvation_factor() -> FigielWaterSolvationFactorFitResult:
+def fit_figiel_water_solvation_factor(
+    *, model: object
+) -> FigielWaterSolvationFactorFitResult:
     specification = FIGIEL_WATER_SOLVATION_FACTOR_V1
-    model = _fixed_water_factor_model(specification)
-    expected_fingerprint = specification.expected_provider_fingerprint
-    if model.parameter_fingerprint != expected_fingerprint:
-        raise RuntimeError("installed Provider model fingerprint does not match")
-    payload = _water_factor_native_payload(specification)
+    if tuple(getattr(model, "component_ids", ())) != (
+        "water",
+        "sodium-cation",
+        "bromide-anion",
+    ):
+        raise ValueError("model component order does not match the NaBr contract")
+    expected_fingerprint = getattr(model, "parameter_fingerprint", None)
+    if not isinstance(expected_fingerprint, str) or not expected_fingerprint:
+        raise ValueError("model must expose a nonblank parameter fingerprint")
+    payload = _water_factor_native_payload(specification, expected_fingerprint)
     native_starts = _native.solve_figiel_water_factor(native_sdk(model), payload)
     starts = tuple(
         _water_factor_start(tuple(start), specification)
@@ -1643,24 +1534,9 @@ def fit_figiel_water_solvation_factor() -> FigielWaterSolvationFactorFitResult:
     )
 
 
-def _aqueous_kij_models(
-    specification: FigielAqueousKijSpecification,
-) -> tuple[Mixture, ...]:
-    return tuple(
-        Mixture(
-            _figiel_aqueous_parameters(
-                specification.fixed_born_diameters_angstrom,
-                water_solvation_factor=specification.fixed_water_solvation_factor,
-                selected_components=("water", cation, anion),
-                bundle_id="figiel-stage-c-fixed-inputs",
-            )
-        )
-        for _, cation, anion, _ in specification.salt_contracts
-    )
-
-
 def _aqueous_kij_native_payload(
     specification: FigielAqueousKijSpecification,
+    model_fingerprints: tuple[str, ...],
 ) -> tuple[object, ...]:
     salt_indices = {
         salt: index
@@ -1691,7 +1567,7 @@ def _aqueous_kij_native_payload(
     )
     return (
         observations,
-        specification.expected_provider_fingerprints,
+        model_fingerprints,
         schedules,
         specification.temperature_k,
         specification.pressure_pa,
@@ -1885,13 +1761,25 @@ def _aqueous_kij_start(
     )
 
 
-def fit_figiel_aqueous_kij() -> FigielAqueousKijFitResult:
+def fit_figiel_aqueous_kij(
+    *, models: tuple[object, ...]
+) -> FigielAqueousKijFitResult:
     specification = FIGIEL_AQUEOUS_KIJ_V1
-    models = _aqueous_kij_models(specification)
-    fingerprints = tuple(model.parameter_fingerprint for model in models)
-    if fingerprints != specification.expected_provider_fingerprints:
-        raise RuntimeError("installed Provider model fingerprints do not match Stage C")
-    payload = _aqueous_kij_native_payload(specification)
+    expected_orders = tuple(
+        ("water", cation, anion)
+        for _, cation, anion, _ in specification.salt_contracts
+    )
+    if type(models) is not tuple or len(models) != len(expected_orders):
+        raise TypeError("models must be the exact ordered six-model tuple")
+    if (
+        tuple(tuple(getattr(model, "component_ids", ())) for model in models)
+        != expected_orders
+    ):
+        raise ValueError("model component orders do not match the aqueous-kij contract")
+    fingerprints = tuple(getattr(model, "parameter_fingerprint", None) for model in models)
+    if any(not isinstance(value, str) or not value for value in fingerprints):
+        raise ValueError("each model must expose a nonblank parameter fingerprint")
+    payload = _aqueous_kij_native_payload(specification, fingerprints)
     capsules = tuple(native_sdk(model) for model in models)
     primary = _aqueous_kij_start(
         tuple(_native.solve_figiel_kij(capsules, payload, 0)),

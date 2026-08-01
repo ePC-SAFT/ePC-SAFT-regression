@@ -6,20 +6,14 @@ import json
 from pathlib import Path
 from zipfile import ZipFile
 
-import pytest
-
-from epcsaft import Mixture, Parameters, native_sdk
-
 import epcsaft_regression._native as native
+import pytest
+from epcsaft import Mixture, Parameters, native_sdk
+from parameter_cases import neutral_parameters
 
 
 def _provider_model(component_id: str) -> Mixture:
-    parameters = Parameters.from_catalog(
-        "gross-2001-methane-ethane",
-        components=(component_id,),
-        version=1,
-    )
-    return Mixture(parameters)
+    return Mixture(Parameters.from_dictionary(neutral_parameters((component_id,))))
 
 
 @pytest.mark.parametrize("component_id", ("methane", "ethane"))
@@ -72,9 +66,8 @@ def test_receipt_runner_rejects_wheel_that_differs_from_installed_runtime(
         )
 
 
-def test_candidate_runners_share_final_provider_identity_and_reject_mixed_receipt(
+def test_candidate_runners_share_final_provider_identity(
     monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
 ) -> None:
     tools_path = Path(__file__).parents[1] / "tools"
     monkeypatch.syspath_prepend(str(tools_path))
@@ -93,24 +86,38 @@ def test_candidate_runners_share_final_provider_identity_and_reject_mixed_receip
     born = importlib.util.module_from_spec(born_spec)
     born_spec.loader.exec_module(born)
 
-    expected_commit = "14fa3745264db66b8e59c12268737d694c706f2f"
-    expected_tree = "eb04f10f445957cc768bad1ef4f330038c69a293"
-    expected_wheel = "48f3a75c9fc16ba71616aa703b526f41c2dcf89a7e00eebe23f75fcb8fa24594"
-    expected_header = "2cd2b73b83c65936dff21155fd800a87b56e81cce977df7b8491ccfb2bf4c50b"
-    expected_receipt = "56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf"
-    legacy_receipt = "07447721abaca946c6e9221e7d49e431e13fcb8e6867944f67b6ba8337901480"
+    expected_commit = "7b97bab039e1c50a6f89522698af80493bea5f9e"
+    expected_tree = "d082a8f102b32705b6cd6669a3e31a8d4ea8acd0"
+    expected_wheel = "1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9"
+    expected_header = "881f5ec87293de8b1f3c25c16018aa94be69775fede2ec5426fcbb08e257fecd"
+    expected_library = "fd624add206b8d783cd079db320b6dba64083063af2f29faf5ce82d1cf4743eb"
 
     assert candidate.PROVIDER_COMMIT == born.PROVIDER_COMMIT == expected_commit
     assert candidate.PROVIDER_TREE == born.PROVIDER_TREE == expected_tree
     assert candidate.PROVIDER_WHEEL_SHA256 == born.PROVIDER_WHEEL_SHA256 == expected_wheel
     assert candidate.PROVIDER_HEADER_SHA256 == born.PROVIDER_HEADER_SHA256 == expected_header
-    assert candidate.PROVIDER_TEST_RECEIPT_SHA256 == born.PROVIDER_TEST_RECEIPT_SHA256 == expected_receipt
-    assert candidate.PROVIDER_TEST_RECEIPT_SHA256 != legacy_receipt
+    assert candidate.PROVIDER_LIBRARY_SHA256 == born.PROVIDER_LIBRARY_SHA256 == expected_library
 
-    mixed_receipt = tmp_path / "provider-tests.xml"
-    mixed_receipt.write_bytes(b"Provider 0.1 JUnit receipt")
-    with pytest.raises(SystemExit, match="provider test receipt SHA-256 mismatch"):
-        candidate._require_provider_test_receipt(mixed_receipt)
+
+def test_parameter_bundle_tree_hash_binds_paths_and_bytes(tmp_path: Path) -> None:
+    runner_path = Path(__file__).parents[1] / "tools" / "run_candidate.py"
+    module_spec = importlib.util.spec_from_file_location(
+        "candidate_runner_bundle_hash", runner_path
+    )
+    assert module_spec is not None and module_spec.loader is not None
+    runner = importlib.util.module_from_spec(module_spec)
+    module_spec.loader.exec_module(runner)
+    bundle = tmp_path / "parameters"
+    nested = bundle / "nested"
+    nested.mkdir(parents=True)
+    (bundle / "bundle.toml").write_text('schema = "epcsaft.parameters"\n')
+    (nested / "single.csv").write_text("record_id,value\nmethane,1\n")
+
+    original = runner._directory_sha256(bundle)
+    assert original == runner._directory_sha256(bundle)
+
+    (nested / "single.csv").write_text("record_id,value\nmethane,2\n")
+    assert runner._directory_sha256(bundle) != original
 
 
 def test_candidate_receipt_has_one_canonical_reproducible_subject() -> None:
