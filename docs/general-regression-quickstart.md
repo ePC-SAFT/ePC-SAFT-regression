@@ -104,9 +104,12 @@ prediction, or acceptance. Repeated or insensitive row designs therefore fail
 rank preflight before Ceres.
 
 `PreparedFit.evaluate(physical_parameter_point, lifted_solver_point=None)` is
-the public audit seam for one declared training-residual point. The immutable result contains
-the physical fitted point, transformed fitted and lifted solver points,
-lifted physical values, ordered fitted coordinates and lifted-variable IDs,
+the public audit seam for one declared training-residual point. When the
+lifted point is omitted, multi-parameter pure-phase contracts use the EOS
+root-resolved phase start; other contracts use their row-declared starts. The
+immutable result records the exact selected point. It contains the physical
+fitted point, transformed fitted and lifted solver points, lifted physical
+values, ordered fitted coordinates and lifted-variable IDs,
 ordered row/component residual IDs, residual vector, complete exact row-major
 Jacobian, and full and nuisance-projected diagnostics. It also binds parameter,
 topology, capability-artifact, installed-EOS-artifact, preparation, dataset,
@@ -547,8 +550,10 @@ profile, bootstrap, uncertainty, and Validation-campaign artifacts; each is
 either an `ArtifactReference(artifact_id, sha256)` or `None`. Failed diagnostic
 records omit unavailable numerical fields and list their exact paths under
 `unavailable_fields`; evaluated rows and all other fields reject nonfinite
-values. Fixed-topology descriptor limits are metadata: an intentional infinite
-limit is serialized in place as
-`{"kind":"open_bound","direction":"lower|upper"}`. NaN or infinity in the
-wrong direction remains invalid, and this representation does not relax
-finite-number checks for evaluated scientific values.
+values. Fixed-topology descriptor limits are metadata. An intentional open
+upper limit omits the numeric `upper_bound_exclusive` field, lists that path
+under `unavailable_fields`, and records
+`{"field":"upper_bound_exclusive","direction":"upper"}` under `open_bounds`.
+Lower limits remain finite. NaN or an infinity in any other position remains
+invalid, and this representation does not relax finite-number checks for
+evaluated scientific values.

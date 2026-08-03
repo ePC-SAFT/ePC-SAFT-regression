@@ -458,6 +458,43 @@ def test_native_jacobian_diagnostics_reject_negative_dimensions() -> None:
         usability._native.diagnose_jacobian(1, 0, 1, (float("nan"),))
 
 
+def test_public_scalar_evaluation_matches_centered_difference_oracle() -> None:
+    prepared = _prepared()
+    evaluation = prepared.evaluate((0.0,))
+    solver_point = (
+        *evaluation.solver_parameter_point,
+        *evaluation.lifted_solver_point,
+    )
+    step = 1.0e-6
+
+    assert evaluation.jacobian_layout == "row_major"
+    assert evaluation.jacobian_diagnostics.full_rank == len(solver_point)
+    for column in range(len(solver_point)):
+        lower = list(solver_point)
+        upper = list(solver_point)
+        lower[column] -= step
+        upper[column] += step
+        lower_evaluation = prepared.evaluate(
+            (prepared.problem.parameters[0].transform.to_physical(lower[0]),),
+            lifted_solver_point=tuple(lower[1:]),
+        )
+        upper_evaluation = prepared.evaluate(
+            (prepared.problem.parameters[0].transform.to_physical(upper[0]),),
+            lifted_solver_point=tuple(upper[1:]),
+        )
+        for row, (lower_residual, upper_residual) in enumerate(
+            zip(
+                lower_evaluation.residual_vector,
+                upper_evaluation.residual_vector,
+                strict=True,
+            )
+        ):
+            centered_difference = (upper_residual - lower_residual) / (2.0 * step)
+            assert evaluation.jacobian[
+                row * len(solver_point) + column
+            ] == pytest.approx(centered_difference, rel=2.0e-5, abs=2.0e-6)
+
+
 @pytest.mark.parametrize(
     ("error", "reason"),
     (
@@ -497,6 +534,7 @@ def test_preflight_preserves_failure_classes(
     (
         ((0.0,) * 4, (0.0,) * 11, "unavailable_derivatives:"),
         ((0.0, 0.0, 0.0, float("nan")), (0.0,) * 12, "nonfinite_evaluation:"),
+        ((0.0,) * 4, (0.0,) * 11 + (float("nan"),), "nonfinite_evaluation:"),
     ),
 )
 def test_public_evaluation_rejects_incomplete_or_nonfinite_payload(
@@ -512,6 +550,47 @@ def test_public_evaluation_rejects_incomplete_or_nonfinite_payload(
     )
 
     with pytest.raises(RuntimeError, match=f"^{reason}"):
+        _prepared().evaluate((0.0,))
+
+
+def test_public_evaluation_classifies_installed_artifact_identity_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail() -> None:
+        raise RuntimeError("wheel fingerprint mismatch")
+
+    monkeypatch.setattr(
+        usability,
+        "_installed_eos_artifact_identity",
+        fail,
+    )
+
+    with pytest.raises(RuntimeError, match="^artifact_identity_failure:"):
+        _prepared().evaluate((0.0,))
+
+
+def test_public_evaluation_classifies_malformed_and_diagnostic_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        usability,
+        "_evaluate_parameters",
+        lambda *_: (None, (0.0,) * 12),
+    )
+    with pytest.raises(RuntimeError, match="^malformed_evaluation:"):
+        _prepared().evaluate((0.0,))
+
+    monkeypatch.setattr(
+        usability,
+        "_evaluate_parameters",
+        lambda *_: ((0.0,) * 4, (0.0,) * 12),
+    )
+
+    def fail(*_args: object) -> None:
+        raise ValueError("diagnostic payload mismatch")
+
+    monkeypatch.setattr(usability._native, "diagnose_jacobian", fail)
+    with pytest.raises(RuntimeError, match="^diagnostic_failure:"):
         _prepared().evaluate((0.0,))
 
 

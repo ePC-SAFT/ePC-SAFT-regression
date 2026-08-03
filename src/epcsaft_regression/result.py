@@ -356,21 +356,24 @@ def _capability_records(result: RegressionResult, json_value) -> list[object]:
         assert isinstance(slots, list)
         for slot, slot_record in zip(capability.slots, slots, strict=True):
             assert isinstance(slot_record, dict)
-            for field, direction, value in (
-                ("lower_bound_exclusive", "lower", slot.lower_bound_exclusive),
-                ("upper_bound_exclusive", "upper", slot.upper_bound_exclusive),
-            ):
-                if math.isfinite(value):
-                    continue
-                expected = -math.inf if direction == "lower" else math.inf
-                if value != expected:
-                    raise ValueError(
-                        f"fixed-topology {field} must be finite or an open {direction} bound"
-                    )
-                slot_record[field] = {
-                    "direction": direction,
-                    "kind": "open_bound",
+            if not math.isfinite(slot.lower_bound_exclusive):
+                raise ValueError(
+                    "fixed-topology lower_bound_exclusive must be finite"
+                )
+            if math.isfinite(slot.upper_bound_exclusive):
+                continue
+            if slot.upper_bound_exclusive != math.inf:
+                raise ValueError(
+                    "fixed-topology upper_bound_exclusive must be finite or open"
+                )
+            del slot_record["upper_bound_exclusive"]
+            slot_record["unavailable_fields"] = ["upper_bound_exclusive"]
+            slot_record["open_bounds"] = [
+                {
+                    "direction": "upper",
+                    "field": "upper_bound_exclusive",
                 }
+            ]
     return records
 
 

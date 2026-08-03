@@ -824,6 +824,20 @@ def _lifted_start_variables(
     return tuple(values)
 
 
+def _requires_resolved_lifted_start(problem: RegressionProblem) -> bool:
+    return len(problem.parameters) > 1 and all(
+        isinstance(
+            row,
+            (
+                PureDensityObservation,
+                PureSaturationObservation,
+                PureVaporPressureObservation,
+            ),
+        )
+        for row in problem.training_observations
+    )
+
+
 def _bound_status(value: float, bounds: tuple[float, float]) -> str:
     return (
         "lower" if value == bounds[0] else "upper" if value == bounds[1] else "interior"
@@ -1003,7 +1017,10 @@ class PreparedFit:
             )
         )
         try:
-            if lifted_solver_point is None and parameter_count > 1:
+            if (
+                lifted_solver_point is None
+                and _requires_resolved_lifted_start(self.problem)
+            ):
                 variables, residuals, jacobian = _evaluate_parameters_at_start(
                     self.problem,
                     self.model,
@@ -1026,9 +1043,14 @@ class PreparedFit:
             raise RuntimeError(_evaluation_failure_reason(exc)) from exc
 
         variable_count = parameter_count + lifted_count
+        try:
+            residual_vector = tuple(float(value) for value in residuals)
+            jacobian_vector = tuple(float(value) for value in jacobian)
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError(f"malformed_evaluation: {exc}") from exc
         if (
-            len(residuals) != residual_count
-            or len(jacobian) != residual_count * variable_count
+            len(residual_vector) != residual_count
+            or len(jacobian_vector) != residual_count * variable_count
         ):
             raise RuntimeError(
                 "unavailable_derivatives: incomplete exact residual or Jacobian payload"
@@ -1038,30 +1060,33 @@ class PreparedFit:
             for value in (
                 *solver_parameter_point,
                 *lifted_solver_point,
-                *residuals,
-                *jacobian,
+                *residual_vector,
+                *jacobian_vector,
             )
         ):
             raise RuntimeError("nonfinite_evaluation: exact evaluation payload")
 
-        full, projected = _native.diagnose_jacobian(
-            parameter_count,
-            lifted_count,
-            residual_count,
-            jacobian,
-        )
-        diagnostics = GeneralJacobianDiagnostics(
-            residual_count=residual_count,
-            variable_count=variable_count,
-            full_singular_values=tuple(float(value) for value in full[0]),
-            full_rank=int(full[1]),
-            full_condition_number=float(full[2]),
-            projected_parameter_singular_values=tuple(
-                float(value) for value in projected[0]
-            ),
-            projected_parameter_rank=int(projected[1]),
-            projected_parameter_condition_number=float(projected[2]),
-        )
+        try:
+            full, projected = _native.diagnose_jacobian(
+                parameter_count,
+                lifted_count,
+                residual_count,
+                jacobian_vector,
+            )
+            diagnostics = GeneralJacobianDiagnostics(
+                residual_count=residual_count,
+                variable_count=variable_count,
+                full_singular_values=tuple(float(value) for value in full[0]),
+                full_rank=int(full[1]),
+                full_condition_number=float(full[2]),
+                projected_parameter_singular_values=tuple(
+                    float(value) for value in projected[0]
+                ),
+                projected_parameter_rank=int(projected[1]),
+                projected_parameter_condition_number=float(projected[2]),
+            )
+        except (ArithmeticError, RuntimeError, TypeError, ValueError) as exc:
+            raise RuntimeError(f"diagnostic_failure: {exc}") from exc
         if not all(
             math.isfinite(value)
             for value in (
@@ -1074,22 +1099,29 @@ class PreparedFit:
             raise RuntimeError("nonfinite_evaluation: Jacobian diagnostics")
 
         residual_identities = _residual_identities(self.problem.training_observations)
-        installed_identity = dict(_installed_eos_artifact_identity())
+        try:
+            lifted_physical_point = _lifted_physical_point(
+                self.problem.training_observations,
+                lifted_solver_point,
+            )
+        except (ArithmeticError, ValueError) as exc:
+            raise RuntimeError(f"eos_domain_failure: {exc}") from exc
+        try:
+            installed_identity = dict(_installed_eos_artifact_identity())
+        except (RuntimeError, TypeError, ValueError) as exc:
+            raise RuntimeError(f"artifact_identity_failure: {exc}") from exc
         return PreparedFitEvaluation(
             physical_parameter_point=physical_parameter_point,
             solver_parameter_point=solver_parameter_point,
-            lifted_physical_point=_lifted_physical_point(
-                self.problem.training_observations,
-                lifted_solver_point,
-            ),
+            lifted_physical_point=lifted_physical_point,
             lifted_solver_point=lifted_solver_point,
             fitted_variable_identities=self.problem.parameters,
             lifted_variable_ids=_lifted_variable_ids(
                 self.problem.training_observations
             ),
             residual_identities=residual_identities,
-            residual_vector=tuple(float(value) for value in residuals),
-            jacobian=tuple(float(value) for value in jacobian),
+            residual_vector=residual_vector,
+            jacobian=jacobian_vector,
             jacobian_layout="row_major",
             jacobian_diagnostics=diagnostics,
             parameter_fingerprints=tuple(
@@ -1173,7 +1205,7 @@ class PreparedFit:
                 )
                 continue
             try:
-                if parameter_count > 1:
+                if _requires_resolved_lifted_start(self.problem):
                     variables, residuals, jacobian = _evaluate_parameters_at_start(
                         self.problem,
                         self.model,

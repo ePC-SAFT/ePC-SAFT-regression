@@ -1875,9 +1875,40 @@ def test_generic_fixed_topology_block_evaluates_exact_jacobian() -> None:
     assert first_export == parity_result.to_json_bytes(prepared=parity_prepared)
     exported_capability = json.loads(first_export)["capabilities"][0]
     assert all(
-        slot["upper_bound_exclusive"] == {"direction": "upper", "kind": "open_bound"}
+        "upper_bound_exclusive" not in slot
+        and slot["unavailable_fields"] == ["upper_bound_exclusive"]
+        and slot["open_bounds"]
+        == [{"direction": "upper", "field": "upper_bound_exclusive"}]
         for slot in exported_capability["slots"]
     )
+    capability = parity_result.capabilities[0]
+    assert isinstance(capability, FixedTopologyAssociationCapability)
+    for field, value in (
+        ("lower_bound_exclusive", -math.inf),
+        ("upper_bound_exclusive", -math.inf),
+        ("upper_bound_exclusive", math.nan),
+    ):
+        invalid_slot = replace(capability.slots[0], **{field: value})
+        invalid_capability = replace(
+            capability,
+            slots=(invalid_slot, *capability.slots[1:]),
+        )
+        with pytest.raises(ValueError, match="fixed-topology"):
+            replace(
+                parity_result,
+                capabilities=(invalid_capability,),
+            ).to_json_bytes(prepared=parity_prepared)
+    with pytest.raises(ValueError, match="finite"):
+        replace(
+            parity_result,
+            rows=(
+                replace(
+                    parity_result.rows[0],
+                    scaled_residuals=(math.nan, 0.0, 0.0, 0.0),
+                ),
+                *parity_result.rows[1:],
+            ),
+        ).to_json_bytes(prepared=parity_prepared)
     replay_model = _generic_associating_model(
         sites,
         ((pairs[0][0], pairs[0][1], fitted[3], fitted[4]),),
