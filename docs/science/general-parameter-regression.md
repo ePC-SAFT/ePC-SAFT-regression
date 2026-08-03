@@ -997,7 +997,15 @@ The executable caller path is documented in the
 hashing to the existing observation and hash owners. `prepare_fit` resolves
 installed capability identity and constructs the existing `RegressionProblem`.
 Preflight evaluates exact Jacobians at each declared start without invoking
-Ceres; `PreparedFit.fit` calls the existing `fit_parameters` owner.
+Ceres. `PreparedFit.evaluate` exposes one immutable, read-only assembled
+residual/Jacobian evaluation at a declared fitted and lifted solver point. It
+preserves ordered fitted, lifted, row, and residual-component identities,
+declares row-major layout, reports full and nuisance-projected diagnostics,
+and binds parameter, topology, installed-artifact, preparation, source,
+dataset, and observation-order fingerprints. It calls the same exact EOS
+derivative and Regression assembly owners as preflight, never enters Ceres,
+and grants no new authority. `PreparedFit.fit` calls the existing
+`fit_parameters` owner.
 
 `RegressionResult.to_record` and `to_json_bytes` expose
 `epcsaft-regression-result` schema version 1 for both direct-EOS and
@@ -1010,3 +1018,9 @@ numerical fields explicitly; evaluated data reject nonfinite values. Solver,
 numerical, workflow/physical, scientific, predictive, and authority statuses
 remain separate. A result record is not a Validation receipt or authority
 change.
+
+Fixed-topology capabilities may advertise a mathematically open descriptor
+bound. Canonical result export represents that metadata in place as the typed
+`open_bound` marker with its lower or upper direction. It does not encode
+infinity as JSON, silently drop the field, or permit nonfinite calculated
+residuals, Jacobians, fitted values, or diagnostics.

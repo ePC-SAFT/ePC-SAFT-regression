@@ -45,10 +45,11 @@ result = fit_pure_saturation(
 ```
 
 Caller-supplied datasets use the public
-[`prepare -> preflight -> fit -> export` quickstart](docs/general-regression-quickstart.md).
+[`prepare -> preflight/evaluate -> fit -> export` quickstart](docs/general-regression-quickstart.md).
 It covers strict records, acquisition/objective provenance, grouped controls,
-installed-capability resolution, local-rank preflight, deterministic export,
-and every direct-EOS observation template. Direct `RegressionProblem` and
+installed-capability resolution, local-rank preflight, read-only assembled
+Jacobian evaluation, deterministic export, and every direct-EOS observation
+template. Direct `RegressionProblem` and
 `fit_parameters` construction remains available with the same native payload.
 
 Parameter inputs are explicit. Source-traceable reusable bundles live in

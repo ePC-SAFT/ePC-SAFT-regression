@@ -15,6 +15,7 @@ from .parameter_regression import (
     ComponentParameterIdentity,
     FixedCompositionVleObservation,
     FixedTopologyAssociationCapability,
+    GeneralJacobianDiagnostics,
     IonSolvationKijObservation,
     MeanIonicActivityObservation,
     ModelParameterIdentity,
@@ -40,7 +41,7 @@ from .parameter_regression import (
     fit_parameters,
     parameter_capabilities,
 )
-from .result import RegressionResult
+from .result import RegressionResult, _installed_eos_artifact_identity
 
 
 class AcquisitionClass(StrEnum):
@@ -658,6 +659,35 @@ class PreflightReport:
     reasons: tuple[str, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class ResidualIdentity:
+    row_id: str
+    component: str
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedFitEvaluation:
+    physical_parameter_point: tuple[float, ...]
+    solver_parameter_point: tuple[float, ...]
+    lifted_physical_point: tuple[float, ...]
+    lifted_solver_point: tuple[float, ...]
+    fitted_variable_identities: tuple[ParameterCoordinate, ...]
+    lifted_variable_ids: tuple[str, ...]
+    residual_identities: tuple[ResidualIdentity, ...]
+    residual_vector: tuple[float, ...]
+    jacobian: tuple[float, ...]
+    jacobian_layout: str
+    jacobian_diagnostics: GeneralJacobianDiagnostics
+    parameter_fingerprints: tuple[str, ...]
+    topology_fingerprints: tuple[str, ...]
+    capability_artifact_fingerprints: tuple[str, ...]
+    installed_eos_artifact_fingerprint: str
+    preparation_fingerprint: str
+    dataset_fingerprints: tuple[str, ...]
+    source_fingerprints: tuple[str, ...]
+    observation_order_fingerprint: str
+
+
 def _shape(rows: tuple[RegressionObservation, ...]) -> tuple[int, int]:
     residuals = lifted = 0
     for row in rows:
@@ -673,6 +703,93 @@ def _shape(rows: tuple[RegressionObservation, ...]) -> tuple[int, int]:
         else:
             residuals += 1
     return residuals, lifted
+
+
+def _residual_identities(
+    rows: tuple[RegressionObservation, ...],
+) -> tuple[ResidualIdentity, ...]:
+    identities = []
+    for row in rows:
+        components = (
+            (
+                "liquid_pressure",
+                "vapor_pressure",
+                "chemical_potential_0",
+                "chemical_potential_1",
+            )
+            if isinstance(row, FixedCompositionVleObservation)
+            else (
+                "liquid_pressure",
+                "vapor_pressure",
+                "chemical_potential",
+                "liquid_density",
+            )
+            if isinstance(row, PureSaturationObservation)
+            else ("liquid_pressure", "vapor_pressure", "chemical_potential")
+            if isinstance(row, PureVaporPressureObservation)
+            else ("pressure", "density")
+            if isinstance(row, PureDensityObservation)
+            else (_OBJECTIVE_FAMILIES[type(row)],)
+        )
+        identities.extend(
+            ResidualIdentity(row.row_id, component) for component in components
+        )
+    return tuple(identities)
+
+
+def _lifted_variable_ids(
+    rows: tuple[RegressionObservation, ...],
+) -> tuple[str, ...]:
+    identities = []
+    for row in rows:
+        if isinstance(row, PureDensityObservation):
+            identities.append(f"{row.row_id}:volume_m3_per_mol")
+        elif isinstance(
+            row,
+            (
+                FixedCompositionVleObservation,
+                PureSaturationObservation,
+                PureVaporPressureObservation,
+            ),
+        ):
+            identities.extend(
+                (
+                    f"{row.row_id}:liquid_volume_m3_per_mol",
+                    f"{row.row_id}:vapor_volume_m3_per_mol",
+                )
+            )
+    return tuple(identities)
+
+
+def _lifted_physical_point(
+    rows: tuple[RegressionObservation, ...],
+    solver_point: tuple[float, ...],
+) -> tuple[float, ...]:
+    values = []
+    index = 0
+    for row in rows:
+        if isinstance(row, PureDensityObservation):
+            values.append(row.volume_origin_m3_per_mol * math.exp(solver_point[index]))
+            index += 1
+        elif isinstance(
+            row,
+            (
+                FixedCompositionVleObservation,
+                PureSaturationObservation,
+                PureVaporPressureObservation,
+            ),
+        ):
+            values.extend(
+                (
+                    row.liquid_volume_origin_m3_per_mol * math.exp(solver_point[index]),
+                    row.vapor_volume_origin_m3_per_mol
+                    * math.exp(solver_point[index + 1]),
+                )
+            )
+            index += 2
+    if index != len(solver_point):
+        raise ValueError("lifted solver point has the wrong dimension")
+    return tuple(values)
 
 
 def _lifted_start_variables(
@@ -846,6 +963,167 @@ class PreparedFit:
         return replace(
             fit_parameters(self.problem, self.model),
             preparation_fingerprint=self.preparation_fingerprint,
+        )
+
+    def evaluate(
+        self,
+        physical_parameter_point: tuple[float, ...],
+        *,
+        lifted_solver_point: tuple[float, ...] | None = None,
+    ) -> PreparedFitEvaluation:
+        parameter_count = len(self.problem.parameters)
+        residual_count, lifted_count = _shape(self.problem.training_observations)
+        if (
+            type(physical_parameter_point) is not tuple
+            or len(physical_parameter_point) != parameter_count
+        ):
+            raise ValueError("physical parameter point has the wrong dimension")
+        for value, coordinate in zip(
+            physical_parameter_point, self.problem.parameters, strict=True
+        ):
+            _require_finite(value, "physical parameter point")
+            if not coordinate.lower_bound <= value <= coordinate.upper_bound:
+                raise ValueError("physical parameter point is outside fitted bounds")
+
+        if lifted_solver_point is not None:
+            if (
+                type(lifted_solver_point) is not tuple
+                or len(lifted_solver_point) != lifted_count
+            ):
+                raise ValueError("lifted solver point has the wrong dimension")
+            for value in lifted_solver_point:
+                _require_finite(value, "lifted solver point")
+
+        solver_parameter_point = tuple(
+            coordinate.transform.to_solver(value)
+            for coordinate, value in zip(
+                self.problem.parameters,
+                physical_parameter_point,
+                strict=True,
+            )
+        )
+        try:
+            if lifted_solver_point is None and parameter_count > 1:
+                variables, residuals, jacobian = _evaluate_parameters_at_start(
+                    self.problem,
+                    self.model,
+                    physical_parameter_point,
+                )
+                solver_parameter_point = variables[:parameter_count]
+                lifted_solver_point = variables[parameter_count:]
+            else:
+                lifted_solver_point = (
+                    _lifted_start_variables(self.problem.training_observations)
+                    if lifted_solver_point is None
+                    else lifted_solver_point
+                )
+                residuals, jacobian = _evaluate_parameters(
+                    self.problem,
+                    self.model,
+                    (*solver_parameter_point, *lifted_solver_point),
+                )
+        except (ArithmeticError, RuntimeError, TypeError, ValueError) as exc:
+            raise RuntimeError(_evaluation_failure_reason(exc)) from exc
+
+        variable_count = parameter_count + lifted_count
+        if (
+            len(residuals) != residual_count
+            or len(jacobian) != residual_count * variable_count
+        ):
+            raise RuntimeError(
+                "unavailable_derivatives: incomplete exact residual or Jacobian payload"
+            )
+        if not all(
+            math.isfinite(value)
+            for value in (
+                *solver_parameter_point,
+                *lifted_solver_point,
+                *residuals,
+                *jacobian,
+            )
+        ):
+            raise RuntimeError("nonfinite_evaluation: exact evaluation payload")
+
+        full, projected = _native.diagnose_jacobian(
+            parameter_count,
+            lifted_count,
+            residual_count,
+            jacobian,
+        )
+        diagnostics = GeneralJacobianDiagnostics(
+            residual_count=residual_count,
+            variable_count=variable_count,
+            full_singular_values=tuple(float(value) for value in full[0]),
+            full_rank=int(full[1]),
+            full_condition_number=float(full[2]),
+            projected_parameter_singular_values=tuple(
+                float(value) for value in projected[0]
+            ),
+            projected_parameter_rank=int(projected[1]),
+            projected_parameter_condition_number=float(projected[2]),
+        )
+        if not all(
+            math.isfinite(value)
+            for value in (
+                *diagnostics.full_singular_values,
+                diagnostics.full_condition_number,
+                *diagnostics.projected_parameter_singular_values,
+                diagnostics.projected_parameter_condition_number,
+            )
+        ):
+            raise RuntimeError("nonfinite_evaluation: Jacobian diagnostics")
+
+        residual_identities = _residual_identities(self.problem.training_observations)
+        installed_identity = dict(_installed_eos_artifact_identity())
+        return PreparedFitEvaluation(
+            physical_parameter_point=physical_parameter_point,
+            solver_parameter_point=solver_parameter_point,
+            lifted_physical_point=_lifted_physical_point(
+                self.problem.training_observations,
+                lifted_solver_point,
+            ),
+            lifted_solver_point=lifted_solver_point,
+            fitted_variable_identities=self.problem.parameters,
+            lifted_variable_ids=_lifted_variable_ids(
+                self.problem.training_observations
+            ),
+            residual_identities=residual_identities,
+            residual_vector=tuple(float(value) for value in residuals),
+            jacobian=tuple(float(value) for value in jacobian),
+            jacobian_layout="row_major",
+            jacobian_diagnostics=diagnostics,
+            parameter_fingerprints=tuple(
+                dict.fromkeys(
+                    item.provider_parameter_fingerprint
+                    for item in self.problem.parameters
+                )
+            ),
+            topology_fingerprints=tuple(
+                dict.fromkeys(
+                    item.provider_topology_fingerprint
+                    for item in self.problem.parameters
+                )
+            ),
+            capability_artifact_fingerprints=tuple(
+                dict.fromkeys(
+                    item.provider_artifact_fingerprint
+                    for item in self.problem.parameters
+                    if item.provider_artifact_fingerprint is not None
+                )
+            ),
+            installed_eos_artifact_fingerprint=(
+                f"sha256:{installed_identity['wheel_sha256']}"
+            ),
+            preparation_fingerprint=self.preparation_fingerprint,
+            dataset_fingerprints=tuple(
+                dataset.provenance_sha256 for dataset in self.datasets
+            ),
+            source_fingerprints=tuple(
+                dataset.source.source_artifact_sha256 for dataset in self.datasets
+            ),
+            observation_order_fingerprint=(
+                f"sha256:{_canonical_sha256(residual_identities)}"
+            ),
         )
 
     def preflight(self) -> PreflightReport:
@@ -1080,7 +1358,9 @@ __all__ = (
     "PreflightReport",
     "PreflightStart",
     "PreparedFit",
+    "PreparedFitEvaluation",
     "RankControls",
+    "ResidualIdentity",
     "RowProvenance",
     "SolverControls",
     "SourceInput",

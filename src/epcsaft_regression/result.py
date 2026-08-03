@@ -345,6 +345,35 @@ def _row_records(result: RegressionResult, json_value) -> list[object]:
     return records
 
 
+def _capability_records(result: RegressionResult, json_value) -> list[object]:
+    records = json_value(result.capabilities)
+    assert isinstance(records, list)
+    for capability, record in zip(result.capabilities, records, strict=True):
+        if not isinstance(capability, FixedTopologyAssociationCapability):
+            continue
+        assert isinstance(record, dict)
+        slots = record["slots"]
+        assert isinstance(slots, list)
+        for slot, slot_record in zip(capability.slots, slots, strict=True):
+            assert isinstance(slot_record, dict)
+            for field, direction, value in (
+                ("lower_bound_exclusive", "lower", slot.lower_bound_exclusive),
+                ("upper_bound_exclusive", "upper", slot.upper_bound_exclusive),
+            ):
+                if math.isfinite(value):
+                    continue
+                expected = -math.inf if direction == "lower" else math.inf
+                if value != expected:
+                    raise ValueError(
+                        f"fixed-topology {field} must be finite or an open {direction} bound"
+                    )
+                slot_record[field] = {
+                    "direction": direction,
+                    "kind": "open_bound",
+                }
+    return records
+
+
 def _resolved_data_identity(result: RegressionResult, json_value) -> object:
     return {
         source.source_id: {
@@ -473,7 +502,7 @@ def _result_record(
                 }
             )
         ),
-        "capabilities": _json_value(result.capabilities),
+        "capabilities": _capability_records(result, _json_value),
         "installed_artifacts": (
             {
                 "provider": result.capabilities[0].provider_artifact_identity,

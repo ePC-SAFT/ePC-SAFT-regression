@@ -81,6 +81,12 @@ prepared = prepare_fit(
 report = prepared.preflight()  # exact evaluations; no Ceres solve
 if not report.ready:
     raise RuntimeError(report.reasons)
+evaluation = prepared.evaluate((0.0,))  # exact read-only assembly; no Ceres
+assert evaluation.jacobian_layout == "row_major"
+assert len(evaluation.jacobian) == (
+    evaluation.jacobian_diagnostics.residual_count
+    * evaluation.jacobian_diagnostics.variable_count
+)
 result = prepared.fit()
 canonical_json = result.to_json_bytes(prepared=prepared, context=ResultContext())
 assert canonical_json == result.to_json_bytes(
@@ -96,6 +102,19 @@ nuisance-projected local rank/conditioning, start-bound status, and failure
 reasons. It does not report practical/global identifiability, uncertainty,
 prediction, or acceptance. Repeated or insensitive row designs therefore fail
 rank preflight before Ceres.
+
+`PreparedFit.evaluate(physical_parameter_point, lifted_solver_point=None)` is
+the public audit seam for one declared training-residual point. The immutable result contains
+the physical fitted point, transformed fitted and lifted solver points,
+lifted physical values, ordered fitted coordinates and lifted-variable IDs,
+ordered row/component residual IDs, residual vector, complete exact row-major
+Jacobian, and full and nuisance-projected diagnostics. It also binds parameter,
+topology, capability-artifact, installed-EOS-artifact, preparation, dataset,
+source, and observation-order fingerprints. Passing the returned
+`lifted_solver_point` back explicitly permits independent perturbation of every
+fitted and nuisance column. Evaluation never enters Ceres or changes authority;
+domain failures, incomplete derivatives, contract mismatches, and nonfinite
+values fail closed with stable classified prefixes.
 
 `parameter_capabilities(model)` is the machine-readable support view. It
 returns the installed EOS capability records directly,
@@ -528,4 +547,8 @@ profile, bootstrap, uncertainty, and Validation-campaign artifacts; each is
 either an `ArtifactReference(artifact_id, sha256)` or `None`. Failed diagnostic
 records omit unavailable numerical fields and list their exact paths under
 `unavailable_fields`; evaluated rows and all other fields reject nonfinite
-values.
+values. Fixed-topology descriptor limits are metadata: an intentional infinite
+limit is serialized in place as
+`{"kind":"open_bound","direction":"lower|upper"}`. NaN or infinity in the
+wrong direction remains invalid, and this representation does not relax
+finite-number checks for evaluated scientific values.

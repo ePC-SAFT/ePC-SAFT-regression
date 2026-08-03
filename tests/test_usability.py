@@ -21,6 +21,7 @@ from epcsaft_regression import (
     PairParameterIdentity,
     ParameterFamily,
     ParameterRequest,
+    PreparedFitEvaluation,
     PureVaporPressureObservation,
     RankControls,
     RegressionResult,
@@ -487,6 +488,31 @@ def test_preflight_preserves_failure_classes(
 
     assert not report.ready
     assert all(start.failure_reason.startswith(reason) for start in report.starts)
+    with pytest.raises(RuntimeError, match=f"^{reason}"):
+        _prepared().evaluate((0.0,))
+
+
+@pytest.mark.parametrize(
+    ("residuals", "jacobian", "reason"),
+    (
+        ((0.0,) * 4, (0.0,) * 11, "unavailable_derivatives:"),
+        ((0.0, 0.0, 0.0, float("nan")), (0.0,) * 12, "nonfinite_evaluation:"),
+    ),
+)
+def test_public_evaluation_rejects_incomplete_or_nonfinite_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    residuals: tuple[float, ...],
+    jacobian: tuple[float, ...],
+    reason: str,
+) -> None:
+    monkeypatch.setattr(
+        usability,
+        "_evaluate_parameters",
+        lambda *_: (residuals, jacobian),
+    )
+
+    with pytest.raises(RuntimeError, match=f"^{reason}"):
+        _prepared().evaluate((0.0,))
 
 
 @pytest.fixture(scope="module")
@@ -572,6 +598,7 @@ def test_installed_prepare_fit_and_record_contract(installed_fit) -> None:
     assert get_type_hints(RegressionResult)["problem"]
     assert get_type_hints(RegressionResult.to_record)["prepared"]
     assert get_type_hints(fit_parameters)["return"] is RegressionResult
+    assert get_type_hints(type(prepared).evaluate)["return"] is PreparedFitEvaluation
 
     with pytest.raises(ValueError, match="finite"):
         replace(result, final_cost=float("nan")).to_json_bytes(prepared=prepared)
