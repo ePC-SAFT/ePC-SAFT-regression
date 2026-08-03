@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import math
 from dataclasses import asdict, replace
 from pathlib import Path
@@ -70,7 +71,9 @@ _MAY_METHANE_PROPANE_CANONICAL_SHA256 = (
 
 
 def _model() -> Mixture:
-    return Mixture(Parameters.from_dictionary(neutral_parameters(("methane", "ethane"))))
+    return Mixture(
+        Parameters.from_dictionary(neutral_parameters(("methane", "ethane")))
+    )
 
 
 def _methane_propane_parameters() -> Parameters:
@@ -1722,42 +1725,7 @@ def test_generic_fixed_topology_block_evaluates_exact_jacobian() -> None:
         isinstance(parameter.identity, AssociationParameterIdentity)
         for parameter in problem.parameters[3:]
     )
-    variables = (0.0,) * (len(problem.parameters) + 1)
-    residuals, jacobian = _evaluate_parameters(problem, model, variables)
-    assert len(residuals) == 2
-    assert len(jacobian) == 2 * len(variables)
-    assert all(math.isfinite(value) for value in (*residuals, *jacobian))
-    step = 1.0e-6
-    for column in range(len(variables)):
-        lower = list(variables)
-        upper = list(variables)
-        lower[column] -= step
-        upper[column] += step
-        lower_residuals, _ = _evaluate_parameters(problem, model, tuple(lower))
-        upper_residuals, _ = _evaluate_parameters(problem, model, tuple(upper))
-        for row, (lower_value, upper_value) in enumerate(
-            zip(lower_residuals, upper_residuals, strict=True)
-        ):
-            finite_difference = (upper_value - lower_value) / (2.0 * step)
-            assert jacobian[row * len(variables) + column] == pytest.approx(
-                finite_difference, rel=2.0e-5, abs=2.0e-6
-            )
-    step = 1.0e-6
-    for column in range(len(variables)):
-        lower = list(variables)
-        upper = list(variables)
-        lower[column] -= step
-        upper[column] += step
-        lower_residuals, _ = _evaluate_parameters(problem, model, tuple(lower))
-        upper_residuals, _ = _evaluate_parameters(problem, model, tuple(upper))
-        for row, (lower_value, upper_value) in enumerate(
-            zip(lower_residuals, upper_residuals, strict=True)
-        ):
-            finite_difference = (upper_value - lower_value) / (2.0 * step)
-            assert jacobian[row * len(variables) + column] == pytest.approx(
-                finite_difference, rel=2.0e-5, abs=2.0e-6
-            )
-
+    physical = problem.start_vectors[0]
     source_row = problem.observations[0]
     parity_volume = 9.0e-5
     parity_density = 0.088 / parity_volume
@@ -1795,7 +1763,91 @@ def test_generic_fixed_topology_block_evaluates_exact_jacobian() -> None:
         observations=parity_observations,
         maximum_iterations=100,
     )
-    parity_result = fit_parameters(parity_problem, model)
+    parity_prepared = _prepare_existing_problem(model, parity_problem, "pure_density")
+    preflight = parity_prepared.preflight()
+    assert preflight.ready
+    assert preflight.starts[0].full_rank == 10
+    assert preflight.starts[0].projected_parameter_rank == 5
+
+    evaluation = parity_prepared.evaluate(physical)
+    assert evaluation == parity_prepared.evaluate(physical)
+    assert evaluation.physical_parameter_point == physical
+    assert evaluation.solver_parameter_point == (0.0,) * 5
+    assert evaluation.fitted_variable_identities == parity_prepared.problem.parameters
+    assert evaluation.lifted_variable_ids == tuple(
+        f"{row.row_id}:volume_m3_per_mol" for row in parity_observations
+    )
+    assert tuple(
+        (identity.row_id, identity.component)
+        for identity in evaluation.residual_identities
+    ) == tuple(
+        item
+        for row in parity_observations
+        for item in ((row.row_id, "pressure"), (row.row_id, "density"))
+    )
+    assert evaluation.jacobian_layout == "row_major"
+    assert len(evaluation.residual_vector) == 10
+    assert len(evaluation.jacobian) == 100
+    assert evaluation.jacobian_diagnostics.full_rank == 10
+    assert evaluation.jacobian_diagnostics.projected_parameter_rank == 5
+    assert evaluation.parameter_fingerprints == (capability.parameter_fingerprint,)
+    assert evaluation.topology_fingerprints == (capability.topology_fingerprint,)
+    assert evaluation.capability_artifact_fingerprints == (
+        capability.artifact_fingerprint,
+    )
+    assert evaluation.preparation_fingerprint == (
+        parity_prepared.preparation_fingerprint
+    )
+    assert evaluation.dataset_fingerprints == (
+        parity_prepared.datasets[0].provenance_sha256,
+    )
+    assert evaluation.source_fingerprints == (
+        parity_prepared.datasets[0].source.source_artifact_sha256,
+    )
+    assert evaluation.installed_eos_artifact_fingerprint == (
+        "sha256:1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9"
+    )
+    assert evaluation.observation_order_fingerprint.startswith("sha256:")
+    assert evaluation.lifted_physical_point == pytest.approx(
+        (parity_volume,) * len(parity_observations),
+        rel=0.0,
+        abs=1.0e-14,
+    )
+    with pytest.raises(ValueError, match="outside fitted bounds"):
+        parity_prepared.evaluate((0.0, *physical[1:]))
+
+    parameter_count = len(physical)
+    solver_point = (
+        *evaluation.solver_parameter_point,
+        *evaluation.lifted_solver_point,
+    )
+    step = 1.0e-6
+    for column in range(len(solver_point)):
+        displaced = []
+        for direction in (-1.0, 1.0):
+            point = list(solver_point)
+            point[column] += direction * step
+            displaced_physical = tuple(
+                coordinate.transform.to_physical(value)
+                for coordinate, value in zip(
+                    parity_prepared.problem.parameters,
+                    point[:parameter_count],
+                    strict=True,
+                )
+            )
+            displaced.append(
+                parity_prepared.evaluate(
+                    displaced_physical,
+                    lifted_solver_point=tuple(point[parameter_count:]),
+                ).residual_vector
+            )
+        for row, (lower, upper) in enumerate(zip(*displaced, strict=True)):
+            finite_difference = (upper - lower) / (2.0 * step)
+            assert evaluation.jacobian[
+                row * len(solver_point) + column
+            ] == pytest.approx(finite_difference, rel=2.0e-5, abs=2.0e-6)
+
+    parity_result = parity_prepared.fit()
     assert parity_result.solver_converged
     assert parity_result.numerically_converged
     assert parity_result.workflow_valid
@@ -1819,6 +1871,44 @@ def test_generic_fixed_topology_block_evaluates_exact_jacobian() -> None:
         parity_result.scientific_status
         == "NOT_ADJUDICATED_NO_APPROVED_SCIENTIFIC_CUTOFF"
     )
+    first_export = parity_result.to_json_bytes(prepared=parity_prepared)
+    assert first_export == parity_result.to_json_bytes(prepared=parity_prepared)
+    exported_capability = json.loads(first_export)["capabilities"][0]
+    assert all(
+        "upper_bound_exclusive" not in slot
+        and slot["unavailable_fields"] == ["upper_bound_exclusive"]
+        and slot["open_bounds"]
+        == [{"direction": "upper", "field": "upper_bound_exclusive"}]
+        for slot in exported_capability["slots"]
+    )
+    capability = parity_result.capabilities[0]
+    assert isinstance(capability, FixedTopologyAssociationCapability)
+    for field, value in (
+        ("lower_bound_exclusive", -math.inf),
+        ("upper_bound_exclusive", -math.inf),
+        ("upper_bound_exclusive", math.nan),
+    ):
+        invalid_slot = replace(capability.slots[0], **{field: value})
+        invalid_capability = replace(
+            capability,
+            slots=(invalid_slot, *capability.slots[1:]),
+        )
+        with pytest.raises(ValueError, match="fixed-topology"):
+            replace(
+                parity_result,
+                capabilities=(invalid_capability,),
+            ).to_json_bytes(prepared=parity_prepared)
+    with pytest.raises(ValueError, match="finite"):
+        replace(
+            parity_result,
+            rows=(
+                replace(
+                    parity_result.rows[0],
+                    scaled_residuals=(math.nan, 0.0, 0.0, 0.0),
+                ),
+                *parity_result.rows[1:],
+            ),
+        ).to_json_bytes(prepared=parity_prepared)
     replay_model = _generic_associating_model(
         sites,
         ((pairs[0][0], pairs[0][1], fitted[3], fitted[4]),),
