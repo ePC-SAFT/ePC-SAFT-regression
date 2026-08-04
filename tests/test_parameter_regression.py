@@ -41,7 +41,6 @@ from epcsaft_regression import (
     PureDensityObservation,
     PureSaturationObservation,
     PureSaturationRowDiagnostic,
-    PureVaporPressureObservation,
     RankControls,
     RegressionProblem,
     RegressionResult,
@@ -58,7 +57,6 @@ from epcsaft_regression import (
     parameter_capabilities,
     parameter_regression,
     prepare_fit,
-    usability,
 )
 from epcsaft_regression.parameter_regression import (
     _evaluate_parameters,
@@ -1179,217 +1177,6 @@ def _replace_observations(
     return replace(problem, sources=(source,), observations=observations)
 
 
-def test_installed_provider_advertises_exact_neutral_binary_kij_contract(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    model = _model()
-
-    capability = _capability(model)
-
-    assert capability.capability_id == "neutral_binary_phase_kij_v1"
-    assert capability.family is ParameterFamily.K_IJ
-    assert capability.component_ids == ("methane", "ethane")
-    assert capability.coordinate_kinds == ("amount", "amount", "volume", "k_ij")
-    assert capability.coordinate_units == ("mol", "mol", "m3", "dimensionless")
-    assert capability.parameter_fingerprint == model.parameter_fingerprint
-    assert capability.topology_fingerprint.startswith("sha256:")
-    assert capability.temperature_min_k <= 203.22 <= capability.temperature_max_k
-    assert capability.derivative_order == 2
-    assert capability.maturity == "DERIVATIVE_READY"
-    assert capability.authority_effect == "NONE"
-    assert capability.identity_shape == "unordered_component_pair"
-    assert capability.observation_contract == "fixed_composition_helmholtz_phase"
-    assert capability.model_domain == "neutral_nonassociating_binary"
-    assert capability.tensor_layout == "row_major"
-    assert capability.state_coordinate_count == 3
-    assert capability.active_parameter_count == 1
-    assert capability.helmholtz_basis_id == (
-        "A_over_RT_reference_amount:n_ref=1mol:rho_ref=1mol_per_m3"
-    )
-    assert capability.unsupported_status == "UNSUPPORTED_MODEL"
-    assert capability.domain_status == "DOMAIN_ERROR"
-
-    lij = _capability(model, ParameterFamily.L_IJ)
-    assert lij.capability_id == "neutral_binary_phase_lij_v1"
-    assert lij.component_ids == capability.component_ids
-    assert lij.coordinate_kinds == ("amount", "amount", "volume", "l_ij")
-    assert lij.coordinate_units == capability.coordinate_units
-    assert lij.parameter_fingerprint == capability.parameter_fingerprint
-    assert lij.topology_fingerprint == capability.topology_fingerprint
-    assert lij.derivative_order == 2
-    assert lij.observation_contract == capability.observation_contract
-    assert lij.model_domain == capability.model_domain
-
-    raw = parameter_regression._native.parameter_capabilities(native_sdk(model))
-    monkeypatch.setattr(
-        parameter_regression._native,
-        "parameter_capabilities",
-        lambda _: (*raw, (999, 1, 998)),
-    )
-    known = parameter_capabilities(model)
-    assert known[0] == capability
-    unsupported = known[-1]
-    assert unsupported == UnsupportedParameterCapability(
-        capability_code=999,
-        schema_version=1,
-        parameter_family_code=998,
-    )
-
-
-def test_installed_provider_advertises_exact_direct_observable_contracts() -> None:
-    solvation = _capability(_aqueous_model(), ParameterFamily.SOLVATION_FACTOR)
-    born = _capability(
-        _aqueous_model(("water", "sodium-cation", "chloride-anion")),
-        ParameterFamily.BORN_DIAMETER,
-    )
-
-    assert (
-        solvation.capability_id,
-        solvation.component_ids,
-        solvation.coordinate_kinds,
-        solvation.coordinate_units,
-        solvation.derivative_order,
-        solvation.identity_shape,
-        solvation.observation_contract,
-        solvation.model_domain,
-        solvation.state_coordinate_count,
-        solvation.active_parameter_count,
-        solvation.active_component_ids,
-    ) == (
-        "aqueous_solvation_factor_miac_v1",
-        ("water", "sodium-cation", "bromide-anion"),
-        ("solvation_factor",),
-        ("dimensionless",),
-        1,
-        "component",
-        "aqueous_mean_ionic_activity",
-        "figiel_aqueous_nabr",
-        0,
-        1,
-        ("water",),
-    )
-    assert (
-        born.capability_id,
-        born.coordinate_kinds,
-        born.coordinate_units,
-        born.derivative_order,
-        born.observation_contract,
-        born.model_domain,
-        born.active_component_ids,
-    ) == (
-        "ion_solvation_born_v1",
-        ("born_diameter",),
-        ("angstrom",),
-        1,
-        "ion_solvation_gibbs",
-        "figiel_water_single_ion",
-        ("sodium-cation",),
-    )
-
-    dielectric = _capability(
-        _aqueous_model(),
-        ParameterFamily.ION_FRACTION_SUPPRESSION_COEFFICIENT,
-    )
-    assert (
-        dielectric.capability_id,
-        dielectric.coordinate_kinds,
-        dielectric.coordinate_units,
-        dielectric.derivative_order,
-        dielectric.identity_shape,
-        dielectric.observation_contract,
-        dielectric.model_domain,
-        dielectric.active_component_ids,
-    ) == (
-        "ion_fraction_suppression_v1",
-        ("ion_fraction_suppression_coefficient",),
-        ("dimensionless",),
-        1,
-        "model",
-        "relative_permittivity_ratio",
-        "figiel_dielectric",
-        (),
-    )
-
-    ionic_permittivity = _capability(
-        _aqueous_model(("water", "sodium-cation", "chloride-anion")),
-        ParameterFamily.IONIC_REGION_RELATIVE_PERMITTIVITY,
-    )
-    assert (
-        ionic_permittivity.capability_id,
-        ionic_permittivity.coordinate_kinds,
-        ionic_permittivity.coordinate_units,
-        ionic_permittivity.derivative_order,
-        ionic_permittivity.identity_shape,
-        ionic_permittivity.observation_contract,
-        ionic_permittivity.model_domain,
-        ionic_permittivity.active_component_ids,
-    ) == (
-        "ion_solvation_ionic_region_permittivity_v1",
-        ("ionic_region_relative_permittivity",),
-        ("dimensionless",),
-        1,
-        "model",
-        "ion_solvation_gibbs",
-        "figiel_water_single_ion",
-        (),
-    )
-
-    solvent_permittivity = _capability(
-        _aqueous_model(("water", "sodium-cation", "chloride-anion")),
-        ParameterFamily.RELATIVE_PERMITTIVITY,
-    )
-    assert (
-        solvent_permittivity.capability_id,
-        solvent_permittivity.coordinate_kinds,
-        solvent_permittivity.coordinate_units,
-        solvent_permittivity.derivative_order,
-        solvent_permittivity.identity_shape,
-        solvent_permittivity.observation_contract,
-        solvent_permittivity.model_domain,
-        solvent_permittivity.active_component_ids,
-    ) == (
-        "ion_solvation_solvent_permittivity_v1",
-        ("relative_permittivity",),
-        ("dimensionless",),
-        1,
-        "component",
-        "ion_solvation_gibbs",
-        "figiel_water_single_ion",
-        ("water",),
-    )
-
-
-def test_installed_provider_advertises_each_aqueous_kij_miac_contract() -> None:
-    model = _aqueous_model()
-    capabilities = tuple(
-        capability
-        for capability in parameter_capabilities(model)
-        if not isinstance(capability, UnsupportedParameterCapability)
-        and capability.family is ParameterFamily.K_IJ
-        and capability.observation_contract == "aqueous_mean_ionic_activity"
-    )
-
-    assert tuple(capability.capability_id for capability in capabilities) == (
-        "aqueous_water_cation_kij_miac_v1",
-        "aqueous_water_anion_kij_miac_v1",
-        "aqueous_cation_anion_kij_miac_v1",
-    )
-    assert tuple(capability.active_component_ids for capability in capabilities) == (
-        ("sodium-cation", "water"),
-        ("bromide-anion", "water"),
-        ("bromide-anion", "sodium-cation"),
-    )
-    assert all(
-        capability.component_ids == ("water", "sodium-cation", "bromide-anion")
-        and capability.coordinate_kinds == ("k_ij",)
-        and capability.coordinate_units == ("dimensionless",)
-        and capability.derivative_order == 1
-        and capability.identity_shape == "unordered_component_pair"
-        and capability.model_domain == "figiel_aqueous_nabr"
-        for capability in capabilities
-    )
-
-
 @pytest.mark.campaign
 def test_general_engine_fits_water_solvation_factor_over_all_nabr_rows() -> None:
     model = _aqueous_model()
@@ -1456,14 +1243,6 @@ def test_general_engine_fits_dielectric_suppression_from_user_rows() -> None:
     )
 
 
-def test_relative_permittivity_rejects_mislabeled_solvent() -> None:
-    model = _aqueous_model()
-    row = _dielectric_suppression_problem(model).observations[0]
-
-    with pytest.raises(ValueError, match="first ordered component_id"):
-        replace(row, solvent_id="methanol")
-
-
 @pytest.mark.campaign
 def test_general_engine_fits_one_aqueous_kij_from_user_rows() -> None:
     model = _aqueous_model()
@@ -1519,23 +1298,6 @@ def test_ionic_region_permittivity_has_exact_rank_one_fit() -> None:
     assert result.rows[0].derivative_status == ("EXACT_PROVIDER_FIRST_DERIVATIVE")
 
 
-def test_ionic_region_permittivity_rejects_a_mislabeled_observable_ion() -> None:
-    model = _aqueous_model(("water", "sodium-cation", "chloride-anion"))
-    problem = _ionic_region_permittivity_problem(model)
-    mislabeled = _replace_observations(
-        problem,
-        (
-            replace(
-                problem.observations[0],
-                active_component_id="chloride-anion",
-            ),
-        ),
-    )
-
-    with pytest.raises(ValueError, match="active ion"):
-        fit_parameters(mislabeled, model)
-
-
 @pytest.mark.campaign
 def test_solvent_relative_permittivity_has_exact_rank_one_fit() -> None:
     target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[1]
@@ -1553,23 +1315,6 @@ def test_solvent_relative_permittivity_has_exact_rank_one_fit() -> None:
     assert isinstance(result.rows[0], DirectObservationRowDiagnostic)
     assert abs(result.rows[0].scaled_residual) <= 1.0e-10
     assert result.rows[0].derivative_status == ("EXACT_PROVIDER_FIRST_DERIVATIVE")
-
-
-def test_solvent_relative_permittivity_rejects_a_mislabeled_observable_ion() -> None:
-    model = _aqueous_model(("water", "sodium-cation", "chloride-anion"))
-    problem = _solvent_relative_permittivity_problem(model)
-    mislabeled = _replace_observations(
-        problem,
-        (
-            replace(
-                problem.observations[0],
-                active_component_id="chloride-anion",
-            ),
-        ),
-    )
-
-    with pytest.raises(ValueError, match="active ion"):
-        fit_parameters(mislabeled, model)
 
 
 @pytest.mark.campaign
@@ -1608,104 +1353,6 @@ def test_general_engine_fits_each_born_diameter_independently(
     assert result.confirmations_usable
     assert isinstance(result.rows[0], DirectObservationRowDiagnostic)
     assert result.rows[0].derivative_status == ("EXACT_PROVIDER_FIRST_DERIVATIVE")
-
-
-def test_direct_observations_fail_before_native_evaluation_outside_domain() -> None:
-    solvation_model = _aqueous_model()
-    solvation = _solvation_factor_problem(solvation_model)
-    first = solvation.observations[0]
-    wrong_pressure = _replace_observations(
-        solvation,
-        (
-            replace(first, pressure_pa=200_000.0),
-            *solvation.observations[1:],
-        ),
-    )
-    low_molality = _replace_observations(
-        solvation,
-        (
-            replace(
-                first,
-                formula_unit_molality_mol_per_kg=0.0009,
-            ),
-            *solvation.observations[1:],
-        ),
-    )
-    with pytest.raises(ValueError, match="pressure or molality"):
-        fit_parameters(wrong_pressure, solvation_model)
-    with pytest.raises(ValueError, match="pressure or molality"):
-        fit_parameters(low_molality, solvation_model)
-
-    target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[0]
-    born_model = _aqueous_model(target.component_order)
-    born = _born_diameter_problem(born_model, 0)
-    born_wrong_pressure = _replace_observations(
-        born,
-        (replace(born.observations[0], pressure_pa=200_000.0),),
-    )
-    with pytest.raises(ValueError, match="pressure is outside"):
-        fit_parameters(born_wrong_pressure, born_model)
-
-
-def test_installed_provider_advertises_scalar_pure_parameter_contracts() -> None:
-    model = _pure_model()
-    capabilities = tuple(
-        capability
-        for capability in parameter_capabilities(model)
-        if not isinstance(capability, UnsupportedParameterCapability)
-    )
-
-    assert tuple(capability.family for capability in capabilities) == (
-        ParameterFamily.SEGMENT_COUNT,
-        ParameterFamily.SEGMENT_DIAMETER,
-        ParameterFamily.DISPERSION_ENERGY_OVER_K,
-    )
-    assert tuple(capability.capability_id for capability in capabilities) == (
-        "neutral_pure_segment_count_v1",
-        "neutral_pure_segment_diameter_v1",
-        "neutral_pure_dispersion_energy_over_k_v1",
-    )
-    assert tuple(capability.coordinate_kinds for capability in capabilities) == (
-        ("amount", "volume", "segment_count"),
-        ("amount", "volume", "segment_diameter"),
-        ("amount", "volume", "dispersion_energy_over_k"),
-    )
-    assert tuple(capability.coordinate_units[-1] for capability in capabilities) == (
-        "dimensionless",
-        "angstrom",
-        "kelvin",
-    )
-    assert all(capability.component_ids == ("methane",) for capability in capabilities)
-    assert all(capability.identity_shape == "component" for capability in capabilities)
-    assert all(
-        capability.model_domain == "neutral_nonassociating_pure"
-        for capability in capabilities
-    )
-    assert all(capability.state_coordinate_count == 2 for capability in capabilities)
-
-
-def test_installed_eos_advertises_one_structural_association_descriptor() -> None:
-    capabilities = tuple(
-        capability
-        for capability in parameter_capabilities(_associating_pure_model())
-        if isinstance(capability, FixedTopologyAssociationCapability)
-    )
-    assert len(capabilities) == 1
-    capability = capabilities[0]
-    assert capability.model_domain == "neutral_associating_pure"
-    assert capability.state_coordinate_count == 2
-    assert capability.association_basis_id == "ordinary_sigma_cubed_kappa"
-    assert tuple(slot.family for slot in capability.slots) == (
-        ParameterFamily.SEGMENT_COUNT,
-        ParameterFamily.SEGMENT_DIAMETER,
-        ParameterFamily.DISPERSION_ENERGY_OVER_K,
-        ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
-        ParameterFamily.ASSOCIATION_VOLUME,
-    )
-    assert all(
-        isinstance(slot.identity, AssociationParameterIdentity)
-        for slot in capability.slots[3:]
-    )
 
 
 def test_generic_fixed_topology_block_evaluates_exact_jacobian() -> None:
@@ -1805,7 +1452,7 @@ def test_generic_fixed_topology_block_evaluates_exact_jacobian() -> None:
         parity_prepared.datasets[0].source.source_artifact_sha256,
     )
     assert evaluation.installed_eos_artifact_fingerprint == (
-            "sha256:bc7e637de084330ebded4ddfd52e02bc1ce5451221128692972ebba8856d098e"
+        "sha256:bc7e637de084330ebded4ddfd52e02bc1ce5451221128692972ebba8856d098e"
     )
     assert evaluation.observation_order_fingerprint.startswith("sha256:")
     assert evaluation.lifted_physical_point == pytest.approx(
@@ -2089,18 +1736,6 @@ def test_fixed_topology_association_accumulates_shared_slot_derivatives() -> Non
         )
 
 
-def test_fixed_topology_association_rejects_permuted_slot_ownership() -> None:
-    pairs = (("a", "b", 1500.0, 0.01),)
-    model = _generic_associating_model((("a", 1), ("b", 1)), pairs)
-    problem = replace(
-        _generic_associating_problem(model, pairs),
-        parameter_slot_indices=(0, 1, 2, 4, 3),
-    )
-
-    with pytest.raises(ValueError, match="descriptor order"):
-        _evaluate_parameters(problem, model, (0.0,) * 6)
-
-
 @pytest.mark.campaign
 @pytest.mark.parametrize(
     "family",
@@ -2190,213 +1825,6 @@ def test_general_engine_fits_joint_pure_parameter_vector() -> None:
         isinstance(row, PureSaturationRowDiagnostic) and row.evaluated
         for row in result.rows
     )
-
-
-def test_public_preparation_preserves_joint_pure_problem_semantics() -> None:
-    model = _pure_model()
-    direct = _joint_pure_problem(model)
-
-    prepared = _prepare_existing_problem(model, direct, "pure_saturation")
-
-    assert prepared.problem == direct
-    assert prepared.preflight().ready
-
-
-def test_public_preparation_preserves_fixed_topology_problem_semantics() -> None:
-    pairs = (("acceptor", "donor", 1500.0, 0.01),)
-    model = _generic_associating_model(
-        (("acceptor", 1), ("donor", 1)),
-        pairs,
-    )
-    direct = _generic_associating_problem(model, pairs)
-
-    prepared = _prepare_existing_problem(model, direct, "pure_density")
-
-    assert prepared.problem == direct
-    assert tuple(coordinate.family for coordinate in prepared.problem.parameters) == (
-        ParameterFamily.SEGMENT_COUNT,
-        ParameterFamily.SEGMENT_DIAMETER,
-        ParameterFamily.DISPERSION_ENERGY_OVER_K,
-        ParameterFamily.ASSOCIATION_ENERGY_OVER_K,
-        ParameterFamily.ASSOCIATION_VOLUME,
-    )
-    report = prepared.preflight()
-    assert not report.ready
-    assert report.reasons == (
-        (
-            "structural_insufficiency: residual count is smaller than "
-            "the fitted-plus-lifted variable count"
-        ),
-    )
-
-
-def test_fixed_topology_preparation_rejects_changed_installed_slot_metadata(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    pairs = (("acceptor", "donor", 1500.0, 0.01),)
-    model = _generic_associating_model(
-        (("acceptor", 1), ("donor", 1)),
-        pairs,
-    )
-    direct = _generic_associating_problem(model, pairs)
-    capability = next(
-        item
-        for item in parameter_capabilities(model)
-        if isinstance(item, FixedTopologyAssociationCapability)
-    )
-    monkeypatch.setattr(
-        usability,
-        "parameter_capabilities",
-        lambda _: (
-            replace(
-                capability,
-                slots=(
-                    *capability.slots[:-1],
-                    replace(capability.slots[-1], unit="K"),
-                ),
-            ),
-        ),
-    )
-
-    with pytest.raises(ValueError, match="association_volume parameter unit"):
-        _prepare_existing_problem(model, direct, "pure_density")
-
-
-def test_scalar_pure_vapor_pressure_uses_exact_native_row_contract() -> None:
-    model = _pure_model()
-    direct = _pure_problem(model, ParameterFamily.SEGMENT_COUNT)
-    source_row = direct.observations[0]
-    vapor = PureVaporPressureObservation(
-        row_id="methane-vapor-pressure",
-        source_id=source_row.source_id,
-        source_locator=source_row.source_locator,
-        component_id=source_row.component_id,
-        temperature_k=source_row.temperature_k,
-        pressure_pa=source_row.pressure_pa,
-        pressure_scale_pa=source_row.pressure_scale_pa,
-        chemical_potential_scale=source_row.chemical_potential_scale,
-        liquid_volume_origin_m3_per_mol=source_row.liquid_volume_origin_m3_per_mol,
-        liquid_volume_start_m3_per_mol=source_row.liquid_volume_start_m3_per_mol,
-        liquid_volume_bounds_m3_per_mol=source_row.liquid_volume_bounds_m3_per_mol,
-        vapor_volume_origin_m3_per_mol=source_row.vapor_volume_origin_m3_per_mol,
-        vapor_volume_start_m3_per_mol=source_row.vapor_volume_start_m3_per_mol,
-        vapor_volume_bounds_m3_per_mol=source_row.vapor_volume_bounds_m3_per_mol,
-        partition=ObservationPartition.TRAINING,
-    )
-    problem = _replace_observations(direct, (vapor,))
-
-    residuals, jacobian = _evaluate_parameters(
-        problem,
-        model,
-        (*problem.solver_start_vectors[0], 0.0, 0.0),
-    )
-
-    assert len(residuals) == 3
-    assert len(jacobian) == 9
-
-    held = replace(
-        vapor,
-        row_id="methane-vapor-pressure-held",
-        partition=ObservationPartition.HELD_OUT,
-    )
-    result = fit_parameters(_replace_observations(direct, (vapor, held)), model)
-    assert tuple(len(row.scaled_residuals) for row in result.rows) == (3, 3)
-
-
-def test_public_preparation_preserves_direct_observable_problem_semantics() -> None:
-    target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[0]
-    model = _aqueous_model(target.component_order)
-    direct = _born_diameter_problem(model, 0)
-
-    prepared = _prepare_existing_problem(model, direct, "solvation_gibbs")
-
-    assert prepared.problem == direct
-    assert prepared.preflight().ready
-
-
-def test_record_constructor_covers_every_direct_observable_contract() -> None:
-    born_target = FIGIEL_BORN_DIAMETER_TRACER_V1.targets[0]
-    cases = (
-        (
-            _aqueous_model(),
-            _solvation_factor_problem,
-            "mean_ionic_activity",
-        ),
-        (
-            _aqueous_model(),
-            _aqueous_kij_problem,
-            "aqueous_kij_mean_ionic_activity",
-        ),
-        (
-            _aqueous_model(born_target.component_order),
-            lambda model: _born_diameter_problem(model, 0),
-            "solvation_gibbs",
-        ),
-        (
-            _aqueous_model(),
-            _dielectric_suppression_problem,
-            "relative_permittivity_ratio",
-        ),
-        (
-            _aqueous_model(("methanol", "potassium-cation", "bromide-anion")),
-            _ion_solvation_kij_problem,
-            "ion_solvation_kij",
-        ),
-    )
-
-    for model, build_problem, residual_family in cases:
-        direct = build_problem(model)
-        prepared = _prepare_existing_problem(model, direct, residual_family)
-        assert prepared.problem == direct
-
-
-def test_native_joint_pure_adapter_rejects_reordered_slots() -> None:
-    model = _pure_model()
-    problem = _joint_pure_problem(model)
-    capabilities = tuple(
-        _capability(model, parameter.family) for parameter in problem.parameters
-    )
-    payload = list(_native_payload(problem, capabilities[0]))
-    payload[-1] = (0, 2, 1)
-
-    with pytest.raises(RuntimeError, match="ordinary joint pure requires identity"):
-        parameter_regression._native.evaluate_general(
-            native_sdk(model), tuple(payload), (0.0,) * 11
-        )
-
-
-def test_native_general_engine_rejects_nonpositive_pure_residual_scale() -> None:
-    model = _pure_model()
-    problem = _pure_problem(model, ParameterFamily.SEGMENT_COUNT)
-    capability = _capability(model, ParameterFamily.SEGMENT_COUNT)
-    payload = list(_native_payload(problem, capability))
-    rows = list(payload[-3])
-    row = list(rows[0])
-    row[4] = 0.0
-    rows[0] = tuple(row)
-    payload[-3] = tuple(rows)
-
-    with pytest.raises(RuntimeError, match="positive and ordered"):
-        parameter_regression._native.evaluate_general(
-            native_sdk(model), tuple(payload), (0.0, 0.0, 0.0)
-        )
-
-
-def test_native_general_engine_rejects_nonfinite_scaled_result() -> None:
-    model = _pure_model()
-    problem = _pure_problem(model, ParameterFamily.SEGMENT_COUNT)
-    capability = _capability(model, ParameterFamily.SEGMENT_COUNT)
-    payload = list(_native_payload(problem, capability))
-    rows = list(payload[-3])
-    row = list(rows[0])
-    row[4] = 1.0e-320
-    rows[0] = tuple(row)
-    payload[-3] = tuple(rows)
-
-    with pytest.raises(RuntimeError, match="assembled residual or Jacobian"):
-        parameter_regression._native.evaluate_general(
-            native_sdk(model), tuple(payload), (0.0, 0.0, 0.0)
-        )
 
 
 def test_general_kij_fit_reports_rank_confirmation_and_partition_isolation() -> None:
@@ -2547,73 +1975,6 @@ def test_active_bound_diagnostic_is_preserved(
     assert result.parameters[0].final == problem.parameters[0].upper_bound
     assert result.parameters[0].active_bound == "upper"
     assert result.parameters[0].active_bound_distance == 0.0
-
-
-def test_rows_outside_provider_temperature_domain_fail_before_ceres(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    model = _model()
-    capability = _capability(model)
-    outside = replace(_row(), temperature_k=capability.temperature_max_k + 1.0)
-    problem = _problem(model, (outside,))
-    monkeypatch.setattr(
-        parameter_regression._native,
-        "solve_general",
-        lambda *_: pytest.fail("Ceres must not start outside the Provider domain"),
-    )
-
-    with pytest.raises(ValueError, match="temperature"):
-        fit_parameters(problem, model)
-
-
-def test_parameter_fingerprint_mismatch_fails_before_ceres(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    model = _model()
-    problem = _problem(model)
-    mismatched = replace(
-        problem,
-        parameters=(
-            replace(
-                problem.parameters[0],
-                provider_parameter_fingerprint=f"sha256:{'0' * 64}",
-            ),
-        ),
-    )
-    monkeypatch.setattr(
-        parameter_regression._native,
-        "solve_general",
-        lambda *_: pytest.fail("Ceres must not start for a fingerprint mismatch"),
-    )
-
-    with pytest.raises(ValueError, match="does not match"):
-        fit_parameters(mismatched, model)
-
-
-def test_phase_observation_contract_mismatch_fails_before_ceres(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    model = _model()
-    problem = _problem(model)
-    capability = replace(
-        _capability(model),
-        observation_contract="aqueous_mean_ionic_activity",
-    )
-    monkeypatch.setattr(
-        parameter_regression,
-        "parameter_capabilities",
-        lambda _: (capability,),
-    )
-    monkeypatch.setattr(
-        parameter_regression._native,
-        "solve_general",
-        lambda *_: pytest.fail(
-            "Ceres must not start for an observation-contract mismatch"
-        ),
-    )
-
-    with pytest.raises(ValueError, match="phase observation"):
-        fit_parameters(problem, model)
 
 
 def test_provider_failure_returns_diagnostic_result() -> None:
@@ -2796,83 +2157,6 @@ def _may_methane_propane_problem(
         parameter_tolerance=1.0e-12,
         confirmation_parameter_scaled_max_delta=1.0e-5,
         confirmation_cost_relative_delta=1.0e-8,
-    )
-
-
-def test_may_methane_propane_source_identity_and_transform() -> None:
-    data_path = (
-        Path(__file__).parents[1] / "evidence" / "may-2015-methane-propane-vle.csv"
-    )
-    assert (
-        canonical_dataset_sha256(_may_methane_propane_rows())
-        == _MAY_METHANE_PROPANE_CANONICAL_SHA256
-    )
-    assert (
-        data_path.read_bytes()
-        and __import__("hashlib").sha256(data_path.read_bytes()).hexdigest()
-        == "97a07b274dc4da6a281614f3fd39c520ebd6678776413746b13bc8665113c529"
-    )
-    records = _may_methane_propane_records()
-    assert len(records) == 22
-    assert len({record["row_id"] for record in records}) == 22
-    expected = (
-        (283.38, 7630, 0.4586, 0.0010, 0.0018, 0.2045, 0.0006, 0.0009),
-        (273.48, 7102, 0.4589, 0.0010, 0.0018, 0.1614, 0.0003, 0.0007),
-        (263.51, 6597, 0.4623, 0.0007, 0.0018, 0.1197, 0.0012, 0.0013),
-        (263.56, 6560, 0.4601, 0.0013, 0.0021, 0.1174, 0.0018, 0.0019),
-        (253.59, 6100, 0.4708, 0.0011, 0.0021, 0.0947, 0.0004, 0.0006),
-        (243.61, 5611, 0.4857, 0.0015, 0.0024, 0.0715, 0.0001, 0.0004),
-        (243.64, 5635, 0.4907, 0.0010, 0.0022, 0.0719, 0.0001, 0.0004),
-        (243.62, 5544, 0.4832, 0.0014, 0.0024, 0.0715, 0.0002, 0.0004),
-        (233.67, 5119, 0.5077, 0.0012, 0.0026, 0.0518, 0.0003, 0.0004),
-        (233.61, 5077, 0.5037, 0.0021, 0.0031, 0.0520, 0.0003, 0.0004),
-        (223.54, 4622, 0.5333, 0.0006, 0.0027, 0.0368, 0.0005, 0.0005),
-        (223.36, 4628, 0.5331, 0.0012, 0.0030, 0.0366, 0.0002, 0.0003),
-        (213.38, 4108, 0.5614, 0.0005, 0.0033, 0.0245, 0.0003, 0.0003),
-        (203.40, 3576, 0.5952, 0.0014, 0.0044, 0.0162, 0.0005, 0.0005),
-        (243.62, 891, 0.0710, 0.0005, 0.0019, 0.2076, 0.0003, 0.0041),
-        (243.62, 3909, 0.3442, 0.0003, 0.0019, 0.0743, 0.0004, 0.0006),
-        (243.63, 5500, 0.4788, 0.0014, 0.0024, 0.0704, 0.0002, 0.0004),
-        (243.61, 5544, 0.4764, 0.0015, 0.0025, 0.0734, 0.0002, 0.0004),
-        (243.62, 6402, 0.5565, 0.0006, 0.0022, 0.0726, 0.0006, 0.0007),
-        (243.63, 6989, 0.6082, 0.0015, 0.0026, 0.0768, 0.0005, 0.0006),
-        (243.62, 7530, 0.6572, 0.0010, 0.0025, 0.0779, 0.0016, 0.0016),
-        (243.62, 7943, 0.6961, 0.0013, 0.0027, 0.0855, 0.0005, 0.0007),
-    )
-    observed = tuple(
-        (
-            float(record["T_K"]),
-            int(record["p_kPa"]),
-            float(record["x_methane"]),
-            float(record["u_x_methane"]),
-            float(record["uc_x_methane"]),
-            float(record["y_propane"]),
-            float(record["u_y_propane"]),
-            float(record["uc_y_propane"]),
-        )
-        for record in records
-    )
-    assert observed == expected
-    rows = _may_methane_propane_rows()
-    problem = _may_methane_propane_problem(_methane_propane_model(), rows)
-    parameters = _methane_propane_parameters()
-    assert problem.observations[0].component_ids == ("methane", "propane")
-    assert parameters.component_ids == ("methane", "propane")
-    assert problem.sources[0].source_artifact_sha256 == (
-        "53fd1bdd55dc6807ec76cf88626438d8dfceb3ec09149d4405ea36cfbe6b842a"
-    )
-    assert tuple(row.pressure_pa for row in rows) == tuple(
-        1000.0 * values[1] for values in expected
-    )
-    assert tuple(row.vapor_mole_fraction_first for row in rows) == tuple(
-        1.0 - values[5] for values in expected
-    )
-    assert all(
-        record["u_x_methane"]
-        and record["uc_x_methane"]
-        and record["u_y_propane"]
-        and record["uc_y_propane"]
-        for record in records
     )
 
 

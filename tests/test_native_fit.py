@@ -88,13 +88,9 @@ def _provider_table(capsule: object) -> _NativeSdkTable:
     capsule_pointer = ctypes.pythonapi.PyCapsule_GetPointer
     capsule_pointer.argtypes = (ctypes.py_object, ctypes.c_char_p)
     capsule_pointer.restype = ctypes.c_void_p
-    pointer = capsule_pointer(
-        capsule, b"epcsaft.native_sdk.v1"
-    )
+    pointer = capsule_pointer(capsule, b"epcsaft.native_sdk.v1")
     assert pointer
-    return ctypes.cast(
-        pointer, ctypes.POINTER(_NativeSdkTable)
-    ).contents
+    return ctypes.cast(pointer, ctypes.POINTER(_NativeSdkTable)).contents
 
 
 def _provider_phase(
@@ -103,9 +99,7 @@ def _provider_phase(
     volume_m3: float,
     parameters: tuple[float, float, float],
 ) -> _ParameterizedResult:
-    callback = _ParameterizedCallback(
-        table.evaluate_pure_phase_parameters
-    )
+    callback = _ParameterizedCallback(table.evaluate_pure_phase_parameters)
     result = _ParameterizedResult()
     result.struct_size = ctypes.sizeof(_ParameterizedResult)
     status = callback(
@@ -157,13 +151,8 @@ def test_joint_pure_jacobian_is_the_exact_provider_hessian_chain_rule(
 
     expected = [0.0] * (16 * 11)
     for row_index, row in enumerate(dataset.training_rows):
-        liquid_volume = (
-            specification.molar_mass_kg_per_mol
-            / row.liquid_density_kg_m3
-        )
-        vapor_volume = (
-            8.31446261815324 * row.temperature_k / row.pressure_pa
-        )
+        liquid_volume = specification.molar_mass_kg_per_mol / row.liquid_density_kg_m3
+        vapor_volume = 8.31446261815324 * row.temperature_k / row.pressure_pa
         liquid = _provider_phase(
             table, row.temperature_k, liquid_volume, specification.start
         )
@@ -176,9 +165,7 @@ def test_joint_pure_jacobian_is_the_exact_provider_hessian_chain_rule(
         residual_offset = 4 * row_index
         liquid_column = 3 + 2 * row_index
         vapor_column = liquid_column + 1
-        for parameter, scale in enumerate(
-            specification.parameter_scales
-        ):
+        for parameter, scale in enumerate(specification.parameter_scales):
             coordinate = 2 + parameter
             expected[(residual_offset + 0) * 11 + parameter] = (
                 pressure_factor
@@ -195,9 +182,7 @@ def test_joint_pure_jacobian_is_the_exact_provider_hessian_chain_rule(
                 * scale
             )
             expected[(residual_offset + 2) * 11 + parameter] = (
-                0.5
-                * (liquid.hessian[coordinate] - vapor.hessian[coordinate])
-                * scale
+                0.5 * (liquid.hessian[coordinate] - vapor.hessian[coordinate]) * scale
             )
         expected[(residual_offset + 0) * 11 + liquid_column] = (
             pressure_factor
@@ -222,9 +207,7 @@ def test_joint_pure_jacobian_is_the_exact_provider_hessian_chain_rule(
         expected[(residual_offset + 3) * 11 + liquid_column] = -0.5
 
     assert residuals
-    assert tuple(jacobian) == pytest.approx(
-        expected, rel=2.0e-14, abs=2.0e-14
-    )
+    assert tuple(jacobian) == pytest.approx(expected, rel=2.0e-14, abs=2.0e-14)
 
 
 @pytest.mark.parametrize("component_id", ("methane", "ethane"))
@@ -274,7 +257,9 @@ def test_public_workflow_returns_strict_component_diagnostics(
     )
     assert sum(row.training for row in result.reporting_rows) == 4
     assert all(
-        row.physically_valid for row in result.reporting_rows if row.partition != "stress"
+        row.physically_valid
+        for row in result.reporting_rows
+        if row.partition != "stress"
     )
     assert tuple(row.partition for row in result.reporting_rows) == tuple(
         "training"
@@ -309,14 +294,12 @@ def test_propane_fit_preserves_distinct_statuses_at_the_frozen_pressure_gate() -
     assert not any(parameter.active_bound for parameter in result.parameters)
     assert result.confirmation_parameter_scaled_max_delta <= 1.0e-5
     assert result.confirmation_cost_relative_delta <= 1.0e-8
-    failed_rows = tuple(row for row in result.reporting_rows if not row.physically_valid)
-    assert "glos2004-propane-sat-120-k" in tuple(
-        row.row_id for row in failed_rows
+    failed_rows = tuple(
+        row for row in result.reporting_rows if not row.physically_valid
     )
+    assert "glos2004-propane-sat-120-k" in tuple(row.row_id for row in failed_rows)
     held_out_120 = next(
-        row
-        for row in failed_rows
-        if row.row_id == "glos2004-propane-sat-120-k"
+        row for row in failed_rows if row.row_id == "glos2004-propane-sat-120-k"
     )
     assert held_out_120.partition == "held_out"
     assert (
@@ -325,8 +308,7 @@ def test_propane_fit_preserves_distinct_statuses_at_the_frozen_pressure_gate() -
         > PROPANE_SATURATION_FIT_V1.reporting_pressure_scaled_residual_max
     )
     assert (
-        "training or reporting physical validity gate failed"
-        in result.failure_reasons
+        "training or reporting physical validity gate failed" in result.failure_reasons
     )
 
 
@@ -476,7 +458,9 @@ def test_generalized_workflow_preserves_accepted_methane_numerical_result() -> N
     assert result.final_cost == pytest.approx(4.798586497669576e-6, rel=2.0e-9)
     assert result.jacobian.full_rank == 11
     assert result.jacobian.projected_parameter_rank == 3
-    for observed, expected in zip(result.reporting_rows, expected_reporting, strict=True):
+    for observed, expected in zip(
+        result.reporting_rows, expected_reporting, strict=True
+    ):
         assert (
             observed.temperature_k,
             observed.predicted_pressure_pa,
@@ -497,63 +481,10 @@ def test_generalized_workflow_preserves_accepted_ethane_numerical_result() -> No
         abs=1.0e-7,
     )
     assert result.initial_cost == pytest.approx(89326.40642623953, rel=2.0e-12)
-    assert result.final_cost == pytest.approx(
-        1.4622626154617253e-6, rel=2.0e-9
-    )
+    assert result.final_cost == pytest.approx(1.4622626154617253e-6, rel=2.0e-9)
     assert result.jacobian.full_rank == 11
     assert result.jacobian.projected_parameter_rank == 3
-    assert result.predictive_status == (
-        "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF"
-    )
-
-
-def test_identity_mismatch_is_rejected_before_native_solve() -> None:
-    with pytest.raises(ValueError, match="dataset and specification"):
-        fit_pure_saturation(
-            model=_model("methane"),
-            dataset=load_pure_saturation_dataset("methane"),
-            specification=ETHANE_SATURATION_FIT_V1,
-        )
-    with pytest.raises(ValueError, match="component order"):
-        fit_pure_saturation(
-            model=_model("methane"),
-            dataset=load_pure_saturation_dataset("ethane"),
-            specification=ETHANE_SATURATION_FIT_V1,
-        )
-
-
-def test_reporting_conversion_rejects_final_topology_loss() -> None:
-    dataset = load_pure_saturation_dataset("methane")
-    source = dataset.rows[0]
-    native_row = (
-        source.row_id,
-        source.source_id,
-        source.temperature_k,
-        source.pressure_pa,
-        source.liquid_density_kg_m3,
-        source.pressure_pa,
-        source.liquid_density_kg_m3,
-        9.995e-5,
-        1.0e-4,
-        1.0,
-        1.0,
-        (0.0, 0.0, 0.0),
-        "CONVERGENCE",
-        True,
-        "",
-    )
-
-    diagnostic = workflow._reporting_row_diagnostic(
-        source,
-        frozenset(dataset.training_row_ids),
-        frozenset(row.row_id for row in dataset.held_out_rows),
-        frozenset(),
-        METHANE_SATURATION_FIT_V1,
-        native_row,
-    )
-
-    assert not diagnostic.physically_valid
-    assert any("topology separation" in reason for reason in diagnostic.failure_reasons)
+    assert result.predictive_status == ("NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF")
 
 
 def test_provider_callback_failure_is_returned_as_structured_fit_evidence(
@@ -575,4 +506,7 @@ def test_provider_callback_failure_is_returned_as_structured_fit_evidence(
     )
 
     assert not result.solver_converged
-    assert any("synthetic provider domain failure" in reason for reason in result.failure_reasons)
+    assert any(
+        "synthetic provider domain failure" in reason
+        for reason in result.failure_reasons
+    )

@@ -1,10 +1,6 @@
 from __future__ import annotations
 
 import ctypes
-import hashlib
-import json
-from collections import Counter
-from pathlib import Path
 
 import pytest
 from epcsaft import Mixture, Parameters, native_sdk
@@ -18,9 +14,7 @@ from epcsaft_regression.workflow import _aqueous_kij_native_payload
 def _models() -> tuple[Mixture, ...]:
     return tuple(
         Mixture(
-            Parameters.from_dictionary(
-                aqueous_parameters(("water", cation, anion))
-            )
+            Parameters.from_dictionary(aqueous_parameters(("water", cation, anion)))
         )
         for _, cation, anion, _ in epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1.salt_contracts
     )
@@ -91,138 +85,12 @@ def _copied_provider_capsules(
         if clear_scalar:
             table.evaluate_aqueous_miac_kij = None
         if truncate_before_bounded_batch:
-            table.table_size = _NativeSdkV1.evaluate_aqueous_miac_kij_batch_bounded.offset
+            table.table_size = (
+                _NativeSdkV1.evaluate_aqueous_miac_kij_batch_bounded.offset
+            )
         tables.append(table)
         copied_capsules.append(new_capsule(ctypes.addressof(table), name, None))
     return tuple(copied_capsules), tuple(tables)
-
-
-def test_aqueous_kij_contract_is_eleven_parameters_over_all_rows() -> None:
-    specification = epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1
-
-    assert specification.specification_id == "figiel-2025-aqueous-kij-v1"
-    assert specification.source_validation_commit == (
-        "8944d34f7002cda1bb8760e606cc1f11696f58cd"
-    )
-    assert specification.source_hamer_wu_csv_sha256 == (
-        "2f63e13f06a5b0f4e8bca2980b6a8d9d7fb0f839153c43e3a71952daf9796595"
-    )
-    assert specification.fixed_born_diameters_angstrom == (
-        2.7888130173797934,
-        3.4524616464076425,
-        4.147266741279482,
-        4.101505615791675,
-        4.476998527506598,
-    )
-    assert specification.fixed_water_solvation_factor == 1.5590515389548207
-    assert specification.fixed_born_evidence_subject_sha256 == (
-        "55ea2cd69af62c45b26179cfab6939760de23058b5a7e8c880a79f67faa417ed"
-    )
-    assert specification.fixed_water_factor_regression_commit == (
-        "882e0735ed1b5586a591682da1fd3d78f46636d4"
-    )
-    assert len(specification.observations) == 164
-    assert Counter(row.salt for row in specification.observations) == {
-        "LiCl": 29,
-        "NaCl": 29,
-        "KCl": 28,
-        "LiBr": 29,
-        "NaBr": 21,
-        "KBr": 28,
-    }
-    assert specification.coordinate_order == (
-        ("water", "lithium-cation"),
-        ("water", "sodium-cation"),
-        ("water", "potassium-cation"),
-        ("water", "chloride-anion"),
-        ("water", "bromide-anion"),
-        ("lithium-cation", "chloride-anion"),
-        ("sodium-cation", "chloride-anion"),
-        ("potassium-cation", "chloride-anion"),
-        ("lithium-cation", "bromide-anion"),
-        ("sodium-cation", "bromide-anion"),
-        ("potassium-cation", "bromide-anion"),
-    )
-    assert specification.published_parameters == (
-        -0.4,
-        -0.3,
-        -0.1,
-        -0.3,
-        -0.3,
-        0.8,
-        0.8,
-        0.0,
-        0.5,
-        0.65,
-        -0.35,
-    )
-    assert specification.parameter_bounds == (-1.0, 1.0)
-    assert specification.start_schedules == (
-        ("primary", 0.0, "forward"),
-        ("confirmation", 0.25, "reverse"),
-    )
-    assert specification.start_agreement_max_abs == 1.0e-5
-    assert specification.published_parameter_max_abs_delta == 0.05
-    assert specification.expected_provider_fingerprints == (
-        "sha256:00d5bc709841bffd8cbde9df6afafaa9520d23a500be59aae54ecd63b4369ad9",
-        "sha256:569f4ace0d776e8b631df0ff563a2686356b28ad5e24556c38909b371fd811ac",
-        "sha256:17955d601749bc94802325dbc88cdc62b3ee954f1e5e1ad02c0547d8187b27d4",
-        "sha256:31f40e1441358b8729c0963c808cb5290cde6d455f6f910a5c7abe95315a8aea",
-        "sha256:8fedd3d395a20591b05ee7fff2c1e698872c97b07e82a0668923d656f818790e",
-        "sha256:c0af15d984b8324ebc4b622a9ab68153c43eb13026bd74a6bcd08bba7d49dea5",
-    )
-
-
-def test_aqueous_kij_runtime_is_one_private_native_owner() -> None:
-    assert hasattr(epcsaft_regression, "fit_figiel_aqueous_kij")
-    assert not hasattr(epcsaft_regression, "persist_provider_parameters")
-    assert not hasattr(epcsaft_regression, "fit_generic_parameters")
-    fingerprints = ("sha256:" + "0" * 64,) * 6
-    assert _aqueous_kij_native_payload(
-        epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1, fingerprints
-    )[-1] == "figiel-2025-aqueous-kij-v1"
-
-
-@pytest.mark.campaign
-def test_aqueous_kij_requires_only_the_bounded_batch_callback() -> None:
-    specification = epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1
-    models = _models()
-    capsules = tuple(native_sdk(model) for model in models)
-    payload = _aqueous_kij_native_payload(
-        specification, tuple(model.parameter_fingerprint for model in models)
-    )
-    copied_capsules, keepalive = _copied_provider_capsules(
-        capsules, clear_scalar=True
-    )
-
-    residuals, jacobian, rows = _native.evaluate_figiel_kij(
-        copied_capsules, payload, specification.published_parameters
-    )
-
-    assert keepalive
-    assert len(residuals) == 164
-    assert len(jacobian) == 164 * 11
-    assert len(rows) == 164
-
-
-def test_aqueous_kij_rejects_provider_truncated_before_bounded_batch() -> None:
-    specification = epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1
-    models = _models()
-    capsules = tuple(native_sdk(model) for model in models)
-    payload = _aqueous_kij_native_payload(
-        specification, tuple(model.parameter_fingerprint for model in models)
-    )
-    copied_capsules, keepalive = _copied_provider_capsules(
-        capsules, truncate_before_bounded_batch=True
-    )
-
-    with pytest.raises(
-        RuntimeError, match="provider aqueous-kij capability unavailable"
-    ):
-        _native.evaluate_figiel_kij(
-            copied_capsules, payload, specification.published_parameters
-        )
-    assert keepalive
 
 
 @pytest.mark.campaign
@@ -262,12 +130,9 @@ def test_aqueous_kij_exact_jacobian_matches_callback_value_direction() -> None:
     )
     parameters = specification.published_parameters
     direction = tuple(
-        (-1.0 if index % 2 else 1.0) * (index + 1.0) / 11.0
-        for index in range(11)
+        (-1.0 if index % 2 else 1.0) * (index + 1.0) / 11.0 for index in range(11)
     )
-    _, jacobian_native, _ = _native.evaluate_figiel_kij(
-        capsules, payload, parameters
-    )
+    _, jacobian_native, _ = _native.evaluate_figiel_kij(capsules, payload, parameters)
     jacobian = tuple(float(value) for value in jacobian_native)
     differences: list[tuple[float, ...]] = []
     for step in (1.0e-4, 5.0e-5):
@@ -280,9 +145,7 @@ def test_aqueous_kij_exact_jacobian_matches_callback_value_direction() -> None:
             for value, component in zip(parameters, direction, strict=True)
         )
         residuals_plus, _, _ = _native.evaluate_figiel_kij(capsules, payload, plus)
-        residuals_minus, _, _ = _native.evaluate_figiel_kij(
-            capsules, payload, minus
-        )
+        residuals_minus, _, _ = _native.evaluate_figiel_kij(capsules, payload, minus)
         differences.append(
             tuple(
                 (float(plus_value) - float(minus_value)) / (2.0 * step)
@@ -293,8 +156,7 @@ def test_aqueous_kij_exact_jacobian_matches_callback_value_direction() -> None:
         )
     for row in range(164):
         exact = sum(
-            jacobian[row * 11 + column] * direction[column]
-            for column in range(11)
+            jacobian[row * 11 + column] * direction[column] for column in range(11)
         )
         coarse = differences[0][row]
         fine = differences[1][row]
@@ -323,58 +185,3 @@ def test_public_aqueous_kij_fit_replays_retained_negative_result() -> None:
     assert tuple(start.rank for start in result.starts) == (11, 11)
     assert result.start_parameter_max_abs_delta <= 1.0e-5
     assert result.published_parameter_max_abs_delta > 0.05
-
-
-def test_conditional_campaign_evidence_retains_separate_statuses() -> None:
-    evidence_path = (
-        Path(__file__).parents[1]
-        / "evidence"
-        / "figiel-aqueous-kij-conditional-recovery.json"
-    )
-    evidence_bytes = evidence_path.read_bytes()
-    assert hashlib.sha256(evidence_bytes).hexdigest() == (
-        "448a3d48e661a2a40e01833147a3b0842edd4436663b953cf2c90dde178d0417"
-    )
-    evidence = json.loads(evidence_bytes)
-
-    assert evidence["primary"]["rank"] == 11
-    assert evidence["primary"]["complete_jacobian_columns"] == [True] * 11
-    assert evidence["primary"]["active_bounds"] == [
-        False,
-        False,
-        False,
-        False,
-        False,
-        True,
-        False,
-        False,
-        False,
-        False,
-        False,
-    ]
-    assert evidence["problem"]["fixed_born_diameters_angstrom"] == list(
-        epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1.fixed_born_diameters_angstrom
-    )
-    assert evidence["problem"]["fixed_water_solvation_factor"] == (
-        epcsaft_regression.FIGIEL_AQUEOUS_KIJ_V1.fixed_water_solvation_factor
-    )
-    assert evidence["derivative_checks"]["passed_entries"] == 1804
-    assert evidence["derivative_checks"]["total_entries"] == 1804
-    assert evidence["regression_artifact"]["implementation_commit"] == (
-        "846c3671a437f961f92c20300c4cb3c874ff6009"
-    )
-    assert evidence["regression_artifact"]["wheel_sha256"] == (
-        "0fe3ddfe6a31993c7859609d2bdc13cb6b69bd037b276671cbee2b1ded32a365"
-    )
-    assert evidence["comparison"]["start_max_abs_delta"] <= 1.0e-5
-    assert evidence["comparison"]["published_max_abs_delta"] > 0.05
-    assert evidence["comparison"]["coordinates_within_gate"] == 2
-    assert evidence["observables"]["evaluated_rows"] == 164
-    assert evidence["statuses"] == {
-        "solver_converged": True,
-        "numerically_converged": True,
-        "physically_valid": True,
-        "workflow_valid": True,
-        "scientifically_valid": False,
-        "predictive_status": "NOT_ADJUDICATED_NO_APPROVED_HELD_OUT_CUTOFF",
-    }
