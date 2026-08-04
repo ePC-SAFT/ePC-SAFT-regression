@@ -1,5 +1,0 @@
-- Python package with a CPython native extension built by CMake.
-- Native regression engine uses C++ Ceres Solver and Eigen; EOS/reference evaluations arrive through the installed Provider native SDK capsule/header.
-- Packaging uses `pyproject.toml` and wheel builds; final evidence binds exact installed wheel/header hashes.
-- Tests use pytest; style checks use Ruff where configured.
-- No local EOS, equilibrium, Ipopt, numerical-derivative backend, or Provider catalog persistence.

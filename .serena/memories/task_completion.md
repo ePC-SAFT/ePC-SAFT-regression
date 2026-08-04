@@ -1,5 +1,0 @@
-- Verify focused source and isolated installed-wheel tests, exact artifact/header/source hashes, import origins, wheel contents/linkage, and negative-space claims.
-- For numerical changes, retain derivative checks, ranks/conditioning, active bounds, starts/cycles, row accounting, solver/numerical/workflow/scientific/predictive statuses, and truthful failed gates.
-- Run Ruff on changed Python files where configured, parse `ARCHITECTURE.yaml`, run `git diff --check`, inspect `git status`, and execute the repository cleanup audit.
-- Full-suite failures must be compared with the exact base/environment before attribution; do not relax legacy scientific anchors to make a leaf green.
-- Use bounded independent subagent review before merge when requested; no promotion, publication, catalog persistence, or authority transfer follows from package evidence.

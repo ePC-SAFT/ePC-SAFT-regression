@@ -1,5 +1,0 @@
-- Regression owns source-bound target contracts, Ceres fitting, diagnostics, identifiability evidence, and immutable result/receipt contracts; Provider owns EOS/reference equations and exact derivatives.
-- Production authority is limited to accepted methane and ethane pure-saturation workflows. Local Figiel/Born/aqueous candidates are authority-neutral and non-predictive.
-- Canonical architecture/status: `AGENTS.md`, `CONTEXT.md`, `ARCHITECTURE.yaml`; science contracts under `docs/science/`.
-- Runtime package: `src/epcsaft_regression/`; native Ceres owners under `src/epcsaft_regression/native/`; package tests under `tests/`; explicit candidate runners under `tools/`.
-- Read `mem:tech_stack`, `mem:conventions`, `mem:suggested_commands`, and `mem:task_completion` for implementation work.
