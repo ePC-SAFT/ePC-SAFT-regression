@@ -14,9 +14,9 @@ done
 git_common_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
 canonical_repo_root="$(dirname "$git_common_dir")"
 project_root="$(dirname "$canonical_repo_root")"
-default_eos_wheel="${project_root}/artifacts/objects/sha256/1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl"
+default_eos_wheel="${project_root}/artifacts/objects/sha256/bc7e637de084330ebded4ddfd52e02bc1ce5451221128692972ebba8856d098e/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl"
 eos_wheel="${EPCSAFT_EOS_WHEEL:-$default_eos_wheel}"
-expected_eos_sha256="1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9"
+expected_eos_sha256="bc7e637de084330ebded4ddfd52e02bc1ce5451221128692972ebba8856d098e"
 
 if [[ ! -f "$eos_wheel" ]]; then
     echo "missing required immutable EOS wheel: $eos_wheel" >&2

@@ -86,11 +86,11 @@ def test_candidate_runners_share_final_provider_identity(
     born = importlib.util.module_from_spec(born_spec)
     born_spec.loader.exec_module(born)
 
-    expected_commit = "7b97bab039e1c50a6f89522698af80493bea5f9e"
-    expected_tree = "d082a8f102b32705b6cd6669a3e31a8d4ea8acd0"
-    expected_wheel = "1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9"
-    expected_header = "881f5ec87293de8b1f3c25c16018aa94be69775fede2ec5426fcbb08e257fecd"
-    expected_library = "fd624add206b8d783cd079db320b6dba64083063af2f29faf5ce82d1cf4743eb"
+    expected_commit = "d0c2575908323db6c487d4e541cf497c93c89d9e"
+    expected_tree = "e29386139e7ba81115b0f454c79e0c869a262d37"
+    expected_wheel = "bc7e637de084330ebded4ddfd52e02bc1ce5451221128692972ebba8856d098e"
+    expected_header = "2adb85c3dc0502384b5ae5fce69cc46f8874415ca7e6fad85b1a5d7de3a8ea53"
+    expected_library = "e4e6c58aa14bf285a9cc347eb6b8b34fa8a7ee563576522223a7aa5e67930198"
 
     assert candidate.PROVIDER_COMMIT == born.PROVIDER_COMMIT == expected_commit
     assert candidate.PROVIDER_TREE == born.PROVIDER_TREE == expected_tree

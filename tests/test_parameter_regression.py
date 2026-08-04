@@ -24,6 +24,7 @@ from epcsaft_regression import (
     AssociationParameterIdentity,
     ComponentParameterIdentity,
     ConfirmationControls,
+    DensityRowDiagnostic,
     DirectObservationRowDiagnostic,
     FixedCompositionVleObservation,
     FixedTopologyAssociationCapability,
@@ -38,7 +39,6 @@ from epcsaft_regression import (
     ParameterFamily,
     ParameterRequest,
     PureDensityObservation,
-    PureDensityRowDiagnostic,
     PureSaturationObservation,
     PureSaturationRowDiagnostic,
     PureVaporPressureObservation,
@@ -1805,7 +1805,7 @@ def test_generic_fixed_topology_block_evaluates_exact_jacobian() -> None:
         parity_prepared.datasets[0].source.source_artifact_sha256,
     )
     assert evaluation.installed_eos_artifact_fingerprint == (
-        "sha256:1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9"
+            "sha256:bc7e637de084330ebded4ddfd52e02bc1ce5451221128692972ebba8856d098e"
     )
     assert evaluation.observation_order_fingerprint.startswith("sha256:")
     assert evaluation.lifted_physical_point == pytest.approx(
@@ -2123,7 +2123,7 @@ def test_pure_density_association_surface_reports_nonconverged_rank_diagnostics(
     assert math.isfinite(result.parameters[0].final)
     assert not result.solver_converged
     assert not result.numerically_converged
-    assert isinstance(result.rows[0], PureDensityRowDiagnostic)
+    assert isinstance(result.rows[0], DensityRowDiagnostic)
     assert result.rows[0].evaluated
     assert all(math.isfinite(value) for value in result.rows[0].scaled_residuals)
     assert result.scientific_status == "NOT_ADJUDICATED_NO_APPROVED_SCIENTIFIC_CUTOFF"

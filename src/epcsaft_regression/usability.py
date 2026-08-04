@@ -13,6 +13,7 @@ from .parameter_regression import (
     AqueousKijMeanIonicActivityObservation,
     AssociationParameterIdentity,
     ComponentParameterIdentity,
+    FixedCompositionMixtureDensityObservation,
     FixedCompositionVleObservation,
     FixedTopologyAssociationCapability,
     GeneralJacobianDiagnostics,
@@ -37,6 +38,7 @@ from .parameter_regression import (
     _require_finite,
     _require_nonempty_string,
     _require_sha256,
+    _uses_fixed_topology_descriptor,
     canonical_dataset_sha256,
     fit_parameters,
     parameter_capabilities,
@@ -215,6 +217,7 @@ def _canonical_sha256(value: object) -> str:
 
 _TUPLE_FIELDS = {
     "component_ids",
+    "mole_fractions",
     "active_pair_component_ids",
     "fixed_k_ij",
     "chemical_potential_scales",
@@ -227,6 +230,7 @@ _OBSERVATION_TYPES = (
     PureSaturationObservation,
     PureVaporPressureObservation,
     PureDensityObservation,
+    FixedCompositionMixtureDensityObservation,
     MeanIonicActivityObservation,
     AqueousKijMeanIonicActivityObservation,
     IonSolvationKijObservation,
@@ -487,6 +491,7 @@ def _observation_contract(observations: tuple[RegressionObservation, ...]) -> st
             PureSaturationObservation,
             PureVaporPressureObservation,
             PureDensityObservation,
+            FixedCompositionMixtureDensityObservation,
         ),
     ):
         return "fixed_composition_helmholtz_phase"
@@ -513,16 +518,25 @@ def _resolve_coordinates(
         if isinstance(item, ParameterCapability)
     )
     derivative_ready = tuple(item for item in advertised if item.installed_ready)
-    if any(
+    matches = tuple(
+        item
+        for item in parameter_capabilities(model)
+        if isinstance(item, FixedTopologyAssociationCapability) and item.installed_ready
+    )
+    use_fixed_topology = any(
         isinstance(request.identity, AssociationParameterIdentity)
         for request in requests
-    ):
-        matches = tuple(
-            item
-            for item in parameter_capabilities(model)
-            if isinstance(item, FixedTopologyAssociationCapability)
-            and item.installed_ready
+    ) or (
+        len(matches) == 1
+        and all(
+            any(
+                slot.family is request.family and slot.identity == request.identity
+                for slot in matches[0].slots
+            )
+            for request in requests
         )
+    )
+    if use_fixed_topology:
         if len(matches) != 1:
             raise ValueError(
                 "installed EOS does not advertise exactly one derivative-ready "
@@ -604,6 +618,7 @@ _OBJECTIVE_FAMILIES = {
     PureSaturationObservation: "pure_saturation",
     PureVaporPressureObservation: "pure_vapor_pressure",
     PureDensityObservation: "pure_density",
+    FixedCompositionMixtureDensityObservation: "fixed_composition_mixture_density",
     MeanIonicActivityObservation: "mean_ionic_activity",
     AqueousKijMeanIonicActivityObservation: "aqueous_kij_mean_ionic_activity",
     IonSolvationKijObservation: "ion_solvation_kij",
@@ -618,7 +633,13 @@ def _validate_objective(dataset: ObservationDataset) -> None:
         families
         if len(families) == 1
         else {"fixed_topology_association_mixed"}
-        if families.issubset({"pure_saturation", "pure_vapor_pressure", "pure_density"})
+        if families.issubset(
+            {
+                "pure_saturation",
+                "pure_vapor_pressure",
+                "pure_density",
+            }
+        )
         else set()
     )
     if dataset.objective.residual_family not in allowed:
@@ -697,7 +718,10 @@ def _shape(rows: tuple[RegressionObservation, ...]) -> tuple[int, int]:
         elif isinstance(row, PureVaporPressureObservation):
             residuals += 3
             lifted += 2
-        elif isinstance(row, PureDensityObservation):
+        elif isinstance(
+            row,
+            (PureDensityObservation, FixedCompositionMixtureDensityObservation),
+        ):
             residuals += 2
             lifted += 1
         else:
@@ -728,7 +752,10 @@ def _residual_identities(
             else ("liquid_pressure", "vapor_pressure", "chemical_potential")
             if isinstance(row, PureVaporPressureObservation)
             else ("pressure", "density")
-            if isinstance(row, PureDensityObservation)
+            if isinstance(
+                row,
+                (PureDensityObservation, FixedCompositionMixtureDensityObservation),
+            )
             else (_OBJECTIVE_FAMILIES[type(row)],)
         )
         identities.extend(
@@ -742,7 +769,10 @@ def _lifted_variable_ids(
 ) -> tuple[str, ...]:
     identities = []
     for row in rows:
-        if isinstance(row, PureDensityObservation):
+        if isinstance(
+            row,
+            (PureDensityObservation, FixedCompositionMixtureDensityObservation),
+        ):
             identities.append(f"{row.row_id}:volume_m3_per_mol")
         elif isinstance(
             row,
@@ -768,7 +798,10 @@ def _lifted_physical_point(
     values = []
     index = 0
     for row in rows:
-        if isinstance(row, PureDensityObservation):
+        if isinstance(
+            row,
+            (PureDensityObservation, FixedCompositionMixtureDensityObservation),
+        ):
             values.append(row.volume_origin_m3_per_mol * math.exp(solver_point[index]))
             index += 1
         elif isinstance(
@@ -797,7 +830,10 @@ def _lifted_start_variables(
 ) -> tuple[float, ...]:
     values: list[float] = []
     for row in rows:
-        if isinstance(row, PureDensityObservation):
+        if isinstance(
+            row,
+            (PureDensityObservation, FixedCompositionMixtureDensityObservation),
+        ):
             values.append(
                 math.log(row.volume_start_m3_per_mol / row.volume_origin_m3_per_mol)
             )
@@ -830,6 +866,7 @@ def _requires_resolved_lifted_start(problem: RegressionProblem) -> bool:
             row,
             (
                 PureDensityObservation,
+                FixedCompositionMixtureDensityObservation,
                 PureSaturationObservation,
                 PureVaporPressureObservation,
             ),
@@ -849,7 +886,10 @@ def _lifted_bounds_status(
 ) -> tuple[str, ...]:
     status: list[str] = []
     for row in rows:
-        if isinstance(row, PureDensityObservation):
+        if isinstance(
+            row,
+            (PureDensityObservation, FixedCompositionMixtureDensityObservation),
+        ):
             status.append(
                 _bound_status(
                     row.volume_start_m3_per_mol,
@@ -886,7 +926,10 @@ def _lifted_bounds_status_at_variables(
     status: list[str] = []
     variable = 0
     for row in rows:
-        if isinstance(row, PureDensityObservation):
+        if isinstance(
+            row,
+            (PureDensityObservation, FixedCompositionMixtureDensityObservation),
+        ):
             volume = row.volume_origin_m3_per_mol * math.exp(variables[variable])
             status.append(_bound_status(volume, row.volume_bounds_m3_per_mol))
             variable += 1
@@ -923,11 +966,22 @@ def _evaluation_failure_reason(error: Exception) -> str:
         phrase in normalized
         for phrase in (
             "does not advertise",
+            "does not expose",
             "capability unavailable",
             "capabilities do not expose",
         )
     ):
         return f"unavailable_derivatives: {message}"
+    if any(
+        phrase in normalized
+        for phrase in (
+            "violates bounds",
+            "outside fitted bounds",
+            "domain error",
+            "not mechanically stable",
+        )
+    ):
+        return f"eos_domain_failure: {message}"
     if any(
         token in normalized
         for token in (
@@ -1295,10 +1349,7 @@ class PreparedFit:
                 )
         gate = (
             "topology-specific identifiability and accepted-region evidence required"
-            if any(
-                isinstance(parameter.identity, AssociationParameterIdentity)
-                for parameter in self.problem.parameters
-            )
+            if _uses_fixed_topology_descriptor(self.problem.parameters)
             else None
         )
         unique_reasons = tuple(dict.fromkeys(reasons))
@@ -1340,10 +1391,7 @@ def prepare_fit(
     observations = tuple(row for dataset in datasets for row in dataset.observations)
     coordinates = _resolve_coordinates(model, parameters, observations)
     observation_types = {type(row) for row in observations}
-    if len(observation_types) > 1 and not any(
-        isinstance(request.identity, AssociationParameterIdentity)
-        for request in parameters
-    ):
+    if len(observation_types) > 1 and not _uses_fixed_topology_descriptor(coordinates):
         raise ValueError(
             "mixed observation contracts are supported only by the installed "
             "fixed-topology association descriptor"

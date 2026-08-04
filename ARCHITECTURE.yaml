@@ -48,6 +48,11 @@ scope: >-
   fixed-composition VLE rows for any
   neutral, nonassociating binary model whose installed EOS capability
   descriptor supplies the exact active Hessian contract. The same general
+  surface now also fits fixed-composition liquid-mixture-density rows with one
+  caller-selected pair coordinate, caller-supplied ordered composition and
+  mixture molar mass, and the same lifted pressure-density Ceres owner. The
+  row remains generic and is available only when the installed EOS descriptor
+  advertises the matching component set and callback. The same general
   surface independently fits one active segment count, segment diameter, or
   dispersion energy over k from caller-supplied pure-saturation pressure and
   liquid-density rows on a matching neutral pure capability.
@@ -55,13 +60,13 @@ scope: >-
 provider_frontend:
   version: 0.2.0.dev0
   public_types: [Parameters, Mixture]
-  provider_commit: 7b97bab039e1c50a6f89522698af80493bea5f9e
-  provider_tree: d082a8f102b32705b6cd6669a3e31a8d4ea8acd0
+  provider_commit: d0c2575908323db6c487d4e541cf497c93c89d9e
+  provider_tree: e29386139e7ba81115b0f454c79e0c869a262d37
   artifact_root: executor-supplied-immutable-artifact-store
-  wheel_artifact: objects/sha256/1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl
-  wheel_sha256: 1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9
-  installed_header_sha256: 881f5ec87293de8b1f3c25c16018aa94be69775fede2ec5426fcbb08e257fecd
-  installed_static_library_sha256: fd624add206b8d783cd079db320b6dba64083063af2f29faf5ce82d1cf4743eb
+  wheel_artifact: objects/sha256/bc7e637de084330ebded4ddfd52e02bc1ce5451221128692972ebba8856d098e/epcsaft-0.2.0.dev0-cp313-cp313-linux_x86_64.whl
+  wheel_sha256: bc7e637de084330ebded4ddfd52e02bc1ce5451221128692972ebba8856d098e
+  installed_header_sha256: 2adb85c3dc0502384b5ae5fce69cc46f8874415ca7e6fad85b1a5d7de3a8ea53
+  installed_static_library_sha256: e4e6c58aa14bf285a9cc347eb6b8b34fa8a7ee563576522223a7aa5e67930198
   provider_test_receipt_artifact: provider-python-frontend-v0.2/14fa374/provider-tests.xml
   provider_test_receipt_sha256: 56d1d3e9fcf47bb700df4223fa2d9a20444dc97aa22b5c39525d446a296ba3cf
   provider_test_receipt_summary: 276-passed-1-skipped
@@ -137,11 +142,12 @@ general_parameter_regression:
       - dispersion_energy_over_k
       - association_energy_over_k
       - association_volume
-    supported_topology: eos-advertised-neutral-pure-fixed-topology
+    supported_topology: eos-advertised-neutral-fixed-topology-any-component-count
     supported_observations:
       - vapor-pressure
       - fixed-pressure-density
       - combined-saturation-pressure-liquid-density
+      - fixed-composition-liquid-mixture-density
     retained_evidence_role: exact-mechanics-and-source-provenance-no-parameter-acceptance
     packaged_application_specific_runtime: none
     missing_gates:
@@ -221,6 +227,15 @@ general_parameter_regression:
       reference_shape: four-independent-1x1-problems
       reference_source_classification: constructed-nearest-pure-endpoints
       exact_paper_method_recovery: false
+    additional_mixture_density_domain:
+      observation_contract: fixed-composition-liquid-mixture-density-lifted-volume
+      provider_coordinates: [n_1_mol_through_n_C_mol, volume_m3, active_pair_parameter]
+      residuals_per_row: 2
+      nuisance_variables_per_row: 1
+      caller_inputs: [ordered_component_ids, mole_fractions, mixture_molar_mass]
+      derivative_order: 2
+      authority_effect: none
+      predictive_effect: none
   fit_ready_scalar_pure_families:
     families: [segment_count, segment_diameter, dispersion_energy_over_k]
     identity: component
@@ -739,9 +754,11 @@ parameter_family_readiness:
       derivative_oracle: closed-form-no-finite-difference
       packaging: build-testing-only-not-installed
     second_installed_multi_parameter_seam:
-      entry: evaluate_fixed_topology_association
+      entries:
+        pure: evaluate_fixed_topology_association
+        associating_mixture: evaluate_fixed_topology_associating_mixture
       descriptor: fixed_topology_association
-      topology: eos-advertised-neutral-pure-fixed-topology
+      topology: eos-advertised-neutral-fixed-topology-any-component-count
       sigma_basis: ordinary-sigma-ij-cubed-kappa
       parameter_families:
         - segment_count
@@ -755,12 +772,13 @@ parameter_family_readiness:
         - vapor-pressure
         - fixed-pressure-density
         - combined-saturation-pressure-liquid-density
+        - fixed-composition-liquid-mixture-density
       evidence: exact-mechanics-only-no-parameter-acceptance
     generic_downstream_transport: IMPLEMENTED_PR27_EXACT_POSITIVE_OBSERVATION_TRANSPORT
     generic_downstream_transport_decision: https://github.com/ePC-SAFT/.github/issues/1
   mixture_independent_scalar_pure: FIT_READY_PURE_SATURATION_PRESSURE_AND_LIQUID_DENSITY
-  mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_VLE_ADVERTISED_AQUEOUS_MIAC_AND_ADVERTISED_ORGANIC_ION_SOLVATION
-  mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE
+  mixture_independent_kij: FIT_READY_NEUTRAL_BINARY_VLE_FIXED_COMPOSITION_LIQUID_DENSITY_ADVERTISED_AQUEOUS_MIAC_AND_ADVERTISED_ORGANIC_ION_SOLVATION
+  mixture_independent_lij: FIT_READY_NEUTRAL_BINARY_FIXED_COMPOSITION_VLE_AND_LIQUID_DENSITY
   mixture_independent_born_diameter: FIT_READY_ADVERTISED_SOLVATION_GIBBS_DOMAIN
   mixture_independent_solvation_factor: FIT_READY_ADVERTISED_MEAN_IONIC_ACTIVITY_DOMAIN
   model_ion_fraction_suppression_coefficient: FIT_READY_ADVERTISED_RELATIVE_PERMITTIVITY_RATIO_DOMAIN
@@ -923,7 +941,7 @@ evidence_limits:
 excluded:
   # These are current runtime exclusions, not denials of the staged design goal.
   - runtime neutral methane/ethane binary interaction regression; the private dependency-gated contract grants no capability
-  - topology inference or optimization, mixture/reactive association domains, or any association parameter acceptance without topology-specific identifiability evidence
+  - topology inference or optimization, reactive association domains, or any association parameter acceptance without topology-specific identifiability evidence
   - predictive or promoted electrolyte/application campaigns beyond authority-neutral typed mechanics
   - reactive regression
   - arbitrary residual plugins or mutable runtime registries

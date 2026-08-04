@@ -15,6 +15,14 @@ observations. Association coordinates are typed by component/site endpoints;
 the installed EOS owns the finite topology, slot order, multiplicities,
 physical domain, artifact identity, and exact derivative contract.
 
+Fixed-composition liquid-mixture-density observations are also generic caller
+contracts: ordered component IDs, mole fractions, mixture molar mass, scales,
+volume nuisance bounds/starts, provenance, and partitions are inputs. They do
+not infer chemistry or missing parameters. Neutral pair parameters use the
+installed binary phase capabilities; fixed-topology associating mixtures use
+the descriptor-owned arbitrary-component callback. Every row must match an
+installed EOS capability exactly.
+
 Production authority is narrower than executable mechanics. Only the exact
 methane and ethane pure-saturation workflows named below are accepted
 reproducible workflows. The general families and fixed-topology association
@@ -92,8 +100,8 @@ uncertainty campaigns, and induced/cross-association comparisons belong as
 durable installed-artifact evidence in the sibling Validation repository.
 
 Project doctrine and cross-repository coordination are owned by
-[ePC-SAFT Management](https://github.com/ePC-SAFT/ePC-SAFT-management) under
-doctrine revision 5. EOS is the canonical active role name; retained
+[ePC-SAFT Governance](https://github.com/ePC-SAFT/ePC-SAFT-governance) under
+doctrine revision 7. EOS is the canonical active role name; retained
 `provider-*` artifact paths and receipt identifiers remain immutable
 historical evidence.
 
