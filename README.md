@@ -106,9 +106,9 @@ doctrine revision 7. EOS is the canonical active role name; retained
 historical evidence.
 
 Codex-created worktrees run the checked-in setup at
-`.codex/environments/setup.sh`. It verifies and installs the exact retained EOS
-wheel before building Regression; `EPCSAFT_EOS_WHEEL` may point to that same
-hash-bound artifact when the project artifact root is elsewhere.
+`.codex/environments/setup.sh`. Governance resolves the active full-SHA-256 EOS
+object; the setup installs that exact wheel before building Regression. There
+is no repository-local wheel override or sibling-source fallback.
 
 The local propane Checkpoint A candidate converges and confirms with complete
 rank, but held-out 120 K pressure closure is about `3.29e-8`, above the frozen
