@@ -8,14 +8,14 @@ Date: 2026-07-30
 
 ## Active installed EOS binding
 
-The active frontend dependency is EOS `0.2.0.dev0`, commit
-`7b97bab039e1c50a6f89522698af80493bea5f9e`, tree
-`d082a8f102b32705b6cd6669a3e31a8d4ea8acd0`, wheel SHA-256
-`1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9`, and
+The active frontend dependency is EOS `0.2.0.dev0`, merged commit
+`d0c2575908323db6c487d4e541cf497c93c89d9e`, tree
+`e29386139e7ba81115b0f454c79e0c869a262d37`, wheel SHA-256
+`bc7e637de084330ebded4ddfd52e02bc1ce5451221128692972ebba8856d098e`, and
 installed-header SHA-256
-`881f5ec87293de8b1f3c25c16018aa94be69775fede2ec5426fcbb08e257fecd`.
+`2adb85c3dc0502384b5ae5fce69cc46f8874415ca7e6fad85b1a5d7de3a8ea53`.
 The installed static-library SHA-256 is
-`fd624add206b8d783cd079db320b6dba64083063af2f29faf5ce82d1cf4743eb`.
+`e4e6c58aa14bf285a9cc347eb6b8b34fa8a7ee563576522223a7aa5e67930198`.
 The previous frontend subject's final EOS JUnit receipt artifact is
 `provider-python-frontend-v0.2/14fa374/provider-tests.xml`,
 SHA-256
@@ -174,15 +174,15 @@ conditioning, non-bound diagnostics, and confirmation-start agreement.
 | `segment_count` (`m`) | component | Multiple pure rows with `T`, observed saturation pressure and liquid density, molar mass, phase-volume bounds/starts, partitions, and scales | EOS `(n,V,m)` value/gradient/Hessian; Regression lifted liquid/vapor volumes with pressure, chemical-potential, and density residuals | `FIT_READY`, one family at a time. Standalone recovery is optional for MEA unless `m` is selected in MEA's application-owned parameter block. |
 | `segment_diameter` (`sigma`) | component | Same pure saturation pressure/liquid-density contract, over a range that gives nonzero independent sensitivity | EOS `(n,V,sigma)` value/gradient/Hessian; same lifted Ceres owner | `FIT_READY` for a constant coordinate. Named temperature-correlation coefficients are separately `NOT_READY`. Optional for MEA unless selected. |
 | `dispersion_energy_over_k` (`epsilon/k`) | component | Same pure saturation pressure/liquid-density contract with enough vapor-pressure sensitivity | EOS `(n,V,epsilon/k)` value/gradient/Hessian; same lifted Ceres owner | `FIT_READY`, one family at a time. Optional for MEA unless selected. |
-| `k_ij` | unordered component pair | One supported domain: fixed measured `T,P,x,y` VLE rows; source-bound MIAC rows with formula molality; or single-ion solvation-Gibbs targets. Rows must vary enough to identify the selected pair. | Exact EOS Hessian for lifted neutral VLE or exact first derivative for the admitted aqueous/solvation direct observable; one typed pair coordinate | `FIT_READY` in the advertised neutral-VLE, aqueous-MIAC, and organic-ion-solvation domains. MEA needs exact pair derivatives only if a preregistered amendment selects a pair coordinate; the current staged three-coordinate block selects none. |
-| `l_ij` | unordered component pair | Fixed measured `T,P,x,y` VLE rows sensitive to cross diameter, with explicit source sign convention | Exact EOS `(n1,n2,V,l_ij)` Hessian for the currently admitted neutral nonassociating binary domain | `FIT_READY` only for fixed-composition neutral VLE. Density, excess-volume, associating, and electrolyte observation domains are `NOT_READY`; standalone expansion is not an MEA prerequisite unless selected. |
+| `k_ij` | unordered component pair | One supported domain: fixed measured `T,P,x,y` VLE rows; fixed-composition liquid-mixture-density rows with ordered `T,P,x` and a caller-supplied mixture molar mass; source-bound MIAC rows with formula molality; or single-ion solvation-Gibbs targets. Rows must vary enough to identify the selected pair. | Exact EOS Hessian for lifted neutral VLE or liquid-mixture-density closure, or exact first derivative for the admitted aqueous/solvation direct observable; one typed pair coordinate | `FIT_READY` in the advertised neutral-VLE, fixed-composition liquid-density, aqueous-MIAC, and organic-ion-solvation domains. MEA needs exact pair derivatives only if a preregistered amendment selects a pair coordinate; the current staged three-coordinate block selects none. |
+| `l_ij` | unordered component pair | Fixed measured `T,P,x,y` VLE rows or fixed-composition liquid-mixture-density rows sensitive to cross diameter, with explicit source sign convention and caller-supplied mixture molar mass | Exact EOS `(n_1,...,n_C,V,l_ij)` Hessian for the installed neutral phase capability and its lifted pressure-density closure | `FIT_READY` for an installed neutral phase capability that advertises the row's ordered component set; no association or electrolyte domain is implied. |
 | `born_diameter` | ion component | One or more source-defined single-ion solvation-Gibbs targets with exact x-process convention, state, component order, and numerical scale | Exact EOS solvation-Gibbs value/first derivative for the active ion; direct-observable Ceres row | `FIT_READY`; five Figiel ions are reference evidence. It is parallel parameter groundwork, not coupled-MEA readiness. |
 | `solvation_factor` | component | Source-bound MIAC rows at declared `T,P` and formula-unit molality, with solvent/ion identities and scale | Exact EOS MIAC value/first derivative for one active factor; direct-observable Ceres rows | `FIT_READY` for the advertised constant factor. A temperature correlation is separately `NOT_READY`; not on the MEA critical path unless selected. |
 | `relative_permittivity` | solvent component | Source-bound single-ion solvation-Gibbs targets with fixed other model inputs, exact solvent identity, x-process convention, state, and scale | Exact EOS solvation-Gibbs value/first derivative for the active solvent permittivity; direct-observable Ceres rows | `FIT_READY`. Corrected Validation subject `e4cb7af` gives five independent rank-1 water fits returning `78.0899937514462` through `78.08999375166104` versus fixed `78.09`. This is implementation evidence, not a paper-fitted target or MEA prerequisite. |
 | `ion_fraction_suppression_coefficient` | model | Salt-free-normalized relative-permittivity observations spanning enough total-ion mole fraction to identify one coefficient | Exact EOS relative-permittivity ratio and first derivative; direct-observable Ceres rows | `FIT_READY`; 36 digitized Figiel water/methanol rows are reference evidence. Optional standalone recovery. |
 | `ionic_region_relative_permittivity` | model | Source-defined single-ion solvation-Gibbs targets with fixed Born diameters and other inputs | Exact EOS SSM+DS solvation-Gibbs value/first derivative; direct-observable Ceres rows | `FIT_READY`; five independent Figiel fits recover fixed `8` within `2.2e-9`. Parallel groundwork, not coupled-MEA readiness. |
-| `association_energy_over_k` | one or more canonical component/site pairs in an EOS-advertised fixed topology | Association-sensitive pure rows sufficient for the selected subset and sharing contract, with exact identities, units, topology, bounds, scales, and starts | One variable-width EOS request returns `(n,V,selected slots...)` value/gradient/full Hessian; Regression maps `S` slots to `N` fitted coordinates and sums shared derivative columns | `FIT_READY_FIXED_TOPOLOGY`; energy-only, joint, subset, sharing, 2B reference, and non-2B mechanics are routine-tested. Case-specific identifiability and acceptance remain Validation evidence. |
-| `association_volume` | one or more canonical component/site pairs in the same immutable descriptor | The same source-complete requirement applies; volume slots may be selected independently or jointly with ordinary-pure and energy slots | The same descriptor/request/result path; no scalar association callback, topology-name parser, five-coordinate branch, or paper-specific runtime | `FIT_READY_FIXED_TOPOLOGY`; no MAPA/DEEA tuple or topology is accepted or packaged. |
+| `association_energy_over_k` | one or more canonical component/site pairs in an EOS-advertised fixed topology | Association-sensitive pure rows or fixed-composition liquid-mixture-density rows sufficient for the selected subset and sharing contract, with exact component order, identities, units, topology, bounds, scales, and starts | One variable-width EOS request returns `(n_1,...,n_C,V,selected slots...)` value/gradient/full Hessian; Regression maps `S` slots to `N` fitted coordinates and sums shared derivative columns | `FIT_READY_FIXED_TOPOLOGY`; energy-only, joint, subset, sharing, pure 2B/non-2B, and anonymous associating-mixture mechanics are routine-tested. Case-specific identifiability and acceptance remain Validation evidence. |
+| `association_volume` | one or more canonical component/site pairs in the same immutable descriptor | The same source-complete requirement applies; volume slots may be selected independently or jointly with ordinary-component and energy slots | The same descriptor/request/result path; no scalar association callback, topology-name parser, fixed-component-count branch, or paper-specific runtime | `FIT_READY_FIXED_TOPOLOGY`; no literature-specific tuple or topology is accepted or packaged. |
 | `k_hb_ij` | source-defined cross-association combining-rule coordinate | A source-defined combining rule and sign convention plus composition/temperature-varying association-sensitive observations that separate cross from pure association | New EOS record/transform identity, versioned fingerprint, exact chain-rule derivative, and an association-endpoint Regression identity are required | `NOT_READY`. Ascani's fixed `0.026` is provenance, not a recovery dataset. Do not alias it to resolved association energy or invent zero defaults. Not the next MEA investment. |
 | `schreckenberg_dielectric_volume`, `schreckenberg_dielectric_temperature` | component/correlation coordinates | Multi-temperature electrolyte relative-permittivity or other source observables that independently identify the selected coefficient | New exact EOS active-parameter callback and Regression correlation identity/surface | `REPRESENTED_NOT_DERIVATIVE_READY`; no retained rank-sufficient recovery series. Optional, not on the MEA critical path. |
 | `zuber_ion_suppression_coefficient` | ion component | Relative-permittivity, MIAC, osmotic/activity, or solvation observations spanning ion fraction/molality and preferably temperature | New exact EOS active-parameter callback and matching typed Regression observation contract | `REPRESENTED_NOT_DERIVATIVE_READY`; the retained one-row osmotic oracle is insufficient. Optional. |
@@ -333,12 +333,37 @@ Initial typed observation contracts are:
 - pure saturation, vapor-pressure-only, and fixed-pressure-density rows;
 - fixed-composition VLE rows with observed phase compositions and lifted phase
   volumes;
+- fixed-composition liquid-mixture-density rows with caller-supplied ordered
+  component IDs, mole fractions, mixture molar mass, pressure/density scales,
+  lifted-volume origins/starts/bounds, provenance, and partitions;
 - mean-ionic-activity and staged aqueous-`k_ij` mean-ionic-activity rows;
 - solvation-Gibbs and ion-solvation-`k_ij` rows; and
 - salt-free-normalized relative-permittivity-ratio rows.
 
 Generic activity, fugacity, osmotic, aggregate, and censored observations are
 not current executable contracts.
+
+The fixed-composition liquid-density row is generic at the Regression boundary:
+it does not name a chemical, infer a missing parameter, select association
+sites, or provide a catalog fallback. The caller supplies the ordered model
+component IDs and composition, while the installed EOS capability supplies the
+matching model identity, active coordinate, topology, and exact native
+derivatives. The active artifact currently advertises the neutral binary
+`k_ij`/`l_ij` phase callbacks; a wider component set becomes usable only when a
+matching installed EOS descriptor and callback advertise it.
+
+For one row with mixture molar mass `M`, lifted molar volume `V`, observed
+pressure `P_obs`, observed mass density `rho_obs`, and affine active parameter
+`theta(z)`, Regression sends the caller's composition to EOS and uses
+
+```text
+r_P   = (P_EOS(T, x, V, theta(z)) - P_obs) / s_P
+r_rho = (M / V - rho_obs) / s_rho
+```
+
+The native EOS Hessian supplies the pressure derivatives with respect to `V`
+and `theta`; Ceres owns `z` and the log-volume nuisance coordinate. No density
+root optimizer or finite-difference production derivative is introduced.
 
 The minimum future downstream observation vocabulary is frozen as follows for
 a source-declared positive scale `s`:
@@ -481,8 +506,9 @@ out-of-bound or inverted volumes and nonpositive mechanical-stability
 curvature before accepting an evaluation.
 
 The fixed-topology association surface re-closes the pressure roots for
-vapor-pressure, fixed-pressure-density, and combined saturation
-pressure/liquid-density problems at each independent parameter start. A
+vapor-pressure, pure fixed-pressure-density, combined saturation
+pressure/liquid-density, and fixed-composition liquid-mixture-density problems
+at each independent parameter start. A
 safeguarded Newton correction begins from the row's retained volume; a bounded
 log-volume scan and bisection is used only when that correction cannot remain
 inside the declared phase interval. Only mechanically stable roots are
@@ -794,22 +820,23 @@ core.
 
 The second is the EOS descriptor-driven fixed-topology association shape. It
 accepts any finite ordered active subset advertised by that descriptor,
-including ordinary-pure and association slots, multiple site pairs, and
+including ordinary-component and association slots, multiple site pairs, and
 explicit many-to-one sharing. The native bridge keeps `N` fitted coordinates
 and `S` EOS slots distinct and accumulates the full Hessian columns according
 to the declared sharing map. Vapor-pressure, fixed-pressure-density, and
-combined saturation rows all use this one path. Exact Jacobian replay, a 2B
-reference, and a non-2B multi-pair sentinel establish mechanics only; no
-association tuple, topology, practical identifiability, or prediction is
-accepted.
+combined saturation rows use its pure model domain. Fixed-composition liquid-
+mixture-density rows use the same slot and sharing contracts through the
+generic associating-mixture model domain, preserving caller component order and
+composition. Exact Jacobian replay, pure 2B/non-2B references, and an anonymous
+associating-mixture sentinel establish mechanics only; no association tuple,
+topology, practical identifiability, or prediction is accepted. Reactive
+association remains outside this neutral descriptor and fail-closed.
 
-A later mixture or reactive association domain must provide its own reviewed
-exact descriptor contract and remains fail-closed until then.
-The current installed pure callback returns value, gradient, and Hessian in
-one inseparable ABI call. The core propagates Ceres's residual-only request and
+The installed callbacks return value, gradient, and Hessian in one inseparable
+ABI call. The core propagates Ceres's residual-only request and
 does not copy the assembled Regression Jacobian for that call, but the adapter
 still receives EOS derivatives. This is an artifact limitation, not a
-claim that pure trial evaluations are sensitivity-free.
+claim that trial evaluations are sensitivity-free.
 
 The installed pair-family campaigns evaluate all 17 audited May 2015
 methane/ethane rows as training data. Each `68 x 35` solve converges with full
@@ -956,8 +983,10 @@ prediction evidence, or EOS-catalog authority.
    paper-fitted or predictive result.
 9. **Mechanics complete for fixed-topology association; campaign evidence pending.**
    One ordinary-sigma descriptor/request/result path supports arbitrary
-   advertised subsets, multiple site pairs, and explicit sharing. The retained
-   2B case is a reference through that path, not a special capability.
+   advertised subsets, multiple site pairs, explicit sharing, and any neutral
+   component count advertised by the installed EOS. The retained pure 2B and
+   anonymous associating-mixture cases are references through that path, not
+   special capabilities.
    Practical-identifiability profiles, competing topology or induced-
    association strategies, and source-complete installed-artifact campaigns
    remain Validation work. Polar families remain excluded.

@@ -502,6 +502,10 @@ def test_public_scalar_evaluation_matches_centered_difference_oracle() -> None:
             ValueError("installed capability derivative changed"),
             "unavailable_derivatives:",
         ),
+        (
+            RuntimeError("EOS does not expose the associating-mixture interface"),
+            "unavailable_derivatives:",
+        ),
         (RuntimeError("density iteration left the EOS domain"), "eos_domain_failure:"),
         (
             RuntimeError("observation payload has wrong field count"),
@@ -654,13 +658,13 @@ def test_installed_prepare_fit_and_record_contract(installed_fit) -> None:
     assert record["literature"]["source_printed_parameters"]["k_ij"] == "-0.01"
     assert record["installed_artifacts"]["distribution"] == "epcsaft==0.2.0.dev0"
     assert record["installed_artifacts"]["wheel_sha256"] == (
-        "1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9"
+        "bc7e637de084330ebded4ddfd52e02bc1ce5451221128692972ebba8856d098e"
     )
     assert record["installed_artifacts"]["commit"] == (
-        "7b97bab039e1c50a6f89522698af80493bea5f9e"
+        "d0c2575908323db6c487d4e541cf497c93c89d9e"
     )
     assert record["installed_artifacts"]["tree"] == (
-        "d082a8f102b32705b6cd6669a3e31a8d4ea8acd0"
+        "e29386139e7ba81115b0f454c79e0c869a262d37"
     )
     assert len(record["installed_artifacts"]["public_header_sha256"]) == 64
     assert len(record["installed_artifacts"]["static_library_sha256"]) == 64

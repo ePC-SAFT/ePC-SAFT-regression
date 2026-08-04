@@ -315,7 +315,7 @@ source = SourceInput(
     "installed-epcsaft-wheel-ethanol-mechanics-fixture",
     "Synthetic values generated from the installed Figiel ethanol model",
     "epcsaft==0.2.0.dev0 wheel artifact used by this repository",
-    "1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9",
+    "bc7e637de084330ebded4ddfd52e02bc1ce5451221128692972ebba8856d098e",
     "Evaluated fixed-volume public EOS states without row selection.",
     "T/K, P/Pa, density/(kg/m3)",
     "Implementation mechanics only; no scientific or predictive authority.",
@@ -473,12 +473,19 @@ assert prepared.fit().workflow_valid
 - Joint pure `(m, sigma, epsilon/k)` uses those families and slots in that
   order, complete three-value starts, and pure-saturation rows.
 - Fixed-topology association uses any ordered subset of the installed EOS
-  descriptor's ordinary-pure and component/site-pair slots. Multiple EOS
+  descriptor's ordinary-component and component/site-pair slots. Multiple EOS
   slots may explicitly share one fitted coordinate. Pure vapor-pressure,
-  fixed-pressure-density, and combined saturation rows use the same path.
+  fixed-pressure-density, and combined saturation rows use the pure callback;
+  associating-mixture density rows use the matching mixture callback.
   Topology is immutable EOS input. Issue #28 owns nuisance-reoptimized profile
   evidence for the retained 2B literature case. Any constrained subset must
   declare its source and validity domain; it is not universal.
+- Fixed-composition liquid-mixture-density rows use the same lifted Ceres
+  owner for an ordered caller-supplied component set, mole-fraction vector,
+  mixture molar-mass basis, pressure/density scales, and liquid-volume
+  origins/starts/bounds. No chemistry, missing-parameter defaults, or
+  association topology is inferred; the installed EOS must advertise the
+  matching phase capability and component order.
 - Direct-observable families use their MIAC, solvation-Gibbs, or relative-
   permittivity-ratio rows and no lifted variables.
 
@@ -499,6 +506,7 @@ direct-EOS rows also require `row_id`, `source_id`, `source_locator`, and
 | `PureSaturationObservation` | `component_id`, `temperature_k`, `pressure_pa`, `liquid_density_kg_per_m3`, `molar_mass_kg_per_mol`, `pressure_scale_pa`, `chemical_potential_scale`, `liquid_density_scale_kg_per_m3`, and both phase volume origins/starts/bounds |
 | `PureVaporPressureObservation` | `component_id`, `temperature_k`, `pressure_pa`, `pressure_scale_pa`, `chemical_potential_scale`, and separated liquid/vapor volume origins/starts/bounds |
 | `PureDensityObservation` | `component_id`, `temperature_k`, `pressure_pa`, `density_kg_per_m3`, `molar_mass_kg_per_mol`, `pressure_scale_pa`, `density_scale_kg_per_m3`, `volume_origin_m3_per_mol`, `volume_start_m3_per_mol`, `volume_bounds_m3_per_mol` |
+| `FixedCompositionMixtureDensityObservation` | ordered `component_ids`, `mole_fractions`, `temperature_k`, `pressure_pa`, `density_kg_per_m3`, `molar_mass_kg_per_mol`, pressure/density scales, and liquid-volume origin/start/bounds |
 | `MeanIonicActivityObservation` | ordered `component_ids`, `active_component_id`, `temperature_k`, `pressure_pa`, `formula_unit_molality_mol_per_kg`, `observed_mean_ionic_activity_coefficient`, `relative_residual_scale` |
 | `AqueousKijMeanIonicActivityObservation` | ordered `component_ids`, `active_pair_component_ids`, complete `fixed_k_ij`, `temperature_k`, `pressure_pa`, `formula_unit_molality_mol_per_kg`, `observed_mean_ionic_activity_coefficient`, `relative_residual_scale` |
 | `SolvationGibbsObservation` | ordered `component_ids`, `active_component_id`, `temperature_k`, `pressure_pa`, `observed_solvation_gibbs_j_per_mol`, `residual_scale_j_per_mol` |

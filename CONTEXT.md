@@ -13,14 +13,14 @@ catalog.
 
 `provider_frontend_status: PARAMETERS_MIXTURE_0_2`
 
-The active installed EOS subject is commit
-`7b97bab039e1c50a6f89522698af80493bea5f9e`, tree
-`d082a8f102b32705b6cd6669a3e31a8d4ea8acd0`, wheel SHA-256
-`1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9`, and
+The active installed EOS subject is merged commit
+`d0c2575908323db6c487d4e541cf497c93c89d9e`, tree
+`e29386139e7ba81115b0f454c79e0c869a262d37`, wheel SHA-256
+`bc7e637de084330ebded4ddfd52e02bc1ce5451221128692972ebba8856d098e`, and
 installed public-header SHA-256
-`881f5ec87293de8b1f3c25c16018aa94be69775fede2ec5426fcbb08e257fecd`.
+`2adb85c3dc0502384b5ae5fce69cc46f8874415ca7e6fad85b1a5d7de3a8ea53`.
 Its installed static-library SHA-256 is
-`fd624add206b8d783cd079db320b6dba64083063af2f29faf5ce82d1cf4743eb`.
+`e4e6c58aa14bf285a9cc347eb6b8b34fa8a7ee563576522223a7aa5e67930198`.
 The frontend migration changes public construction and generic capability
 names only; it does not change accepted authority, target contracts, or
 numerical acceptance criteria. Retained pre-rename Provider 0.1 receipt
@@ -136,14 +136,17 @@ retained historical evidence for their named reference campaigns. The active
 installed frontend binding for new replay is the `provider_frontend` subject
 above; historical evidence is not rewritten as if it had used that artifact.
 
-The installed EOS advertises one ordinary-`sigma_ij^3*kappa`
-fixed-topology association descriptor and variable-width callback. Regression
-selects typed ordinary-pure and component/site-pair slots, keeps `N` fitted
-coordinates distinct from `S` EOS slots, and accumulates exact Hessian columns
-for explicit sharing. Vapor-pressure, fixed-pressure-density, and combined
-saturation rows use this one path. A 2B five-parameter case and a non-2B
-multi-pair case prove mechanics only; Regression packages no MAPA/DEEA dataset,
-accepted topology, or accepted tuple. Status is
+Regression consumes an ordinary-`sigma_ij^3*kappa` fixed-topology association
+descriptor and variable-width callback when the installed EOS advertises that
+ABI. The descriptor is component-count agnostic: the EOS owns the caller-
+supplied component order, immutable sites and allowed pairs, while Regression
+selects typed ordinary-component and component/site-pair slots,
+keeps `N` fitted coordinates distinct from `S` EOS slots, and accumulates exact
+Hessian columns for explicit sharing. Vapor-pressure, fixed-pressure-density,
+combined saturation, and fixed-composition liquid-mixture-density rows use
+this one path on matching EOS model domains. Anonymous pure 2B, pure non-2B,
+and associating-mixture cases prove mechanics only; Regression packages no
+MAPA/DEEA/TOPO dataset, accepted topology, or accepted tuple. Status is
 `FIXED_TOPOLOGY_ASSOCIATION_MECHANICS_EXECUTABLE_NO_PARAMETER_ACCEPTANCE`.
 
 The user-approved 2026-07-27 destination is general parameter-family
@@ -157,6 +160,12 @@ and target, one Ceres engine/result, exact derivatives, caller-declared
 bounds/scales/starts/volume policy, full and projected rank diagnostics, and
 isolated training/reporting partitions. Unknown EOS descriptor members
 are reported unsupported and cannot be requested dynamically.
+The same owner also accepts fixed-composition liquid-mixture-density rows
+with caller-supplied ordered component IDs, mole fractions, mixture molar mass,
+scales, and lifted-volume contracts. It remains generic to any installed EOS
+component set that advertises either the neutral pair callback or the generic
+fixed-topology associating-mixture callback. No component name or literature
+case is dispatched by either repository.
 
 The ninth family is model-level
 `ionic_region_relative_permittivity`. On an installed EOS advertising

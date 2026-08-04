@@ -230,7 +230,7 @@ class PureVaporPressureRowDiagnostic:
 
 
 @dataclass(frozen=True, slots=True)
-class PureDensityRowDiagnostic:
+class DensityRowDiagnostic:
     row_id: str
     partition: str
     volume_m3_per_mol: float
@@ -985,6 +985,74 @@ class PureDensityObservation:
         return (self.component_id,)
 
 
+@dataclass(frozen=True, slots=True)
+class FixedCompositionMixtureDensityObservation:
+    row_id: str
+    source_id: str
+    source_locator: str
+    component_ids: tuple[str, ...]
+    mole_fractions: tuple[float, ...]
+    temperature_k: float
+    pressure_pa: float
+    density_kg_per_m3: float
+    molar_mass_kg_per_mol: float
+    pressure_scale_pa: float
+    density_scale_kg_per_m3: float
+    volume_origin_m3_per_mol: float
+    volume_start_m3_per_mol: float
+    volume_bounds_m3_per_mol: tuple[float, float]
+    partition: ObservationPartition
+
+    def __post_init__(self) -> None:
+        for field in ("row_id", "source_id", "source_locator"):
+            _require_nonempty_string(getattr(self, field), field)
+        if type(self.component_ids) is not tuple or len(self.component_ids) < 2:
+            raise ValueError(
+                "component_ids must contain at least two ordered component identifiers"
+            )
+        for component_id in self.component_ids:
+            _require_nonempty_string(component_id, "component_id")
+        if len(set(self.component_ids)) != len(self.component_ids):
+            raise ValueError("component_ids must be distinct")
+        if type(self.mole_fractions) is not tuple or len(self.mole_fractions) != len(
+            self.component_ids
+        ):
+            raise ValueError("mole_fractions must match component_ids")
+        for fraction in self.mole_fractions:
+            _require_finite(fraction, "mole fraction")
+            if fraction <= 0.0:
+                raise ValueError("mole fractions must be positive")
+        if not math.isclose(
+            sum(self.mole_fractions), 1.0, rel_tol=0.0, abs_tol=1.0e-12
+        ):
+            raise ValueError("mole_fractions must sum to one")
+        for field in (
+            "temperature_k",
+            "pressure_pa",
+            "density_kg_per_m3",
+            "molar_mass_kg_per_mol",
+            "pressure_scale_pa",
+            "density_scale_kg_per_m3",
+            "volume_origin_m3_per_mol",
+            "volume_start_m3_per_mol",
+        ):
+            _require_finite(getattr(self, field), field, positive=True)
+        if (
+            type(self.volume_bounds_m3_per_mol) is not tuple
+            or len(self.volume_bounds_m3_per_mol) != 2
+        ):
+            raise ValueError("volume bounds must contain two values")
+        lower, upper = self.volume_bounds_m3_per_mol
+        _require_finite(lower, "volume lower bound", positive=True)
+        _require_finite(upper, "volume upper bound", positive=True)
+        if lower >= upper:
+            raise ValueError("volume bounds must be strictly increasing")
+        if not lower <= self.volume_start_m3_per_mol <= upper:
+            raise ValueError("volume start must lie within its bounds")
+        if not isinstance(self.partition, ObservationPartition):
+            raise TypeError("partition must be an ObservationPartition")
+
+
 def _validate_direct_component_identity(
     component_ids: tuple[str, ...], active_component_id: str
 ) -> None:
@@ -1238,6 +1306,7 @@ RegressionObservation = (
     | PureSaturationObservation
     | PureVaporPressureObservation
     | PureDensityObservation
+    | FixedCompositionMixtureDensityObservation
     | DirectObservation
 )
 
@@ -1330,6 +1399,24 @@ def _canonical_row(row: RegressionObservation) -> dict[str, object]:
             "source_id": row.source_id,
             "source_locator": row.source_locator,
             "component_ids": list(row.component_ids),
+            "temperature_k": row.temperature_k,
+            "pressure_pa": row.pressure_pa,
+            "density_kg_per_m3": row.density_kg_per_m3,
+            "molar_mass_kg_per_mol": row.molar_mass_kg_per_mol,
+            "pressure_scale_pa": row.pressure_scale_pa,
+            "density_scale_kg_per_m3": row.density_scale_kg_per_m3,
+            "volume_origin_m3_per_mol": row.volume_origin_m3_per_mol,
+            "volume_start_m3_per_mol": row.volume_start_m3_per_mol,
+            "volume_bounds_m3_per_mol": list(row.volume_bounds_m3_per_mol),
+            "partition": row.partition.value,
+        }
+    if isinstance(row, FixedCompositionMixtureDensityObservation):
+        return {
+            "row_id": row.row_id,
+            "source_id": row.source_id,
+            "source_locator": row.source_locator,
+            "component_ids": list(row.component_ids),
+            "mole_fractions": list(row.mole_fractions),
             "temperature_k": row.temperature_k,
             "pressure_pa": row.pressure_pa,
             "density_kg_per_m3": row.density_kg_per_m3,
@@ -1499,8 +1586,21 @@ class RegressionProblem:
                 )
         if not self.training_observations:
             raise ValueError("at least one training observation is required")
+        mixture_density_observations = tuple(
+            isinstance(row, FixedCompositionMixtureDensityObservation)
+            for row in self.observations
+        )
+        if any(mixture_density_observations) and not all(mixture_density_observations):
+            raise ValueError(
+                "fixed-composition mixture-density observations must form a "
+                "homogeneous regression problem"
+            )
         density_observations = tuple(
-            isinstance(row, PureDensityObservation) for row in self.observations
+            isinstance(
+                row,
+                (PureDensityObservation, FixedCompositionMixtureDensityObservation),
+            )
+            for row in self.observations
         )
         if (
             any(density_observations)
@@ -1510,6 +1610,7 @@ class RegressionProblem:
                     row,
                     (
                         PureDensityObservation,
+                        FixedCompositionMixtureDensityObservation,
                         PureSaturationObservation,
                         PureVaporPressureObservation,
                     ),
@@ -1518,7 +1619,7 @@ class RegressionProblem:
             )
         ):
             raise ValueError(
-                "pure-density and phase-equilibrium observations cannot share "
+                "density and phase-equilibrium observations cannot share "
                 "one regression problem"
             )
         for parameter in self.parameters:
@@ -1548,9 +1649,29 @@ class RegressionProblem:
                         (MeanIonicActivityObservation, SolvationGibbsObservation),
                     )
                     else (
-                        tuple(sorted(row.component_ids))
-                        if len(row.component_ids) == 2
-                        else row.component_ids
+                        parameter.identity.canonical_component_ids
+                        if (
+                            isinstance(
+                                parameter.identity,
+                                (
+                                    PairParameterIdentity,
+                                    ComponentParameterIdentity,
+                                    AssociationParameterIdentity,
+                                ),
+                            )
+                            and isinstance(
+                                row,
+                                FixedCompositionMixtureDensityObservation,
+                            )
+                            and set(
+                                parameter.identity.canonical_component_ids
+                            ).issubset(row.component_ids)
+                        )
+                        else (
+                            tuple(sorted(row.component_ids))
+                            if len(row.component_ids) == 2
+                            else row.component_ids
+                        )
                     )
                 )
                 if row_identity != identity:
@@ -1678,6 +1799,22 @@ def _row_payload(row: RegressionObservation) -> tuple[object, ...]:
             row.volume_bounds_m3_per_mol[0],
             row.volume_bounds_m3_per_mol[1],
         )
+    if isinstance(row, FixedCompositionMixtureDensityObservation):
+        return (
+            row.row_id,
+            row.partition.value,
+            row.temperature_k,
+            row.pressure_pa,
+            row.mole_fractions,
+            row.pressure_scale_pa,
+            row.molar_mass_kg_per_mol,
+            row.density_kg_per_m3,
+            row.density_scale_kg_per_m3,
+            row.volume_origin_m3_per_mol,
+            row.volume_start_m3_per_mol,
+            row.volume_bounds_m3_per_mol[0],
+            row.volume_bounds_m3_per_mol[1],
+        )
     if isinstance(row, PureSaturationObservation):
         return (
             row.row_id,
@@ -1736,10 +1873,13 @@ def _row_payload(row: RegressionObservation) -> tuple[object, ...]:
     )
 
 
-def _uses_fixed_topology_association(problem: RegressionProblem) -> bool:
+def _uses_fixed_topology_descriptor(
+    parameters: Iterable[ParameterCoordinate],
+) -> bool:
     return any(
-        isinstance(parameter.identity, AssociationParameterIdentity)
-        for parameter in problem.parameters
+        parameter.capability_id is None
+        and parameter.provider_artifact_fingerprint is not None
+        for parameter in parameters
     )
 
 
@@ -1750,9 +1890,10 @@ def _fixed_topology_slot_match(
     if (
         not capability.installed_ready
         or capability.observation_contract != "fixed_composition_helmholtz_phase"
-        or capability.model_domain != "neutral_associating_pure"
+        or capability.model_domain
+        not in ("neutral_associating_pure", "neutral_associating_mixture")
         or capability.tensor_layout != "row_major"
-        or capability.state_coordinate_count != 2
+        or capability.state_coordinate_count != len(capability.component_ids) + 1
         or not capability.helmholtz_basis_id
         or not capability.association_basis_id
     ):
@@ -1825,7 +1966,7 @@ def _native_payload(
     parameter = problem.parameters[0]
     observation_shape = (
         "fixed_topology_association"
-        if _uses_fixed_topology_association(problem)
+        if _uses_fixed_topology_descriptor(problem.parameters)
         and all(
             isinstance(
                 row,
@@ -1840,6 +1981,14 @@ def _native_payload(
         else "pure_density"
         if isinstance(problem.observations[0], PureDensityObservation)
         and all(isinstance(row, PureDensityObservation) for row in problem.observations)
+        else "mixture_density"
+        if isinstance(
+            problem.observations[0], FixedCompositionMixtureDensityObservation
+        )
+        and all(
+            isinstance(row, FixedCompositionMixtureDensityObservation)
+            for row in problem.observations
+        )
         else "pure_vapor_pressure"
         if isinstance(problem.observations[0], PureVaporPressureObservation)
         and all(
@@ -1873,7 +2022,9 @@ def _native_payload(
         ),
         observation_shape,
     )
-    if len(problem.parameters) == 1 and not _uses_fixed_topology_association(problem):
+    if len(problem.parameters) == 1 and not _uses_fixed_topology_descriptor(
+        problem.parameters
+    ):
         return payload
     joint_payload = (
         *payload,
@@ -1884,7 +2035,7 @@ def _native_payload(
         problem.start_vectors,
         problem.parameter_slot_indices,
     )
-    if not _uses_fixed_topology_association(problem):
+    if not _uses_fixed_topology_descriptor(problem.parameters):
         return joint_payload
     if not isinstance(capability, FixedTopologyAssociationCapability):
         raise TypeError("association regression requires its structural capability")
@@ -2002,7 +2153,19 @@ def _matched_capability(
                     "relative-permittivity observation does not match the "
                     "Provider direct-observable capability"
                 )
-        elif capability.observation_contract != ("fixed_composition_helmholtz_phase"):
+        elif (
+            capability.observation_contract != "fixed_composition_helmholtz_phase"
+            or (
+                capability.identity_shape == "unordered_component_pair"
+                and capability.active_component_ids
+                != parameter.identity.canonical_component_ids
+            )
+            or (
+                capability.identity_shape == "component"
+                and capability.active_component_ids
+                != parameter.identity.canonical_component_ids
+            )
+        ):
             raise ValueError("phase observation does not match the Provider capability")
     return capability
 
@@ -2010,7 +2173,7 @@ def _matched_capability(
 def _matched_capabilities(
     problem: RegressionProblem, model: object
 ) -> tuple[ParameterCapability | FixedTopologyAssociationCapability, ...]:
-    if _uses_fixed_topology_association(problem):
+    if _uses_fixed_topology_descriptor(problem.parameters):
         advertised = tuple(
             capability
             for capability in parameter_capabilities(model)
@@ -2023,16 +2186,18 @@ def _matched_capabilities(
             )
         capability = advertised[0]
         _fixed_topology_slot_match(problem, capability)
+        expected_rows = (
+            (FixedCompositionMixtureDensityObservation,)
+            if capability.model_domain == "neutral_associating_mixture"
+            else (
+                PureDensityObservation,
+                PureSaturationObservation,
+                PureVaporPressureObservation,
+            )
+        )
         for row in problem.observations:
             if (
-                not isinstance(
-                    row,
-                    (
-                        PureDensityObservation,
-                        PureSaturationObservation,
-                        PureVaporPressureObservation,
-                    ),
-                )
+                not isinstance(row, expected_rows)
                 or row.component_ids != capability.component_ids
                 or not capability.temperature_min_k
                 <= row.temperature_k
@@ -2063,10 +2228,12 @@ def _supported_capability_block(
     problem: RegressionProblem,
     capabilities: tuple[ParameterCapability | FixedTopologyAssociationCapability, ...],
 ) -> bool:
-    if _uses_fixed_topology_association(problem):
+    if _uses_fixed_topology_descriptor(problem.parameters):
         return (
             len(capabilities) == 1
             and isinstance(capabilities[0], FixedTopologyAssociationCapability)
+            and capabilities[0].model_domain
+            in ("neutral_associating_pure", "neutral_associating_mixture")
             and all(
                 isinstance(
                     row,
@@ -2074,6 +2241,7 @@ def _supported_capability_block(
                         PureDensityObservation,
                         PureSaturationObservation,
                         PureVaporPressureObservation,
+                        FixedCompositionMixtureDensityObservation,
                     ),
                 )
                 for row in problem.observations
@@ -2197,27 +2365,30 @@ def fit_parameters(
     native = _native.solve_general(
         native_sdk(model), _native_payload(problem, capability)
     )
+    vector_parameter_result = len(
+        problem.parameters
+    ) > 1 or _uses_fixed_topology_descriptor(problem.parameters)
     physical_parameters = (
-        (float(native[5]),)
-        if len(problem.parameters) == 1
-        else tuple(float(value) for value in native[5])
+        tuple(float(value) for value in native[5])
+        if vector_parameter_result
+        else (float(native[5]),)
     )
     bound_distances = (
-        (float(native[6]),)
-        if len(problem.parameters) == 1
-        else tuple(float(value) for value in native[6])
+        tuple(float(value) for value in native[6])
+        if vector_parameter_result
+        else (float(native[6]),)
     )
     active_bounds = (
-        (str(native[7]),)
-        if len(problem.parameters) == 1
-        else tuple(str(value) for value in native[7])
+        tuple(str(value) for value in native[7])
+        if vector_parameter_result
+        else (str(native[7]),)
     )
     observations = {row.row_id: row for row in problem.observations}
     rows: tuple[
         GeneralRowDiagnostic
         | PureSaturationRowDiagnostic
         | PureVaporPressureRowDiagnostic
-        | PureDensityRowDiagnostic
+        | DensityRowDiagnostic
         | DirectObservationRowDiagnostic,
         ...,
     ] = tuple(
@@ -2283,7 +2454,7 @@ def fit_parameters(
                     RelativePermittivityRatioObservation,
                 ),
             )
-            else PureDensityRowDiagnostic(
+            else DensityRowDiagnostic(
                 row_id=row[0],
                 partition=row[1],
                 volume_m3_per_mol=row[2],
@@ -2303,7 +2474,7 @@ def fit_parameters(
             )
             if isinstance(
                 observation := observations[row[0]],
-                PureDensityObservation,
+                (PureDensityObservation, FixedCompositionMixtureDensityObservation),
             )
             else PureVaporPressureRowDiagnostic(
                 row_id=row[0],

@@ -19,13 +19,13 @@ from .evaluator_regression import (
     PositiveEvaluatorProblem,
 )
 from .parameter_regression import (
+    DensityRowDiagnostic,
     DirectObservationRowDiagnostic,
     FittedParameterDiagnostic,
     FixedTopologyAssociationCapability,
     GeneralJacobianDiagnostics,
     GeneralRowDiagnostic,
     ParameterCapability,
-    PureDensityRowDiagnostic,
     PureSaturationRowDiagnostic,
     PureVaporPressureRowDiagnostic,
     RegressionProblem,
@@ -67,7 +67,7 @@ class RegressionResult:
         GeneralRowDiagnostic
         | PureSaturationRowDiagnostic
         | PureVaporPressureRowDiagnostic
-        | PureDensityRowDiagnostic
+        | DensityRowDiagnostic
         | DirectObservationRowDiagnostic
         | ComposedPositiveRowDiagnostic,
         ...,
@@ -214,11 +214,11 @@ class ResultContext:
             )
 
 
-_EOS_COMMIT = "7b97bab039e1c50a6f89522698af80493bea5f9e"
-_EOS_TREE = "d082a8f102b32705b6cd6669a3e31a8d4ea8acd0"
-_EOS_WHEEL_SHA256 = "1567cda72e1b525526dc0e647af0c6fe711edcb70bc4cee08f06284e847956d9"
-_EOS_HEADER_SHA256 = "881f5ec87293de8b1f3c25c16018aa94be69775fede2ec5426fcbb08e257fecd"
-_EOS_LIBRARY_SHA256 = "fd624add206b8d783cd079db320b6dba64083063af2f29faf5ce82d1cf4743eb"
+_EOS_COMMIT = "d0c2575908323db6c487d4e541cf497c93c89d9e"
+_EOS_TREE = "e29386139e7ba81115b0f454c79e0c869a262d37"
+_EOS_WHEEL_SHA256 = "bc7e637de084330ebded4ddfd52e02bc1ce5451221128692972ebba8856d098e"
+_EOS_HEADER_SHA256 = "2adb85c3dc0502384b5ae5fce69cc46f8874415ca7e6fad85b1a5d7de3a8ea53"
+_EOS_LIBRARY_SHA256 = "e4e6c58aa14bf285a9cc347eb6b8b34fa8a7ee563576522223a7aa5e67930198"
 
 
 @cache

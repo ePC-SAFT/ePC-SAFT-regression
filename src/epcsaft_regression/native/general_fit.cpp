@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <numeric>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -25,6 +26,7 @@ enum class ObservationKind {
     pair_phase,
     pure_phase,
     pure_density,
+    mixture_density,
     pure_vapor_pressure,
     mean_ionic_activity,
     aqueous_kij_activity,
@@ -52,6 +54,7 @@ struct Row final {
     double molar_mass{0.0};
     double liquid_density{0.0};
     double liquid_density_scale{0.0};
+    std::vector<double> mole_fractions;
     double direct_state{0.0};
     double observed_value{0.0};
     double direct_scale{0.0};
@@ -148,12 +151,27 @@ bool pure_density_observation(const Payload& payload) {
     return payload.observation_shape == "pure_density";
 }
 
+bool mixture_density_observation(const Payload& payload) {
+    return payload.observation_shape == "mixture_density";
+}
+
+bool density_observation(const Payload& payload) {
+    return pure_density_observation(payload)
+        || mixture_density_observation(payload);
+}
+
+bool density_row(const Row& row) {
+    return row.kind == ObservationKind::pure_density
+        || row.kind == ObservationKind::mixture_density;
+}
+
 bool fixed_topology_association_observation(const Payload& payload) {
     return payload.capability_id == "fixed_topology_association"
         && !payload.parameter_origins.empty()
         && !payload.fixed_topology_slot_indices.empty()
-        && payload.component_ids.size() == 1
-        && payload.observation_shape == "fixed_topology_association";
+        && !payload.component_ids.empty()
+        && (payload.observation_shape == "fixed_topology_association"
+            || payload.observation_shape == "mixture_density");
 }
 
 bool joint_pure_observation(const Payload& payload) {
@@ -166,12 +184,15 @@ bool joint_pure_observation(const Payload& payload) {
 
 std::size_t row_residual_count(const Row& row) {
     return row.kind == ObservationKind::pure_density
+            || row.kind == ObservationKind::mixture_density
         ? 2u
         : row.kind == ObservationKind::pure_vapor_pressure ? 3u : 4u;
 }
 
 std::size_t row_nuisance_count(const Row& row) {
-    return row.kind == ObservationKind::pure_density ? 1u : 2u;
+    return row.kind == ObservationKind::pure_density
+            || row.kind == ObservationKind::mixture_density
+        ? 1u : 2u;
 }
 
 std::size_t residual_count(const Payload& payload) {
@@ -196,7 +217,7 @@ std::size_t variable_count(const Payload& payload) {
     return direct_observation(payload)
         ? 1u
         : 1u
-            + (pure_density_observation(payload) ? 1u : 2u)
+            + (density_observation(payload) ? 1u : 2u)
                 * payload.training_rows.size();
 }
 
@@ -268,6 +289,7 @@ Row parse_row(PyObject* object, ObservationKind kind) {
                 || kind == ObservationKind::ion_solvation_kij
             ? 10
             : kind == ObservationKind::pure_density ? 12
+            : kind == ObservationKind::mixture_density ? 13
             : kind == ObservationKind::pure_vapor_pressure ? 14
             : direct ? 7 : 17;
     if (!sequence
@@ -333,6 +355,42 @@ Row parse_row(PyObject* object, ObservationKind kind) {
               && row.liquid_volume_start <= row.liquid_volume_bounds[1])) {
             throw std::invalid_argument(
                 "pure-density observation state, scales, and volume are invalid"
+            );
+        }
+        return row;
+    }
+    if (kind == ObservationKind::mixture_density) {
+        row.mole_fractions = doubles(item(4), "mole fractions");
+        row.pressure_scale = number(item(5), "pressure scale");
+        row.molar_mass = number(item(6), "molar mass");
+        row.liquid_density = number(item(7), "liquid density");
+        row.liquid_density_scale = number(item(8), "liquid-density scale");
+        row.liquid_volume_origin = number(item(9), "volume origin");
+        row.liquid_volume_start = number(item(10), "volume start");
+        row.liquid_volume_bounds = {
+            number(item(11), "volume lower bound"),
+            number(item(12), "volume upper bound"),
+        };
+        const double fraction_sum = std::accumulate(
+            row.mole_fractions.cbegin(), row.mole_fractions.cend(), 0.0
+        );
+        const bool valid_fractions = !row.mole_fractions.empty()
+            && std::all_of(
+                row.mole_fractions.cbegin(), row.mole_fractions.cend(),
+                [](double value) { return value > 0.0; }
+            )
+            && std::abs(fraction_sum - 1.0) <= 1.0e-12;
+        if (!(row.temperature > 0.0 && row.pressure > 0.0
+              && valid_fractions && row.pressure_scale > 0.0
+              && row.molar_mass > 0.0 && row.liquid_density > 0.0
+              && row.liquid_density_scale > 0.0
+              && row.liquid_volume_origin > 0.0
+              && row.liquid_volume_bounds[0] > 0.0
+              && row.liquid_volume_bounds[0] < row.liquid_volume_bounds[1]
+              && row.liquid_volume_start >= row.liquid_volume_bounds[0]
+              && row.liquid_volume_start <= row.liquid_volume_bounds[1])) {
+            throw std::invalid_argument(
+                "mixture-density composition, state, scales, and volume are invalid"
             );
         }
         return row;
@@ -509,12 +567,10 @@ Payload parse_payload(PyObject* object) {
     OwnedPyObject components{
         PySequence_Fast(item(3), "component ids must be a sequence")
     };
-    if (!components
-        || (PySequence_Fast_GET_SIZE(components.get()) < 1
-            || PySequence_Fast_GET_SIZE(components.get()) > 3)) {
+    if (!components || PySequence_Fast_GET_SIZE(components.get()) < 1) {
         PyErr_Clear();
         throw std::invalid_argument(
-            "component ids must contain one to three values"
+            "component ids must contain at least one value"
         );
     }
     Payload payload{};
@@ -555,6 +611,8 @@ Payload parse_payload(PyObject* object) {
                 ? ObservationKind::aqueous_kij_activity
             : payload.observation_shape == "pure_density"
                 ? ObservationKind::pure_density
+            : payload.observation_shape == "mixture_density"
+                ? ObservationKind::mixture_density
             : payload.observation_shape == "fixed_topology_association"
                     || payload.observation_shape == "pure_vapor_pressure"
                 ? ObservationKind::pure_vapor_pressure
@@ -753,6 +811,18 @@ Payload parse_payload(PyObject* object) {
     payload.reporting_rows = parse_rows(
         item(18), "reporting rows", observation_kind
     );
+    const auto validate_mixture_rows = [&payload](const std::vector<Row>& rows) {
+        for (const Row& row : rows) {
+            if (row.kind == ObservationKind::mixture_density
+                && row.mole_fractions.size() != payload.component_ids.size()) {
+                throw std::invalid_argument(
+                    "mixture-density mole fractions must match component ids"
+                );
+            }
+        }
+    };
+    validate_mixture_rows(payload.training_rows);
+    validate_mixture_rows(payload.reporting_rows);
     if (payload.training_rows.empty()) {
         throw std::invalid_argument("at least one training row is required");
     }
@@ -855,27 +925,56 @@ const epcsaft_fixed_topology_association_descriptor_v1&
 checked_fixed_topology_descriptor(
     const epcsaft_native_sdk_v1& table, const Payload& payload
 ) {
-    constexpr std::size_t required_size =
+    const bool mixture = payload.component_ids.size() > 1;
+    constexpr std::size_t descriptor_required_size =
+        offsetof(epcsaft_native_sdk_v1, fixed_topology_association)
+        + sizeof(table.fixed_topology_association);
+    if (table.table_size < descriptor_required_size
+        || table.fixed_topology_association == nullptr) {
+        throw std::runtime_error(
+            "EOS does not expose a fixed-topology association descriptor"
+        );
+    }
+    constexpr std::size_t pure_required_size =
         offsetof(epcsaft_native_sdk_v1, evaluate_fixed_topology_association)
         + sizeof(table.evaluate_fixed_topology_association);
-    if (table.table_size < required_size
-        || table.fixed_topology_association_result_size
-            != sizeof(epcsaft_fixed_topology_phase_result_v1)
-        || table.fixed_topology_association == nullptr
-        || table.evaluate_fixed_topology_association == nullptr) {
+    if (!mixture
+        && (table.table_size < pure_required_size
+            || table.fixed_topology_association_result_size
+                != sizeof(epcsaft_fixed_topology_phase_result_v1)
+            || table.evaluate_fixed_topology_association == nullptr)) {
         throw std::runtime_error(
-            "EOS does not expose the generic fixed-topology association interface"
+            "EOS does not expose fixed-topology pure association evaluation"
+        );
+    }
+    constexpr std::size_t mixture_required_size = offsetof(
+        epcsaft_native_sdk_v1,
+        evaluate_fixed_topology_associating_mixture
+    ) + sizeof(table.evaluate_fixed_topology_associating_mixture);
+    if (mixture
+        && (table.table_size < mixture_required_size
+            || table.fixed_topology_associating_mixture_result_size
+                != sizeof(epcsaft_fixed_topology_mixture_phase_result_v1)
+            || table.evaluate_fixed_topology_associating_mixture == nullptr)) {
+        throw std::runtime_error(
+            "EOS does not expose the generic fixed-topology "
+            "associating-mixture interface"
         );
     }
     const auto& descriptor = *table.fixed_topology_association;
+    std::uint32_t expected_model_domain =
+        EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_ASSOCIATING_PURE_V1;
+    if (mixture) {
+        expected_model_domain =
+            EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_ASSOCIATING_MIXTURE_V1;
+    }
     if (descriptor.struct_size
             != sizeof(epcsaft_fixed_topology_association_descriptor_v1)
         || descriptor.schema_version
             != EPCSAFT_FIXED_TOPOLOGY_ASSOCIATION_SCHEMA_VERSION_V1
         || descriptor.observation_contract
             != EPCSAFT_NATIVE_OBSERVATION_FIXED_COMPOSITION_HELMHOLTZ_PHASE_V1
-        || descriptor.model_domain
-            != EPCSAFT_NATIVE_MODEL_DOMAIN_NEUTRAL_ASSOCIATING_PURE_V1
+        || descriptor.model_domain != expected_model_domain
         || descriptor.tensor_layout
             != EPCSAFT_NATIVE_TENSOR_LAYOUT_ROW_MAJOR_V1
         || descriptor.derivative_order != 2u
@@ -886,7 +985,7 @@ checked_fixed_topology_descriptor(
         || descriptor.unsupported_status
             != EPCSAFT_NATIVE_STATUS_UNSUPPORTED_MODEL_V1
         || descriptor.domain_status != EPCSAFT_NATIVE_STATUS_DOMAIN_ERROR_V1
-        || descriptor.state_coordinate_count != 2u
+        || descriptor.state_coordinate_count != descriptor.component_count + 1u
         || descriptor.slot_count == 0 || descriptor.slots == nullptr
         || descriptor.component_count == 0 || descriptor.component_ids == nullptr
         || descriptor.site_count == 0 || descriptor.site_ids == nullptr
@@ -1784,7 +1883,9 @@ PyObject* fixed_topology_descriptor_to_python(
         descriptor.temperature_min_k,
         descriptor.temperature_max_k,
         "fixed_composition_helmholtz_phase",
-        "neutral_associating_pure",
+        descriptor.component_count == 1
+            ? "neutral_associating_pure"
+            : "neutral_associating_mixture",
         "row_major",
         static_cast<Py_ssize_t>(descriptor.state_coordinate_count),
         descriptor.helmholtz_basis_id,
@@ -1997,7 +2098,7 @@ Phase evaluate_phase(
 ) {
     Phase phase{};
     const bool pure = payload.component_ids.size() == 1;
-    phase.coordinate_count = pure ? 3 : 4;
+    phase.coordinate_count = pure ? 3 : payload.component_ids.size() + 2;
     phase.gradient.assign(
         phase.coordinate_count, std::numeric_limits<double>::quiet_NaN()
     );
@@ -2038,28 +2139,47 @@ Phase evaluate_phase(
             &result
         );
     } else {
-        const std::array<double, 2> amounts = {
-            first_fraction, 1.0 - first_fraction
-        };
-        status = payload.capability_id == "neutral_binary_phase_kij_v1"
-            ? table.evaluate_mixture_phase_kij(
-                  table.model_context,
-                  row.temperature,
-                  amounts.data(),
-                  amounts.size(),
-                  volume,
-                  parameter,
-                  &result
-              )
-            : table.evaluate_mixture_phase_lij(
-                  table.model_context,
-                  row.temperature,
-                  amounts.data(),
-                  amounts.size(),
-                  volume,
-                  parameter,
-                  &result
-              );
+        std::vector<double> amounts = row.mole_fractions;
+        if (amounts.empty()) {
+            if (payload.component_ids.size() != 2) {
+                throw std::invalid_argument(
+                    "mixture phase rows without explicit composition require "
+                    "exactly two model components"
+                );
+            }
+            amounts = {first_fraction, 1.0 - first_fraction};
+        }
+        if (amounts.size() != payload.component_ids.size()) {
+            throw std::invalid_argument(
+                "mixture phase composition does not match the installed model order"
+            );
+        }
+        if (payload.capability_id == "neutral_binary_phase_kij_v1") {
+            status = table.evaluate_mixture_phase_kij(
+                table.model_context,
+                row.temperature,
+                amounts.data(),
+                amounts.size(),
+                volume,
+                parameter,
+                &result
+            );
+        } else if (payload.capability_id == "neutral_binary_phase_lij_v1") {
+            status = table.evaluate_mixture_phase_lij(
+                table.model_context,
+                row.temperature,
+                amounts.data(),
+                amounts.size(),
+                volume,
+                parameter,
+                &result
+            );
+        } else {
+            throw std::invalid_argument(
+                "installed EOS does not expose a supported active mixture "
+                "parameter callback"
+            );
+        }
     }
     if (status != EPCSAFT_NATIVE_STATUS_OK_V1 || result.status != status) {
         const std::size_t error_length = strnlen(
@@ -2205,6 +2325,103 @@ Phase evaluate_fixed_topology_association_phase(
             slot.unit,
             parameters[owner],
         });
+    }
+    if (descriptor.component_count > 1) {
+        if (row.kind != ObservationKind::mixture_density
+            || row.mole_fractions.size() != descriptor.component_count) {
+            throw std::logic_error(
+                "fixed-topology associating-mixture evaluation requires "
+                "ordered fixed-composition density amounts"
+            );
+        }
+        Phase phase{};
+        phase.coordinate_count = descriptor.state_coordinate_count
+            + requests.size();
+        phase.gradient.resize(phase.coordinate_count);
+        phase.hessian.resize(phase.coordinate_count * phase.coordinate_count);
+        epcsaft_fixed_topology_mixture_phase_result_v1 result{};
+        result.struct_size = sizeof(result);
+        result.coordinate_count = phase.coordinate_count;
+        result.active_parameter_count = requests.size();
+        result.gradient_capacity = phase.gradient.size();
+        result.hessian_capacity = phase.hessian.size();
+        result.gradient = phase.gradient.data();
+        result.hessian = phase.hessian.data();
+        std::vector<const char*> component_ids;
+        component_ids.reserve(payload.component_ids.size());
+        for (const std::string& component_id : payload.component_ids) {
+            component_ids.push_back(component_id.c_str());
+        }
+        const int status =
+            table.evaluate_fixed_topology_associating_mixture(
+                table.model_context,
+                payload.parameter_fingerprint.c_str(),
+                payload.topology_fingerprint.c_str(),
+                payload.artifact_fingerprint.c_str(),
+                component_ids.data(),
+                component_ids.size(),
+                row.temperature,
+                row.mole_fractions.data(),
+                row.mole_fractions.size(),
+                volume,
+                requests.data(),
+                requests.size(),
+                &result
+            );
+        if (status != EPCSAFT_NATIVE_STATUS_OK_V1 || result.status != status) {
+            const std::size_t error_length = strnlen(
+                result.error, EPCSAFT_NATIVE_SDK_V1_ERROR_SIZE
+            );
+            throw std::runtime_error(
+                std::string(
+                    "EOS fixed-topology associating-mixture evaluation failed: "
+                ) + std::string(result.error, error_length)
+            );
+        }
+        phase.pressure = result.pressure_pa;
+        if (result.struct_size != sizeof(result)
+            || result.coordinate_count != phase.coordinate_count
+            || result.active_parameter_count != requests.size()
+            || result.gradient_capacity != phase.gradient.size()
+            || result.hessian_capacity != phase.hessian.size()
+            || result.gradient != phase.gradient.data()
+            || result.hessian != phase.hessian.data()
+            || !std::isfinite(result.helmholtz_over_rt_reference_amount)
+            || !bounded_field_equal(
+                payload.parameter_fingerprint,
+                result.parameter_fingerprint
+            )
+            || !bounded_field_equal(
+                payload.topology_fingerprint,
+                result.topology_fingerprint
+            )
+            || !bounded_field_equal(
+                payload.artifact_fingerprint,
+                result.artifact_fingerprint
+            )
+            || !valid_fingerprint(result.component_order_fingerprint)
+            || !valid_fingerprint(result.domain_fingerprint)
+            || std::strcmp(
+                   result.helmholtz_basis_id,
+                   descriptor.helmholtz_basis_id
+               ) != 0
+            || !std::isfinite(phase.pressure)
+            || !std::all_of(
+                phase.gradient.cbegin(),
+                phase.gradient.cend(),
+                [](double value) { return std::isfinite(value); }
+            )
+            || !std::all_of(
+                phase.hessian.cbegin(),
+                phase.hessian.cend(),
+                [](double value) { return std::isfinite(value); }
+            )) {
+            throw std::runtime_error(
+                "EOS fixed-topology associating-mixture result is "
+                "incomplete or has an identity mismatch"
+            );
+        }
+        return phase;
     }
     Phase phase{};
     phase.coordinate_count = 2 + requests.size();
@@ -2898,10 +3115,10 @@ void evaluate_fixed_topology_association_problem(
 ) {
     const std::size_t parameter_count = payload.parameter_origins.size();
     constexpr std::size_t amount_coordinate = 0;
-    constexpr std::size_t volume_coordinate = 1;
-    constexpr std::size_t parameter_coordinate = 2;
+    const std::size_t volume_coordinate = payload.component_ids.size();
+    const std::size_t parameter_coordinate = volume_coordinate + 1;
     const std::size_t slot_count = payload.fixed_topology_slot_indices.size();
-    const std::size_t coordinate_count = slot_count + 2;
+    const std::size_t coordinate_count = slot_count + parameter_coordinate;
     const std::size_t variable_total = variable_count(payload);
     std::vector<double> parameters(parameter_count);
     for (std::size_t parameter = 0; parameter < parameter_count; ++parameter) {
@@ -2970,7 +3187,8 @@ void evaluate_fixed_topology_association_problem(
             ]
             * liquid_volume * pressure_factor;
 
-        if (row.kind == ObservationKind::pure_density) {
+        if (row.kind == ObservationKind::pure_density
+            || row.kind == ObservationKind::mixture_density) {
             const double density = row.molar_mass / liquid_volume;
             evaluation.residuals[residual_offset + 1] =
                 (density - row.liquid_density) / row.liquid_density_scale;
@@ -3147,7 +3365,8 @@ void evaluate_problem(
         }
         return;
     }
-    if (pure_density_observation(payload)) {
+    if (pure_density_observation(payload)
+        || mixture_density_observation(payload)) {
         for (std::size_t row_index = 0; row_index < row_count; ++row_index) {
             const Row& row = payload.training_rows[row_index];
             const std::size_t volume_column = 1 + row_index;
@@ -3157,20 +3376,27 @@ void evaluate_problem(
                 || volume < row.liquid_volume_bounds[0]
                 || volume > row.liquid_volume_bounds[1]) {
                 throw std::invalid_argument(
-                    "pure-density volume violates its declared bounds"
+                    "density volume violates its declared bounds"
                 );
             }
             const Phase phase = evaluate_phase(
-                table, payload, row, 1.0, volume, parameter
+                table,
+                payload,
+                row,
+                row.mole_fractions.empty() ? 1.0 : row.mole_fractions.front(),
+                volume,
+                parameter
             );
-            constexpr std::size_t volume_coordinate = 1;
-            constexpr std::size_t parameter_coordinate = 2;
+            const std::size_t volume_coordinate =
+                payload.component_ids.size() == 1
+                ? 1 : payload.component_ids.size();
+            const std::size_t parameter_coordinate = volume_coordinate + 1;
             if (!(phase.hessian[
                     volume_coordinate * phase.coordinate_count
                     + volume_coordinate
                 ] > 0.0)) {
                 throw std::runtime_error(
-                    "pure-density state is not mechanically stable"
+                    "density state is not mechanically stable"
                 );
             }
             const std::size_t residual_offset = 2 * row_index;
@@ -3220,7 +3446,7 @@ void evaluate_problem(
                 [](double value) { return std::isfinite(value); }
             )) {
             throw std::runtime_error(
-                "assembled pure-density residual or Jacobian is nonfinite"
+                "assembled density residual or Jacobian is nonfinite"
             );
         }
         return;
@@ -3393,12 +3619,12 @@ SolveOutcome solve_training(
         ) {
             const Row& row = payload.training_rows[index];
             const std::size_t stride =
-                pure_density_observation(payload) ? 1u : 2u;
+                density_observation(payload) ? 1u : 2u;
             start[1 + stride * index] =
                 std::log(
                     row.liquid_volume_start / row.liquid_volume_origin
                 );
-            if (!pure_density_observation(payload)) {
+            if (!density_observation(payload)) {
                 start[2 + 2 * index] =
                     std::log(
                         row.vapor_volume_start / row.vapor_volume_origin
@@ -3427,7 +3653,7 @@ SolveOutcome solve_training(
         ) {
             const Row& row = payload.training_rows[index];
             const std::size_t stride =
-                pure_density_observation(payload) ? 1u : 2u;
+                density_observation(payload) ? 1u : 2u;
             bounds[1 + stride * index] = {
                 std::log(
                     row.liquid_volume_bounds[0]
@@ -3438,7 +3664,7 @@ SolveOutcome solve_training(
                     / row.liquid_volume_origin
                 ),
             };
-            if (pure_density_observation(payload)) {
+            if (density_observation(payload)) {
                 continue;
             }
             bounds[2 + 2 * index] = {
@@ -3526,7 +3752,7 @@ std::vector<double> joint_pure_start_variables(
     for (const Row& source : payload.training_rows) {
         const bool pressure_root =
             fixed_topology_association_observation(payload)
-            && source.kind != ObservationKind::pure_density;
+            && !density_row(source);
         const double liquid_start = pressure_root
             ? fixed_topology_pressure_root_start(
                   table,
@@ -4050,7 +4276,7 @@ PyObject* rows_to_python(
                 : RowOutcome{
                     row,
                     row.liquid_volume_start,
-                    row.kind == ObservationKind::pure_density
+                    density_row(row)
                         ? std::numeric_limits<double>::quiet_NaN()
                         : row.vapor_volume_start,
                     {},
@@ -4087,7 +4313,7 @@ PyObject* rows_to_python(
         }
         return result;
     }
-    if (pure_density_observation(payload)) {
+    if (density_observation(payload)) {
         for (
             std::size_t index = 0;
             index < payload.training_rows.size();
